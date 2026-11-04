@@ -14,10 +14,9 @@ npm run dev
 ## Cấu trúc dự án
 
 ```
-database/                     # Migration + định nghĩa SP/trigger/view — xem database/README.md
-├── migrations/               # *.sql chạy tự động theo thứ tự tên (npm run migrate)
-├── manual/                   # script chạy tay 1 lần
-└── objects/                  # xuất từ DB (npm run dump:db-objects)
+database/                     # Schema PostgreSQL — xem database/README.md
+├── baseline/                 # schema ban đầu 00–04
+└── migrations/               # *.sql chạy tự động theo thứ tự tên (npm run migrate)
 scripts/                      # CLI: migrate, sync-permissions, import, gen-jwt...
 src/
 ├── server.js / cluster.js    # Khởi động (dev: 1 tiến trình; production: cluster)

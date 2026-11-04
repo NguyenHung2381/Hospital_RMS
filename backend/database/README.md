@@ -1,13 +1,14 @@
-# Cơ sở dữ liệu
+# Cơ sở dữ liệu (PostgreSQL 18)
 
 ```
 database/
-├── migrations/   # thay đổi schema/dữ liệu — chạy TỰ ĐỘNG, mỗi file 1 lần, theo thứ tự tên
-├── manual/       # script chạy TAY 1 lần (dọn dữ liệu, đổi tên hàng loạt...) — không tự chạy
-└── objects/      # định nghĩa stored procedure / function / trigger / view, xuất từ DB
+├── baseline/     # schema ban đầu 00 → 04 (extension, bảng, ràng buộc + index, tối ưu, trigger)
+└── migrations/   # thay đổi schema/dữ liệu sau baseline — chạy TỰ ĐỘNG, mỗi file 1 lần, theo thứ tự tên
 ```
 
-Nguồn sự thật duy nhất cho schema là `migrations/`. Code ứng dụng không tự viết DDL.
+Schema = `baseline/` + `migrations/`. Code ứng dụng không tự viết DDL. Cài PostgreSQL: `infra/cai-dat-postgresql.md`.
+
+Hệ thống chạy SQL Server tới commit `dd0f62e`. Lịch sử chuyển DB: `POSTGRESQL_MIGRATION_PLAN.md`; chuyển dữ liệu từ file backup SQL Server: `infra/chuyen-du-lieu-sang-postgresql.md`.
 
 ## Lệnh
 
@@ -19,89 +20,50 @@ Chạy trong thư mục `backend`. Chỉ có một lệnh `npm run migrate`, vi�
 | `npm run migrate status` | Trạng thái từng file: `✓` đã chạy, `·` chờ chạy, `!` đã sửa sau khi chạy. Không ghi gì vào DB |
 | `npm run migrate new <mô tả>` | Tạo file mới từ mẫu, tên đã đúng quy ước |
 | `npm run migrate baseline` | **1 lần** trên DB đã nâng cấp tay: đánh dấu mọi file hiện có là đã chạy |
-| `npm run migrate init` | DB trống: tạo bảng theo dõi rồi chạy hết |
-| `npm run dump:db-objects` | Xuất lại `objects/` sau khi sửa SP/trigger/view trong DB |
-| `npm run pg:baseline` | Sinh lại schema PostgreSQL `pg/baseline/01–02` từ DB SQL Server đang kết nối (`-- --check` chỉ in thống kê). Chuẩn bị chuyển DB, xem `POSTGRESQL_MIGRATION_PLAN.md` |
-| `npm run pg:transfer precheck\|load\|verify` | Chuyển dữ liệu SQL Server (`DB_*`) → PostgreSQL (`PG_TARGET_*`): kiểm dữ liệu nguồn, nạp vào DB PG rỗng, so checksum từng bảng. Xem `infra/cai-dat-postgresql.md` mục 6 |
+| `npm run migrate init` | DB trống: chạy baseline `00–04`, tạo bảng theo dõi rồi chạy hết `migrations/` |
+| `npm run pg:transfer restore\|precheck\|load\|verify` | Chuyển dữ liệu 1 lần từ SQL Server (thường dựng từ file `.bak` bằng `scripts/pg-transfer/transfer-from-bak.sh`) sang DB PG rỗng. Xem `infra/chuyen-du-lieu-sang-postgresql.md` |
 | `npm run test:pg` | Test tích hợp với PostgreSQL thật (`test-integration-pg/`, biến `PG_TEST_*`); CI chạy ở job `backend-postgres` |
 
-Cờ cũ vẫn dùng được: `--dry-run` (= `status`), `--baseline`, `--init`. Các script `migrate:status` / `migrate:new` đã bỏ.
+Cờ cũ vẫn dùng được: `--dry-run` (= `status`), `--baseline`, `--init`.
 
-Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. Mặc định biến này bật ngoài production và tắt ở production. Ở production, `scripts/deploy.ps1` chạy `node scripts/migrate.js` bằng login có quyền ALTER/BACKUP, trước khi đổi container. Nếu có file chưa chạy, server chỉ cảnh báo. Riêng khi thiếu cột bắt buộc của phân quyền/đăng nhập (`permissions/index.js`), server **dừng**.
+Lúc khởi động, server tự chạy migration khi `DB_AUTO_MIGRATE=true`. Mặc định biến này bật ngoài production và tắt ở production. Ở production, `scripts/deploy.sh` backup DB (`pg_dump`) rồi chạy `node scripts/migrate.js` bằng role `rms_migrate`, trước khi đổi container. Nếu có file chưa chạy, server chỉ cảnh báo. Riêng khi thiếu cột bắt buộc của phân quyền/đăng nhập (`permissions/index.js`), server **dừng**.
 
-## Cách hoạt động (`src/database/migrator.js`)
+## Cách hoạt động (`src/database/migrator.js`, `migrator.pg.js`)
 
-Khi `DB_CLIENT=pg` (PostgreSQL), migrator đọc `pg/migrations/` thay cho `migrations/`, bảng theo dõi là `schema_migrations`, mỗi file chạy trong 1 transaction cùng bản ghi của nó (`-- @no-transaction` để tắt), khoá bằng `pg_advisory_lock`, backup bằng `pg_dump` (thư mục trên máy chạy lệnh). `migrate init` trên DB PG trống chạy baseline `pg/baseline/00–04` trước. Migration SQL Server mới phải có bản PG cùng tên (`pg/migrations/README.md`). Phần dưới đây mô tả SQL Server.
-
-- Bảng `dbo.schema_migrations` lưu `filename`, `applied_at`, `git_sha`, `checksum` (SHA-256 nội dung file).
-- Mỗi file được tách batch theo dòng `GO`, giống sqlcmd. Mọi batch chạy trên cùng một kết nối, không timeout. `USE [RMS_HOSPITAL]` được đổi sang DB đang cấu hình.
-- Khoá `sp_getapplock` đảm bảo chỉ một tiến trình chạy migration tại một thời điểm (cluster, nhiều container).
-- `MIGRATION_BACKUP_DIR` là thư mục **trên máy SQL Server**. Khi có file mới, runner `BACKUP DATABASE ... COPY_ONLY` vào đó trước khi chạy.
-- Đổi tên file đã chạy: thêm cặp tên cũ → tên mới vào `RENAMED` trong `migrator.js`. Runner tự đổi tên trong `schema_migrations`, không chạy lại file.
-- **File gộp** (`YYYY-MM-DD_gop_thang_MM.sql`): các migration cũ được nối nguyên văn theo thứ tự cũ, mỗi file cũ thành một phần mở đầu bằng dòng `-- @migration <tên file cũ>.sql`. Chú thích trước dòng `@migration` đầu tiên không chạy.
-  - DB đã chạy đủ các file cũ: file gộp coi như đã chạy. Lần `npm run migrate` kế tiếp ghi tên file gộp và xoá bản ghi các file cũ, không chạy lại SQL nào.
-  - DB mới chạy một phần: chỉ chạy các phần còn thiếu, đúng thứ tự. Mỗi phần xong được ghi bằng tên file cũ, nên hỏng giữa chừng thì lần sau chạy tiếp từ phần đó. `status` hiện `x/y phần đã chạy`.
-  - Code và tài liệu nhắc tên file cũ (vd `2026-10-06_workflow_engine.sql`): tìm dòng `-- @migration <tên đó>` trong file gộp.
-  - Hiện đã gộp tháng 08–11/2026 (110 file thành 4 file). Gộp tiếp thì nối nguyên văn theo cách trên rồi xoá file cũ. `test/database/migrator.test.js` kiểm tra thứ tự và tên các phần.
-- Gộp kiểu cũ (xoá file cũ, viết lại nội dung vào file khác): thêm cặp file cũ → file gộp vào `MERGED`. Bản ghi file cũ không còn bị báo "không còn file" và được xoá khi file gộp đã chạy. DB chưa có file gộp vẫn chạy nó, nên file gộp phải idempotent.
+- Bảng `schema_migrations` lưu `filename`, `applied_at`, `git_sha`, `checksum` (SHA-256 nội dung file).
+- Mỗi file chạy trong 1 transaction cùng bản ghi của nó. File có lệnh không chạy được trong transaction (`CREATE INDEX CONCURRENTLY`) thì thêm dòng `-- @no-transaction`.
+- Khoá `pg_advisory_lock` đảm bảo chỉ một tiến trình chạy migration tại một thời điểm (cluster, nhiều container).
+- `MIGRATION_BACKUP_DIR`: khi có file mới, `pg_dump -Fc` DB vào thư mục này (ở máy chạy lệnh, cần `pg_dump`) trước khi chạy. Image Docker không có `pg_dump`, nên khi deploy `scripts/deploy.sh` tự backup trên máy host.
+- **File gộp**: nhiều migration cũ nối nguyên văn, mỗi phần mở đầu bằng dòng `-- @migration <tên file cũ>.sql`. DB chạy một phần thì chỉ chạy các phần còn thiếu, đúng thứ tự; `status` hiện `x/y phần đã chạy`.
 
 ## Quy ước viết migration
 
-1. **Tên file** là `YYYY-MM-DD_mo_ta_ngan.sql`. Cùng ngày thì thêm số thứ tự: `YYYY-MM-DD_00_...`, `YYYY-MM-DD_01_...`. Dùng `npm run migrate new <mô tả>` để luôn xếp cuối.
-2. **Idempotent**: mỗi bước tự kiểm tra trước khi làm (`OBJECT_ID`, `COL_LENGTH`, `sys.indexes`, `MERGE` cho dữ liệu danh mục). Chạy lại phải an toàn.
-3. **Không sửa file đã chạy** ở bất kỳ môi trường nào. Cần đổi gì thì viết file mới. Phần cũ trong file gộp cũng vậy. `npm run migrate status` đánh dấu `!` cho file bị sửa.
+1. **Tên file** là `YYYY-MM-DD_mo_ta_ngan.sql`. Dùng `npm run migrate new <mô tả>` để luôn xếp cuối.
+2. **Idempotent**: chạy lại phải an toàn — `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP ... IF EXISTS`, `INSERT ... ON CONFLICT DO NOTHING` cho dữ liệu danh mục.
+3. **Không sửa file đã chạy** ở bất kỳ môi trường nào. Cần đổi gì thì viết file mới. `npm run migrate status` đánh dấu `!` cho file bị sửa.
 4. **Tương thích ngược**, vì rollback ứng dụng không hoàn tác schema. Chỉ thêm bảng/cột/index. Xoá hoặc đổi tên thì để một bản phát hành sau, khi code cũ không còn dùng.
-5. Đổi nhiều dữ liệu thì bọc trong `SET XACT_ABORT ON; BEGIN TRANSACTION ... COMMIT`.
-6. Cột mới mà code cần ngay lúc khởi động (đăng nhập, phân quyền) thì thêm vào `REQUIRED_COLUMNS` trong `src/permissions/index.js`.
-7. **Bảng mới** phải có đủ cột audit: `created_at`, `created_by`, `updated_at DATETIME2 NULL`, `updated_by VARCHAR(20) NULL`. Câu `UPDATE` trong code ghi `updated_at = GETDATE(), updated_by = @actor_id`. Bảng cũ đã được bổ sung `updated_*` ở `2026-11-28_audit_updated_columns.sql`.
-8. Không đưa mật khẩu, chuỗi kết nối hay dữ liệu cá nhân vào file. Mọi `*.sql` ngoài `database/` đều bị `.gitignore` loại.
+5. Cột mới mà code cần ngay lúc khởi động (đăng nhập, phân quyền) thì thêm vào `REQUIRED_COLUMNS` trong `src/permissions/index.js`.
+6. **Bảng mới** phải có đủ cột audit: `created_at`, `created_by`, `updated_at timestamp NULL`, `updated_by varchar(20) NULL`. Câu `UPDATE` trong code ghi `updated_at = ${nowSql}, updated_by = @actor_id` (helper trong `src/config/db.js`).
+7. **Không viết stored procedure** cho logic nghiệp vụ — viết bằng JS. Trigger chỉ dùng cho audit / ràng buộc dữ liệu, như trong `baseline/04_trigger.sql`.
+8. Không đưa mật khẩu, chuỗi kết nối hay dữ liệu cá nhân vào file. Mọi `*.sql` ngoài `database/` (và `infra/postgresql/`) đều bị `.gitignore` loại.
 
-Chạy tay bằng sqlcmd (khi không dùng được runner) phải có `-I`, vì `QUOTED_IDENTIFIER ON` là bắt buộc cho index lọc và cột tính toán:
+Chạy tay bằng psql (khi không dùng được runner):
 
 ```bash
-sqlcmd -S <server>,<port> -d RMS_HOSPITAL -U <user> -P <pass> -C -I -b -f 65001 -i <file>.sql
+psql -h 127.0.0.1 -U rms_migrate -d rms_hospital -v ON_ERROR_STOP=1 -1 -f <file>.sql
 ```
 
 Cách này không ghi vào `schema_migrations`. Sau đó cần chạy `npm run migrate`. File idempotent nên chạy lại không sao.
 
-`-f 65001` là bắt buộc: thiếu nó, sqlcmd đọc file UTF-8 theo bảng mã của Windows và chữ Việt bị vỡ ngay trong DB (đã xảy ra với `sp_push_notification`, sửa ở `2026-11-03_fix_sp_push_notification_encoding.sql`). `test/database/sqlEncoding.test.js` chặn file `.sql` bị lỗi mã hoá.
+## Việc định kỳ
 
-## Rà soát object DB (2026-10-18)
-
-`objects/` khớp hoàn toàn với DB dev: 44 procedure, 16 trigger, 2 view, 1 function. "Gọi từ" bên dưới chỉ tính lời gọi thật trong `src/`, `scripts/` và các object khác, không tính comment. Lời gọi từ ngoài repo (SQL Agent job, Task Scheduler, công cụ báo cáo) không thấy được từ đây.
-
-| Nhóm | Object | Gọi từ | Đề xuất |
-|---|---|---|---|
-| Audit | 13 trigger `trg_*_audit` | DB tự chạy (ghi `updated_at`/`updated_by` theo `sp_set_actor`) | Giữ ở DB. Code JS đang dựa vào chúng (`approvals.updated_*`, dashboard). |
-| Sinh mã | 23 `sp_gen_*` (gồm `sp_gen_cme_no`, `sp_gen_certificate_no`) | Không còn | Code JS **không gọi nữa**: dùng `src/utils/idGenerator.js` (cùng định dạng mã, khoá `lockResource` chạy được trên cả PostgreSQL). Các thủ tục từng gọi chúng cũng đã chuyển về JS; xoá ở bản phát hành sau. Mã mới thêm vào `idGenerator.js`, không viết `sp_gen_*` mới. |
-| Sinh mã, không ai gọi | `sp_gen_approval_id`, `sp_gen_category_id`, `sp_gen_level_id`, `sp_gen_permission_id`, `sp_gen_pgroup_id`, `sp_gen_progress_id`, `sp_gen_role_id` | — | Đã có cách khác thay (crudService, `createWithSeqId`, `trg_topic_auto_approval` tự sinh). Xoá bằng migration sau khi xác nhận production không còn gì gọi. |
-| Nghiệp vụ trong DB | `trg_topic_auto_approval` (đề tài → `submitted` thì tạo dòng `approvals`), `sp_approve_topic` (+ `sp_grant_member_accounts`: duyệt, cấp tài khoản thành viên, thông báo), `sp_upload_files`, `trg_file_batch_count`, `sp_push_notification` (+ `sp_resolve_recipients`), `sp_create_refresh_token`, `sp_deactivate_expired_accounts` | Không còn (trừ 2 trigger) | **Đã chuyển về JS** (test chạy cả SQL Server và PG): `topics/approvalRecord.js`, `topicApprovalService.approve`, `fileService.uploadFiles`, `notificationService.push`, `sessionTokenService`, `accountMaintenanceJob`. Duyệt đề tài không còn tự cấp tài khoản thành viên. `trg_topic_auto_approval` còn chạy trong DB cho bản backend cũ (JS chỉ thêm phiếu khi chưa có nên không trùng); `trg_file_batch_count` giữ (có bản PG). Trigger và thủ tục còn lại xoá ở bản phát hành sau. |
-| Việc định kỳ (đã chuyển sang `src/jobs/`) | `sp_process_daily_deadlines`, `sp_remind_deadlines`: thành **no-op** từ `2026-11-04_retire_scheduled_deadline_procs.sql` (giữ tên + tham số để Agent job nếu còn vẫn chạy được). `sp_close_supplement_window` (đóng tay theo đợt, **duyệt** đề tài đang bổ sung) | Không ai gọi | Việc định kỳ chạy bằng job Node, xem mục dưới. `sp_close_supplement_window` ngược với quyết định tự **từ chối**, nên xoá ở bản phát hành sau. |
-| Không ai gọi | `sp_use_refresh_token` (xoay refresh token đã làm ở `authService`), `vw_approvals_audit`, `vw_topics_audit` | — | Hai view có thể đang được dùng để xem/báo cáo trực tiếp trên DB. Hỏi người vận hành rồi mới xoá. |
-
-### Việc định kỳ (quyết định 18/10/2026)
-
-Mọi việc định kỳ chạy bằng job Node (`src/jobs/index.js`, giờ VN). Mỗi worker đều lên lịch, nhưng nhờ `markOnce` mỗi việc chỉ chạy 1 lần.
+Mọi việc định kỳ chạy bằng job Node (`src/jobs/index.js`, giờ VN), không dùng job trong DB. Mỗi worker đều lên lịch, nhưng nhờ `markOnce` mỗi việc chỉ chạy 1 lần.
 
 | Giờ | Job | Việc |
 |---|---|---|
-| 00:15 | `supplementDeadlineJob` | Đề tài "Yêu cầu bổ sung" quá **mốc bổ sung muộn nhất** của đợt ⇒ **tự từ chối** qua đúng luồng duyệt (`topicApprovalService.approve`: approvals, lịch sử, thông báo), ghi theo người đã yêu cầu bổ sung. Bỏ qua (ghi log, xử lý tay) đề tài được yêu cầu bổ sung **sau** khi mốc đã qua, hoặc không rõ người yêu cầu. Proc cũ làm ngược lại (tự **duyệt**), và đóng ngay khi một mốc bất kỳ qua. |
-| 01:00 | `accountMaintenanceJob` | Khoá tài khoản hết hạn, dọn refresh token hết hạn, nhắc đổi mật khẩu cũ |
+| 00:15 | `supplementDeadlineJob` | Đề tài "Yêu cầu bổ sung" quá **mốc bổ sung muộn nhất** của đợt ⇒ **tự từ chối** qua đúng luồng duyệt (`topicApprovalService.approve`: approvals, lịch sử, thông báo), ghi theo người đã yêu cầu bổ sung. Bỏ qua (ghi log, xử lý tay) đề tài được yêu cầu bổ sung **sau** khi mốc đã qua, hoặc không rõ người yêu cầu. |
+| 01:00 | `accountMaintenanceJob` | Khoá tài khoản hết hạn, dọn refresh token và mã OTP quên mật khẩu hết hạn, nhắc đổi mật khẩu cũ |
 | 02:00 | `deadlineReminderJob` | Nhắc deadline sắp tới / quá hạn |
 | 03:00 | `personLinkJob` | Gắn `person_id` còn thiếu |
-| 04:00 | `notificationCleanupJob` | Xoá thông báo **đã đọc > 90 ngày**, **chưa đọc > 180 ngày**, theo lô 2000 dòng. Proc cũ chỉ xoá loại đã đọc, và `sp_process_daily_deadlines` gọi sai tên tham số nên bước này luôn lỗi. |
-| 04:30 | `dataRetentionJob` | Xoá `security_events` cũ hơn `SECURITY_EVENTS_RETENTION_MONTHS` tháng (mặc định 24, tối thiểu 12, `0` = không xoá) và dòng `job_execution_log` > 180 ngày của các job có khoá theo ngày. Không xoá khoá "đã làm việc X cho bản ghi Y" (nhắc mật khẩu, nhắc deadline, tự từ chối bổ sung) để job không gửi lại. Xem `DB_SCALING_PLAN.md`. |
-
-`accountMaintenanceJob` (01:00) cũng xoá mã OTP quên mật khẩu đã hết hạn.
-
-Trên production, nếu SQL Agent còn job gọi các proc cũ thì nay job đó vô hại (no-op), nhưng nên tắt cho gọn. Kiểm tra:
-
-```sql
-SELECT j.name AS job, j.enabled, s.step_name, s.command
-FROM msdb.dbo.sysjobs j
-JOIN msdb.dbo.sysjobsteps s ON s.job_id = j.job_id
-WHERE s.command LIKE '%sp_process_daily_deadlines%'
-   OR s.command LIKE '%sp_remind_deadlines%'
-   OR s.command LIKE '%sp_close_supplement_window%'
-   OR s.command LIKE '%sp_cleanup_%';
-```
+| 04:00 | `notificationCleanupJob` | Xoá thông báo **đã đọc > 90 ngày**, **chưa đọc > 180 ngày**, theo lô 2000 dòng |
+| 04:30 | `dataRetentionJob` | Tạo trước partition tháng của `security_events`, bỏ partition cũ hơn `SECURITY_EVENTS_RETENTION_MONTHS` tháng (mặc định 24, tối thiểu 12, `0` = không xoá), xoá dòng `job_execution_log` > 180 ngày của các job có khoá theo ngày. Không xoá khoá "đã làm việc X cho bản ghi Y" (nhắc mật khẩu, nhắc deadline, tự từ chối bổ sung) để job không gửi lại. Xem `DB_SCALING_PLAN.md`. |

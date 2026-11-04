@@ -1,9 +1,9 @@
 # Cài PostgreSQL 18 cho Hospital RMS (cài thẳng trên server Ubuntu, ngoài Docker)
 
-Giống SQL Server hiện nay: PostgreSQL chạy **trực tiếp trên máy Ubuntu**, còn
-các container (backend, frontend, Redis, ClamAV) gọi ra máy host qua
-`host.docker.internal`. Hướng dẫn này nối tiếp `infra/cai-dat-may-ao-ubuntu.md`
-(đã có ổ `/data`, Docker). Kế hoạch chuyển DB: `backend/database/POSTGRESQL_MIGRATION_PLAN.md`.
+PostgreSQL chạy **trực tiếp trên máy Ubuntu** (không trong Docker), còn các
+container (backend, frontend, Redis, ClamAV) gọi ra máy host qua
+`host.docker.internal`. Hướng dẫn này là mục 6 của `infra/cai-dat-may-ao-ubuntu.md`
+(đã có ổ `/data`). Lịch sử chuyển từ SQL Server: `backend/database/POSTGRESQL_MIGRATION_PLAN.md`.
 
 ```
 container backend ──host.docker.internal:5432──► PostgreSQL 18 (systemd, dữ liệu /data/pgsql)
@@ -16,7 +16,7 @@ Các file dùng ở đây đã được chạy thử trên PostgreSQL 18.6 (03/1
 | `infra/postgresql/rms.conf` | Cấu hình bộ nhớ, WAL, múi giờ, theo dõi truy vấn |
 | `infra/postgresql/pg_hba.rms.conf` | Ai được kết nối, từ đâu |
 | `infra/postgresql/01_tao_db_va_role.sql` | Tạo role `rms_migrate`, `rms_app` và DB `rms_hospital` |
-| `backend/database/pg/baseline/00–04_*.sql` | Schema của ứng dụng (bảng, ràng buộc, index, trigger) |
+| `backend/database/baseline/00–04_*.sql` | Schema của ứng dụng (bảng, ràng buộc, index, trigger) |
 
 ## 1. Cài gói từ kho PGDG
 
@@ -104,8 +104,8 @@ sudo -u postgres psql -v ON_ERROR_STOP=1 \
 unset MIGRATE_PW APP_PW
 ```
 
-- `rms_migrate`: chủ DB và các bảng. Dùng cho migration, chuyển dữ liệu (thay
-  `MIGRATION_DB_USER` của SQL Server).
+- `rms_migrate`: chủ DB và các bảng. Dùng cho migration (`MIGRATION_DB_USER`
+  của `scripts/deploy.sh`), backup trước migration và chuyển dữ liệu.
 - `rms_app`: role của ứng dụng. Chỉ đọc/ghi dữ liệu, có `statement_timeout = 60s`.
 
 ## 6. Tạo schema
@@ -113,26 +113,24 @@ unset MIGRATE_PW APP_PW
 Chạy bằng `rms_migrate`, trong thư mục `backend/`. Có 2 trường hợp:
 
 **DB mới, chưa có dữ liệu** (staging trống, CI): migrator chạy baseline
-`00–04` rồi các migration ở `database/pg/migrations/`.
+`00–04` rồi các migration ở `database/migrations/`.
 
 ```bash
-DB_CLIENT=pg DB_SERVER=127.0.0.1 DB_USER=rms_migrate npm run migrate init
+DB_SERVER=127.0.0.1 DB_USER=rms_migrate npm run migrate init
 ```
 
-**Chuyển dữ liệu từ SQL Server**: **không** chạy `migrate init`, để DB rỗng và làm
-theo `infra/chuyen-du-lieu-sang-postgresql.md`. Tài liệu đó hướng dẫn kiểm tra
-dữ liệu, diễn tập, ngày chuyển thật, cách quay lại và xử lý sự cố. Tóm tắt các lệnh
-(`backend/scripts/pg-transfer/`):
+Trên server (image production không có `npm`), chạy trong image backend — cách
+chạy ở mục 12.2 của `infra/cai-dat-may-ao-ubuntu.md`.
+
+**Chuyển dữ liệu từ file backup SQL Server (`.bak`)**: **không** chạy `migrate init`,
+để DB rỗng và làm theo `infra/chuyen-du-lieu-sang-postgresql.md`. Một lệnh làm
+hết (dựng SQL Server tạm trong Docker, restore, kiểm tra, chép dữ liệu, đối chiếu):
 
 ```bash
-npm run pg:transfer precheck   # chỉ đọc SQL Server: dữ liệu nào sẽ làm lỗi/đổi nghĩa
-npm run pg:transfer load       # DB PG rỗng → 00, 01, COPY, 02, 03, setval, 04
-npm run pg:transfer verify     # so số dòng + checksum từng bảng, identity, ràng buộc
+backend/scripts/pg-transfer/transfer-from-bak.sh /data/backup/RMS_HOSPITAL.bak
 ```
 
-Trên server, image production không có `npm`: gọi `node scripts/pg-transfer/index.js …`
-trong container backend (cách chạy ở mục A.2 của runbook). `load` chỉ chạy trên DB
-rỗng. Mã thoát khác 0 = có lỗi chặn / chênh lệch.
+`load` chỉ chạy trên DB rỗng. Mã thoát khác 0 = có lỗi chặn / chênh lệch.
 
 `00_extensions.sql` tự dừng nếu DB sai encoding, PostgreSQL < 18 hoặc thiếu ICU
 (collation tiếng Việt và `rms_ci`).
@@ -169,9 +167,8 @@ không đặt `DB_PASSWORD` / `PG_TARGET_PASSWORD` / `PG_TEST_PASSWORD`).
 - Không cần `rms.conf`. Thiếu `shared_preload_libraries` thì extension
   `pg_stat_statements` vẫn tạo được nhưng view của nó báo lỗi khi đọc, không ảnh
   hưởng ứng dụng.
-- Backend dev chạy trong Docker: khi có adapter PG, thêm dòng cho mạng Docker
-  vào `pg_hba.conf` của bản cài (như `pg_hba.rms.conf`) và mở firewall Windows
-  cổng 5432 cho mạng đó.
+- Backend dev chạy trong Docker: thêm dòng cho mạng Docker vào `pg_hba.conf`
+  của bản cài (như `pg_hba.rms.conf`) và mở firewall Windows cổng 5432 cho mạng đó.
 
 ## 8. Theo dõi
 

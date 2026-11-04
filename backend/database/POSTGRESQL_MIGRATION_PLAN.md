@@ -1,6 +1,12 @@
 # Kế hoạch chuẩn bị chuyển CSDL: SQL Server → PostgreSQL
 
-> Trạng thái: **bản nháp để thảo luận** (28/10/2026, rà soát lại 03/11/2026). Chưa có quyết định chuyển.
+> **Cập nhật 04/11/2026: đã chuyển hẳn sang PostgreSQL.** Code SQL Server đã gỡ (bản cuối còn
+> SQL Server: commit `dd0f62e`); triển khai trên Ubuntu bằng `scripts/deploy.sh`. Dữ liệu cũ chuyển
+> từ file backup `.bak`: `infra/chuyen-du-lieu-sang-postgresql.md`. Phần dưới là **tài liệu lịch
+> sử** của kế hoạch — các lệnh và đường dẫn nhắc tới (`npm run pg:baseline`, `check:tsql`,
+> `database/pg/`, `database/objects/`, `DB_CLIENT`, `deploy.ps1`…) không còn.
+>
+> Trạng thái cũ: bản nháp để thảo luận (28/10/2026, rà soát lại 03/11/2026).
 > Mục tiêu tài liệu: biết chính xác phải sửa những gì, làm theo thứ tự nào để
 > hệ thống vẫn chạy ổn trong suốt quá trình, và có đường lui khi chuyển hỏng.
 >

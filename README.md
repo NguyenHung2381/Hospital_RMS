@@ -7,7 +7,7 @@ Monorepo gồm hai ứng dụng chạy độc lập, dùng chung một REST API:
 | Thư mục | Vai trò |
 |---|---|
 | [`frontend/`](frontend/) | React + TypeScript SPA (Vite) |
-| [`backend/`](backend/) | Node.js + Express REST API trên Microsoft SQL Server |
+| [`backend/`](backend/) | Node.js + Express REST API trên PostgreSQL 18 |
 
 ---
 
@@ -72,7 +72,7 @@ Nhóm người dùng chính:
 | Thành phần | Công nghệ |
 |---|---|
 | Runtime | Node.js, Express 4 (JS, đang chuyển dần một phần sang TS: `tsx`, `npm run typecheck`) |
-| Database | Microsoft SQL Server (`mssql`, connection pool) |
+| Database | PostgreSQL 18 (`pg`, connection pool; lớp `src/config/db.js`) |
 | Cache | Redis (`ioredis`), cache-aside, fail-open |
 | Xác thực | JWT access + refresh token, `bcryptjs`, 2FA TOTP (`otplib`), captcha, khoá tài khoản khi sai mật khẩu nhiều lần |
 | Bảo mật | `helmet`, `express-rate-limit`, `sanitize-html`, link `/uploads` ký HMAC có hạn |
@@ -90,8 +90,7 @@ Nhóm người dùng chính:
 ### Yêu cầu
 
 - **Node.js** ≥ 20 LTS, **npm** ≥ 9
-- **Microsoft SQL Server** (Express hoặc bản đầy đủ) có database `RMS_HOSPITAL`
-  - Bật **TCP/IP** trong SQL Server Configuration Manager. Mở port `1433` trên firewall nếu API và SQL Server không cùng máy (bắt buộc khi chạy Docker).
+- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init` (thư mục `backend`).
 - **Redis** (tuỳ chọn): không có Redis thì server vẫn chạy, chỉ bỏ qua cache.
 
 ### Cài đặt và chạy
@@ -135,7 +134,7 @@ Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](back
 | Nhóm | Biến | Ghi chú |
 |---|---|---|
 | **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (+ `SWAGGER_USER`, `SWAGGER_PASS` khi Swagger bật) | Server thoát ngay khi khởi động nếu thiếu biến nào. Swagger tắt ở production, trừ khi đặt `SWAGGER_ENABLED=true`. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
-| SQL Server | `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT` | Production: không dùng `sa`, nên tạo login riêng chỉ có quyền trên `RMS_HOSPITAL` và bật `DB_ENCRYPT=true`. |
+| PostgreSQL | `DB_SERVER`, `DB_PORT` (5432), `DB_DATABASE` (`rms_hospital`), `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT`, `DB_CA_CERT_FILE` | Production: dùng role `rms_app` (không dùng `postgres`) và bật SSL. `DB_PASSWORD` bỏ trống = đọc `PGPASSWORD` / file pgpass. |
 | HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` = số proxy đứng ngay trước backend (thường là `1`). Không dùng `uniquelocal`: người dùng có IP nội bộ sẽ tự khai được IP giả để vượt rate-limit đăng nhập. |
 | Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `UPLOAD_MAX_MB`, `UPLOAD_ALLOWED_EXTENSIONS`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. Xem [Bảo mật upload](#bảo-mật-upload). |
 | Log | `LOG_DIR`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | Xem phần [logging](#tác-vụ-nền-cache--logging). |
@@ -173,16 +172,14 @@ Dự án có hai file compose:
 
 Mỗi file đặt tên project riêng (khoá `name:` ở đầu file) nên hai môi trường chạy song song được trên cùng một máy: container, network và volume tách biệt, không dùng chung JWT secret. Trước đây cả hai cùng lấy tên thư mục làm tên project, chạy môi trường này sẽ dừng container của môi trường kia.
 
-> Dựng production từ đầu trên máy ảo Ubuntu 26.04 (2 ổ đĩa, SQL Server cài riêng ngoài Docker, quản trị qua SSH): xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md).
+> Dựng production từ đầu trên máy ảo Ubuntu 26.04 (2 ổ đĩa, PostgreSQL cài riêng ngoài Docker, quản trị qua SSH, CI/CD tự triển khai): xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md).
 
 ### Yêu cầu chung
 
 - **Docker Desktop** (Windows/macOS) hoặc **Docker Engine** (Linux) có **Compose v2.24 trở lên**. Bản prod dùng cú pháp `env_file` với `path`/`required`, bản cũ hơn sẽ báo lỗi.
 - BuildKit bật sẵn (mặc định từ Docker 23). Dockerfile dùng `RUN --mount=type=cache` để giữ cache npm giữa các lần build.
-- **SQL Server không chạy trong container** mà chạy trên máy host hoặc một máy chủ riêng:
-  - Bật **TCP/IP** trong SQL Server Configuration Manager, dùng port cố định (mặc định `1433`).
-  - Mở port `1433` trên firewall cho dải IP của Docker. Container coi SQL Server trên host là máy khác trong mạng, không phải `localhost`.
-  - Bật **SQL Server Authentication** (mixed mode). Container không dùng được Windows Authentication.
+- **PostgreSQL không chạy trong container** mà chạy trên máy host hoặc một máy chủ riêng:
+  - `pg_hba.conf` cho phép dải IP của Docker (`172.16.0.0/12`, xem `infra/postgresql/pg_hba.rms.conf`), firewall mở cổng `5432` cho dải đó. Container coi PostgreSQL trên host là máy khác trong mạng, không phải `localhost`.
 
 ---
 
@@ -215,7 +212,7 @@ Source code được bind mount vào container. Sửa code trên máy là contai
    | Biến | Giá trị | Lý do |
    |---|---|---|
    | `NODE_ENV` | `development` | |
-   | `DB_SERVER` | `host.docker.internal` | Trỏ về SQL Server trên máy host (`extra_hosts: host-gateway` để chạy được cả trên Linux) |
+   | `DB_SERVER` | `host.docker.internal` | Trỏ về PostgreSQL trên máy host (`extra_hosts: host-gateway` để chạy được cả trên Linux) |
    | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | Tên service trong mạng Docker |
    | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước (Vite), để `req.ip` là IP thật của máy khách chứ không phải IP container `frontend` |
    | `LOG_RETENTION_FILES` | `100` | Giữ ít nhất khoảng 3 tháng log |
@@ -254,7 +251,7 @@ docker compose restart backend frontend
 ### Production (`docker-compose.prod.yml`)
 
 ```
-Trình duyệt ──https──► Reverse proxy HTTPS (IIS / nginx host…, giữ chứng chỉ)
+Trình duyệt ──https──► Reverse proxy HTTPS (nginx trên host…, giữ chứng chỉ)
                               │ http + X-Forwarded-For / X-Forwarded-Proto
                               ▼
                         :8084 frontend (Nginx, file tĩnh + header bảo mật)
@@ -263,7 +260,7 @@ Trình duyệt ──https──► Reverse proxy HTTPS (IIS / nginx host…, gi
                           backend:3001 ──► redis:6379 (có mật khẩu)
                               │
                               ▼
-                          SQL Server (DB_SERVER, ngoài Docker)
+                          PostgreSQL (DB_SERVER, ngoài Docker)
 ```
 
 #### Service
@@ -271,15 +268,16 @@ Trình duyệt ──https──► Reverse proxy HTTPS (IIS / nginx host…, gi
 | Service | Port trên máy host | Ghi chú |
 |---|---|---|
 | `frontend` | `${FRONTEND_BIND:-8084}` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
-| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để IIS / reverse proxy cùng máy gọi được. Không lộ ra mạng. Chạy bằng user `node` (không phải root). `mem_limit: 512m` |
+| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để reverse proxy cùng máy gọi được. Không lộ ra mạng. Chạy bằng user `node` (không phải root). `mem_limit: 512m` |
 | `redis` | – | Không publish port, chỉ dùng trong mạng Docker. Bắt buộc mật khẩu, tự sinh lần đầu vào volume `redis_secret` |
 
 Mọi service đều có `restart: unless-stopped`, tự khởi động lại cùng Docker.
 
-#### Bước 1: Chuẩn bị SQL Server
+#### Bước 1: Chuẩn bị PostgreSQL
 
-- Tạo login riêng cho ứng dụng, chỉ có quyền trên database `RMS_HOSPITAL`, bằng `scripts/create-app-login.sql`. File `*.sql` không có trong repo, lấy từ nhóm phát triển.
-- **Không dùng `sa` ở production.** Server sẽ in cảnh báo khi khởi động nếu `DB_USER=sa`.
+- Cài PostgreSQL 18, tạo DB `rms_hospital`, role `rms_migrate` (chủ DB, dùng cho migration) và `rms_app` (chỉ đọc/ghi dữ liệu) theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md).
+- **Không dùng role `postgres` cho ứng dụng.** Server in cảnh báo khi khởi động nếu `DB_USER=postgres`.
+- Dữ liệu cũ trên SQL Server: chuyển 1 lần từ file backup `.bak`, xem [infra/chuyen-du-lieu-sang-postgresql.md](infra/chuyen-du-lieu-sang-postgresql.md).
 
 #### Bước 2: Tạo file môi trường
 
@@ -288,17 +286,16 @@ Compose nạp hai file theo thứ tự. File sau ghi đè file trước, và c�
 | File | Nội dung nên đặt |
 |---|---|
 | `backend/.env` | Cấu hình chung: `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `SWAGGER_*`, `SMTP_*`, `JOBS_ENABLED`… |
-| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của login riêng, `DB_TRUST_SERVER_CERT` / `DB_CA_CERT_FILE` ([chứng chỉ SQL Server](#chứng-chỉ-sql-server)), `UPLOAD_URL_SECRET` |
+| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của role `rms_app`, `DB_CA_CERT_FILE` ([chứng chỉ PostgreSQL](#chứng-chỉ-postgresql)), `UPLOAD_URL_SECRET` |
 
 ```bash
 cp backend/.env.example backend/.env
-# sửa DB_SERVER thành địa chỉ SQL Server thật
-#   (dùng host.docker.internal nếu SQL Server nằm trên chính máy chạy Docker)
+# DB_SERVER mặc định host.docker.internal (PostgreSQL trên chính máy chạy Docker);
+#   PostgreSQL ở máy khác thì sửa thành địa chỉ máy đó
 
 cat > backend/.env.production <<'EOF'
 DB_USER=rms_app
-DB_PASSWORD=<mật khẩu mạnh>
-DB_TRUST_SERVER_CERT=true
+DB_PASSWORD=<mật khẩu rms_app>
 SWAGGER_PASS=<mật khẩu mạnh>
 EOF
 ```
@@ -311,7 +308,7 @@ Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **lu�
 
 | Biến | Giá trị | Ghi chú |
 |---|---|---|
-| `DB_ENCRYPT` | `true` | Luôn mã hoá kết nối tới SQL Server. Mã hoá mà **không kiểm tra chứng chỉ** (`DB_TRUST_SERVER_CERT=true`) thì ai chen được vào đường mạng tới SQL Server vẫn giả làm server được — backend cảnh báo lúc khởi động. Cách bật kiểm tra (không cần mua chứng chỉ): [Chứng chỉ SQL Server](#chứng-chỉ-sql-server) |
+| `DB_ENCRYPT` | `true` | Luôn kết nối PostgreSQL bằng SSL. Mã hoá mà **không kiểm tra chứng chỉ** (`DB_TRUST_SERVER_CERT=true`, mặc định) thì ai chen được vào đường mạng tới DB vẫn giả làm server được — backend cảnh báo lúc khởi động. Cách bật kiểm tra (không cần mua chứng chỉ): [Chứng chỉ PostgreSQL](#chứng-chỉ-postgresql) |
 | `PORT` | `3001` | Phải khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
 | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | |
 | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước backend (nginx container). Nginx đã tự lọc IP thật và **ghi đè** `X-Forwarded-For`, nên rate-limit đăng nhập tính theo IP thật |
@@ -319,48 +316,45 @@ Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **lu�
 | `REDIS_PASSWORD_FILE` | `/run/redis-secret/pass` | Entrypoint đọc mật khẩu Redis do container `redis` tự sinh |
 | `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
 
-#### Chứng chỉ SQL Server
+#### Chứng chỉ PostgreSQL
 
-SQL Server mặc định tự sinh chứng chỉ tự ký **mới mỗi lần khởi động**, nên backend không ghim được, phải để `DB_TRUST_SERVER_CERT=true` (không kiểm tra). Muốn kiểm tra mà không cần CA: tạo 1 chứng chỉ tự ký cố định cho SQL Server rồi đưa đúng file chứng chỉ đó (không phải khoá) cho backend (`DB_CA_CERT_FILE`). Backend chỉ tin chứng chỉ trong file, server giả mạo bị từ chối.
+Cluster PostgreSQL trên Ubuntu dùng chứng chỉ tự ký `ssl-cert-snakeoil` (CN = tên máy). Muốn backend kiểm tra mà không cần CA: tạo 1 chứng chỉ tự ký cố định cho PostgreSQL rồi đưa đúng file chứng chỉ đó (không phải khoá) cho backend (`DB_CA_CERT_FILE`). Backend chỉ tin chứng chỉ trong file, server giả mạo bị từ chối.
 
-1. Trên máy SQL Server (Linux, như [hướng dẫn cài máy ảo](infra/cai-dat-may-ao-ubuntu.md)). `CN`/`subjectAltName` phải có **đúng tên backend dùng để kết nối** (`DB_SERVER`, vd `host.docker.internal` khi SQL Server ở chính máy chạy Docker, hoặc tên máy / IP):
+1. Trên máy PostgreSQL. `CN`/`subjectAltName` phải có **đúng tên backend dùng để kết nối** (`DB_SERVER`, vd `host.docker.internal` khi PostgreSQL ở chính máy chạy Docker, hoặc tên máy / IP):
 
    ```bash
-   sudo mkdir -p /var/opt/mssql/certs && cd /var/opt/mssql/certs
+   cd /etc/postgresql/18/main
    sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1825 -subj "/CN=$(hostname)" \
      -addext "subjectAltName=DNS:$(hostname),DNS:host.docker.internal" \
-     -keyout mssql.key -out mssql.pem
-   sudo chown mssql:mssql mssql.key mssql.pem && sudo chmod 600 mssql.key
-   sudo /opt/mssql/bin/mssql-conf set network.tlscert /var/opt/mssql/certs/mssql.pem
-   sudo /opt/mssql/bin/mssql-conf set network.tlskey /var/opt/mssql/certs/mssql.key
-   sudo /opt/mssql/bin/mssql-conf set network.tlsprotocols 1.2
-   sudo systemctl restart mssql-server
+     -keyout rms-server.key -out rms-server.pem
+   sudo chown postgres:postgres rms-server.key rms-server.pem && sudo chmod 600 rms-server.key
+   printf "ssl = on\nssl_cert_file = '%s'\nssl_key_file = '%s'\nssl_min_protocol_version = 'TLSv1.2'\n" \
+     /etc/postgresql/18/main/rms-server.pem /etc/postgresql/18/main/rms-server.key \
+     | sudo tee /etc/postgresql/18/main/conf.d/ssl.conf
+   sudo systemctl reload postgresql@18-main
    ```
 
-   SQL Server trên Windows: tạo / nhập chứng chỉ vào *SQL Server Configuration Manager → Protocols → Certificate*, xuất phần chứng chỉ (Base-64 `.cer`, không kèm khoá) làm file PEM.
-
-2. Đưa **file chứng chỉ** (`mssql.pem`, không phải `mssql.key`) vào volume bí mật của backend, rồi khai báo trong `backend/.env.production`:
+2. Đưa **file chứng chỉ** (`rms-server.pem`, không phải `.key`) vào volume bí mật của backend, rồi khai báo trong `backend/.env.production`:
 
    ```bash
-   docker compose -f docker-compose.prod.yml cp /var/opt/mssql/certs/mssql.pem backend:/app/secrets/sqlserver.pem
+   docker compose -f docker-compose.prod.yml cp /etc/postgresql/18/main/rms-server.pem backend:/app/secrets/postgresql.pem
    ```
 
    ```bash
-   DB_CA_CERT_FILE=/app/secrets/sqlserver.pem
-   DB_TRUST_SERVER_CERT=false
+   DB_CA_CERT_FILE=/app/secrets/postgresql.pem
    # Chỉ khi tên trong chứng chỉ khác DB_SERVER (vd DB_SERVER là IP):
    # DB_CERT_SERVER_NAME=<tên trong chứng chỉ>
    ```
 
-3. `docker compose -f docker-compose.prod.yml up -d backend`, xem log không còn cảnh báo `DB_TRUST_SERVER_CERT` và có `Connected to SQL Server`. Lỗi `ERR_TLS_CERT_ALTNAME_INVALID` = tên kết nối không có trong chứng chỉ (sửa `subjectAltName` hoặc đặt `DB_CERT_SERVER_NAME`). File sai / không đọc được thì backend dừng ngay lúc khởi động và báo rõ.
+3. `docker compose -f docker-compose.prod.yml up -d backend`, xem log không còn cảnh báo `DB_TRUST_SERVER_CERT` và có `Connected to PostgreSQL`. Lỗi `ERR_TLS_CERT_ALTNAME_INVALID` = tên kết nối không có trong chứng chỉ (sửa `subjectAltName` hoặc đặt `DB_CERT_SERVER_NAME`). File sai / không đọc được thì backend dừng ngay lúc khởi động và báo rõ.
 
-Chứng chỉ hết hạn sau 5 năm (`-days 1825`) — tạo lại và chép lại file trước ngày đó. Đổi chứng chỉ trên SQL Server mà quên chép sang backend thì backend không kết nối được DB.
+Chứng chỉ hết hạn sau 5 năm (`-days 1825`) — tạo lại và chép lại file trước ngày đó. Đổi chứng chỉ trên PostgreSQL mà quên chép sang backend thì backend không kết nối được DB.
 
 **Đổi domain** thì sửa đồng bộ: `CORS_ORIGIN` (origin chính xác trình duyệt dùng, gồm scheme và port nếu có) và `server_name` trong `frontend/nginx.conf`.
 
 #### Bước 3b: Nối với reverse proxy HTTPS
 
-HTTPS kết thúc ở reverse proxy đứng trước cổng `8084` (IIS ARR, nginx trên host…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
+HTTPS kết thúc ở reverse proxy đứng trước cổng `8084` (nginx trên host, proxy chung của bệnh viện…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
@@ -403,11 +397,7 @@ Swagger UI **tắt ở production**. Cần tạm thời thì đặt `SWAGGER_ENA
 
 #### Cập nhật phiên bản
 
-```bash
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
-docker image prune -f                 # dọn image cũ
-```
+Bình thường CI/CD tự triển khai image đã build (`scripts/deploy.sh`: backup DB, migration, smoke test, tự rollback — xem [.github/CICD.md](.github/CICD.md)). Chạy tay trên server: `scripts/deploy.sh <commit SHA> ghcr.io/<owner>`. Build ngay trên server: [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md) mục 14.1.
 
 Người dùng không bị đăng xuất khi redeploy vì JWT secret được giữ trong volume `server_secrets`.
 
@@ -458,13 +448,13 @@ Container server tự sinh `JWT_SECRET` / `JWT_REFRESH_SECRET` khi khởi độn
 
 Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trước, `-- --force` để thay secret đang dùng).
 
-Đổi secret định kỳ (Windows Task Scheduler). **Mỗi lần đổi, mọi người dùng bị đăng xuất**:
+Đổi secret định kỳ (crontab của user chạy Docker). **Mỗi lần đổi, mọi người dùng bị đăng xuất**:
 
-```powershell
-.\scripts\rotate-jwt-secrets.ps1 -Register                  # 4 tuần/lần, 02:30 Chủ nhật, compose prod
-.\scripts\rotate-jwt-secrets.ps1 -Register -ComposeFile docker-compose.yml -EveryWeeks 2
-.\scripts\rotate-jwt-secrets.ps1                            # đổi ngay
-.\scripts\rotate-jwt-secrets.ps1 -Unregister                # gỡ lịch
+```bash
+scripts/rotate-jwt-secrets.sh --register                     # 4 tuần/lần, 02:30 Chủ nhật, compose prod
+scripts/rotate-jwt-secrets.sh --register --compose-file docker-compose.yml --every-weeks 2
+scripts/rotate-jwt-secrets.sh                                # đổi ngay
+scripts/rotate-jwt-secrets.sh --unregister                   # gỡ lịch
 ```
 
 Script dùng service API `backend` (cả dev lẫn prod), nhận prod theo tên file compose, và ghi secret mới vào đúng nơi đang giữ secret. Thứ tự tìm: `backend/.env.production` (chỉ ở prod), rồi `backend/.env`, cuối cùng là volume `server_secrets`. File bị ghi đè được backup thành `<tên file>.bak`.
@@ -475,7 +465,8 @@ Log ghi tại `logs/jwt-rotate.log`.
 
 | Hiện tượng | Nguyên nhân / cách xử lý |
 |---|---|
-| Backend báo `Failed to connect to host.docker.internal:1433` | SQL Server chưa bật TCP/IP, chưa mở firewall port `1433`, hoặc instance có tên (`SQLEXPRESS`) đang dùng port động. Đặt port cố định `1433` trong SQL Server Configuration Manager rồi khởi động lại dịch vụ SQL Server. |
+| Backend báo `connect ECONNREFUSED` / timeout tới `host.docker.internal:5432` | PostgreSQL chưa nghe trên mạng (`listen_addresses`, xem `infra/postgresql/rms.conf`) hoặc firewall chưa mở `5432` cho dải Docker `172.16.0.0/12`. |
+| Backend báo `no pg_hba.conf entry for host "172…"` | Chưa thêm dòng cho mạng Docker vào `pg_hba.conf` (`infra/postgresql/pg_hba.rms.conf`), hoặc chưa reload PostgreSQL. |
 | Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD` (hoặc `SWAGGER_USER` / `SWAGGER_PASS` khi bật Swagger) trong `backend/.env` / `.env.production`. |
 | Log backend: `tới qua http, không phải https` | Reverse proxy không gửi `X-Forwarded-Proto: https`, hoặc IP proxy không nằm trong `TRUSTED_PROXIES`. Xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https). |
 | Mọi người dùng bị khoá đăng nhập theo IP cùng lúc | Nginx đang thấy mọi request đến từ IP proxy: proxy không gửi `X-Forwarded-For`, hoặc không nằm trong `TRUSTED_PROXIES`. |
@@ -614,18 +605,13 @@ Hospital_RMS/
 
 ## Database
 
-**Engine:** Microsoft SQL Server · **Database:** `RMS_HOSPITAL` · **Pool:** min 2, max 10.
+**Engine:** PostgreSQL 18 · **Database:** `rms_hospital` · **Pool:** tối đa `DB_POOL_MAX` (10) kết nối mỗi worker.
 
-> **Trong git:** `backend/database/`: migration (`migrations/`), script chạy tay (`manual/`) và định nghĩa stored procedure / function / trigger / view (`objects/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (script tạo login có mật khẩu, dump dữ liệu, script khởi tạo schema gốc) — lấy từ nhóm phát triển. Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Quy ước viết file: `backend/database/README.md`.
+> **Trong git:** `backend/database/`: schema ban đầu (`baseline/00–04`) và migration (`migrations/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (dump dữ liệu, script có mật khẩu). Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Quy ước viết file: `backend/database/README.md`.
 >
-> **Sửa stored procedure / trigger trong DB** thì chạy `npm run dump:db-objects` (thư mục `backend`) rồi commit thay đổi trong `backend/database/objects/`. Script chỉ đọc DB, bỏ qua object sơ đồ của SSMS và **từ chối xuất** object có vẻ chứa mật khẩu / hash / chuỗi kết nối. `-- --check` chỉ báo khác biệt.
+> **Không viết stored procedure.** Logic nghiệp vụ nằm trong JS (sinh mã ở `backend/src/utils/idGenerator.js`, duyệt đề tài ở `topicApprovalService`…). Trigger chỉ dùng cho audit / ràng buộc dữ liệu (`baseline/04_trigger.sql`).
 
-### Stored procedures chính
-
-| Procedure | Mục đích |
-|---|---|
-| `sp_set_actor` | Đặt `user_id` vào session context trước mỗi lệnh ghi (phục vụ audit). Code gọi qua `withActor` / `withActorTransaction` / `actorRequest` (`backend/src/config/db.js`), không viết `EXEC sp_set_actor` trong câu SQL |
-| `sp_gen_*`, `sp_approve_topic`, `sp_grant_member_accounts`, `sp_upload_files`, `sp_push_notification`, `sp_create_refresh_token`, `sp_deactivate_expired_accounts` | **Không còn dùng** — đã chuyển về JS (sinh mã ở `backend/src/utils/idGenerator.js`; duyệt đề tài ở `topicApprovalService`, không tự cấp tài khoản — cấp qua `topicMemberService`). Xoá khỏi DB ở bản phát hành sau |
+**Audit người sửa:** trigger audit đọc `user_id` của người thao tác từ biến phiên `app.current_user_id`. Code đặt biến này qua `withActor` / `withActorTransaction` / `actorRequest` (`backend/src/config/db.js`), không tự viết `set_config` trong câu SQL.
 
 ### Ghi chú nghiệp vụ
 
@@ -648,7 +634,7 @@ Hospital_RMS/
 | 02:00 | Nhắc deadline sắp tới hoặc đã quá hạn (thông báo + email) |
 | 03:00 | Gắn `person_id` cho các bản ghi còn thiếu |
 
-**Redis cache**: cache-aside cho số liệu dashboard và danh mục (khoa, vai trò, loại, cấp độ…). Nếu mất kết nối Redis, server đọc thẳng từ SQL Server.
+**Redis cache**: cache-aside cho số liệu dashboard và danh mục (khoa, vai trò, loại, cấp độ…). Nếu mất kết nối Redis, server đọc thẳng từ DB.
 
 **Logging**:
 - Pino ghi file JSON xoay theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`), giữ tối đa `LOG_RETENTION_FILES` file.
@@ -661,7 +647,7 @@ Hospital_RMS/
 ## Quy ước phát triển
 
 ### CI (GitHub Actions)
-`.github/workflows/ci.yml` chạy ở mỗi push / pull request vào `main` và mỗi thứ Hai (bắt lỗ hổng thư viện mới công bố). Không cần SQL Server / Redis — test dùng CSDL giả.
+`.github/workflows/ci.yml` chạy ở mỗi push / pull request vào `main` và mỗi thứ Hai (bắt lỗ hổng thư viện mới công bố). Không cần DB thật / Redis — test dùng CSDL giả; riêng job `backend-postgres` chạy test tích hợp với PostgreSQL thật.
 
 | Job | Kiểm tra |
 |---|---|

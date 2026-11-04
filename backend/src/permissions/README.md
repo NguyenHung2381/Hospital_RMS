@@ -54,4 +54,4 @@ Code chỉ chạy với CSDL đã ở mô hình mới, không còn nhánh chạy
 
 1. Kiểm tra đủ cột (`REQUIRED_COLUMNS`: `role_permissions.scope`, `users.token_version`, `roles.code` / `is_system` / `is_superuser`, cột 2FA / refresh token...) và không còn quyền kiểu cũ (`read_all`, `read_department`, `read_assigned`, `system:manage`). Tất cả trong 1 truy vấn. **Thiếu thì server dừng** (exit 1) và liệt kê từng mục kèm file SQL cần chạy.
 2. Đồng bộ `catalog.js` vào bảng `permissions` (`sync.js`).
-3. Không kết nối được CSDL (SQL Server chưa lên) thì chỉ cảnh báo, server vẫn chạy như trước.
+3. Không kết nối được CSDL (PostgreSQL chưa lên) thì chỉ cảnh báo, server vẫn chạy như trước.

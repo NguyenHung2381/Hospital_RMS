@@ -268,7 +268,7 @@ xoá theo lô bằng `OFFSET ... FETCH`), nên không làm tăng số chỗ T-SQ
 ### Giai đoạn 2 — Khi viết schema baseline PostgreSQL (trong chặng 2)
 
 **Đã làm 03/11/2026**, chạy thử trên PostgreSQL 18.6 (container tạm, đã xoá).
-Schema ở `database/pg/baseline/`, sinh bằng `npm run pg:baseline`.
+Schema ở `database/baseline/`.
 
 - [x] Kiểu dữ liệu mục 5: `jsonb` (10 cột), collation `rms_ci` (`username`, `email`, `code`),
       `inet` (4 cột IP), locale `builtin C.UTF-8` + `vi-VN-x-icu` cho cột tên.

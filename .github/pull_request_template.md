@@ -16,6 +16,6 @@
 ## Backend: theo khuôn module (`backend/README.md`)
 
 - [ ] Route không có logic/SQL. Controller không SQL/ExcelJS. Service không `require` `middlewares/`.
-- [ ] Đổi schema bằng file mới trong `database/migrations/` (idempotent), không sửa file đã chạy. Sửa proc/trigger thì chạy `npm run dump:db-objects`.
+- [ ] Đổi schema bằng file mới trong `backend/database/migrations/` (`npm run migrate -- new <mô tả>`), không sửa file đã chạy. Không dùng stored procedure — viết logic bằng JS.
 - [ ] Biến môi trường mới: khai báo ở `config/env.js` (hạ tầng) hoặc đọc tại chỗ, và thêm vào `.env.example`.
 - [ ] Không thêm `// @ts-nocheck` cho file mới.
