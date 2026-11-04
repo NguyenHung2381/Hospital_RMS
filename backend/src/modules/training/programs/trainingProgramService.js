@@ -273,17 +273,15 @@ const remove = async (id, actorId) => {
 			`Chương trình đang được dùng ở ${parts.join(' và ')} — không xóa được. Hãy đổi chương trình của các hồ sơ đó trước.`,
 		);
 	}
-	await withActorTransaction(actorId, (tx) =>
-		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-			.query(`
-    SET XACT_ABORT ON;
-    BEGIN TRAN;
-    DELETE FROM lesson_programs WHERE program_id = @id;
-    DELETE FROM course_programs WHERE program_id = @id;
-    DELETE FROM training_programs WHERE id = @id;
-    COMMIT;
-  `),
-	);
+	// Đã trong transaction (withActorTransaction) — mỗi câu 1 lời gọi (PG không nhận lô nhiều câu)
+	await withActorTransaction(actorId, async (tx) => {
+		for (const text of [
+			'DELETE FROM lesson_programs WHERE program_id = @id',
+			'DELETE FROM course_programs WHERE program_id = @id',
+			'DELETE FROM training_programs WHERE id = @id',
+		])
+			await tx.request().input('id', sql.VarChar(20), id).query(text);
+	});
 	broadcast('update', { entity: 'training_program' });
 	broadcast('update', { entity: 'program_lesson' });
 };

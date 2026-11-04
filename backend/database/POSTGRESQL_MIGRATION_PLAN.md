@@ -681,9 +681,20 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Nhãn Excel "IV. THEO KHOA/PHÒNG (TOP 20)" (`topicReportSheets.js`) giữ nguyên chữ người dùng thấy; luật `top`
     thêm `(?<!\()` — SQL không bao giờ viết `(TOP n` (câu con là `(SELECT TOP n`), vẫn bắt `TOP 5`, `TOP (@n)`,
     `TOP (${n})`.
-  - Từ nay test ratchet (`test/contract/tsqlUsageRatchet.test.js`) chặn **mọi** cú pháp T-SQL mới ngoài các file bỏ
-    qua. Việc còn lại để chạy được trên PG không còn là cú pháp mà là hành vi (mục 2.4) và test các module trên PG
-    (chặng 3).
+  - ~~Từ nay test ratchet chặn mọi cú pháp T-SQL mới~~ — **sai**: rà soát ngay sau đó thấy còn 3 nhóm chưa có luật
+    (mục dưới). Ratchet chỉ chặn những mẫu nó có luật.
+- [ ] **Rà soát 04/11/2026** sau khi ratchet về 0:
+  - Smoke test (mọi API GET) chạy trên PG dev (`DB_CLIENT=pg`, dữ liệu đã chuyển, Redis tắt để không dùng cache):
+    **173 route qua, dạng JSON khớp baseline SQL Server** (25 route bỏ qua vì không đoán được mã — như trên SQL
+    Server). Câu chọn tài khoản của chính smoke test (`TOP 10`, `= 1`, `GETDATE`) viết lại chạy cả 2 DB.
+  - Quét thêm cú pháp ratchet chưa đếm → 5 luật mới (tổng 0 → 51), đều ở **luồng ghi** (smoke không chạm):
+    `string_split` 1, `tx_control` 1 (`SET XACT_ABORT ON; BEGIN TRAN; … COMMIT` trong 1 câu), `if_block` 8
+    (`IF EXISTS … BEGIN … ELSE` — PG không có IF ngoài PL/pgSQL), `update_alias` 8 (`UPDATE g SET … FROM grades g
+    JOIN …`), `multi_statement` 35 (nhiều câu có tham số trong 1 lời gọi — mục 2.4 ý 6).
+  - Đã sửa: `classSessionService.findLecturerClashes` `STRING_SPLIT` → `jsonValues` (cảnh báo trùng lịch GV khi tạo /
+    sửa buổi học); `trainingProgramService.remove` → 3 câu `DELETE` lần lượt trong transaction có sẵn. Kiểm bằng ca
+    "trùng lịch giảng viên … xoá chương trình đào tạo" (2 DB; code cũ trên PG báo `string_split does not exist`).
+  - Còn lại: `if_block`, `update_alias`, `multi_statement` — sửa theo từng nhóm.
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

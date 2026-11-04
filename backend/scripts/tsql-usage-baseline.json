@@ -30,5 +30,10 @@
 	"applock": 0,
 	"temp_table": 0,
 	"throw": 0,
-	"err_number": 0
+	"err_number": 0,
+	"string_split": 0,
+	"tx_control": 0,
+	"if_block": 8,
+	"update_alias": 8,
+	"multi_statement": 35
 }

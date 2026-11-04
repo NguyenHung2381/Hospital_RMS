@@ -31,7 +31,7 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 // routeWalker phải nạp TRƯỚC app.js (nó ghi lại đường mount khi router được gắn)
 const { listRoutes } = require('../src/permissions/routeWalker');
 const app = require('../src/app');
-const { getPool, sql } = require('../src/config/db');
+const { getPool, sql, vnTodaySql } = require('../src/config/db');
 const { signToken } = require('../src/utils/keys');
 
 const BASELINE = path.join(__dirname, '.baseline', 'get-shapes.json');
@@ -84,16 +84,18 @@ const pickUser = async () => {
 		assert.ok(r.recordset[0], `SMOKE_USER_ID=${process.env.SMOKE_USER_ID} không tồn tại`);
 		return r.recordset;
 	}
+	// Cú pháp chạy cả SQL Server và PG (smoke chạy được với DB_CLIENT=pg)
 	const r = await pool.request().query(`
-		SELECT TOP 10 u.id, u.username, u.token_version
+		SELECT u.id, u.username, u.token_version
 		FROM users u
 		INNER JOIN roles r ON r.id = u.role_id
-		WHERE u.is_active = 1
-		  AND u.must_change_password = 0
-		  AND (u.account_expires_at IS NULL OR u.account_expires_at >= CAST(GETDATE() AS date))
-		  AND (u.totp_enabled = 1 OR u.twofa_required_since IS NOT NULL)
+		WHERE u.is_active = 'true'
+		  AND u.must_change_password = 'false'
+		  AND (u.account_expires_at IS NULL OR u.account_expires_at >= ${vnTodaySql})
+		  AND (u.totp_enabled = 'true' OR u.twofa_required_since IS NOT NULL)
 		ORDER BY r.is_superuser DESC,
-		         (SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id) DESC`);
+		         (SELECT COUNT(*) FROM role_permissions rp WHERE rp.role_id = r.id) DESC, u.id
+		OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY`);
 	return r.recordset;
 };
 

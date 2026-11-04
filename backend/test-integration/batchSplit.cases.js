@@ -710,7 +710,7 @@ const run = async (t, db, { skip = [] } = {}) => {
 	await step('boolean: tài khoản mới bắt đổi mật khẩu, ứng viên giảng viên', async () => {
 		const personSvc = require('../src/modules/persons/personService');
 		const realSync = personSvc.syncPerson;
-		// personService còn OBJECT_ID / COL_LENGTH (chưa chạy trên PG) — ngoài phạm vi ca này
+		// Ca này chỉ kiểm boolean — đồng bộ hồ sơ (personService) đã có ca "person mới" / "gộp hồ sơ"
 		personSvc.syncPerson = async () => null;
 		try {
 			const users = require('../src/modules/users/userService');
@@ -870,6 +870,43 @@ const run = async (t, db, { skip = [] } = {}) => {
 			].sort(),
 		);
 	});
+
+	// STRING_SPLIT (chỉ SQL Server) → jsonValues; lô SET XACT_ABORT / BEGIN TRAN … COMMIT → từng câu trong tx
+	await step(
+		'trùng lịch giảng viên (jsonValues), xoá chương trình đào tạo (từng câu)',
+		async () => {
+			const [c] = await q(`
+      SELECT co.id AS course_id, l.id AS lecturer_id FROM courses co CROSS JOIN lecturers l
+      WHERE co.status <> 'cancelled' ORDER BY co.id, l.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+			if (c) {
+				const { genClassSessionId } = require('../src/utils/idGenerator');
+				const ids = [await genClassSessionId(tx), null];
+				await q(
+					`INSERT INTO class_sessions (id, course_id, lecturer_id, session_date, start_time, end_time, created_by)
+         VALUES (@a, @c, @l, '2099-01-05', '08:00', '10:00', @u)`,
+					{ a: ids[0], c: c.course_id, l: c.lecturer_id, u: actor.id },
+				);
+				ids[1] = await genClassSessionId(tx);
+				await q(
+					`INSERT INTO class_sessions (id, course_id, lecturer_id, session_date, start_time, end_time, created_by)
+         VALUES (@b, @c, @l, '2099-01-05', '09:00', '11:00', @u)`,
+					{ b: ids[1], c: c.course_id, l: c.lecturer_id, u: actor.id },
+				);
+				const sessions = require('../src/modules/training/courses/classSessionService');
+				const { warnings } = await sessions.updateSession(ids[0], { room: 'ZZ' }, actor.id);
+				assert.equal(warnings.length, 1);
+				assert.match(warnings[0], /05\/01\/2099 09:00–11:00/);
+			}
+
+			const programs = require('../src/modules/training/programs/trainingProgramService');
+			const p = await programs.create({ name: 'ZZ xoá thử' }, actor.id);
+			await programs.remove(p.id, actor.id);
+			assert.deepEqual(
+				await q('SELECT id FROM training_programs WHERE id = @id', { id: p.id }),
+				[],
+			);
+		},
+	);
 
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
 	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {

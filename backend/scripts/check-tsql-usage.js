@@ -162,6 +162,31 @@ const PATTERNS = [
 		re: /\b(err|error|e)\??\.(number|originalError)\b/g,
 		pg: 'utils/dbErrors.js',
 	},
+	// Rà soát 04/11/2026 (smoke GET trên PG qua hết; các mẫu dưới nằm ở luồng ghi):
+	{ key: 'string_split', re: /\bSTRING_SPLIT\s*\(/gi, pg: 'jsonValues (adapter)' },
+	{
+		key: 'tx_control',
+		re: /\b(BEGIN\s+TRAN(SACTION)?|SAVE\s+TRAN(SACTION)?|SET\s+(XACT_ABORT|NOCOUNT))\b/gi,
+		pg: 'withTransaction / từng câu trong tx',
+	},
+	{
+		// Rẽ nhánh T-SQL trong câu SQL; bỏ qua DDL "DROP … IF EXISTS", "ADD COLUMN IF NOT EXISTS"
+		key: 'if_block',
+		re: /(?<!\b(TABLE|INDEX|COLUMN|VIEW|FUNCTION|TRIGGER|SCHEMA|SEQUENCE|CONSTRAINT|EXTENSION|TYPE)\s+)\bIF\s+(NOT\s+)?EXISTS\b|\bIF\s+@/g,
+		pg: 'INSERT … WHERE NOT EXISTS / UPDATE … WHERE / rẽ nhánh bằng JS',
+	},
+	{
+		// UPDATE <alias> SET … FROM bảng alias JOIN … — PG: UPDATE bảng alias SET … FROM bảng_khác WHERE …
+		key: 'update_alias',
+		re: /\bUPDATE\s+[a-z]{1,3}\s+SET\b/g,
+		pg: 'UPDATE bảng SET … WHERE … IN / EXISTS (chạy cả 2 DB)',
+	},
+	{
+		// Nhiều câu trong 1 chuỗi SQL: PG chỉ nhận 1 câu mỗi lời gọi có tham số
+		key: 'multi_statement',
+		re: /;\s*(SELECT|INSERT|UPDATE|DELETE|MERGE|IF|DECLARE|EXEC|WITH)\b/g,
+		pg: 'mỗi câu 1 lời gọi (runBatch / vòng lặp trong tx)',
+	},
 ];
 
 const walk = (/** @type {string} */ dir) =>

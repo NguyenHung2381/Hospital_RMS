@@ -5,6 +5,7 @@ const {
 	queryAll,
 	nowSql,
 	outerApply,
+	jsonValues,
 } = require('../../../config/db');
 const { genClassSessionId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -31,13 +32,14 @@ const timeRange = (r) => (r.start_time ? ` ${r.start_time}–${r.end_time ?? ''}
 const findLecturerClashes = async (sessionIds) => {
 	if (!sessionIds.length) return [];
 	const pool = await getPool();
-	const r = await pool.request().input('ids', sql.VarChar(sql.MAX), sessionIds.join(',')).query(`
+	const r = await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(sessionIds))
+		.query(`
     SELECT l.full_name AS lecturer_name, o.session_date, o.start_time, o.end_time, c.name AS course_name
     FROM class_sessions s
     JOIN class_sessions o ON ${LECTURER_CLASH_SQL('s', 'o')}
     JOIN courses c ON c.id = o.course_id
     JOIN lecturers l ON l.id = s.lecturer_id
-    WHERE s.id IN (SELECT value FROM STRING_SPLIT(@ids, ','))
+    WHERE s.id IN ${jsonValues('@ids')}
     ORDER BY o.session_date, o.start_time
   `);
 	return r.recordset.map(

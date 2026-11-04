@@ -26,7 +26,7 @@ const template = (name) => `/* =================================================
  * ----------------------------------------------------------------------------
  *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
  * Chạy trong 1 transaction (thêm dòng "-- @no-transaction" nếu cần CREATE
- * INDEX CONCURRENTLY). Idempotent: IF NOT EXISTS / CREATE OR REPLACE.
+ * INDEX CONCURRENTLY). Idempotent: ADD COLUMN IF NOT EXISTS / CREATE OR REPLACE.
  * ==========================================================================*/
 
 -- ALTER TABLE <bảng> ADD COLUMN IF NOT EXISTS <cột> varchar(255);
