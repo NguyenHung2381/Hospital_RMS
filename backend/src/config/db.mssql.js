@@ -211,6 +211,19 @@ const crossApply = (subquery, alias) => `CROSS APPLY (${subquery}) ${alias}`;
 /** @param {string} subquery @param {string} alias */
 const outerApply = (subquery, alias) => `OUTER APPLY (${subquery}) ${alias}`;
 
+// Nối chuỗi các dòng của nhóm theo thứ tự: stringAgg('d.name', ', ', 'ld.display_order').
+// sep là chuỗi JS (không chứa dấu '); orderBy bỏ trống = không theo thứ tự nào. SQL Server:
+// các stringAgg có orderBy trong CÙNG 1 SELECT phải cùng orderBy (PG thì không bắt buộc).
+// SQL Server: STRING_AGG(x, sep) WITHIN GROUP (ORDER BY …); PG: string_agg(x, sep ORDER BY …).
+/** @param {string} sep */
+const sqlSep = (sep) => {
+	if (/['\\]/.test(sep)) throw new Error(`stringAgg: dấu phân cách không hợp lệ: ${sep}`);
+	return `'${sep}'`;
+};
+/** @param {string} expr @param {string} sep @param {string} [orderBy] */
+const stringAgg = (expr, sep, orderBy) =>
+	`STRING_AGG(${expr}, ${sqlSep(sep)})${orderBy ? ` WITHIN GROUP (ORDER BY ${orderBy})` : ''}`;
+
 // Cộng / trừ thời gian và đếm khoảng cách (cùng tên ở db.pg.js). unit: SECOND | MINUTE | HOUR |
 // DAY | MONTH | YEAR; n: số, tham số ('@days', '-@days') hoặc biểu thức SQL. dateDiff đếm số
 // mốc ranh giới đi qua như DATEDIFF của SQL Server (DAY: 23:59 → 00:01 hôm sau = 1).
@@ -322,6 +335,7 @@ module.exports = {
 	newIdSql,
 	crossApply,
 	outerApply,
+	stringAgg,
 	dateAdd,
 	dateDiff,
 	formatDate,

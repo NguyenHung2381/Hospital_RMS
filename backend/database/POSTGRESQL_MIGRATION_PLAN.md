@@ -110,7 +110,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
 | `DATEADD` / `DATEDIFF` | 31 (18) → 0 | `dateAdd` / `dateDiff` của adapter (PG: `+ n * interval`, `date - date`, `date_trunc`) |
-| `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
+| `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) → 0 | `stringAgg(x, sep, thứ tự)` của adapter (PG: `string_agg(CAST(x AS TEXT), sep ORDER BY ...)`) |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 1 (`MERGE`) | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
@@ -258,7 +258,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
 | `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
 | `OPENJSON(@ids)` | `= ANY($1::text[])` (truyền mảng JS) | ✗ — có thể chuyển về `IN (@id0, @id1...)` qua `inClause` ở chặng 1 |
-| `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✗ |
+| `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✓ qua adapter: `${stringAgg('x', ',', 'y')}`; `STRING_AGG(x, ',')` không thứ tự chạy nguyên cả 2 DB khi `x` là chuỗi |
 | `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✗ — hoặc gom ở JS |
 | `NEWID()` | `gen_random_uuid()` | ✗ |
 | `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✗ |
@@ -605,6 +605,17 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     sửa / 404, xoá CME, xoá câu hỏi đang dùng → 409) và "person mới: mã PS + 8 số" (SQL Server; PG bỏ vì
     `personService` kiểm schema bằng `OBJECT_ID` / `COL_LENGTH`) trong `test-integration/batchSplit.cases.js`.
     Tổng ratchet 125 → 112.
+- [x] `STRING_AGG … WITHIN GROUP (ORDER BY …)` (within_group 12 → 0): helper `stringAgg(expr, sep, orderBy)` của
+  adapter — SQL Server giữ `STRING_AGG(x, sep) WITHIN GROUP (ORDER BY …)`, PG sinh
+  `string_agg(CAST(x AS TEXT), sep ORDER BY …)` (string_agg của PG chỉ nhận text: `trainee_type_id` là số).
+  `sep` là chuỗi JS, không cho dấu `'`; bỏ `orderBy` = không thứ tự.
+  - 11 chỗ đổi bằng script (khoa của bài học / vòng thực hành, đối tượng và loại chương trình, cổng công khai);
+    tóm tắt thành viên hội đồng sửa tay (biểu thức `CONCAT(vai, ': ', tên)` tách thành `MEMBER_LABEL`).
+  - Giới hạn SQL Server: các `stringAgg` có thứ tự trong cùng 1 SELECT phải cùng `orderBy` (PG không bắt buộc).
+  - Không đổi: 10 chỗ `STRING_AGG(x, sep)` không thứ tự — cột đều `varchar`, PG chạy nguyên.
+  - Kiểm bằng ca "stringAgg" trong `test-integration/batchSplit.cases.js` (2 DB: thứ tự tăng / giảm, cột số,
+    `councilService.getAll` — trước đây lỗi trên PG —, danh sách bài học đúng thứ tự khoa, vòng thực hành).
+    Còn vướng mục khác trên PG: `FOR JSON` (cổng công khai, chi tiết chương trình). Tổng ratchet 112 → 100.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

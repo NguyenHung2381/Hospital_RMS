@@ -369,6 +369,16 @@ const crossApply = (subquery, alias) => `CROSS JOIN LATERAL (${subquery}) ${alia
 /** @param {string} subquery @param {string} alias */
 const outerApply = (subquery, alias) => `LEFT JOIN LATERAL (${subquery}) ${alias} ON true`;
 
+// Cùng tên ở db.mssql.js. string_agg chỉ nhận text → ép kiểu (cột số như trainee_type_id).
+/** @param {string} sep */
+const sqlSep = (sep) => {
+	if (/['\\]/.test(sep)) throw new Error(`stringAgg: dấu phân cách không hợp lệ: ${sep}`);
+	return `'${sep}'`;
+};
+/** @param {string} expr @param {string} sep @param {string} [orderBy] */
+const stringAgg = (expr, sep, orderBy) =>
+	`string_agg(CAST(${expr} AS TEXT), ${sqlSep(sep)}${orderBy ? ` ORDER BY ${orderBy}` : ''})`;
+
 // Cộng / trừ thời gian và đếm khoảng cách (cùng tên ở db.mssql.js). unit: SECOND | MINUTE | HOUR |
 // DAY | MONTH | YEAR; n: số, tham số ('@days', '-@days') hoặc biểu thức SQL. dateDiff đếm số
 // mốc ranh giới đi qua như DATEDIFF của SQL Server (DAY: 23:59 → 00:01 hôm sau = 1).
@@ -477,6 +487,7 @@ module.exports = {
 	newIdSql,
 	crossApply,
 	outerApply,
+	stringAgg,
 	dateAdd,
 	dateDiff,
 	formatDate,

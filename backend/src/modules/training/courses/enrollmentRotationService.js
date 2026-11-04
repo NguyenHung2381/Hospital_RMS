@@ -17,6 +17,7 @@ const {
 	withTransaction,
 	nowSql,
 	crossApply,
+	stringAgg,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -51,7 +52,7 @@ const getEnrollment = async (pool, enrollmentId) => {
 const loadRounds = async (pool, programId) => {
 	const r = await pool.request().input('program_id', sql.VarChar(20), programId || '').query(`
     SELECT pl.id, pl.code, pl.title, pl.duration_value, pl.duration_unit, pl.allow_split, lp.display_order,
-           (SELECT STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order)
+           (SELECT ${stringAgg('ld.department_id', ',', 'ld.display_order')}
               FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids
     FROM lesson_programs lp
     JOIN program_lessons pl ON pl.id = lp.lesson_id

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, stringAgg } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const traineeService = require('../training/trainees/traineeService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
@@ -31,7 +31,7 @@ const getOpenCourses = async () => {
     SELECT c.id, c.name, c.description, c.start_date, c.end_date, c.enrollment_start_date, c.enrollment_end_date,
            (SELECT STRING_AGG(tp.name, ', ') FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id WHERE cp.course_id = c.id) AS program_name,
            (SELECT tp.id, tp.code, tp.name, tp.description, tp.duration, tp.target_audience,
-                   COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
+                   COALESCE((SELECT ${stringAgg('t2.name', ', ', 'x.display_order')}
                                FROM program_trainee_types x JOIN trainee_types t2 ON t2.id = x.trainee_type_id
                               WHERE x.program_id = tp.id), tt.name) AS trainee_type_name,
                    tp.theory_hours, tp.practice_hours, tp.tuition_fee,
@@ -43,7 +43,7 @@ const getOpenCourses = async () => {
                    -- Nội dung: bài lý thuyết / vòng thực hành GPHN (khoa + thời lượng) theo thứ tự
                    (SELECT pl.title, pl.lesson_kind AS kind, pl.theory_hours, pl.practice_hours,
                            pl.duration_value, pl.duration_unit,
-                           (SELECT STRING_AGG(d.name, ' / ') WITHIN GROUP (ORDER BY ld.display_order)
+                           (SELECT ${stringAgg('d.name', ' / ', 'ld.display_order')}
                               FROM lesson_departments ld JOIN departments d ON d.id = ld.department_id
                              WHERE ld.lesson_id = pl.id) AS departments
                       FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.is_active = 'true'

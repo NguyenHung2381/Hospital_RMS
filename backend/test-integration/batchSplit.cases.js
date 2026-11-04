@@ -621,6 +621,58 @@ const run = async (t, db, { skip = [] } = {}) => {
 		const [p] = await q('SELECT origin_id FROM persons WHERE id = @id', { id: pid });
 		assert.equal(p.origin_id, u.id);
 	});
+
+	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
+	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {
+		// SQL Server: các STRING_AGG cùng 1 SELECT phải cùng thứ tự → câu riêng cho DESC
+		const VALS = "FROM (VALUES ('b', 2), ('a', 1), ('c', 3)) AS x(v, o)";
+		const [r] = await q(`
+      SELECT ${db.stringAgg('x.v', ' / ', 'x.o')} AS asc_v, ${db.stringAgg('x.v', ', ')} AS any_v
+      ${VALS}`);
+		const [d] = await q(`SELECT ${db.stringAgg('x.o', ',', 'x.o DESC')} AS desc_o ${VALS}`);
+		r.desc_o = d.desc_o;
+		assert.equal(r.asc_v, 'a / b / c');
+		assert.equal(r.desc_o, '3,2,1');
+		assert.deepEqual(r.any_v.split(', ').sort(), ['a', 'b', 'c']);
+		assert.throws(() => db.stringAgg('x', "'"), /không hợp lệ/);
+
+		// Tóm tắt thành viên hội đồng theo thứ tự vai (CT trước)
+		const councils = await require('../src/modules/councils/councilService').getAll({ limit: 5 });
+		for (const c of councils.data) {
+			if (c.members_summary) assert.match(c.members_summary, /^(CT|TK|PB1|PB2|TV): /);
+		}
+
+		// Khoa của bài học: đúng thứ tự display_order
+		const [ld] = await q(`
+      SELECT lesson_id FROM lesson_departments
+      GROUP BY lesson_id HAVING COUNT(*) >= 2 ORDER BY lesson_id`);
+		const lessons = require('../src/modules/training/programs/programLessonService');
+		const all = await lessons.listAllLessons();
+		if (ld) {
+			const want = (
+				await q(
+					'SELECT department_id FROM lesson_departments WHERE lesson_id = @id ORDER BY display_order',
+					{ id: ld.lesson_id },
+				)
+			).map((x) => x.department_id);
+			const got = all.find((l) => l.id === ld.lesson_id);
+			assert.deepEqual(
+				Array.isArray(got.department_ids) ? got.department_ids : got.department_ids.split(','),
+				want,
+			);
+		}
+		const [lp] = await q('SELECT program_id FROM lesson_programs ORDER BY program_id');
+		if (lp) {
+			await lessons.listLessons(lp.program_id);
+			const pool = await db.getPool();
+			const rounds =
+				await require('../src/modules/training/courses/enrollmentRotationService').loadRounds(
+					pool,
+					lp.program_id,
+				);
+			for (const x of rounds) assert.ok(Array.isArray(x.department_ids));
+		}
+	});
 };
 
 module.exports = { run };

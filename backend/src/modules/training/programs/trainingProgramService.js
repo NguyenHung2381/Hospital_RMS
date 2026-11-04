@@ -6,6 +6,7 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	stringAgg,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -66,18 +67,18 @@ const PROGRAM_FIELDS = {
 const programSelect = `
   SELECT p.*, d.name AS department_name, tp.name AS training_type_name,
          pf.name AS professional_field_name, pfo.name AS practice_form_name,
-         (SELECT STRING_AGG(x.trainee_type_id, ',') WITHIN GROUP (ORDER BY x.display_order)
+         (SELECT ${stringAgg('x.trainee_type_id', ',', 'x.display_order')}
             FROM program_trainee_types x WHERE x.program_id = p.id) AS trainee_type_ids,
-         COALESCE((SELECT STRING_AGG(t2.name, ', ') WITHIN GROUP (ORDER BY x.display_order)
+         COALESCE((SELECT ${stringAgg('t2.name', ', ', 'x.display_order')}
                      FROM program_trainee_types x JOIN trainee_types t2 ON t2.id = x.trainee_type_id
                     WHERE x.program_id = p.id), tt.name) AS trainee_type_name,
          (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
          (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count,
          -- Vòng thực hành GPHN: mỗi vòng 1 khoa (hoặc nhiều khoa để chọn) + thời lượng riêng.
          (SELECT lp.id AS link_id, pl.id AS lesson_id, pl.title, pl.duration_value, pl.duration_unit,
-                 (SELECT STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order)
+                 (SELECT ${stringAgg('ld.department_id', ',', 'ld.display_order')}
                     FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids,
-                 (SELECT STRING_AGG(d2.name, ' / ') WITHIN GROUP (ORDER BY ld.display_order)
+                 (SELECT ${stringAgg('d2.name', ' / ', 'ld.display_order')}
                     FROM lesson_departments ld JOIN departments d2 ON d2.id = ld.department_id
                     WHERE ld.lesson_id = pl.id) AS department_names
             FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id

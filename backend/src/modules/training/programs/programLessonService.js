@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues, newIdSql, nowSql } = require('../../../config/db');
+const { getPool, sql, jsonValues, newIdSql, nowSql, stringAgg } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { appErrorCode } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -32,9 +32,9 @@ const LESSON_FIELDS = {
 // Bài học loại 'rotation' là 1 vòng thực hành GPHN: có thời lượng và danh sách
 // khoa được chọn (lesson_departments) — xem 2026-11-07_training_course_types_rotations.
 const lessonDepartmentsSql = `
-           (SELECT STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order)
+           (SELECT ${stringAgg('ld.department_id', ',', 'ld.display_order')}
               FROM lesson_departments ld WHERE ld.lesson_id = pl.id) AS department_ids,
-           (SELECT STRING_AGG(d.name, ', ') WITHIN GROUP (ORDER BY ld.display_order)
+           (SELECT ${stringAgg('d.name', ', ', 'ld.display_order')}
               FROM lesson_departments ld JOIN departments d ON d.id = ld.department_id
               WHERE ld.lesson_id = pl.id) AS department_names`;
 
@@ -96,8 +96,8 @@ const listAllLessons = async () => {
     FROM program_lessons pl
     LEFT JOIN (
       SELECT ld.lesson_id,
-             STRING_AGG(ld.department_id, ',') WITHIN GROUP (ORDER BY ld.display_order) AS department_ids,
-             STRING_AGG(d.name, ', ') WITHIN GROUP (ORDER BY ld.display_order) AS department_names
+             ${stringAgg('ld.department_id', ',', 'ld.display_order')} AS department_ids,
+             ${stringAgg('d.name', ', ', 'ld.display_order')} AS department_names
       FROM lesson_departments ld LEFT JOIN departments d ON d.id = ld.department_id
       GROUP BY ld.lesson_id
     ) ldg ON ldg.lesson_id = pl.id

@@ -5,6 +5,7 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	stringAgg,
 } = require('../../config/db');
 const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -39,6 +40,11 @@ const normalizeMember = (m) => m && { ...m, is_external: !!m.is_external };
 const ROLE_ORDER = `CASE cm.role
   WHEN 'chairman' THEN 1 WHEN 'secretary' THEN 2
   WHEN 'reviewer1' THEN 3 WHEN 'reviewer2' THEN 4 ELSE 5 END`;
+// "CT: Nguyễn Văn A" — 1 mục của tóm tắt thành viên hội đồng
+const MEMBER_LABEL = `CONCAT(
+  CASE cm.role WHEN 'chairman' THEN 'CT' WHEN 'secretary' THEN 'TK'
+    WHEN 'reviewer1' THEN 'PB1' WHEN 'reviewer2' THEN 'PB2' ELSE 'TV' END,
+  ': ', COALESCE(u.full_name, er.full_name))`;
 
 const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = undefined } = {}) => {
 	const pool = await getPool();
@@ -67,10 +73,7 @@ const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = und
               LEFT JOIN external_reviewers er ON er.id = cm.external_reviewer_id
             WHERE cm.council_id = c.id AND cm.role = 'chairman'
             ORDER BY cm.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS chairman_name,
-           (SELECT STRING_AGG(CONCAT(
-              CASE cm.role WHEN 'chairman' THEN 'CT' WHEN 'secretary' THEN 'TK'
-                WHEN 'reviewer1' THEN 'PB1' WHEN 'reviewer2' THEN 'PB2' ELSE 'TV' END,
-              ': ', COALESCE(u.full_name, er.full_name)), ', ') WITHIN GROUP (ORDER BY ${ROLE_ORDER})
+           (SELECT ${stringAgg(MEMBER_LABEL, ', ', ROLE_ORDER)}
             FROM council_members cm
               LEFT JOIN users u ON u.id = cm.user_id
               LEFT JOIN external_reviewers er ON er.id = cm.external_reviewer_id
