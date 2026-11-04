@@ -1,4 +1,12 @@
-const { getPool, sql, jsonValues, newIdSql, nowSql, stringAgg } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	jsonValues,
+	newIdSql,
+	nowSql,
+	stringAgg,
+	withTransaction,
+} = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { constraintName } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
@@ -348,20 +356,26 @@ const removeLesson = async (lessonId, actorId) => {
 		.request()
 		.input('lesson_id', sql.VarChar(20), lessonId)
 		.query('SELECT file_id FROM lesson_documents WHERE lesson_id = @lesson_id');
-	// Bài học thay cho "môn học" cũ: các cột subject_id trỏ tới bài học (FK không cascade) → gỡ trước khi xóa
-	await pool.request().input('id', sql.VarChar(20), lessonId).query(`
-    -- GV đã có dòng phân công cả khóa thì bỏ dòng theo bài (UQ_lecass_course_subject_lecturer)
-    DELETE la FROM lecturer_assignments la
-    WHERE la.subject_id = @id AND EXISTS (
-      SELECT 1 FROM lecturer_assignments o
-      WHERE o.course_id = la.course_id AND o.lecturer_id = la.lecturer_id AND o.subject_id IS NULL);
-    UPDATE lecturer_assignments SET subject_id = NULL WHERE subject_id = @id;
-    UPDATE class_sessions SET subject_id = NULL WHERE subject_id = @id;
-    UPDATE question_bank SET subject_id = NULL WHERE subject_id = @id;
-    UPDATE exam_papers SET subject_id = NULL WHERE subject_id = @id;
-    DELETE FROM grades WHERE subject_id = @id;
-    DELETE FROM program_lessons WHERE id = @id;
-  `);
+	// Bài học thay cho "môn học" cũ: các cột subject_id trỏ tới bài học (FK không cascade) → gỡ trước khi xóa.
+	// Mỗi câu 1 lời gọi (PG không nhận lô nhiều câu có tham số), chạy lần lượt trong 1 transaction.
+	const statements = [
+		// GV đã có dòng phân công cả khóa thì bỏ dòng theo bài (UQ_lecass_course_subject_lecturer)
+		`DELETE FROM lecturer_assignments
+     WHERE subject_id = @id AND EXISTS (
+       SELECT 1 FROM lecturer_assignments o
+       WHERE o.course_id = lecturer_assignments.course_id
+         AND o.lecturer_id = lecturer_assignments.lecturer_id AND o.subject_id IS NULL)`,
+		'UPDATE lecturer_assignments SET subject_id = NULL WHERE subject_id = @id',
+		'UPDATE class_sessions SET subject_id = NULL WHERE subject_id = @id',
+		'UPDATE question_bank SET subject_id = NULL WHERE subject_id = @id',
+		'UPDATE exam_papers SET subject_id = NULL WHERE subject_id = @id',
+		'DELETE FROM grades WHERE subject_id = @id',
+		'DELETE FROM program_lessons WHERE id = @id',
+	];
+	await withTransaction(async (tx) => {
+		for (const text of statements)
+			await tx.request().input('id', sql.VarChar(20), lessonId).query(text);
+	});
 	for (const d of docs.recordset) {
 		if (d.file_id) await trainingFileService.softDelete(d.file_id, actorId);
 	}

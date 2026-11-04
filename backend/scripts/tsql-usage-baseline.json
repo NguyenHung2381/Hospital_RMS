@@ -16,7 +16,7 @@
 	"apply": 2,
 	"like_class": 0,
 	"dbo_prefix": 2,
-	"delete_alias": 2,
+	"delete_alias": 0,
 	"like_search": 0,
 	"bracket_ident": 0,
 	"output_clause": 0,

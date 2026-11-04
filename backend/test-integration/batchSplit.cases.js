@@ -421,6 +421,13 @@ const run = async (t, db, { skip = [] } = {}) => {
 					/không thuộc hội đồng/,
 				);
 
+				// Xoá ghế thay: sai hội đồng thì không xoá, đúng thì xoá (đặt lại cho bước dưới)
+				await svc.removeSeatSubstitute('KHONG_CO', ct.topic_id, 'chairman', actor.id);
+				assert.equal((await seats()).length, 1);
+				await svc.removeSeatSubstitute(ct.council_id, ct.topic_id, 'chairman', actor.id);
+				assert.deepEqual(await seats(), []);
+				await svc.setSeatSubstitute(ct.council_id, ct.topic_id, 'chairman', actor.id, actor.id);
+
 				// actor giữ ghế chủ tịch (ghế thay) → chốt kết luận 2 lần: thêm rồi sửa, vẫn 1 dòng
 				const progress = require('../src/modules/councils/councilProgressService');
 				await progress.upsertResult(ct.topic_id, actor.id, { conclusion: 'pass' });
@@ -781,6 +788,41 @@ const run = async (t, db, { skip = [] } = {}) => {
 				/đã được gắn vào chương trình/,
 			);
 		}
+	});
+
+	// DELETE alias FROM … (chỉ T-SQL) → DELETE FROM bảng WHERE … (tham chiếu bảng bằng tên đầy đủ);
+	// removeLesson trước là 1 lô nhiều câu có tham số → từng câu trong withTransaction (tx rollback).
+	await step('xoá bài học: bỏ phân công trùng dòng cả khóa, gỡ subject_id còn lại', async () => {
+		const lessons = require('../src/modules/training/programs/programLessonService');
+		const [c] = await q(`
+      SELECT co.id AS course_id, l1.id AS x, l2.id AS y FROM courses co
+      JOIN lecturers l1 ON NOT EXISTS (SELECT 1 FROM lecturer_assignments a WHERE a.course_id = co.id AND a.lecturer_id = l1.id)
+      JOIN lecturers l2 ON l2.id > l1.id
+        AND NOT EXISTS (SELECT 1 FROM lecturer_assignments a WHERE a.course_id = co.id AND a.lecturer_id = l2.id)
+      ORDER BY co.id, l1.id, l2.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+		if (!c) return;
+		const { id: lessonId } = await lessons.createLesson({ title: 'ZZ xoá thử' }, actor.id);
+		const pc = () => 'PC' + String(Math.floor(Math.random() * 1e12)).padStart(12, '0');
+		const [byLesson, whole, other] = [pc(), pc(), pc()];
+		await q(
+			`INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, role) VALUES
+         (@a, @c, @x, @l, 'assistant'), (@b, @c, @x, NULL, 'main'), (@o, @c, @y, @l, 'main')`,
+			{ a: byLesson, b: whole, o: other, c: c.course_id, x: c.x, y: c.y, l: lessonId },
+		);
+
+		await lessons.removeLesson(lessonId, actor.id);
+		assert.deepEqual(await q('SELECT id FROM program_lessons WHERE id = @l', { l: lessonId }), []);
+		const rows = await q(
+			'SELECT id, subject_id FROM lecturer_assignments WHERE id IN (@a, @b, @o) ORDER BY id',
+			{ a: byLesson, b: whole, o: other },
+		);
+		assert.deepEqual(
+			rows.map((r) => [r.id, r.subject_id]),
+			[
+				[whole, null],
+				[other, null],
+			].sort(),
+		);
 	});
 
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)

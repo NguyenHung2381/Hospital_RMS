@@ -113,6 +113,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) → 0 | `stringAgg(x, sep, thứ tự)` của adapter (PG: `string_agg(CAST(x AS TEXT), sep ORDER BY ...)`) |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` → 0 | PG `LIKE` **không** có lớp ký tự `[...]` → LIKE thô (`_`) + lọc đúng bằng JS, hoặc `LEFT(x, n) = '...'` (chạy cả 2 DB) |
+| `DELETE alias FROM bảng alias [JOIN …]` | 3 → 0 (ratchet `delete_alias`) | `DELETE FROM bảng WHERE …`, bảng khác đưa vào `IN` / `EXISTS` (cột gọi bằng tên bảng đầy đủ — chạy cả 2 DB) |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 0 | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 0 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
@@ -622,6 +623,16 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     ký; từ chối rồi mở lại. SQL Server bỏ `getCandidate` trong ca (Promise.all trên 1 transaction test ⇒
     EREQINPROG; chạy thật dùng pool). Bật lại trên PG: ca "person mới: mã PS + 8 số" (batchSplit) và
     "bulkAdd sinh mã SPT" (randomIds) — chỉ còn bỏ qua ca chờ migration 2026-12-15.
+- [x] `DELETE alias FROM …` (ratchet `delete_alias` 2 → 0, tổng 20 → 18): cú pháp chỉ T-SQL có, PG báo lỗi cú pháp.
+  - `councilAssignmentService.removeSeatSubstitute`: `DELETE s FROM council_seat_substitutes s JOIN topics t …` →
+    `DELETE FROM council_seat_substitutes WHERE … AND topic_id IN (SELECT id FROM topics WHERE council_id = @council_id)`.
+  - `programLessonService.removeLesson`: `DELETE la FROM lecturer_assignments la WHERE … EXISTS (… o.course_id =
+    la.course_id …)` → `DELETE FROM lecturer_assignments WHERE … lecturer_assignments.course_id`. Hàm này còn là 1 lô
+    7 câu có tham số chạy trên pool (PG không nhận; SQL Server cũng không nguyên tử) → từng câu, lần lượt trong
+    `withTransaction`.
+  - Kiểm (2 DB): ca "rowsAffected: … ghế thay …" thêm xoá ghế thay sai hội đồng (giữ nguyên) / đúng hội đồng (xoá);
+    ca mới "xoá bài học": bài học có 1 phân công GV trùng dòng cả khóa (bị xoá) và 1 phân công khác (gỡ
+    `subject_id`), dòng cả khóa giữ nguyên, bài học hết. Thử ngược: code cũ trên PG ⇒ ca ghế thay báo lỗi.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

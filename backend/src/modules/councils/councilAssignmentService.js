@@ -121,9 +121,9 @@ const removeSeatSubstitute = async (councilId, topicId, role, actorId) => {
 			.input('council_id', sql.VarChar(15), councilId)
 			.input('topic_id', sql.VarChar(15), topicId)
 			.input('role', sql.VarChar(15), role).query(`
-      DELETE s FROM council_seat_substitutes s
-      INNER JOIN topics t ON t.id = s.topic_id
-      WHERE s.topic_id = @topic_id AND s.role = @role AND t.council_id = @council_id;
+      DELETE FROM council_seat_substitutes
+      WHERE topic_id = @topic_id AND role = @role
+        AND topic_id IN (SELECT id FROM topics WHERE council_id = @council_id)
     `),
 	);
 	broadcast('update', { entity: 'council' });
