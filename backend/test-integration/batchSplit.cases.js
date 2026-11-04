@@ -1544,6 +1544,167 @@ const run = async (t, db, { skip = [] } = {}) => {
 		},
 	);
 
+	// Nhiều câu trong 1 chuỗi SQL ("A; B") — PG không nhận khi có tham số → queryBatch(req, [A, B]):
+	// SQL Server vẫn 1 lô, PG từng câu lần lượt; kết quả gộp như mssql.
+	await step('queryBatch: nhiều câu lần lượt, chung tham số; dịch vụ dùng queryBatch', async () => {
+		const one = async (text, inputs) => (await q(text, inputs))[0];
+		const n = async (text, inputs) => Number((await one(text, inputs)).n);
+
+		// Câu sau thấy kết quả câu trước; recordset = tập kết quả đầu; rowsAffected từng câu
+		const before = Number(
+			(await one('SELECT token_version AS v FROM users WHERE id = @id', { id: actor.id })).v,
+		);
+		const r = await db.queryBatch(new sql.Request(tx).input('id', sql.VarChar(20), actor.id), [
+			'UPDATE users SET token_version = token_version + 1 WHERE id = @id',
+			'SELECT token_version AS v FROM users WHERE id = @id;',
+			'SELECT id FROM users WHERE id = @id AND 1 = 0',
+		]);
+		assert.equal(Number(r.recordset[0].v), before + 1);
+		assert.equal(r.recordsets.length, 2);
+		assert.deepEqual(r.recordsets[1], []);
+		assert.equal(r.rowsAffected[0], 1);
+
+		// Request dựng bằng actorRequest (ghi người thao tác) cũng nhận queryBatch
+		const ar = await db.queryBatch(
+			db.actorRequest(actor.id).input('id', sql.VarChar(20), actor.id),
+			[
+				'UPDATE users SET token_version = token_version WHERE id = @id',
+				'SELECT id FROM users WHERE id = @id',
+			],
+		);
+		assert.deepEqual([ar.rowsAffected[0], ar.recordset[0].id], [1, actor.id]);
+
+		const version = require('../src/modules/auth/sessionVersion');
+		assert.equal(Number(await version.bumpTokenVersion(actor.id)), before + 2);
+
+		// Hội đồng: thêm (trả mã mới), thêm thành viên, xoá (gỡ khỏi đề tài, xoá thành viên, xoá hội đồng)
+		const [round] = await q(
+			'SELECT id FROM research_rounds ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
+		if (round) {
+			const councils = require('../src/modules/councils/councilService');
+			const c = await councils.create({ round_id: round.id, name: 'ZZ hội đồng' }, actor.id);
+			assert.equal(c.name, 'ZZ hội đồng');
+			const m = await councils.addMember(c.id, { user_id: actor.id, role: 'member' }, actor.id);
+			assert.equal(m.council_id ?? c.id, c.id);
+			await councils.remove(c.id, actor.id);
+			assert.equal(await n('SELECT COUNT(*) AS n FROM councils WHERE id = @id', { id: c.id }), 0);
+			assert.equal(
+				await n('SELECT COUNT(*) AS n FROM council_members WHERE council_id = @id', { id: c.id }),
+				0,
+			);
+		}
+
+		// Thành viên đề tài: INSERT rồi SELECT mã mới
+		const [topic] = await q(
+			'SELECT id FROM topics ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
+		if (topic) {
+			const tm = await require('../src/modules/topics/topicMemberService').addMember(
+				topic.id,
+				{ ho_ten: 'ZZ thành viên' },
+				actor.id,
+			);
+			assert.equal(
+				await n('SELECT COUNT(*) AS n FROM topic_members WHERE id = @id', { id: tm.id }),
+				1,
+			);
+		}
+
+		// Học viên, khóa học (INSERT + SELECT mã mới), lượt tải tài liệu (UPDATE + SELECT)
+		const trainees = require('../src/modules/training/trainees/traineeService');
+		const tr = await trainees.create({ full_name: 'ZZ học viên lô' }, actor.id, { fetch: false });
+		assert.equal(
+			await n('SELECT COUNT(*) AS n FROM trainees WHERE id = @id', { id: tr.id ?? tr }),
+			1,
+		);
+		const course = await require('../src/modules/training/courses/courseService').create(
+			{ name: 'ZZ khóa lô' },
+			actor.id,
+		);
+		assert.equal(course.name, 'ZZ khóa lô');
+		// Tài liệu khóa dạng liên kết (INSERT + SELECT mã mới) rồi tăng lượt tải 2 lần
+		const docs = require('../src/modules/training/courses/courseDocumentService');
+		const doc = await docs.addDocument(
+			course.id,
+			{ source_type: 'link', external_url: 'https://example.test/zz', title: 'ZZ tài liệu' },
+			null,
+			actor.id,
+		);
+		assert.equal(Number((await docs.incrementDocumentDownload(doc.id)).download_count), 1);
+		assert.equal(Number((await docs.incrementDocumentDownload(doc.id)).download_count), 2);
+		const [ldoc] = await q(
+			'SELECT id, download_count AS d FROM lesson_documents ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
+		if (ldoc) {
+			const lessons = require('../src/modules/training/programs/programLessonService');
+			assert.equal(
+				Number((await lessons.incrementLessonDocumentDownload(ldoc.id)).download_count),
+				Number(ldoc.d) + 1,
+			);
+		}
+
+		// Buổi học (INSERT + SELECT mã mới) trên khóa vừa tạo (chưa gắn chương trình)
+		const s = await require('../src/modules/training/courses/classSessionService').createSession(
+			course.id,
+			{ session_date: '2099-04-01', start_time: '07:30', end_time: '09:00' },
+			actor.id,
+		);
+		assert.equal(
+			await n('SELECT COUNT(*) AS n FROM class_sessions WHERE id = @id', { id: s.id }),
+			1,
+		);
+
+		// Người tham dự hội thảo: UPDATE rồi SELECT lại dòng
+		const [part] = await q(
+			'SELECT id, seminar_id FROM seminar_participants ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
+		if (part) {
+			const row = await require('../src/modules/seminars/seminarParticipantService').update(
+				part.seminar_id,
+				part.id,
+				{ full_name: 'ZZ người dự' },
+				actor.id,
+			);
+			assert.equal(row?.id, part.id);
+		}
+
+		// Đặt lại mật khẩu (UPDATE users + xoá refresh token) cho 1 tài khoản khác
+		const [other] = await q(
+			'SELECT id FROM users WHERE id <> @id ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			{ id: actor.id },
+		);
+		if (other) {
+			await require('../src/modules/users/userService').resetPassword(other.id, null, actor.id);
+			assert.equal(
+				await n('SELECT COUNT(*) AS n FROM refresh_tokens WHERE user_id = @id', { id: other.id }),
+				0,
+			);
+		}
+
+		// 2FA bắt buộc: ghi mốc lần đầu rồi đọc lại (UPDATE … IS NULL + SELECT)
+		const policy = require('../src/permissions/twoFactorPolicy');
+		// (dev có thể tắt REQUIRE_2FA_FOR_ADMINS, cấu hình lại có cache trong module ⇒ thay tạm getValue)
+		await q('UPDATE users SET twofa_required_since = NULL WHERE id = @id', { id: actor.id });
+		const settings = require('../src/modules/settings/systemSettingService');
+		const realGetValue = settings.getValue;
+		settings.getValue = async (key, ...rest) =>
+			key === 'REQUIRE_2FA_FOR_ADMINS' ? 'true' : realGetValue(key, ...rest);
+		try {
+			const st = await policy.twoFactorState(
+				{ userId: actor.id, totpEnabled: false, requiredSince: null },
+				new Set([...policy.CRITICAL_KEYS].slice(0, 1)),
+			);
+			assert.equal(st.state, 'grace');
+			assert.ok(
+				(await one('SELECT twofa_required_since AS t FROM users WHERE id = @id', { id: actor.id }))
+					.t,
+			);
+		} finally {
+			settings.getValue = realGetValue;
+		}
+	});
+
 	// UPDATE <alias> SET … FROM bảng alias JOIN … (chỉ SQL Server) → UPDATE bảng SET … FROM bảng_khác x
 	// WHERE x.k = bảng.k (cả 2 DB nhận), hoặc subquery / IN khi không cần cột của bảng khác.
 	await step(

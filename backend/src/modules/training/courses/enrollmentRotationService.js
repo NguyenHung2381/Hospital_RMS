@@ -19,6 +19,7 @@ const {
 	crossApply,
 	stringAgg,
 	nstr,
+	queryBatch,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -134,9 +135,10 @@ const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 
 	const kept = replace
 		? (
-				await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-          DELETE FROM enrollment_rotations WHERE enrollment_id = @id AND result = 'pending';
-          SELECT lesson_id, department_id, result, attempt_no, seq FROM enrollment_rotations WHERE enrollment_id = @id;`)
+				await queryBatch(pool.request().input('id', sql.VarChar(20), enrollmentId), [
+					`DELETE FROM enrollment_rotations WHERE enrollment_id = @id AND result = 'pending'`,
+					`SELECT lesson_id, department_id, result, attempt_no, seq FROM enrollment_rotations WHERE enrollment_id = @id`,
+				])
 			).recordset
 		: [];
 	let seq = Math.max(0, ...kept.map((k) => k.seq));

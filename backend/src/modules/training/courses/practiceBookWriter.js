@@ -1,6 +1,6 @@
 // Ghi 1 hồ sơ thực hành GPHN từ sổ đã đọc (practiceBookImportService): ghi danh + vòng thực hành,
 // bổ sung danh mục lĩnh vực / hình thức / đơn vị cử đi mới gặp.
-const { sql, withTransaction, nowSql } = require('../../../config/db');
+const { sql, withTransaction, nowSql, queryBatch } = require('../../../config/db');
 const { genCourseEnrollmentId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { invalidate } = require('../../../utils/cache');
@@ -168,11 +168,11 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
 				.map((f) => `@${f}_${i}`)
 				.join(', ')}, @actor_id)`;
 		});
-		await ins.query(`
-      DELETE FROM enrollment_rotations WHERE enrollment_id = @enrollment_id;
-      INSERT INTO enrollment_rotations (id, enrollment_id, ${Object.keys(ROTATION_TYPES).join(', ')}, created_by)
-      VALUES ${valuesSql.join(',\n')};
-    `);
+		await queryBatch(ins, [
+			`DELETE FROM enrollment_rotations WHERE enrollment_id = @enrollment_id`,
+			`INSERT INTO enrollment_rotations (id, enrollment_id, ${Object.keys(ROTATION_TYPES).join(', ')}, created_by)
+      VALUES ${valuesSql.join(',\n')}`,
+		]);
 	}
 	return enrollmentId;
 };

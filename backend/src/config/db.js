@@ -35,14 +35,22 @@ const withActorTransaction = (actorId, fn) =>
  *   const req = actorRequest(actorId).input('id', sql.VarChar(20), id);
  *   if (data.name !== undefined) req.input('name', sql.NVarChar(255), data.name);
  *   await req.query(`UPDATE ... WHERE id = @id`);
- * Nhiều câu thì truyền mảng: chạy lần lượt trong cùng 1 transaction, trả kết quả
- * câu đầu (PG không cho ghép nhiều câu có tham số vào 1 lệnh bằng ';').
+ * Nhiều câu thì truyền mảng: chạy lần lượt trong cùng 1 transaction, trả kết quả câu
+ * đầu (PG không cho ghép nhiều câu có tham số vào 1 lệnh bằng ';'). Cần kết quả của câu
+ * sau (UPDATE rồi SELECT) thì dùng queryBatch(req, [...]).
  * @param {string | null | undefined} actorId
  */
 const actorRequest = (actorId) => {
 	/** @type {any[][]} */
 	const inputs = [];
+	/** @param {any} tx */
+	const build = (tx) => {
+		const r = tx.request();
+		for (const a of inputs) r.input(.../** @type {[string, any, any]} */ (a));
+		return r;
+	};
 	const req = {
+		isActorRequest: true,
 		/** @param {...any} args như mssql Request.input(name, [type], value) */
 		input(...args) {
 			inputs.push(args);
@@ -52,15 +60,25 @@ const actorRequest = (actorId) => {
 		query: (text) =>
 			withActorTransaction(actorId, async (tx) => {
 				const results = [];
-				for (const stmt of Array.isArray(text) ? text : [text]) {
-					const r = tx.request();
-					for (const a of inputs) r.input(.../** @type {[string, any, any]} */ (a));
-					results.push(await r.query(stmt));
-				}
+				for (const stmt of Array.isArray(text) ? text : [text])
+					results.push(await build(tx).query(stmt));
 				return results[0];
 			}),
+		// queryBatch(actorRequest(...), [...]) gọi tới đây: cả lô trong 1 transaction có người thao tác
+		/** @param {string[]} statements */
+		queryBatch: (statements) =>
+			withActorTransaction(actorId, (tx) => adapter.queryBatch(build(tx), statements)),
 	};
 	return req;
 };
 
-module.exports = { ...adapter, withActorTransaction, actorRequest };
+/**
+ * Như queryBatch của adapter (nhiều câu lần lượt, chung tham số, gộp kết quả), nhận
+ * thêm request dựng bằng actorRequest.
+ * @param {any} req
+ * @param {string[]} statements
+ */
+const queryBatch = (req, statements) =>
+	req.isActorRequest ? req.queryBatch(statements) : adapter.queryBatch(req, statements);
+
+module.exports = { ...adapter, withActorTransaction, actorRequest, queryBatch };

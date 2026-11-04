@@ -13,6 +13,7 @@ const {
 	dateDiff,
 	likeCi,
 	ilike,
+	queryBatch,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -412,16 +413,18 @@ const remove = async (id, actorId) => {
 	// Lấy trước khi xóa — sau khi xóa thì dọn person (bảng persons không có FK tới users)
 	const personId = await personService.personIdOf('users', id);
 	await withActorTransaction(actorId, (tx) =>
-		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-			.query(`
-			UPDATE topic_members SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id;
-			UPDATE trainees SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id;
-			UPDATE trainees SET staff_user_id = NULL WHERE staff_user_id = @id;
-			UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id;
-			UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id;
-			UPDATE lecturers SET user_id = NULL WHERE user_id = @id;
-			DELETE FROM users WHERE id = @id;
-		`),
+		queryBatch(
+			tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId),
+			[
+				`UPDATE topic_members SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id`,
+				`UPDATE trainees SET user_id = NULL, account_granted = 'false', account_granted_at = NULL WHERE user_id = @id`,
+				`UPDATE trainees SET staff_user_id = NULL WHERE staff_user_id = @id`,
+				`UPDATE round_deadlines SET created_by = @actor_id WHERE created_by = @id`,
+				`UPDATE departments SET head_user_id = NULL WHERE head_user_id = @id`,
+				`UPDATE lecturers SET user_id = NULL WHERE user_id = @id`,
+				`DELETE FROM users WHERE id = @id`,
+			],
+		),
 	);
 	await personService.releasePerson('users', id, personId, { actorId });
 	userStatusCache.clear(id);
@@ -451,16 +454,18 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	}
 	const hashed = await bcrypt.hash(newPassword || generated, 12);
 	await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
-			.input('id', sql.VarChar(20), id)
-			.input('password', sql.VarChar(255), hashed)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query(
+		queryBatch(
+			tx
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.input('password', sql.VarChar(255), hashed)
+				.input('actor_id', sql.VarChar(20), actorId),
+			[
 				`UPDATE users SET password=@password, password_changed_at=${nowSql}, must_change_password = 'true',
-			   temp_password_issued_at=${utcNowSql}, updated_at=${nowSql}, updated_by=@actor_id WHERE id=@id;
-			 DELETE FROM refresh_tokens WHERE user_id=@id;`,
-			),
+			   temp_password_issued_at=${utcNowSql}, updated_at=${nowSql}, updated_by=@actor_id WHERE id=@id`,
+				`DELETE FROM refresh_tokens WHERE user_id=@id`,
+			],
+		),
 	);
 	// Thu hồi ngay cả access token đang lưu hành (không chờ hết hạn 8h)
 	await bumpTokenVersion(id, pool);

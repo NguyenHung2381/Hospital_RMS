@@ -6,6 +6,7 @@ const {
 	nowSql,
 	stringAgg,
 	withTransaction,
+	queryBatch,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { constraintName } = require('../../../utils/dbErrors');
@@ -456,10 +457,10 @@ const removeLessonDocument = async (docId, actorId) => {
 
 const incrementLessonDocumentDownload = async (docId) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), docId).query(`
-    UPDATE lesson_documents SET download_count = download_count + 1 WHERE id = @id;
-    SELECT download_count FROM lesson_documents WHERE id = @id;
-  `);
+	const result = await queryBatch(pool.request().input('id', sql.VarChar(20), docId), [
+		`UPDATE lesson_documents SET download_count = download_count + 1 WHERE id = @id`,
+		`SELECT download_count FROM lesson_documents WHERE id = @id`,
+	]);
 	if (!result.recordset[0]) {
 		throw httpError(404, 'Không tìm thấy tài liệu.');
 	}

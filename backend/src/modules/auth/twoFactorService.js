@@ -1,7 +1,7 @@
 const { verifyToken } = require('../../utils/keys');
 const crypto = require('crypto');
 const otplib = require('otplib');
-const { getPool, sql, updateReturning, utcNowSql, nowSql } = require('../../config/db');
+const { getPool, sql, updateReturning, utcNowSql, nowSql, queryBatch } = require('../../config/db');
 const userStatusCache = require('../../permissions/userStatusCache');
 const securityEvents = require('../audit/securityEventService');
 const trustedDevices = require('./trustedDeviceService');
@@ -107,11 +107,11 @@ const replaceBackupCodes = async (pool, userId) => {
 	codes.forEach((c, i) =>
 		req.input(`h${i}`, sql.Char(64), secretBox.keyedHash(normalizeBackupCode(c))),
 	);
-	await req.query(`
-		DELETE FROM user_backup_codes WHERE user_id = @user_id;
-		INSERT INTO user_backup_codes (user_id, code_hash)
-		VALUES ${codes.map((_, i) => `(@user_id, @h${i})`).join(', ')};
-	`);
+	await queryBatch(req, [
+		`DELETE FROM user_backup_codes WHERE user_id = @user_id`,
+		`INSERT INTO user_backup_codes (user_id, code_hash)
+		VALUES ${codes.map((_, i) => `(@user_id, @h${i})`).join(', ')}`,
+	]);
 	return codes;
 };
 
@@ -347,10 +347,11 @@ const disable2FA = async (userId, password, code, ip = null) => {
 		throw httpError(400, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
 	}
 
-	await pool.request().input('id', sql.VarChar(20), userId)
-		.query(`UPDATE users SET totp_secret = NULL, totp_enabled = 'false', totp_verified_at = NULL,
-		          totp_last_step = NULL WHERE id = @id;
-		        DELETE FROM user_backup_codes WHERE user_id = @id;`);
+	await queryBatch(pool.request().input('id', sql.VarChar(20), userId), [
+		`UPDATE users SET totp_secret = NULL, totp_enabled = 'false', totp_verified_at = NULL,
+		          totp_last_step = NULL WHERE id = @id`,
+		`DELETE FROM user_backup_codes WHERE user_id = @id`,
+	]);
 	userStatusCache.clear(userId);
 
 	await securityEvents.log({

@@ -1,5 +1,13 @@
 const crypto = require('crypto');
-const { getPool, sql, nowSql, utcNowSql, dateAdd, updateReturning } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	nowSql,
+	utcNowSql,
+	dateAdd,
+	updateReturning,
+	queryBatch,
+} = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const secretBox = require('../../utils/secretBox');
 const credentialService = require('./credentialService');
@@ -77,15 +85,18 @@ const requestOtp = async (login) => {
 	if ((await recentFailures(pool, user.id)) >= MAX_DAILY_FAILURES) return;
 
 	const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), user.id)
-		.input('hash', sql.Char(64), secretBox.keyedHash(code))
-		.input('min', sql.Int, OTP_TTL_MIN).query(`
-			DELETE FROM password_reset_otps WHERE user_id = @id;
-			INSERT INTO password_reset_otps (user_id, code_hash, expires_at)
-			VALUES (@id, @hash, ${dateAdd('MINUTE', '@min', utcNowSql)});
-		`);
+	await queryBatch(
+		pool
+			.request()
+			.input('id', sql.VarChar(20), user.id)
+			.input('hash', sql.Char(64), secretBox.keyedHash(code))
+			.input('min', sql.Int, OTP_TTL_MIN),
+		[
+			`DELETE FROM password_reset_otps WHERE user_id = @id`,
+			`INSERT INTO password_reset_otps (user_id, code_hash, expires_at)
+			VALUES (@id, @hash, ${dateAdd('MINUTE', '@min', utcNowSql)})`,
+		],
+	);
 
 	// Gửi nền, KHÔNG chờ: SMTP mất hàng trăm ms – vài giây và chỉ chạy khi tài
 	// khoản có thật — chờ thì thời gian phản hồi để lộ username nào tồn tại.
@@ -156,17 +167,17 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 	if (policyError) throw httpError(400, policyError);
 
 	const hashed = await credentialService.hashPassword(newPassword);
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), row.id)
-		.input('password', sql.VarChar(255), hashed).query(`
-			UPDATE users SET password = @password, password_changed_at = ${nowSql}, must_change_password = 'false',
+	await queryBatch(
+		pool.request().input('id', sql.VarChar(20), row.id).input('password', sql.VarChar(255), hashed),
+		[
+			`UPDATE users SET password = @password, password_changed_at = ${nowSql}, must_change_password = 'false',
 			       temp_password_issued_at = NULL, failed_login_count = 0, locked_until = NULL,
 			       updated_at = ${nowSql}, updated_by = @id
-			WHERE id = @id;
-			DELETE FROM password_reset_otps WHERE user_id = @id;
-			DELETE FROM refresh_tokens WHERE user_id = @id;
-		`);
+			WHERE id = @id`,
+			`DELETE FROM password_reset_otps WHERE user_id = @id`,
+			`DELETE FROM refresh_tokens WHERE user_id = @id`,
+		],
+	);
 	await bumpTokenVersion(row.id, pool);
 };
 

@@ -6,6 +6,7 @@ const {
 	withActor,
 	utcNowSql,
 	nowSql,
+	queryBatch,
 } = require('../../config/db');
 const { genUserId, genMemberId } = require('../../utils/idGenerator');
 const bcrypt = require('bcrypt');
@@ -51,28 +52,31 @@ const getMembers = async (topicId) => {
 
 const addMember = async (topicId, memberData, actorId) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(22), await genMemberId(tx, topicId))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('topic_id', sql.VarChar(15), topicId)
-			.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
-			.input('email', sql.VarChar(100), memberData.email || null)
-			.input('so_dien_thoai', sql.VarChar(20), memberData.so_dien_thoai || null)
-			.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
-			.input(
-				'staff_number',
-				sql.Int,
-				memberData.staff_number != null && memberData.staff_number !== ''
-					? parseInt(String(memberData.staff_number), 10)
-					: null,
-			)
-			.input('department_id', sql.VarChar(20), memberData.department_id || null)
-			.input('role', sql.VarChar(20), memberData.role || 'member').query(`
-      INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
-      VALUES (@new_id, @topic_id, @ho_ten, @email, @so_dien_thoai, @chuc_vu, @staff_number, @department_id, @role, @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(22), await genMemberId(tx, topicId))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
+				.input('email', sql.VarChar(100), memberData.email || null)
+				.input('so_dien_thoai', sql.VarChar(20), memberData.so_dien_thoai || null)
+				.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
+				.input(
+					'staff_number',
+					sql.Int,
+					memberData.staff_number != null && memberData.staff_number !== ''
+						? parseInt(String(memberData.staff_number), 10)
+						: null,
+				)
+				.input('department_id', sql.VarChar(20), memberData.department_id || null)
+				.input('role', sql.VarChar(20), memberData.role || 'member'),
+			[
+				`INSERT INTO topic_members (id, topic_id, name, email, phone_number, position, staff_number, department_id, role, created_by)
+      VALUES (@new_id, @topic_id, @ho_ten, @email, @so_dien_thoai, @chuc_vu, @staff_number, @department_id, @role, @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	await personService.syncPerson('topic_members', result.recordset[0].id, { actorId });
 	broadcast('update', { entity: 'topic' });

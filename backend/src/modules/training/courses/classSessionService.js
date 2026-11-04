@@ -6,6 +6,7 @@ const {
 	nowSql,
 	outerApply,
 	jsonValues,
+	queryBatch,
 } = require('../../../config/db');
 const { genClassSessionId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -184,22 +185,25 @@ const createSession = async (courseId, data, actorId) => {
 		actorId,
 	);
 	const result = await withTransaction(async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(20), await genClassSessionId(tx))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('course_id', sql.VarChar(20), courseId)
-			.input('subject_id', sql.VarChar(20), data.subject_id || null)
-			.input('lecturer_id', sql.VarChar(20), lecturerId || null)
-			.input('session_date', sql.Date, data.session_date)
-			.input('start_time', sql.VarChar(5), data.start_time || null)
-			.input('end_time', sql.VarChar(5), data.end_time || null)
-			.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
-			.input('room', sql.NVarChar(255), data.room || null).query(`
-      INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, session_kind, created_by)
-      VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genClassSessionId(tx))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('subject_id', sql.VarChar(20), data.subject_id || null)
+				.input('lecturer_id', sql.VarChar(20), lecturerId || null)
+				.input('session_date', sql.Date, data.session_date)
+				.input('start_time', sql.VarChar(5), data.start_time || null)
+				.input('end_time', sql.VarChar(5), data.end_time || null)
+				.input('session_kind', sql.VarChar(10), kindOf(data.session_kind))
+				.input('room', sql.NVarChar(255), data.room || null),
+			[
+				`INSERT INTO class_sessions (id, course_id, subject_id, lecturer_id, session_date, start_time, end_time, room, session_kind, created_by)
+      VALUES (@new_id, @course_id, @subject_id, @lecturer_id, @session_date, @start_time, @end_time, @room, @session_kind, @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	broadcast('update', { entity: 'class_session' });
 	const id = result.recordset[0].id;

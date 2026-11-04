@@ -6,6 +6,7 @@ const {
 	updateReturning,
 	nowSql,
 	outerApply,
+	queryBatch,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
@@ -143,18 +144,22 @@ const startAttempt = async (paperId, actor) => {
 		const { ids, codeNo } = await buildAttemptQuestions(info, info.enrollment_id, attemptNo, newId);
 		if (!ids.length) throw httpError(400, 'Đề thi chưa có câu hỏi.');
 		attempt = (
-			await pool
-				.request()
-				.input('id', sql.VarChar(20), newId)
-				.input('paper_id', sql.VarChar(20), paperId)
-				.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
-				.input('attempt_no', sql.Int, attemptNo)
-				.input('code_no', sql.Int, codeNo)
-				.input('question_ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
-				.input('actor_id', sql.VarChar(20), actor.id).query(`
-          INSERT INTO exam_attempts (id, paper_id, enrollment_id, attempt_no, code_no, question_ids, created_by)
-          VALUES (@id, @paper_id, @enrollment_id, @attempt_no, @code_no, @question_ids, @actor_id);
-          SELECT * FROM exam_attempts WHERE id = @id;`)
+			await queryBatch(
+				pool
+					.request()
+					.input('id', sql.VarChar(20), newId)
+					.input('paper_id', sql.VarChar(20), paperId)
+					.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
+					.input('attempt_no', sql.Int, attemptNo)
+					.input('code_no', sql.Int, codeNo)
+					.input('question_ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+					.input('actor_id', sql.VarChar(20), actor.id),
+				[
+					`INSERT INTO exam_attempts (id, paper_id, enrollment_id, attempt_no, code_no, question_ids, created_by)
+          VALUES (@id, @paper_id, @enrollment_id, @attempt_no, @code_no, @question_ids, @actor_id)`,
+					`SELECT * FROM exam_attempts WHERE id = @id`,
+				],
+			)
 		).recordset[0];
 	} else if (latest.status !== 'in_progress') {
 		throw httpError(409, 'Bạn đã nộp đề thi này rồi.');
@@ -247,24 +252,27 @@ const submitAttempt = async (paperId, answers, actor) => {
 	});
 
 	// Ghi mọi đáp án + đóng lượt trong 1 round-trip (trước đây 1 INSERT / câu hỏi)
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), attempt.id)
-		.input('answers', sql.NVarChar(sql.MAX), JSON.stringify(rows))
-		.input('auto_score', sql.Decimal(6, 2), autoScore)
-		.input('actor_id', sql.VarChar(20), actor.id)
-		.input('status', sql.VarChar(20), hasEssay ? 'submitted' : 'graded').query(`
-      INSERT INTO exam_answers (id, attempt_id, question_id, selected_option, essay_text, score_awarded)
+	await queryBatch(
+		pool
+			.request()
+			.input('id', sql.VarChar(20), attempt.id)
+			.input('answers', sql.NVarChar(sql.MAX), JSON.stringify(rows))
+			.input('auto_score', sql.Decimal(6, 2), autoScore)
+			.input('actor_id', sql.VarChar(20), actor.id)
+			.input('status', sql.VarChar(20), hasEssay ? 'submitted' : 'graded'),
+		[
+			`INSERT INTO exam_answers (id, attempt_id, question_id, selected_option, essay_text, score_awarded)
       SELECT ${newIdSql('EAN', 17)}, @id, j.question_id, j.selected_option, j.essay_text, j.score_awarded
       FROM ${jsonRows('@answers', 'j', [
 				['question_id', 'VARCHAR(20)'],
 				['selected_option', 'NVARCHAR(255)'],
 				['essay_text', 'NVARCHAR(MAX)'],
 				['score_awarded', 'DECIMAL(4, 1)'],
-			])};
-      UPDATE exam_attempts SET submitted_at = ${nowSql}, auto_score = @auto_score, status = @status,
-        updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id
-    `);
+			])}`,
+			`UPDATE exam_attempts SET submitted_at = ${nowSql}, auto_score = @auto_score, status = @status,
+        updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
+		],
+	);
 
 	broadcast('update', { entity: 'exam_attempt' });
 

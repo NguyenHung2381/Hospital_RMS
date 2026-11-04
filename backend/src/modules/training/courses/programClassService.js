@@ -7,6 +7,7 @@ const {
 	nowSql,
 	withTransaction,
 	lockResource,
+	queryBatch,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
@@ -320,15 +321,19 @@ const openClass = async (courseId, programId, actorId, dates = {}) => {
 			`Lớp chưa đủ sĩ số tối thiểu (${k.class_approved}/${k.class_min} học viên đã duyệt).`,
 		);
 	const pool = await getPool();
-	const r = await datesInput(pool.request(), dates)
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('program_id', sql.VarChar(20), programId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE course_programs
+	const r = await queryBatch(
+		datesInput(pool.request(), dates)
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('program_id', sql.VarChar(20), programId)
+			.input('actor_id', sql.VarChar(20), actorId),
+		[
+			`UPDATE course_programs
       SET opened_at = ${nowSql}, opened_by = @actor_id, updated_at = ${nowSql}, updated_by = @actor_id,
           start_date = COALESCE(@start_date, start_date), end_date = COALESCE(@end_date, end_date)
-      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NULL;
-      SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
+      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NULL`,
+			`SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved'`,
+		],
+	);
 	await syncCourseDates(pool.request().input('course_id', sql.VarChar(20), courseId));
 	broadcast('update', { entity: 'course' });
 	const when = dates.start_date
@@ -381,11 +386,12 @@ const cancelOpenClass = async (courseId, programId, actorId) => {
 			400,
 			`Lớp đã có ${sessions} buổi học trong lịch — xóa các buổi đó ở tab Lịch học trước khi hủy mở lớp.`,
 		);
-	const r = await params(pool.request()).input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE course_programs
+	const r = await queryBatch(params(pool.request()).input('actor_id', sql.VarChar(20), actorId), [
+		`UPDATE course_programs
       SET opened_at = NULL, opened_by = NULL, updated_at = ${nowSql}, updated_by = @actor_id
-      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NOT NULL;
-      SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved';`);
+      WHERE course_id = @course_id AND program_id = @program_id AND opened_at IS NOT NULL`,
+		`SELECT id FROM course_enrollments WHERE course_id = @course_id AND program_id = @program_id AND status = 'approved'`,
+	]);
 	broadcast('update', { entity: 'course' });
 	mailTrainees(
 		r.recordset.map((x) => x.id),

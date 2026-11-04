@@ -683,7 +683,7 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     `TOP (${n})`.
   - ~~Từ nay test ratchet chặn mọi cú pháp T-SQL mới~~ — **sai**: rà soát ngay sau đó thấy còn 3 nhóm chưa có luật
     (mục dưới). Ratchet chỉ chặn những mẫu nó có luật.
-- [ ] **Rà soát 04/11/2026** sau khi ratchet về 0:
+- [x] **Rà soát 04/11/2026** sau khi ratchet về 0:
   - Smoke test (mọi API GET) chạy trên PG dev (`DB_CLIENT=pg`, dữ liệu đã chuyển, Redis tắt để không dùng cache):
     **173 route qua, dạng JSON khớp baseline SQL Server** (25 route bỏ qua vì không đoán được mã — như trên SQL
     Server). Câu chọn tài khoản của chính smoke test (`TOP 10`, `= 1`, `GETDATE`) viết lại chạy cả 2 DB.
@@ -713,7 +713,20 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     so ⇒ PG suy varchar / text ⇒ ép `CAST(… AS VARCHAR(20))` ở chỗ so — mã ASCII nên SQL Server không ảnh
     hưởng). Ca "UPDATE theo bảng khác" (2 DB, dev thiếu dữ liệu thì tạo tạm trong tx; đánh dấu xác nhận cả
     8 nhánh đều chạy). Code cũ trên PG ⇒ `relation "r" does not exist`.
-  - Còn lại: `multi_statement` (34).
+  - [x] `multi_statement` 34 → 0 (tổng 34 → 0, 27 chỗ / 19 file): `A; B` có tham số — PG báo
+    "cannot insert multiple commands into a prepared statement" → helper `queryBatch(req, [A, B])` ở
+    adapter: SQL Server ghép 1 lô như trước (không đổi hành vi); PG chạy từng câu lần lượt với cùng tham số,
+    gộp kết quả như mssql (`recordset` = tập kết quả đầu, `rowsAffected` từng câu). Không tự mở
+    transaction — giữ đúng ngữ nghĩa cũ (lô SQL Server cũng không nguyên tử); trong tx thì chạy trên tx.
+    `db.js` cho queryBatch nhận cả `actorRequest` (cả lô trong 1 transaction có người thao tác;
+    `actorRequest().query([...])` giữ như cũ — trả kết quả câu đầu). Đổi bằng codemod: INSERT + `SELECT @new_id AS id` (hội đồng, thành
+    viên, học viên, khóa, buổi học, tài liệu, phân công GV), UPDATE + SELECT lại (token_version, lượt tải,
+    người dự hội thảo, mốc 2FA, mở / hủy mở lớp), xoá + thêm lại (OTP, mã khôi phục, vòng thực hành), xoá
+    tài khoản / hội đồng (nhiều UPDATE rồi DELETE), nộp bài thi. Test: unit `pgAdapter` (thứ tự, tham số,
+    dạng kết quả) + ca "queryBatch" (2 DB: gọi thẳng, qua actorRequest, và 12 dịch vụ). Code cũ trên PG ⇒
+    lỗi trên. Có thể làm sau: INSERT + `SELECT @new_id` trả mã ở JS cho bớt 1 lượt gọi trên PG.
+  - Kết quả: ratchet T-SQL **0 / 0 mẫu** (kể cả 5 luật mới). Smoke GET trên PG đã qua; luồng ghi kiểm bằng
+    các ca batchSplit trên cả 2 DB.
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

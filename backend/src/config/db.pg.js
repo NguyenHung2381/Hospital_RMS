@@ -531,7 +531,24 @@ const queryAll = async (req, statements) => {
 	return out;
 };
 
+// Cùng giao diện với db.mssql.js: các câu chạy lần lượt (kể cả ngoài transaction), mỗi
+// câu 1 lời gọi với tham số của `req`; gộp kết quả như mssql trả cho 1 lô nhiều câu.
+/**
+ * @param {Request} req
+ * @param {string[]} statements
+ */
+const queryBatch = async (req, statements) => {
+	const parent = req.parent ?? (await getPool());
+	const list = [];
+	for (const text of statements) {
+		const { text: pgText, values } = toPositional(String(text).replace(/;\s*$/, ''), req.params);
+		list.push(await parent.run(pgText, values));
+	}
+	return toMssqlResult(list);
+};
+
 module.exports = {
+	queryBatch,
 	client: 'pg',
 	getPool,
 	sql,

@@ -15,7 +15,7 @@
  *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
-const { getPool, sql, queryAll, nowSql, tryCastInt } = require('../../../config/db');
+const { getPool, sql, queryAll, nowSql, tryCastInt, queryBatch } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { norm } = require('../../../utils/vietnameseText');
@@ -302,28 +302,32 @@ const arrangeOne = async (
 	const first = kept.find((k) => k.start_date)?.start_date ?? plan[0]?.start_date ?? start;
 	const last = plan.at(-1)?.end_date ?? keptEnd ?? null;
 	// ponytail: mã lấy theo số lớn nhất lúc chạy — 2 người bấm cùng lúc có thể trùng (UQ_enroll_practice_code chặn, bấm lại là xong).
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.input('trainee_id', sql.VarChar(20), e.trainee_id)
-		.input('number', sql.NVarChar(50), number != null ? String(number) : null)
-		.input('practice_code', sql.NVarChar(30), code)
-		.input('professional_field', sql.NVarChar(200), usual?.professional_field ?? null)
-		.input('practice_form', sql.NVarChar(300), usual?.practice_form ?? null)
-		.input('total_duration', sql.NVarChar(50), e.program_duration || describeSpan(first, last))
-		.input('start_date', sql.Date, first)
-		.input('end_date', sql.Date, last)
-		.input('practice_location', sql.NVarChar(500), practiceLocation(placed.recordset))
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE course_enrollments
+	await queryBatch(
+		pool
+			.request()
+			.input('id', sql.VarChar(20), enrollmentId)
+			.input('trainee_id', sql.VarChar(20), e.trainee_id)
+			.input('number', sql.NVarChar(50), number != null ? String(number) : null)
+			.input('practice_code', sql.NVarChar(30), code)
+			.input('professional_field', sql.NVarChar(200), usual?.professional_field ?? null)
+			.input('practice_form', sql.NVarChar(300), usual?.practice_form ?? null)
+			.input('total_duration', sql.NVarChar(50), e.program_duration || describeSpan(first, last))
+			.input('start_date', sql.Date, first)
+			.input('end_date', sql.Date, last)
+			.input('practice_location', sql.NVarChar(500), practiceLocation(placed.recordset))
+			.input('actor_id', sql.VarChar(20), actorId),
+		[
+			`UPDATE course_enrollments
       SET practice_code = @practice_code,
           professional_field = COALESCE(professional_field, @professional_field),
           practice_form = COALESCE(practice_form, @practice_form),
           total_duration = COALESCE(total_duration, @total_duration),
           start_date = @start_date, end_date = @end_date, practice_location = @practice_location,
           updated_at = ${nowSql}, updated_by = @actor_id
-      WHERE id = @id;
-      UPDATE trainees SET legacy_code = @number WHERE id = @trainee_id AND legacy_code IS NULL AND @number IS NOT NULL;`);
+      WHERE id = @id`,
+			`UPDATE trainees SET legacy_code = @number WHERE id = @trainee_id AND legacy_code IS NULL AND @number IS NOT NULL`,
+		],
+	);
 	return { rotations: plan.length };
 };
 

@@ -408,7 +408,20 @@ WHEN NOT MATCHED THEN INSERT (${cols.join(', ')}) VALUES (${cols.map((c) => valu
  */
 const queryAll = async (req, statements) => (await req.query(statements.join(';\n'))).recordsets;
 
+// Nhiều câu (ghi lẫn đọc) dùng chung tham số của `req`, chạy LẦN LƯỢT — câu sau thấy
+// kết quả câu trước — trả 1 kết quả kiểu mssql: recordset = tập kết quả đầu tiên,
+// rowsAffected theo từng câu. SQL Server: ghép 1 lô như trước. Bản PG chạy từng câu
+// 1 lời gọi (PG không nhận nhiều câu có tham số trong 1 lệnh). Không tự mở transaction:
+// cần nguyên tử thì truyền request của transaction.
+/**
+ * @param {any} req request đã `.input(...)` đủ tham số
+ * @param {string[]} statements
+ * @returns {Promise<import('mssql').IResult<any>>}
+ */
+const queryBatch = (req, statements) => req.query(statements.join(';\n'));
+
 module.exports = {
+	queryBatch,
 	client: 'mssql',
 	getPool,
 	sql,

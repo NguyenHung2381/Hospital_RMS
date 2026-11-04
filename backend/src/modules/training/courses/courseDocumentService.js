@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction } = require('../../../config/db');
+const { getPool, sql, withTransaction, queryBatch } = require('../../../config/db');
 const { genCourseDocumentId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
@@ -36,31 +36,34 @@ const addDocument = async (courseId, data, file, actorId) => {
 		fileId = savedFile.id;
 	}
 	const result = await withTransaction(async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(20), await genCourseDocumentId(tx))
-			.input('course_id', sql.VarChar(20), courseId)
-			.input('doc_type', sql.VarChar(20), data.doc_type || 'material')
-			.input(
-				'title',
-				sql.NVarChar(255),
-				data.title ||
-					(file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'),
-			)
-			.input('source_type', sql.VarChar(10), sourceType)
-			.input('file_id', sql.VarChar(20), fileId)
-			.input(
-				'external_url',
-				sql.NVarChar(500),
-				sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
-			)
-			.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
-			.input('exam_type', sql.VarChar(20), data.exam_type || null)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-      INSERT INTO course_documents (id, course_id, doc_type, title, source_type, file_id, external_url, is_public, exam_type, created_by)
-      VALUES (@new_id, @course_id, @doc_type, @title, @source_type, @file_id, @external_url, @is_public, @exam_type, @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genCourseDocumentId(tx))
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('doc_type', sql.VarChar(20), data.doc_type || 'material')
+				.input(
+					'title',
+					sql.NVarChar(255),
+					data.title ||
+						(file ? trainingFileService.decodeOriginalName(file.originalname) : 'Liên kết'),
+				)
+				.input('source_type', sql.VarChar(10), sourceType)
+				.input('file_id', sql.VarChar(20), fileId)
+				.input(
+					'external_url',
+					sql.NVarChar(500),
+					sourceType === 'link' ? assertHttpUrl(data.external_url, 'Liên kết') : null,
+				)
+				.input('is_public', sql.Bit, data.is_public === 'false' || data.is_public === false ? 0 : 1)
+				.input('exam_type', sql.VarChar(20), data.exam_type || null)
+				.input('actor_id', sql.VarChar(20), actorId),
+			[
+				`INSERT INTO course_documents (id, course_id, doc_type, title, source_type, file_id, external_url, is_public, exam_type, created_by)
+      VALUES (@new_id, @course_id, @doc_type, @title, @source_type, @file_id, @external_url, @is_public, @exam_type, @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	broadcast('update', { entity: 'course_document' });
 	return { id: result.recordset[0].id };
@@ -70,10 +73,10 @@ const addDocument = async (courseId, data, file, actorId) => {
 // tiết hơn ở đây (route đã gate courses:read, ai xem được là tải được).
 const incrementDocumentDownload = async (docId) => {
 	const pool = await getPool();
-	const result = await pool.request().input('id', sql.VarChar(20), docId).query(`
-    UPDATE course_documents SET download_count = download_count + 1 WHERE id = @id;
-    SELECT download_count FROM course_documents WHERE id = @id;
-  `);
+	const result = await queryBatch(pool.request().input('id', sql.VarChar(20), docId), [
+		`UPDATE course_documents SET download_count = download_count + 1 WHERE id = @id`,
+		`SELECT download_count FROM course_documents WHERE id = @id`,
+	]);
 	if (!result.recordset[0]) {
 		throw httpError(404, 'Không tìm thấy tài liệu.');
 	}

@@ -1,4 +1,4 @@
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, queryBatch } = require('../../config/db');
 const userStatusCache = require('../../permissions/userStatusCache');
 
 // users.token_version — "phiên bản phiên đăng nhập" của tài khoản. Access token
@@ -19,10 +19,10 @@ const currentTokenVersion = async (userId, pool = null) => {
 // Trả về version mới.
 const bumpTokenVersion = async (userId, pool = null) => {
 	const p = pool ?? (await getPool());
-	const r = await p.request().input('id', sql.VarChar(20), userId).query(`
-      UPDATE users SET token_version = token_version + 1 WHERE id = @id;
-      SELECT token_version FROM users WHERE id = @id;
-    `);
+	const r = await queryBatch(p.request().input('id', sql.VarChar(20), userId), [
+		`UPDATE users SET token_version = token_version + 1 WHERE id = @id`,
+		`SELECT token_version FROM users WHERE id = @id`,
+	]);
 	userStatusCache.clear(userId); // hiệu lực ngay ở mọi instance
 	return r.recordset[0]?.token_version ?? 0;
 };

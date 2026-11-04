@@ -93,6 +93,27 @@ test('dạng kết quả: recordset/recordsets/rowsAffected', () => {
 	assert.equal(toMssqlResult(upd).recordset, undefined); // như mssql: không có SELECT
 });
 
+test('queryBatch: từng câu 1 lời gọi, lần lượt, cùng tham số; gộp kết quả như mssql', async () => {
+	const { sql: pgSql, queryBatch } = require('../../src/config/db.pg');
+	const calls = [];
+	const parent = {
+		run: async (text, values) => {
+			calls.push([text, values]);
+			await new Promise((r) => setTimeout(r, text.startsWith('UPDATE') ? 5 : 0)); // câu sau phải chờ câu trước
+			return text.startsWith('SELECT')
+				? { fields: [{ name: 'v' }], rows: [{ v: calls.length }], rowCount: 1 }
+				: { fields: [], rows: [], rowCount: 2 };
+		},
+	};
+	const req = new pgSql.Request(parent).input('id', pgSql.VarChar(20), 'NV001').input('n', pgSql.Int, 3);
+	const r = await queryBatch(req, ['UPDATE t SET x = @n WHERE id = @id;', 'SELECT v FROM t WHERE id = @id;']);
+	assert.deepEqual(calls, [
+		['UPDATE t SET x = $1::int WHERE id = $2', [3, 'NV001']],
+		['SELECT v FROM t WHERE id = $1', ['NV001']],
+	]);
+	assert.deepEqual(r, { recordset: [{ v: 2 }], recordsets: [[{ v: 2 }]], rowsAffected: [2, 1] });
+});
+
 test('SSL: theo DB_ENCRYPT / DB_TRUST_SERVER_CERT', () => {
 	const { sslOptions } = require('../../src/config/db.pg');
 	assert.equal(sslOptions({ DB_ENCRYPT: false }), false);

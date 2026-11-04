@@ -8,6 +8,7 @@ const {
 	vnTodaySql,
 	nowSql,
 	ilike,
+	queryBatch,
 } = require('../../../config/db');
 const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -202,28 +203,31 @@ const getById = async (id, actor = null) => {
 
 const create = async (data, actorId) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(20), await genCourseId(tx))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('name', sql.NVarChar(255), data.name)
-			.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
-			.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
-			.input('batch_no', sql.Int, data.batch_no || null)
-			.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
-			.input('start_date', sql.Date, data.start_date || null)
-			.input('end_date', sql.Date, data.end_date || null)
-			.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
-			.input('enrollment_end_date', sql.Date, data.enrollment_end_date || null)
-			.input('status', sql.VarChar(15), data.status || 'draft')
-			.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
-			.input('description', sql.NVarChar(sql.MAX), data.description || null)
-			.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
-			.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])).query(`
-      INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
-      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genCourseId(tx))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('name', sql.NVarChar(255), data.name)
+				.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
+				.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
+				.input('batch_no', sql.Int, data.batch_no || null)
+				.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
+				.input('start_date', sql.Date, data.start_date || null)
+				.input('end_date', sql.Date, data.end_date || null)
+				.input('enrollment_start_date', sql.Date, data.enrollment_start_date || null)
+				.input('enrollment_end_date', sql.Date, data.enrollment_end_date || null)
+				.input('status', sql.VarChar(15), data.status || 'draft')
+				.input('is_public_registration', sql.Bit, data.is_public_registration ? 1 : 0)
+				.input('description', sql.NVarChar(sql.MAX), data.description || null)
+				.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
+				.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])),
+			[
+				`INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
+      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	const id = result.recordset[0].id;
 	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);

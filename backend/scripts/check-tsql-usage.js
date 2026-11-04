@@ -185,7 +185,7 @@ const PATTERNS = [
 		// Nhiều câu trong 1 chuỗi SQL: PG chỉ nhận 1 câu mỗi lời gọi có tham số
 		key: 'multi_statement',
 		re: /;\s*(SELECT|INSERT|UPDATE|DELETE|MERGE|IF|DECLARE|EXEC|WITH)\b/g,
-		pg: 'mỗi câu 1 lời gọi (runBatch / vòng lặp trong tx)',
+		pg: 'queryBatch(req, [câu, …]) — SQL Server 1 lô, PG từng câu lần lượt',
 	},
 ];
 

@@ -8,6 +8,7 @@ const {
 	stringAgg,
 	ilike,
 	likeCi,
+	queryBatch,
 } = require('../../config/db');
 const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -161,19 +162,22 @@ const getById = async (id) => {
 
 const create = async (data, actorId) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(15), await genCouncilId(tx, data.round_id))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('round_id', sql.VarChar(10), data.round_id)
-			.input('name', sql.NVarChar(255), data.name)
-			.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
-			.input('location', sql.NVarChar(255), data.location || null)
-			.input('defense_date', sql.Date, data.defense_date || null).query(`
-      INSERT INTO councils (id, round_id, name, specialty_group, location, defense_date, status, created_by)
-      VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(15), await genCouncilId(tx, data.round_id))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('round_id', sql.VarChar(10), data.round_id)
+				.input('name', sql.NVarChar(255), data.name)
+				.input('specialty_group', sql.NVarChar(100), data.specialty_group || null)
+				.input('location', sql.NVarChar(255), data.location || null)
+				.input('defense_date', sql.Date, data.defense_date || null),
+			[
+				`INSERT INTO councils (id, round_id, name, specialty_group, location, defense_date, status, created_by)
+      VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	const council = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'council' });
@@ -216,12 +220,14 @@ const update = async (id, data, actorId) => {
 
 const remove = async (id, actorId) => {
 	await withActorTransaction(actorId, (tx) =>
-		tx.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId)
-			.query(`
-      UPDATE topics SET council_id = NULL WHERE council_id = @id;
-      DELETE FROM council_members WHERE council_id = @id;
-      DELETE FROM councils WHERE id = @id;
-    `),
+		queryBatch(
+			tx.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId),
+			[
+				`UPDATE topics SET council_id = NULL WHERE council_id = @id`,
+				`DELETE FROM council_members WHERE council_id = @id`,
+				`DELETE FROM councils WHERE id = @id`,
+			],
+		),
 	);
 	broadcast('update', { entity: 'council' });
 };
@@ -250,18 +256,21 @@ const getMemberById = async (memberId) => {
 // (ngoài viện) — ràng buộc bởi CK_council_members_seat_owner ở DB.
 const addMember = async (councilId, data, actorId) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(25), await genCouncilMemberId(tx, councilId))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('council_id', sql.VarChar(15), councilId)
-			.input('user_id', sql.VarChar(20), data.user_id || null)
-			.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id || null)
-			.input('role', sql.VarChar(15), data.role).query(`
-      INSERT INTO council_members (id, council_id, user_id, external_reviewer_id, role, created_by)
-      VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id);
-      SELECT @new_id AS id;
-    `),
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(25), await genCouncilMemberId(tx, councilId))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('council_id', sql.VarChar(15), councilId)
+				.input('user_id', sql.VarChar(20), data.user_id || null)
+				.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id || null)
+				.input('role', sql.VarChar(15), data.role),
+			[
+				`INSERT INTO council_members (id, council_id, user_id, external_reviewer_id, role, created_by)
+      VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id)`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(result.recordset[0].id);

@@ -8,6 +8,7 @@ const {
 	outerApply,
 	ilike,
 	likeCi,
+	queryBatch,
 } = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -163,36 +164,38 @@ const getById = async (id, actor = null) => {
 // opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
 const create = async (data, actorId, { fetch = true } = {}) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
-		tx
-			.request()
-			.input('new_id', sql.VarChar(20), await genTraineeId(tx, undefined, actorId))
-			.input('actor_id', sql.VarChar(20), actorId)
-			.input('full_name', sql.NVarChar(150), data.full_name)
-			.input('dob', sql.Date, data.dob || null)
-			.input('gender', sql.VarChar(10), normalizeGender(data.gender))
-			.input('national_id', sql.VarChar(20), data.national_id || null)
-			.input('phone', sql.VarChar(20), data.phone || null)
-			.input('email', sql.VarChar(100), data.email || null)
-			.input('address', sql.NVarChar(255), data.address || null)
-			.input('permanent_address', sql.NVarChar(255), data.permanent_address || null)
-			.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null)
-			.input('department_id', sql.VarChar(20), data.department_id || null)
-			.input('national_id_issued_date', sql.Date, data.national_id_issued_date || null)
-			.input('national_id_issued_place', sql.NVarChar(200), data.national_id_issued_place || null)
-			.input('graduated_school', sql.NVarChar(200), data.graduated_school || null)
-			.input('graduated_year', sql.SmallInt, data.graduated_year || null)
-			.input('workplace', sql.NVarChar(200), data.workplace || null)
-			.input('position', sql.NVarChar(100), data.position || null)
-			.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
-			.input('qualification', sql.NVarChar(150), data.qualification || null)
-			.input('birth_province', sql.NVarChar(100), data.birth_province || null)
-			.input('graduated_date', sql.Date, data.graduated_date || null)
-			.input('degree_issued_date', sql.Date, data.degree_issued_date || null)
-			.input('legacy_code', sql.NVarChar(30), data.legacy_code || null)
-			.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
-			.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
-			.input('is_employee', sql.Bit, !!data.is_employee).query(`
-      INSERT INTO trainees (
+		queryBatch(
+			tx
+				.request()
+				.input('new_id', sql.VarChar(20), await genTraineeId(tx, undefined, actorId))
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('full_name', sql.NVarChar(150), data.full_name)
+				.input('dob', sql.Date, data.dob || null)
+				.input('gender', sql.VarChar(10), normalizeGender(data.gender))
+				.input('national_id', sql.VarChar(20), data.national_id || null)
+				.input('phone', sql.VarChar(20), data.phone || null)
+				.input('email', sql.VarChar(100), data.email || null)
+				.input('address', sql.NVarChar(255), data.address || null)
+				.input('permanent_address', sql.NVarChar(255), data.permanent_address || null)
+				.input('trainee_type_id', sql.VarChar(20), data.trainee_type_id || null)
+				.input('department_id', sql.VarChar(20), data.department_id || null)
+				.input('national_id_issued_date', sql.Date, data.national_id_issued_date || null)
+				.input('national_id_issued_place', sql.NVarChar(200), data.national_id_issued_place || null)
+				.input('graduated_school', sql.NVarChar(200), data.graduated_school || null)
+				.input('graduated_year', sql.SmallInt, data.graduated_year || null)
+				.input('workplace', sql.NVarChar(200), data.workplace || null)
+				.input('position', sql.NVarChar(100), data.position || null)
+				.input('avatar_url', sql.NVarChar(500), data.avatar_url || null)
+				.input('qualification', sql.NVarChar(150), data.qualification || null)
+				.input('birth_province', sql.NVarChar(100), data.birth_province || null)
+				.input('graduated_date', sql.Date, data.graduated_date || null)
+				.input('degree_issued_date', sql.Date, data.degree_issued_date || null)
+				.input('legacy_code', sql.NVarChar(30), data.legacy_code || null)
+				.input('notes', sql.NVarChar(sql.MAX), data.notes || null)
+				.input('is_active', sql.Bit, data.is_active !== undefined ? !!data.is_active : true)
+				.input('is_employee', sql.Bit, !!data.is_employee),
+			[
+				`INSERT INTO trainees (
         id, full_name, dob, gender, national_id, phone, email, address, permanent_address, trainee_type_id, department_id,
         national_id_issued_date, national_id_issued_place, graduated_school, graduated_year, workplace, position, avatar_url,
         qualification, notes, is_active, is_employee,
@@ -205,9 +208,10 @@ const create = async (data, actorId, { fetch = true } = {}) => {
         @qualification, @notes, @is_active, @is_employee,
         @birth_province, @graduated_date, @degree_issued_date, @legacy_code,
         @actor_id
-      );
-      SELECT @new_id AS id;
-    `),
+      )`,
+				`SELECT @new_id AS id`,
+			],
+		),
 	);
 	const id = result.recordset[0].id;
 	await personService.syncPerson('trainees', id, { actorId });

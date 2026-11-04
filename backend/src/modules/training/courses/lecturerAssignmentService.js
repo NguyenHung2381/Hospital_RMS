@@ -6,6 +6,7 @@ const {
 	nowSql,
 	formatDate,
 	castBool,
+	queryBatch,
 } = require('../../../config/db');
 const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -145,19 +146,22 @@ const insertAssignment = async (
 	tx,
 	{ courseId, lecturerId, subjectId, role, hours, note, actorId },
 ) =>
-	new sql.Request(tx)
-		.input('new_id', sql.VarChar(20), await genLecturerAssignmentId(tx))
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('lecturer_id', sql.VarChar(20), lecturerId)
-		.input('subject_id', sql.VarChar(20), subjectId || null)
-		.input('role', sql.VarChar(10), role === 'assistant' ? 'assistant' : 'main')
-		.input('hours', sql.Int, hours ?? null)
-		.input('note', sql.NVarChar(255), note || null).query(`
-      INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, role, hours, note, created_by)
-      VALUES (@new_id, @course_id, @lecturer_id, @subject_id, @role, @hours, @note, @actor_id);
-      SELECT @new_id AS id;
-    `);
+	queryBatch(
+		new sql.Request(tx)
+			.input('new_id', sql.VarChar(20), await genLecturerAssignmentId(tx))
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('lecturer_id', sql.VarChar(20), lecturerId)
+			.input('subject_id', sql.VarChar(20), subjectId || null)
+			.input('role', sql.VarChar(10), role === 'assistant' ? 'assistant' : 'main')
+			.input('hours', sql.Int, hours ?? null)
+			.input('note', sql.NVarChar(255), note || null),
+		[
+			`INSERT INTO lecturer_assignments (id, course_id, lecturer_id, subject_id, role, hours, note, created_by)
+      VALUES (@new_id, @course_id, @lecturer_id, @subject_id, @role, @hours, @note, @actor_id)`,
+			`SELECT @new_id AS id`,
+		],
+	);
 
 const toHours = (v) => {
 	if (v === undefined || v === null || v === '') return null;

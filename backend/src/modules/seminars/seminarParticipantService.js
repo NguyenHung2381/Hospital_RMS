@@ -18,6 +18,7 @@ const {
 	nowSql,
 	utcNowSql,
 	outerApply,
+	queryBatch,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -306,11 +307,11 @@ const update = async (seminarId, pid, data, actorId) => {
 		req.input('participation_type', sql.VarChar(20), normType(data.participation_type));
 	}
 
-	const r = await req.query(`
-    UPDATE seminar_participants SET ${sets.join(', ')}
-    WHERE id = @pid AND seminar_id = @sid;
-    SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
-  `);
+	const r = await queryBatch(req, [
+		`UPDATE seminar_participants SET ${sets.join(', ')}
+    WHERE id = @pid AND seminar_id = @sid`,
+		`SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
+	]);
 	await personService.syncPerson('seminar_participants', pid, { actorId });
 	broadcast('update', { entity: 'seminar' });
 	return r.recordset[0] || null;
