@@ -25,6 +25,7 @@
     "redact:activity-logs": "node scripts/redact-activity-logs.js",
     "sync:upload-paths": "node scripts/sync-upload-paths.js",
     "migrate": "node scripts/migrate.js",
+    "init:system": "node scripts/init-system.js",
     "pg:transfer": "node scripts/pg-transfer/index.js",
     "import:staff": "node scripts/import-staff.js",
     "test:pg": "node --test --test-force-exit --test-concurrency=1 \"test-integration-pg/**/*.test.js\""

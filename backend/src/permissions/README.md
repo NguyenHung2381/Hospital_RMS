@@ -39,7 +39,7 @@ npm run check:routes -- --list            # bảng mọi route và quyền của
 npm run sync:permissions -- --dry-run     # xem trước đồng bộ catalog → bảng permissions
 ```
 
-Vai trò mẫu cho test ma trận nằm ở `test/permissions/fixtures/role-templates.json`: ảnh chụp quyền của 8 vai trò hệ thống, không đọc DB. Khi đổi quyền của vai trò hệ thống có chủ đích, chụp lại fixture và sửa bảng `EXPECT` trong cùng commit.
+Quyền mặc định của 8 vai trò hệ thống nằm ở `database/seed/system-roles.json`. File này dùng cho 2 việc: `npm run init:system` tạo các vai trò này trên DB mới, và test ma trận vai trò × route đọc nó (không đọc DB). Khi đổi quyền của vai trò hệ thống có chủ đích, sửa file này và bảng `EXPECT` trong cùng commit. DB đang chạy không tự đổi theo: sửa ở màn Phân quyền.
 
 ## Nâng cấp CSDL
 

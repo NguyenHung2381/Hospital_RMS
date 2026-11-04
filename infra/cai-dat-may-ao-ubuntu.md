@@ -23,6 +23,55 @@ PostgreSQL 18 có bản chính thức cho cả Ubuntu 24.04 và 26.04 (kho PGDG)
 
 ---
 
+## Cài bằng 1 lệnh
+
+`scripts/setup-server.sh` làm tự động các bước **4 → 15** dưới đây. Bạn chỉ cần làm tay bước 1–3 (tạo máy ảo, cài Ubuntu, SSH bằng khoá).
+
+**Trên máy của bạn**, chép script lên máy ảo (repo private nên chưa clone được trên máy ảo):
+
+```bash
+scp scripts/setup-server.sh rms:~
+```
+
+**Trên máy ảo:**
+
+```bash
+tmux new -s rms
+bash ~/setup-server.sh
+```
+
+Script hỏi vài câu ở đầu rồi tự chạy hết (lần đầu 20–40 phút, phần lâu nhất là build image):
+
+| Câu hỏi | Ý nghĩa |
+|---|---|
+| Ổ dùng làm `/data` | Script liệt kê các ổ **chưa phân vùng, chưa có dữ liệu** và bắt gõ lại tên ổ trước khi format. Ổ đã có phân vùng/dữ liệu thì không bao giờ bị format. `none` = để `/data` trên ổ hệ điều hành |
+| Cách truy cập web | `ip` (thử bằng `http://<IP-VM>:8084`), `proxy` (reverse proxy HTTPS của bệnh viện ở máy khác), `letsencrypt` (dựng HTTPS ngay trên máy ảo) |
+| Số worker, ClamAV | Mặc định theo số vCPU và RAM của máy |
+| Database | `new` (hệ thống mới, DB trống) hoặc `transfer` (chuyển từ file `.bak` SQL Server, bước 7). Chưa chép file `.bak` lên thì script chờ bạn chép |
+| Khoá SSH bằng mật khẩu | Chỉ hỏi khi `~/.ssh/authorized_keys` đã có khoá (bước 3.5) |
+
+Giữa chừng script dừng chờ 1 lần: in **deploy key** để bạn thêm vào GitHub (bước 10), thêm xong nhấn Enter.
+
+Kết quả:
+
+- Mật khẩu `rms_migrate` / `rms_app` tự sinh, **không in ra màn hình**: nằm ở `~/.pgpass` và `/data/code/Hospital_RMS/backend/.env.production`. Chép vào nơi quản lý mật khẩu của viện.
+- Câu trả lời lưu ở `~/.config/rms-setup.env`, log ở `~/rms-setup.log`.
+- **Chạy lại an toàn**: lỗi ở bước nào thì sửa rồi chạy lại, các bước đã xong được bỏ qua; không ghi đè file `.env`, không format lại ổ, không đổi mật khẩu đã có.
+
+```bash
+bash ~/setup-server.sh --list             # tên các bước
+bash ~/setup-server.sh https              # chỉ chạy lại 1 bước, vd sau khi trỏ domain
+REBUILD=1 bash ~/setup-server.sh build start
+```
+
+Tài khoản quản trị đầu tiên tên `admin` (đổi bằng biến `ADMIN_USERNAME`): **mật khẩu tạm in 1 lần** ở bước *Vai trò hệ thống và tài khoản quản trị đầu tiên*, bắt đổi ở lần đăng nhập đầu. Mật khẩu này cũng nằm trong `~/rms-setup.log` (chỉ chủ file đọc được) và hết tác dụng sau khi bạn đổi.
+
+Script **không** làm: IP tĩnh (4.2), GitHub runner cho CI/CD (15). Chạy không hỏi (đặt sẵn mọi câu trả lời bằng biến môi trường): xem đầu file script.
+
+Phần còn lại của tài liệu giải thích từng bước script làm, để làm tay hoặc xử lý khi script báo lỗi.
+
+---
+
 ## Mục lục
 
 1. [Yêu cầu máy ảo](#1-yêu-cầu-máy-ảo)
@@ -717,8 +766,18 @@ for cmd in up status; do
     -e DB_USER=rms_migrate -e DB_PASSWORD \
     backend node scripts/migrate.js $cmd
 done
+```
+
+Hệ thống mới (trường hợp a) chưa có vai trò nào, chưa ai đăng nhập được. Tạo 8 vai trò hệ thống (quyền mặc định ở `backend/database/seed/system-roles.json`) và tài khoản quản trị đầu tiên:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm --no-deps -T \
+  -e DB_USER=rms_migrate -e DB_PASSWORD \
+  backend node scripts/init-system.js --username=admin
 unset DB_PASSWORD
 ```
+
+Lệnh in **mật khẩu tạm 1 lần duy nhất**: chép lại, đăng nhập và đổi mật khẩu trong 7 ngày. Quên hoặc quá hạn: chạy lại lệnh trên với thêm `--reset-admin` (cấp mật khẩu tạm mới, mở khoá, đăng xuất mọi phiên). Lệnh chạy lại an toàn: vai trò đã có thì không đụng tới quyền, đã có quản trị thì không tạo thêm, nên chạy ở trường hợp b) cũng không sao.
 
 ### 12.3. Khởi động
 

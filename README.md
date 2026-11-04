@@ -90,7 +90,7 @@ Nhóm người dùng chính:
 ### Yêu cầu
 
 - **Node.js** ≥ 20 LTS, **npm** ≥ 9
-- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init` (thư mục `backend`).
+- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init`, rồi tạo vai trò hệ thống + tài khoản quản trị đầu tiên bằng `npm run init:system` (in mật khẩu tạm 1 lần; thư mục `backend`).
 - **Redis** (tuỳ chọn): không có Redis thì server vẫn chạy, chỉ bỏ qua cache.
 
 ### Cài đặt và chạy
@@ -272,6 +272,8 @@ Trình duyệt ──https──► Reverse proxy HTTPS (nginx trên host…, gi
 | `redis` | – | Không publish port, chỉ dùng trong mạng Docker. Bắt buộc mật khẩu, tự sinh lần đầu vào volume `redis_secret` |
 
 Mọi service đều có `restart: unless-stopped`, tự khởi động lại cùng Docker.
+
+> **Máy Ubuntu mới cài:** `scripts/setup-server.sh` làm hết các bước dưới đây (cùng PostgreSQL, Docker, ổ `/data`, firewall, HTTPS, sao lưu) bằng 1 lệnh. Xem mục *Cài bằng 1 lệnh* trong [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md#cài-bằng-1-lệnh).
 
 #### Bước 1: Chuẩn bị PostgreSQL
 

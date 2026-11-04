@@ -1,8 +1,8 @@
 // Ma trận phân quyền: vai trò mẫu × route. Nạp app thật, chạy đúng các guard
 // authorizePermission của từng route (không gọi handler, không cần DB).
 //
-// Vai trò mẫu = fixtures/role-templates.json (ảnh chụp quyền của 8 vai trò hệ
-// thống). Đổi quyền của vai trò mẫu có chủ đích → cập nhật fixture + bảng
+// Vai trò mẫu = database/seed/system-roles.json (quyền của 8 vai trò hệ
+// thống). Đổi quyền của vai trò mẫu có chủ đích → cập nhật file đó + bảng
 // EXPECT bên dưới trong cùng commit — bảng này chính là đặc tả chính sách.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const app = require('../../src/app');
 const { hasPermission } = require('../../src/middlewares/auth');
 const { isKnownKey } = require('../../src/permissions/catalog');
 const policy = require('../../src/permissions/routePolicy');
-const TEMPLATES = require('./fixtures/role-templates.json');
+const TEMPLATES = require('../../database/seed/system-roles.json');
 
 const API = '/api/v1';
 const routes = listRoutes(app);
