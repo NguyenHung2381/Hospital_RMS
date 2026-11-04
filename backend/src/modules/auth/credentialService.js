@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-const { sql, updateReturning, nowSql, utcNowSql } = require('../../config/db');
+const { sql, updateReturning, nowSql, utcNowSql, dateAdd } = require('../../config/db');
 const redis = require('../../config/redis');
 const securityEvents = require('../audit/securityEventService');
 const { passwordGate, BUSY_ERROR } = require('../../utils/cpuGate');
@@ -49,7 +49,7 @@ const lockMinutesFor = async (pool, userId) => {
 	const result = await pool.request().input('id', sql.VarChar(50), userId).query(`
 			SELECT COUNT(*) AS locks FROM security_events
 			WHERE event_type = 'login_locked' AND target_id = @id
-				AND created_at > DATEADD(HOUR, -24, ${nowSql})
+				AND created_at > ${dateAdd('HOUR', -24, nowSql)}
 		`);
 	const level = Math.min(result.recordset[0].locks, LOCK_MINUTES_BY_LEVEL.length - 1);
 	return LOCK_MINUTES_BY_LEVEL[level];
@@ -70,7 +70,7 @@ const recordFailedLogin = async (pool, user, ip, reason = 'sai mật khẩu') =>
 			${updateReturning(
 				`UPDATE users SET
 				locked_until = CASE WHEN failed_login_count + 1 >= @max
-					THEN DATEADD(MINUTE, @minutes, ${utcNowSql}) ELSE locked_until END,
+					THEN ${dateAdd('MINUTE', '@minutes', utcNowSql)} ELSE locked_until END,
 				failed_login_count = CASE WHEN failed_login_count + 1 >= @max
 					THEN 0 ELSE failed_login_count + 1 END`,
 				'id = @id',

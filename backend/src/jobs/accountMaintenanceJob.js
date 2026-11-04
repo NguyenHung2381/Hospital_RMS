@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, nowSql } = require('../config/db');
+const { getPool, sql, withTransaction, nowSql, dateDiff } = require('../config/db');
 const notificationService = require('../modules/notifications/notificationService');
 const { markOnce } = require('./dedupe');
 const { todayKeyVN, todayVN } = require('../utils/vnDate');
@@ -49,7 +49,7 @@ const warnStalePasswords = async (pool) => {
 			FROM users
 			WHERE is_active = 'true'
 			  AND password_changed_at IS NOT NULL
-			  AND DATEDIFF(DAY, password_changed_at, ${nowSql}) >= @days
+			  AND ${dateDiff('DAY', 'password_changed_at', nowSql)} >= @days
 		`)
 	).recordset;
 

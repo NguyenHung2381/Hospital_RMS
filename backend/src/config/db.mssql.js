@@ -211,6 +211,21 @@ const crossApply = (subquery, alias) => `CROSS APPLY (${subquery}) ${alias}`;
 /** @param {string} subquery @param {string} alias */
 const outerApply = (subquery, alias) => `OUTER APPLY (${subquery}) ${alias}`;
 
+// Cộng / trừ thời gian và đếm khoảng cách (cùng tên ở db.pg.js). unit: SECOND | MINUTE | HOUR |
+// DAY | MONTH | YEAR; n: số, tham số ('@days', '-@days') hoặc biểu thức SQL. dateDiff đếm số
+// mốc ranh giới đi qua như DATEDIFF của SQL Server (DAY: 23:59 → 00:01 hôm sau = 1).
+const DATE_UNITS = ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'MONTH', 'YEAR'];
+/** @param {string} unit */
+const dateUnit = (unit) => {
+	const u = String(unit).toUpperCase();
+	if (!DATE_UNITS.includes(u)) throw new Error(`đơn vị thời gian không hợp lệ: ${unit}`);
+	return u;
+};
+/** @param {string} unit @param {string | number} n @param {string} expr */
+const dateAdd = (unit, n, expr) => `DATEADD(${dateUnit(unit)}, ${n}, ${expr})`;
+/** @param {string} unit @param {string} from @param {string} to */
+const dateDiff = (unit, from, to) => `DATEDIFF(${dateUnit(unit)}, ${from}, ${to})`;
+
 const nowSql = 'GETDATE()';
 const utcNowSql = 'SYSUTCDATETIME()';
 const vnTodaySql = 'CAST(DATEADD(HOUR, 7, SYSUTCDATETIME()) AS DATE)';
@@ -258,6 +273,8 @@ module.exports = {
 	newIdSql,
 	crossApply,
 	outerApply,
+	dateAdd,
+	dateDiff,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

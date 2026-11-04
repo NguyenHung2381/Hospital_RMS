@@ -109,7 +109,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `TOP n` | 71 (45) → 1 (nhãn Excel, không phải SQL) | `ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` (chạy cả 2 DB) |
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
-| `DATEADD` / `DATEDIFF` | 31 (18) | `+ interval '...'`, `date_part`, phép trừ ngày |
+| `DATEADD` / `DATEDIFF` | 31 (18) → 0 | `dateAdd` / `dateDiff` của adapter (PG: `+ n * interval`, `date - date`, `date_trunc`) |
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
@@ -251,8 +251,8 @@ như thể giờ đó là UTC**. Cách làm:
 | `a + b` (nối chuỗi) | `a \|\| b` hoặc `concat(a, b)` | `CONCAT(a, b)` ✓ |
 | `CAST(x AS NVARCHAR(20))` | `x::text` | `CAST(x AS VARCHAR(20))` ✓ |
 | `IIF`, `CASE` | `CASE` | `CASE` ✓ |
-| `DATEADD(day, n, d)` | `d + n * interval '1 day'` | ✗ |
-| `DATEDIFF(day, a, b)` | `b::date - a::date` | ✗ |
+| `DATEADD(day, n, d)` | `d + n * interval '1 day'` | ✓ qua adapter: `${dateAdd('DAY', n, 'd')}` |
+| `DATEDIFF(day, a, b)` | `b::date - a::date` | ✓ qua adapter: `${dateDiff('DAY', a, b)}` |
 | `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✗ — nên định dạng ở JS |
 | `OUTPUT INSERTED.*` | `RETURNING *` | ✗ |
 | `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
@@ -543,6 +543,16 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   đúng; `roleService.getAll`, báo cáo tuân thủ CME, đơn nghỉ, đợt đăng ký). Các hàm khác có APPLY còn
   vướng mục khác trên PG: `DATEADD` (hạn bổ sung, phân trang người dùng), `YEAR` (báo cáo đào tạo),
   nối chuỗi `+` (danh sách học viên theo loại khóa). Tổng ratchet 200 → 177.
+- [x] `DATEADD` / `DATEDIFF` (date_fn 21 → 0): helper `dateAdd(unit, n, expr)` / `dateDiff(unit, from, to)` của
+  adapter (unit SECOND / MINUTE / HOUR / DAY / MONTH / YEAR; `n` là số, tham số `'-@days'` hoặc biểu thức).
+  - PG: `dateAdd` → `(expr + (n) * INTERVAL '1 unit')` (date + interval ra timestamp, so sánh với cột date /
+    timestamp vẫn đúng; 31/3 lùi 1 tháng = 28/2 như SQL Server). `dateDiff` đếm mốc ranh giới như DATEDIFF:
+    DAY = `date - date`, SECOND / MINUTE / HOUR = hiệu sau `date_trunc` (MONTH / YEAR chưa hỗ trợ — báo lỗi).
+  - 21 chỗ đổi bằng script; hạn bổ sung đề tài bỏ `CAST(… AS DATETIME2)` (so date với datetime2 SQL Server
+    tự hiểu 0 giờ, PG `date + interval` ra timestamp 0 giờ — cùng kết quả).
+  - Ratchet `date_fn` phân biệt hoa / thường để không đếm tên helper. Tổng 176 → 155.
+  - Kiểm bằng ca "dateAdd / dateDiff" trong `test-integration/batchSplit.cases.js` (2 DB); PG bật thêm ca
+    phân trang người dùng và xoá thông báo theo lô.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

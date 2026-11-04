@@ -369,6 +369,32 @@ const crossApply = (subquery, alias) => `CROSS JOIN LATERAL (${subquery}) ${alia
 /** @param {string} subquery @param {string} alias */
 const outerApply = (subquery, alias) => `LEFT JOIN LATERAL (${subquery}) ${alias} ON true`;
 
+// Cộng / trừ thời gian và đếm khoảng cách (cùng tên ở db.mssql.js). unit: SECOND | MINUTE | HOUR |
+// DAY | MONTH | YEAR; n: số, tham số ('@days', '-@days') hoặc biểu thức SQL. dateDiff đếm số
+// mốc ranh giới đi qua như DATEDIFF của SQL Server (DAY: 23:59 → 00:01 hôm sau = 1).
+const DATE_UNITS = ['SECOND', 'MINUTE', 'HOUR', 'DAY', 'MONTH', 'YEAR'];
+/** @param {string} unit */
+const dateUnit = (unit) => {
+	const u = String(unit).toUpperCase();
+	if (!DATE_UNITS.includes(u)) throw new Error(`đơn vị thời gian không hợp lệ: ${unit}`);
+	return u;
+};
+// PG: date + interval ra timestamp (SQL Server giữ date) — chỉ khác kiểu, so sánh với cột
+// date / timestamp vẫn đúng.
+/** @param {string} unit @param {string | number} n @param {string} expr */
+const dateAdd = (unit, n, expr) =>
+	`(${expr} + (${n}) * INTERVAL '1 ${dateUnit(unit).toLowerCase()}')`;
+const DIFF_SECONDS = { SECOND: 1, MINUTE: 60, HOUR: 3600 };
+/** @param {string} unit @param {string} from @param {string} to */
+const dateDiff = (unit, from, to) => {
+	const u = dateUnit(unit);
+	if (u === 'DAY') return `(CAST(${to} AS DATE) - CAST(${from} AS DATE))`;
+	const sec = DIFF_SECONDS[/** @type {keyof typeof DIFF_SECONDS} */ (u)];
+	if (!sec) throw new Error(`dateDiff chưa hỗ trợ đơn vị ${u} trên PG`);
+	const t = u.toLowerCase();
+	return `CAST(EXTRACT(EPOCH FROM date_trunc('${t}', ${to}) - date_trunc('${t}', ${from})) / ${sec} AS INTEGER)`;
+};
+
 const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
 const utcNowSql = "(now() AT TIME ZONE 'UTC')";
 const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
@@ -417,6 +443,8 @@ module.exports = {
 	newIdSql,
 	crossApply,
 	outerApply,
+	dateAdd,
+	dateDiff,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

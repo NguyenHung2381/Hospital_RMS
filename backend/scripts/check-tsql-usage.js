@@ -65,8 +65,9 @@ const PATTERNS = [
 	{ key: 'for_json', re: /\bFOR\s+JSON\b/gi, pg: 'json_agg' },
 	{
 		key: 'date_fn',
-		re: /\b(DATEADD|DATEDIFF|DATEDIFF_BIG|DATEPART|DATENAME|DATEFROMPARTS|EOMONTH)\s*\(/gi,
-		pg: 'interval / date_part',
+		// Phân biệt hoa/thường: helper dateAdd / dateDiff của adapter không tính
+		re: /\b(DATEADD|DATEDIFF|DATEDIFF_BIG|DATEPART|DATENAME|DATEFROMPARTS|EOMONTH)\s*\(/g,
+		pg: 'dateAdd / dateDiff (adapter)',
 	},
 	{ key: 'within_group', re: /\bWITHIN\s+GROUP\b/gi, pg: 'string_agg(x, sep ORDER BY ...)' },
 	{ key: 'apply', re: /\b(CROSS|OUTER)\s+APPLY\b/gi, pg: 'crossApply / outerApply (adapter)' },

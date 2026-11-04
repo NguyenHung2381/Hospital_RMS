@@ -153,6 +153,34 @@ const run = async (t, db, { skip = [] } = {}) => {
 		},
 	);
 
+	// DATEADD / DATEDIFF qua dateAdd / dateDiff của adapter (PG: interval, date_trunc)
+	await step('dateAdd / dateDiff: cộng trừ, mốc ranh giới, cuối tháng', async () => {
+		const { dateAdd: add, dateDiff: diff, nowSql } = db;
+		const req = new sql.Request(tx)
+			.input('a', sql.DateTime2, new Date('2026-01-01T23:59:30Z'))
+			.input('b', sql.DateTime2, new Date('2026-01-02T00:01:10Z'))
+			.input('days', sql.Int, 3)
+			.input('d', sql.Date, new Date('2026-03-31T00:00:00Z'));
+		const [r] = (
+			await req.query(`
+        SELECT ${diff('DAY', '@a', '@b')} AS day_boundary, ${diff('SECOND', '@a', '@b')} AS sec,
+               ${diff('MINUTE', '@a', '@b')} AS min_boundary,
+               ${diff('DAY', add('DAY', '-@days', nowSql), nowSql)} AS minus_days,
+               ${add('MINUTE', 90, '@a')} AS plus_90m, ${add('MONTH', -1, '@d')} AS month_back,
+               CASE WHEN @b >= ${add('DAY', 1, '@d')} THEN 1 ELSE 0 END AS after_next_day`)
+		).recordset;
+		assert.equal(Number(r.day_boundary), 1); // 23:59 → 00:01 hôm sau
+		assert.equal(Number(r.sec), 100);
+		assert.equal(Number(r.min_boundary), 2);
+		assert.equal(Number(r.minus_days), 3);
+		assert.equal(r.plus_90m.toISOString(), '2026-01-02T01:29:30.000Z');
+		assert.equal(r.month_back.toISOString().slice(0, 10), '2026-02-28'); // 31/3 lùi 1 tháng
+		assert.equal(Number(r.after_next_day), 0);
+		assert.throws(() => add('WEEK', 1, '@a'));
+		// Dịch vụ dùng dateAdd (hạn bổ sung đề tài)
+		await require('../src/jobs/supplementDeadlineJob').findOverdue(new Date());
+	});
+
 	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {
 		const [cnt] = await q(`
       SELECT SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS on_n,

@@ -7,7 +7,7 @@
  *   - Hủy: chỉ dòng mình tự đăng ký, chưa điểm danh, trước ngày học, và khoa mình
  *     không thuộc khoa bắt buộc (khoa bắt buộc do phòng Đào tạo thêm cả khoa).
  */
-const { getPool, sql, boolExpr, vnTodaySql, outerApply } = require('../../config/db');
+const { getPool, sql, boolExpr, vnTodaySql, outerApply, dateAdd } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { HOSPITAL_TRAINING_SQL } = require('./hospitalTraining');
 const participantService = require('./seminarParticipantService');
@@ -51,7 +51,7 @@ const listForMe = async (userId) => {
 	const r = await pool.request().input('uid', sql.VarChar(20), userId).query(`
     ${SELECT_SQL}
       AND (s.start_date IS NULL OR COALESCE(s.end_date, s.start_date) >= ${VN_TODAY}
-           OR (p.id IS NOT NULL AND COALESCE(s.end_date, s.start_date) >= DATEADD(DAY, -180, ${VN_TODAY})))
+           OR (p.id IS NOT NULL AND COALESCE(s.end_date, s.start_date) >= ${dateAdd('DAY', -180, VN_TODAY)}))
     ORDER BY CASE WHEN s.start_date IS NULL THEN 1 ELSE 0 END, s.start_date, s.start_time, s.title`);
 	return r.recordset.map(withActions);
 };

@@ -1,4 +1,4 @@
-const { getPool, sql, crossApply } = require('../config/db');
+const { getPool, sql, crossApply, dateAdd } = require('../config/db');
 const topicApprovalService = require('../modules/topics/topicApprovalService');
 const { markOnce } = require('./dedupe');
 const { todayVN, fmtDateVN } = require('../utils/vnDate');
@@ -26,7 +26,7 @@ const findOverdue = async (today) => {
 	const r = await pool.request().input('today', sql.Date, today).query(`
     SELECT t.id, dl.id AS deadline_id, dl.name AS deadline_name, dl.deadline_date,
            a.updated_by AS requested_by,
-           CASE WHEN a.updated_at >= DATEADD(DAY, 1, CAST(dl.deadline_date AS DATETIME2))
+           CASE WHEN a.updated_at >= ${dateAdd('DAY', 1, 'dl.deadline_date')}
                 THEN 1 ELSE 0 END AS requested_after_deadline
     FROM topics t
     ${crossApply(

@@ -14,6 +14,7 @@ const {
 	updateReturning,
 	nowSql,
 	utcNowSql,
+	dateDiff,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { lazyRequire } = require('../../utils/lazyRequire');
@@ -232,7 +233,7 @@ const loadTicket = async (code) => {
 	const pool = await getPool();
 	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
       SELECT p.id AS participant_id, p.ticket_code, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
-             p.test_started_at, DATEDIFF(SECOND, p.test_started_at, ${nowSql}) AS test_elapsed_sec,
+             p.test_started_at, ${dateDiff('SECOND', 'p.test_started_at', nowSql)} AS test_elapsed_sec,
              p.test_submitted_at, p.test_correct, p.test_total, p.test_score, p.test_max_score,
              p.cme_certificate_no, p.cme_year, p.cme_credits,
              ${SEMINAR_TEST_COLS}, ${SEMINAR_PUBLIC_COLS}

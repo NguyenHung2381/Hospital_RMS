@@ -10,6 +10,7 @@ const {
 	queryAll,
 	nowSql,
 	utcNowSql,
+	dateDiff,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -74,7 +75,7 @@ const getGlobalStats = async (pool) => {
       SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS active,
       SUM(CASE WHEN is_active = 'false' THEN 1 ELSE 0 END) AS inactive,
       SUM(CASE WHEN password_changed_at IS NULL
-               OR DATEDIFF(day, password_changed_at, ${nowSql}) > 90
+               OR ${dateDiff('DAY', 'password_changed_at', nowSql)} > 90
           THEN 1 ELSE 0 END) AS pwd_warn
     FROM users u
     WHERE ${notTraineeSql('u')};

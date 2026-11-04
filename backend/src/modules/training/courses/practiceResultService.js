@@ -9,7 +9,7 @@
  * Mọi lần ghi kết quả đi qua enrollmentRotationService.update (ghi result_by /
  * result_at / result_source).
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, dateAdd } = require('../../../config/db');
 const { scopeOf } = require('../../../permissions/authz');
 const { httpError } = require('../../../utils/httpError');
 const { todayKeyVN } = require('../../../utils/vnDate');
@@ -58,8 +58,8 @@ const listForMentor = async (userId) => {
 		.input('today', sql.Date, today).query(`
       ${ROW_SELECT}
       WHERE r.mentor_user_id = @me AND ${ACTIVE_SQL} AND r.start_date IS NOT NULL
-        AND ((r.result = 'pending' AND r.start_date <= DATEADD(day, 30, @today))
-          OR (r.result <> 'pending' AND r.result_at >= DATEADD(day, -60, @today)))
+        AND ((r.result = 'pending' AND r.start_date <= ${dateAdd('DAY', 30, '@today')})
+          OR (r.result <> 'pending' AND r.result_at >= ${dateAdd('DAY', -60, '@today')}))
       ORDER BY r.end_date, r.start_date, t.full_name`);
 	return r.recordset.map((x) => ({ ...x, phase: phaseOf(x, today) }));
 };

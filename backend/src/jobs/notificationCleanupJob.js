@@ -1,4 +1,4 @@
-const { getPool, sql, nowSql } = require('../config/db');
+const { getPool, sql, nowSql, dateAdd } = require('../config/db');
 const { markOnce } = require('./dedupe');
 const { todayKeyVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
@@ -24,8 +24,8 @@ const deleteBatch = async () => {
 		.input('unread_days', sql.Int, UNREAD_RETENTION_DAYS).query(`
       DELETE FROM notifications WHERE id IN (
         SELECT id FROM notifications
-        WHERE (is_read = 'true' AND created_at < DATEADD(DAY, -@read_days, ${nowSql}))
-           OR (is_read = 'false' AND created_at < DATEADD(DAY, -@unread_days, ${nowSql}))
+        WHERE (is_read = 'true' AND created_at < ${dateAdd('DAY', '-@read_days', nowSql)})
+           OR (is_read = 'false' AND created_at < ${dateAdd('DAY', '-@unread_days', nowSql)})
         ORDER BY id OFFSET 0 ROWS FETCH NEXT @batch ROWS ONLY)
     `);
 	return r.rowsAffected[0] ?? 0;

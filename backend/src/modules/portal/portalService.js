@@ -4,7 +4,7 @@
  * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
-const { getPool, sql, queryAll, vnTodaySql, crossApply } = require('../../config/db');
+const { getPool, sql, queryAll, vnTodaySql, crossApply, dateAdd } = require('../../config/db');
 const courseDocumentService = require('../training/courses/courseDocumentService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
@@ -89,7 +89,7 @@ const getMyTraining = async (actor) => {
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     WHERE sess.session_date >= ${VN_TODAY}
-      AND sess.session_date < DATEADD(DAY, ${UPCOMING_DAYS}, ${VN_TODAY})
+      AND sess.session_date < ${dateAdd('DAY', UPCOMING_DAYS, VN_TODAY)}
       AND (
         EXISTS (SELECT 1 FROM course_enrollments e JOIN trainees t ON t.id = e.trainee_id
                 WHERE e.course_id = c.id AND e.status = 'approved' AND ${TRAINEE_OF_USER_SQL('t')}

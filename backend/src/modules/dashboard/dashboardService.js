@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll, nowSql, crossApply } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql, crossApply, dateAdd } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const { todayVN } = require('../../utils/vnDate');
 const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
@@ -267,11 +267,11 @@ const getTrainingStats = async () =>
       (SELECT COUNT(*) FROM certificates WHERE status = 'active') AS certificates_issued,
       (SELECT COUNT(*) FROM certificates WHERE status = 'active'
          AND expiry_date >= CAST(${nowSql} AS DATE)
-         AND expiry_date <= DATEADD(DAY, 30, CAST(${nowSql} AS DATE))) AS certificates_expiring,
+         AND expiry_date <= ${dateAdd('DAY', 30, `CAST(${nowSql} AS DATE)`)}) AS certificates_expiring,
       (SELECT COUNT(*) FROM trainees WHERE YEAR(created_at) = YEAR(${nowSql})) AS trainees_this_year,
       (SELECT COUNT(*) FROM class_sessions
          WHERE session_date >= CAST(${nowSql} AS DATE)
-           AND session_date <= DATEADD(DAY, 7, CAST(${nowSql} AS DATE))) AS sessions_next_7_days
+           AND session_date <= ${dateAdd('DAY', 7, `CAST(${nowSql} AS DATE)`)}) AS sessions_next_7_days
 			`,
 			`
     -- Lịch học 7 ngày tới
@@ -281,7 +281,7 @@ const getTrainingStats = async () =>
     JOIN courses c ON c.id = sess.course_id
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
-    WHERE sess.session_date >= CAST(${nowSql} AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(${nowSql} AS DATE))
+    WHERE sess.session_date >= CAST(${nowSql} AS DATE) AND sess.session_date <= ${dateAdd('DAY', 7, `CAST(${nowSql} AS DATE)`)}
     ORDER BY sess.session_date, sess.start_time OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
 			`,
 			`
@@ -313,7 +313,7 @@ const getTrainingStats = async () =>
     -- lần gọi đầu khi CLR nguội tốn 76–1071ms (Query Store), CONVERT ~1ms.
     SELECT CONVERT(CHAR(7), registered_at, 126) AS month, COUNT(*) AS cnt
     FROM course_enrollments
-    WHERE registered_at >= DATEADD(MONTH, -11, CAST(${nowSql} AS DATE))
+    WHERE registered_at >= ${dateAdd('MONTH', -11, `CAST(${nowSql} AS DATE)`)}
     GROUP BY CONVERT(CHAR(7), registered_at, 126)
     ORDER BY month
 			`,

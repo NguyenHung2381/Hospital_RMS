@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPool, sql, nowSql, utcNowSql } = require('../../config/db');
+const { getPool, sql, nowSql, utcNowSql, dateAdd } = require('../../config/db');
 const mailService = require('../notifications/mailService');
 const secretBox = require('../../utils/secretBox');
 const credentialService = require('./credentialService');
@@ -30,7 +30,7 @@ const recentFailures = async (pool, userId) =>
 			.input('id', sql.VarChar(50), userId).query(`
 				SELECT COUNT(*) AS n FROM security_events
 				WHERE event_type = @type AND target_id = @id
-					AND created_at > DATEADD(HOUR, -24, ${nowSql})
+					AND created_at > ${dateAdd('HOUR', -24, nowSql)}
 			`)
 	).recordset[0].n;
 
@@ -70,7 +70,7 @@ const requestOtp = async (login) => {
 			.input('id', sql.VarChar(20), user.id)
 			.input('sec', sql.Int, RESEND_COOLDOWN_SEC)
 			.query(
-				`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > DATEADD(SECOND, -@sec, ${utcNowSql})`,
+				`SELECT 1 AS x FROM password_reset_otps WHERE user_id = @id AND created_at > ${dateAdd('SECOND', '-@sec', utcNowSql)}`,
 			)
 	).recordset[0];
 	if (recent) return;
@@ -84,7 +84,7 @@ const requestOtp = async (login) => {
 		.input('min', sql.Int, OTP_TTL_MIN).query(`
 			DELETE FROM password_reset_otps WHERE user_id = @id;
 			INSERT INTO password_reset_otps (user_id, code_hash, expires_at)
-			VALUES (@id, @hash, DATEADD(MINUTE, @min, ${utcNowSql}));
+			VALUES (@id, @hash, ${dateAdd('MINUTE', '@min', utcNowSql)});
 		`);
 
 	// Gửi nền, KHÔNG chờ: SMTP mất hàng trăm ms – vài giây và chỉ chạy khi tài
