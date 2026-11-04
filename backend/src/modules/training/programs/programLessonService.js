@@ -282,9 +282,9 @@ const reorderLessons = async (programId, linkIds, actorId) => {
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 			.input('program_id', sql.VarChar(20), programId)
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-        UPDATE lp SET display_order = j.idx, updated_at = ${nowSql}, updated_by = @actor_id
-        FROM lesson_programs lp JOIN ${jsonValues('@ids', { withIndex: true })} j ON j.value = lp.id
-        WHERE lp.program_id = @program_id
+        UPDATE lesson_programs SET display_order = j.idx, updated_at = ${nowSql}, updated_by = @actor_id
+        FROM ${jsonValues('@ids', { withIndex: true })} j
+        WHERE j.value = lesson_programs.id AND lesson_programs.program_id = @program_id
       `);
 	broadcast('update', { entity: 'program_lesson' });
 	return listLessons(programId);

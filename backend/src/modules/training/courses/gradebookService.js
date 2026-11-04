@@ -180,14 +180,14 @@ const recompute = async (courseId, enrollmentIds) => {
 	// 1 câu UPDATE cho cả lớp (trước đây 1 round-trip / học viên)
 	const pool = await getPool();
 	await pool.request().input('rows', sql.NVarChar(sql.MAX), JSON.stringify(updates)).query(`
-    UPDATE g SET score = j.score, result = j.result, classification = j.classification
-    FROM grades g
-    JOIN ${jsonRows('@rows', 'j', [
+    UPDATE grades SET score = j.score, result = j.result, classification = j.classification
+    FROM ${jsonRows('@rows', 'j', [
 			['id', 'VARCHAR(20)'],
 			['score', 'DECIMAL(5, 2)'],
 			['result', 'VARCHAR(20)'],
 			['classification', 'NVARCHAR(20)'],
-		])} ON j.id = g.id
+		])}
+    WHERE j.id = grades.id
   `);
 };
 
@@ -384,21 +384,29 @@ const lock = async (courseId, actorId) => {
 };
 
 const unlock = async (courseId, actorId, reason) => {
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('note', sql.NVarChar(255), reason ? `Mở khóa điểm: ${reason}` : 'Mở khóa điểm').query(`
-      UPDATE g SET locked_at = NULL, locked_by = NULL, updated_at = ${nowSql}, updated_by = @actor_id
-      FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
-      WHERE e.course_id = @course_id AND g.subject_id IS NULL AND g.locked_at IS NOT NULL;
-      -- Ghi nhật ký vào lịch sử điểm (phần lý thuyết, giữ nguyên điểm hiện có)
+	// 2 câu trong 1 transaction (PG không nhận nhiều câu có tham số trong 1 lời gọi)
+	await withTransaction(async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		await req().query(`
+      UPDATE grades SET locked_at = NULL, locked_by = NULL, updated_at = ${nowSql}, updated_by = @actor_id
+      FROM course_enrollments e
+      WHERE e.id = grades.enrollment_id AND e.course_id = @course_id
+        AND grades.subject_id IS NULL AND grades.locked_at IS NOT NULL`);
+		// Ghi nhật ký vào lịch sử điểm (phần lý thuyết, giữ nguyên điểm hiện có)
+		await req().input(
+			'note',
+			sql.NVarChar(255),
+			reason ? `Mở khóa điểm: ${reason}` : 'Mở khóa điểm',
+		).query(`
       INSERT INTO grade_history (enrollment_id, part, attempt_no, score, flag, source, note, changed_by)
       SELECT g.enrollment_id, 'theory', g.theory_attempt, g.theory_score, g.theory_flag, 'unlock', @note, @actor_id
       FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id
-      WHERE e.course_id = @course_id AND g.subject_id IS NULL;
-    `);
+      WHERE e.course_id = @course_id AND g.subject_id IS NULL`);
+	});
 	broadcast('update', { entity: 'grade' });
 	return getGradebook(courseId);
 };

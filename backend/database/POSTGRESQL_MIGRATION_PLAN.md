@@ -702,7 +702,18 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     `CAST(@x AS VARCHAR)` thì SQL Server mất dấu tiếng Việt ở cột NVARCHAR. Kiểm bằng ca "IF EXISTS → kiểm tra
     rồi INSERT" (2 DB, tạo khóa trong tx; mã không tồn tại bị bỏ qua, gọi lại không thêm trùng). Code cũ trên PG ⇒
     `syntax error at or near "IF"`.
-  - Còn lại: `update_alias`, `multi_statement` — sửa theo từng nhóm.
+  - [x] `update_alias` 8 → 0 (tổng 42 → 34): `UPDATE a SET … FROM bảng a JOIN …` chỉ SQL Server hiểu →
+    `UPDATE bảng SET … FROM bảng_khác x WHERE x.k = bảng.k` — dạng chung của cả 2 DB: bảng đích không đặt
+    alias, không lặp lại trong FROM, cột bảng đích ghi `bảng.cột`, điều kiện nối nằm ở WHERE (PG không cho
+    ON của JOIN trong FROM tham chiếu bảng đích). Áp cho: bảng điểm (tính lại cả lớp từ JSON, mở khóa —
+    tách luôn câu ghi lịch sử ra, 2 câu trong 1 transaction), vòng thực hành GPHN gắn theo khoa, lĩnh vực /
+    hình thức mặc định của chương trình, ngày khóa theo ngày lớp (`CROSS APPLY` → bảng dẫn xuất
+    `GROUP BY`), thứ tự bài học. Không cần cột bảng khác thì `WHERE … IN (SELECT …)` (xoá đề tài) hoặc
+    subquery vô hướng (CME sửa hàng loạt: tín chỉ = hệ số của loại × số lượng; `@category_id` vừa gán vừa
+    so ⇒ PG suy varchar / text ⇒ ép `CAST(… AS VARCHAR(20))` ở chỗ so — mã ASCII nên SQL Server không ảnh
+    hưởng). Ca "UPDATE theo bảng khác" (2 DB, dev thiếu dữ liệu thì tạo tạm trong tx; đánh dấu xác nhận cả
+    8 nhánh đều chạy). Code cũ trên PG ⇒ `relation "r" does not exist`.
+  - Còn lại: `multi_statement` (34).
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

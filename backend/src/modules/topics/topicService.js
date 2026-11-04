@@ -480,10 +480,8 @@ const remove = async (id, actorId) => {
 	const pool = await getPool();
 	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members)
 	await pool.request().input('topic_id', sql.VarChar(15), id).query(`
-      UPDATE u SET u.topic_member_id = NULL
-      FROM users u
-      JOIN topic_members tm ON tm.id = u.topic_member_id
-      WHERE tm.topic_id = @topic_id
+      UPDATE users SET topic_member_id = NULL
+      WHERE topic_member_id IN (SELECT id FROM topic_members WHERE topic_id = @topic_id)
     `);
 	await withActorTransaction(actorId, (tx) =>
 		tx

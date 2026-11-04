@@ -179,7 +179,7 @@ const PATTERNS = [
 		// UPDATE <alias> SET … FROM bảng alias JOIN … — PG: UPDATE bảng alias SET … FROM bảng_khác WHERE …
 		key: 'update_alias',
 		re: /\bUPDATE\s+[a-z]{1,3}\s+SET\b/g,
-		pg: 'UPDATE bảng SET … WHERE … IN / EXISTS (chạy cả 2 DB)',
+		pg: 'UPDATE bảng SET … FROM bảng_khác x WHERE x.k = bảng.k, hoặc WHERE … IN (chạy cả 2 DB)',
 	},
 	{
 		// Nhiều câu trong 1 chuỗi SQL: PG chỉ nhận 1 câu mỗi lời gọi có tham số

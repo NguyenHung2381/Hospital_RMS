@@ -104,15 +104,15 @@ const listLessons = async (enrollmentId) => {
 const fillPracticeDefaults = async (enrollmentId) => {
 	const pool = await getPool();
 	await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
-    UPDATE e
-    SET professional_field = COALESCE(e.professional_field, pf.name),
-        practice_form = COALESCE(e.practice_form, f.name)
-    FROM course_enrollments e
-    JOIN training_programs tp ON tp.id = e.program_id
+    UPDATE course_enrollments
+    SET professional_field = COALESCE(course_enrollments.professional_field, pf.name),
+        practice_form = COALESCE(course_enrollments.practice_form, f.name)
+    FROM training_programs tp
     LEFT JOIN professional_fields pf ON pf.id = tp.professional_field_id
     LEFT JOIN practice_forms f ON f.id = tp.practice_form_id
-    WHERE e.id = @id AND (pf.id IS NOT NULL OR f.id IS NOT NULL)
-      AND (e.professional_field IS NULL OR e.practice_form IS NULL)`);
+    WHERE tp.id = course_enrollments.program_id AND course_enrollments.id = @id
+      AND (pf.id IS NOT NULL OR f.id IS NOT NULL)
+      AND (course_enrollments.professional_field IS NULL OR course_enrollments.practice_form IS NULL)`);
 };
 
 // Sửa thông tin 1 lượt ghi danh: đổi chương trình (chép lại bài học), trường

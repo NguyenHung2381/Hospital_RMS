@@ -5,7 +5,6 @@ const {
 	updateReturning,
 	vnTodaySql,
 	nowSql,
-	crossApply,
 	withTransaction,
 	lockResource,
 } = require('../../../config/db');
@@ -279,10 +278,10 @@ const suggestDates = async (courseId, programId) => {
 // Ngày khóa = sớm nhất → muộn nhất của các lớp đã đặt ngày (lớp chưa đặt thì giữ ngày khóa).
 const syncCourseDates = (req) =>
 	req.query(`
-    UPDATE c SET start_date = x.s, end_date = x.e, updated_at = ${nowSql}
-    FROM courses c
-    ${crossApply(`SELECT MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs WHERE course_id = c.id`, 'x')}
-    WHERE c.id = @course_id AND x.s IS NOT NULL`);
+    UPDATE courses SET start_date = x.s, end_date = x.e, updated_at = ${nowSql}
+    FROM (SELECT course_id, MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs
+          WHERE course_id = @course_id GROUP BY course_id) x
+    WHERE x.course_id = courses.id AND x.s IS NOT NULL`);
 
 const datesInput = (req, { start_date = null, end_date = null }) => {
 	if (start_date && end_date && end_date < start_date)

@@ -97,13 +97,13 @@ const buildTemplates = async (programIds, actorId) => {
 		}
 		// Vòng đã nhập từ sổ (chưa gắn vòng) ⇒ gắn theo khoa
 		await pool.request().input('id', sql.VarChar(20), programId).query(`
-      UPDATE r SET lesson_id = pl.id, round_title = pl.title
-      FROM enrollment_rotations r
-      JOIN course_enrollments e ON e.id = r.enrollment_id
+      UPDATE enrollment_rotations SET lesson_id = pl.id, round_title = pl.title
+      FROM course_enrollments e
       JOIN lesson_programs lp ON lp.program_id = e.program_id
       JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind = 'rotation'
-      JOIN lesson_departments ld ON ld.lesson_id = pl.id AND ld.department_id = r.department_id
-      WHERE e.program_id = @id AND r.lesson_id IS NULL`);
+      JOIN lesson_departments ld ON ld.lesson_id = pl.id
+      WHERE e.id = enrollment_rotations.enrollment_id AND ld.department_id = enrollment_rotations.department_id
+        AND e.program_id = @id AND enrollment_rotations.lesson_id IS NULL`);
 		created.push({ program_code: prog.code, rounds: rounds.length });
 	}
 	return created;

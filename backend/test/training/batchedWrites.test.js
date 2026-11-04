@@ -72,11 +72,11 @@ test('đề rỗng: không gửi câu INSERT', async () => {
 test('sắp xếp bài học: 1 câu UPDATE, giới hạn trong chương trình', async () => {
 	log.length = 0;
 	await lessonService.reorderLessons('CT1', ['LP3', 'LP1', 'LP3', 'LP2'], 'U1');
-	const upd = writes(/UPDATE lp SET display_order/);
+	const upd = writes(/UPDATE lesson_programs SET display_order/);
 	assert.equal(upd.length, 1);
 	assert.deepEqual(JSON.parse(upd[0].inputs.ids), ['LP3', 'LP1', 'LP2']);
 	assert.equal(upd[0].inputs.program_id, 'CT1');
-	assert.match(upd[0].text, /WHERE lp\.program_id = @program_id/);
+	assert.match(upd[0].text, /lesson_programs\.program_id = @program_id/);
 });
 
 test('gán chương trình / khoa cho bài học: xóa cũ rồi 1 câu INSERT', async () => {

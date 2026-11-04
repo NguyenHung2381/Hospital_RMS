@@ -207,12 +207,14 @@ const updateMany = async (ids, data, actorId) => {
 	const { req, fields } = newReq();
 	if (!fields.length) throw httpError(400, 'Chưa nhập giá trị nào để sửa');
 	const has = (f) => fields.some((s) => s.startsWith(`${f} =`));
-	const newVal = (f) => (has(f) ? `@${f}` : `r.${f}`);
+	// Giá trị sau khi sửa: tham số nếu có gửi, không thì cột hiện tại (ghi tên bảng — câu UPDATE
+	// không đặt alias để chạy cả SQL Server lẫn PG)
+	const newVal = (f) => (has(f) ? `@${f}` : `cme_records.${f}`);
 
 	// Đổi 1 đầu khoảng ngày có thể làm "Đến ngày" < "Từ ngày" ở ghi nhận khác → chặn trước
 	if (has('activity_date') || has('end_date')) {
-		const bad = await newReq().req.query(`SELECT COUNT(*) AS n FROM cme_records r
-			WHERE r.id IN ${jsonValues('@ids')}
+		const bad = await newReq().req.query(`SELECT COUNT(*) AS n FROM cme_records
+			WHERE cme_records.id IN ${jsonValues('@ids')}
 			AND ${newVal('end_date')} < ${newVal('activity_date')}`);
 		if (bad.recordset[0].n)
 			throw httpError(
@@ -224,13 +226,19 @@ const updateMany = async (ids, data, actorId) => {
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id', ...fields];
 	if (!has('credits') && (has('category_id') || has('quantity'))) {
 		const total = `c.conversion_value * COALESCE(${newVal('quantity')}, 1)`;
+		// Loại không có hệ số quy đổi (hoặc không tồn tại) ⇒ subquery NULL ⇒ giữ số tín chỉ cũ.
+		// @category_id vừa gán vào cột varchar vừa so ở đây: PG suy 2 kiểu khác nhau (varchar / text)
+		// ⇒ ép VARCHAR (mã loại chỉ gồm ký tự ASCII, SQL Server không mất gì).
+		const catId = has('category_id')
+			? 'CAST(@category_id AS VARCHAR(20))'
+			: 'cme_records.category_id';
 		sets.push(
-			`credits = CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) ELSE r.credits END`,
+			`credits = COALESCE((SELECT CASE WHEN c.conversion_value > 0 AND ${total} < 10000 THEN ROUND(${total}, 2) END
+				FROM cme_credit_categories c WHERE c.id = ${catId}), cme_records.credits)`,
 		);
 	}
-	const r = await req.query(`UPDATE r SET ${sets.join(', ')}
-		FROM cme_records r LEFT JOIN cme_credit_categories c ON c.id = ${newVal('category_id')}
-		WHERE r.id IN ${jsonValues('@ids')}`);
+	const r = await req.query(`UPDATE cme_records SET ${sets.join(', ')}
+		WHERE cme_records.id IN ${jsonValues('@ids')}`);
 	broadcast('update', { entity: 'cme_record' });
 	return { updated: r.rowsAffected[0] };
 };

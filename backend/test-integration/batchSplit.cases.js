@@ -1543,6 +1543,219 @@ const run = async (t, db, { skip = [] } = {}) => {
 			for (const c of open) for (const p of c.programs) assert.ok(Array.isArray(p.lessons ?? []));
 		},
 	);
+
+	// UPDATE <alias> SET … FROM bảng alias JOIN … (chỉ SQL Server) → UPDATE bảng SET … FROM bảng_khác x
+	// WHERE x.k = bảng.k (cả 2 DB nhận), hoặc subquery / IN khi không cần cột của bảng khác.
+	await step(
+		'UPDATE theo bảng khác: CME hàng loạt, xoá đề tài, GPHN, bảng điểm, vòng thực hành, ngày lớp, thứ tự bài',
+		async () => {
+			const one = async (text, inputs) => (await q(text, inputs))[0];
+			const n = async (text, inputs) => Number((await one(text, inputs)).n);
+
+			// CME sửa hàng loạt: đổi loại có hệ số ⇒ tín chỉ = hệ số × số lượng; loại không hệ số ⇒ giữ
+			const cme = require('../src/modules/cme/cmeRecordService');
+			const rec = await one(
+				'SELECT id, credits FROM cme_records WHERE activity_date IS NOT NULL ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			const cat = await one(
+				'SELECT id, conversion_value AS cv FROM cme_credit_categories WHERE conversion_value > 0 ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			if (rec && cat) {
+				assert.equal(
+					(await cme.updateMany([rec.id], { category_id: cat.id, quantity: 3 }, actor.id)).updated,
+					1,
+				);
+				const got = await one('SELECT credits FROM cme_records WHERE id = @id', { id: rec.id });
+				assert.equal(Number(got.credits), Math.round(Number(cat.cv) * 3 * 100) / 100);
+				const plain = await one(
+					'SELECT id FROM cme_credit_categories WHERE conversion_value IS NULL OR conversion_value = 0 ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+				);
+				if (plain) {
+					await cme.updateMany([rec.id], { category_id: plain.id }, actor.id);
+					const kept = await one('SELECT credits FROM cme_records WHERE id = @id', { id: rec.id });
+					assert.equal(Number(kept.credits), Number(got.credits));
+				}
+				await assert.rejects(
+					cme.updateMany([rec.id], { end_date: '1900-01-01' }, actor.id),
+					/Đến ngày/,
+				);
+			}
+
+			// Xoá đề tài: bỏ liên kết tài khoản ↔ thành viên trước khi xoá
+			const linked = await one(`
+        SELECT tm.topic_id, u.id AS user_id FROM users u JOIN topic_members tm ON tm.id = u.topic_member_id
+        ORDER BY u.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+			if (linked) {
+				await require('../src/modules/topics/topicService').remove(linked.topic_id, actor.id);
+				assert.equal(
+					(
+						await one('SELECT topic_member_id AS m FROM users WHERE id = @id', {
+							id: linked.user_id,
+						})
+					).m,
+					null,
+				);
+				assert.equal(
+					await n('SELECT COUNT(*) AS n FROM topics WHERE id = @id', { id: linked.topic_id }),
+					0,
+				);
+			}
+
+			// GPHN: điền lĩnh vực / hình thức mặc định của chương trình vào ô trống
+			// (dev có thể chưa chương trình nào có lĩnh vực mặc định ⇒ gán tạm trong tx)
+			const en = await one(
+				'SELECT id, program_id FROM course_enrollments WHERE program_id IS NOT NULL ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			const field = await one(
+				'SELECT id, name FROM professional_fields ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			if (en && field) {
+				en.pf = field.name;
+				await q('UPDATE training_programs SET professional_field_id = @f WHERE id = @p', {
+					f: field.id,
+					p: en.program_id,
+				});
+				await q('UPDATE course_enrollments SET professional_field = NULL WHERE id = @id', {
+					id: en.id,
+				});
+				await require('../src/modules/training/courses/enrollmentProgramService').fillPracticeDefaults(
+					en.id,
+				);
+				assert.equal(
+					(
+						await one('SELECT professional_field AS f FROM course_enrollments WHERE id = @id', {
+							id: en.id,
+						})
+					).f,
+					en.pf,
+				);
+			}
+
+			// Bảng điểm: tính lại ghi đè điểm cả lớp; mở khóa bỏ khóa + ghi lịch sử từng dòng
+			// (dev có thể chưa có dòng điểm ⇒ thêm tạm 1 dòng cho 1 lượt ghi danh có chương trình)
+			const gb = await one(
+				'SELECT id, course_id, program_id FROM course_enrollments WHERE program_id IS NOT NULL ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			);
+			if (gb) {
+				await q(
+					'INSERT INTO grades (id, enrollment_id, program_id, created_by) VALUES (@id, @e, @p, @u)',
+					{
+						id: await require('../src/utils/idGenerator').genGradeId(tx),
+						e: gb.id,
+						p: gb.program_id,
+						u: actor.id,
+					},
+				);
+				const grades = require('../src/modules/training/courses/gradebookService');
+				const inCourse =
+					'FROM grades g JOIN course_enrollments e ON e.id = g.enrollment_id WHERE e.course_id = @c AND g.subject_id IS NULL';
+				const total = await n(`SELECT COUNT(*) AS n ${inCourse}`, { c: gb.course_id });
+				await q(
+					`UPDATE grades SET score = 999, locked_at = ${db.nowSql}, locked_by = @u
+           WHERE subject_id IS NULL AND enrollment_id IN (SELECT id FROM course_enrollments WHERE course_id = @c)`,
+					{ c: gb.course_id, u: actor.id },
+				);
+				await grades.recompute(gb.course_id);
+				assert.equal(
+					await n(`SELECT COUNT(*) AS n ${inCourse} AND g.score = 999`, { c: gb.course_id }),
+					0,
+				);
+				await grades.unlock(gb.course_id, actor.id, 'ZZ thử');
+				assert.equal(
+					await n(`SELECT COUNT(*) AS n ${inCourse} AND g.locked_at IS NOT NULL`, {
+						c: gb.course_id,
+					}),
+					0,
+				);
+				const hist = await n(
+					`SELECT COUNT(*) AS n FROM grade_history h JOIN course_enrollments e ON e.id = h.enrollment_id
+           WHERE e.course_id = @c AND h.source = 'unlock' AND h.note = @note`,
+					{ c: gb.course_id, note: 'Mở khóa điểm: ZZ thử' },
+				);
+				assert.equal(hist, total);
+			}
+
+			// Vòng thực hành: bỏ vòng của 1 chương trình GPHN rồi dựng lại từ lịch sử ⇒ gắn vòng theo khoa
+			const gp = await one(`
+        SELECT tp.id FROM training_programs tp WHERE LEFT(tp.code, 5) = 'GPHN_'
+          AND EXISTS (SELECT 1 FROM enrollment_rotations r JOIN course_enrollments e ON e.id = r.enrollment_id
+                      WHERE e.program_id = tp.id AND r.department_id IS NOT NULL)
+        ORDER BY tp.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+			if (gp) {
+				const ofProgram =
+					'enrollment_id IN (SELECT id FROM course_enrollments WHERE program_id = @p)';
+				await q(`UPDATE enrollment_rotations SET lesson_id = NULL WHERE ${ofProgram}`, {
+					p: gp.id,
+				});
+				await q(
+					`DELETE FROM lesson_programs WHERE program_id = @p
+           AND lesson_id IN (SELECT id FROM program_lessons WHERE lesson_kind = 'rotation')`,
+					{ p: gp.id },
+				);
+				const made =
+					await require('../src/modules/training/courses/practiceAutoService').buildTemplates(
+						[gp.id],
+						actor.id,
+					);
+				if (made.length)
+					assert.ok(
+						(await n(
+							`SELECT COUNT(*) AS n FROM enrollment_rotations WHERE ${ofProgram} AND lesson_id IS NOT NULL`,
+							{
+								p: gp.id,
+							},
+						)) > 0,
+					);
+			}
+
+			// Ngày lớp ⇒ ngày khóa = sớm nhất → muộn nhất của các lớp
+			// (lớp = chương trình trong khóa có áp quy tắc mở lớp — class_rule là cột tính của classesOf)
+			const pcs = require('../src/modules/training/courses/programClassService');
+			let cls = null;
+			for (const { course_id } of await q(
+				'SELECT DISTINCT course_id FROM course_programs ORDER BY course_id OFFSET 0 ROWS FETCH NEXT 30 ROWS ONLY',
+			)) {
+				const k = (await pcs.classesOf(course_id)).find((x) => x.class_rule);
+				if (k) {
+					cls = { course_id, program_id: k.program_id };
+					break;
+				}
+			}
+			if (cls) {
+				await pcs.setClassDates(
+					cls.course_id,
+					cls.program_id,
+					{ start_date: '2099-01-05', end_date: '2099-03-01' },
+					actor.id,
+				);
+				const same = await n(
+					`SELECT COUNT(*) AS n FROM courses c
+           WHERE c.id = @c AND c.end_date = (SELECT MAX(end_date) FROM course_programs WHERE course_id = @c)
+             AND c.start_date = (SELECT MIN(start_date) FROM course_programs WHERE course_id = @c)`,
+					{ c: cls.course_id },
+				);
+				assert.equal(same, 1);
+			}
+
+			// Thứ tự bài học của chương trình theo mảng link_id
+			const prog = await one(`
+        SELECT program_id FROM lesson_programs GROUP BY program_id HAVING COUNT(*) > 1
+        ORDER BY program_id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
+			if (prog) {
+				const lessons = require('../src/modules/training/programs/programLessonService');
+				const before = (await lessons.listLessons(prog.program_id)).map((l) => l.id);
+				const after = await lessons.reorderLessons(
+					prog.program_id,
+					[...before].reverse(),
+					actor.id,
+				);
+				assert.deepEqual(
+					after.map((l) => l.id),
+					[...before].reverse(),
+				);
+			}
+		},
+	);
 };
 
 module.exports = { run };
