@@ -5,7 +5,7 @@
 		"client:wait": "node scripts/wait-server.js && npm run client",
 		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\"",
 		"gen:jwt": "node backend/scripts/gen-jwt-secrets.js",
-		"rotate:jwt": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rotate-jwt-secrets.ps1"
+		"rotate:jwt": "bash scripts/rotate-jwt-secrets.sh"
 	},
 	"devDependencies": {
 		"concurrently": "^10.0.6"

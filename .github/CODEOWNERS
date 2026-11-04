@@ -2,4 +2,4 @@
 # Thêm người theo vùng code khi nhóm lớn hơn, vd: /backend/database/ @dba-github-user
 *                     @NguyenHung2381
 /.github/             @NguyenHung2381
-/scripts/deploy.ps1   @NguyenHung2381
+/scripts/deploy.sh    @NguyenHung2381

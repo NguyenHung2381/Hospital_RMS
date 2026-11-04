@@ -7,7 +7,7 @@ const crypto = require('crypto');
 // token captcha đi qua được lớp verify của access token). Khóa khác nhau thì
 // chữ ký của loại này không bao giờ hợp lệ với loại kia.
 //
-// Vẫn chỉ cần quản lý 1 secret: xoay JWT_SECRET (scripts/rotate-jwt-secrets.ps1)
+// Vẫn chỉ cần quản lý 1 secret: xoay JWT_SECRET (scripts/rotate-jwt-secrets.sh)
 // là mọi khóa dẫn xuất đổi theo.
 const PURPOSES = new Set([
 	'access', // access token phiên đăng nhập

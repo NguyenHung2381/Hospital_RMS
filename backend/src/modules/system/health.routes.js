@@ -49,7 +49,7 @@ router.get('/', (req, res) => {
 });
 
 // ─── GET /health/db ───────────────────────────────────────────────────────────
-// Kiểm tra kết nối tới SQL Server (deploy.ps1 smoke test, giám sát). Route công
+// Kiểm tra kết nối tới PostgreSQL (deploy.sh smoke test, giám sát). Route công
 // khai ⇒ KHÔNG trả chi tiết: tên/địa chỉ server, tên DB, thông báo lỗi kết nối
 // (lộ tên login, lý do đăng nhập hỏng...) chỉ ghi vào log server. Chỉ dùng pool
 // của ứng dụng (config/db.js) — không tự mở kết nối dự phòng bằng cấu hình khác.

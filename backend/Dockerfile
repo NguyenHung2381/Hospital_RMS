@@ -35,7 +35,7 @@ FROM base AS prod
 # su-exec: entrypoint hạ quyền từ root xuống user `node` trước khi chạy app
 # (xem docker-entrypoint.sh) — nhỏ hơn gosu/sudo, exec thẳng không để tiến trình cha.
 # Gỡ npm/corepack/yarn: app chạy bằng `node` trực tiếp (kể cả migrate trong
-# scripts/deploy.ps1), không cần trình quản lý gói lúc chạy. Bỏ đi để Trivy (CI
+# scripts/deploy.sh), không cần trình quản lý gói lúc chạy. Bỏ đi để Trivy (CI
 # chặn CRITICAL) không báo lỗ hổng của các thư viện npm tự đóng gói kèm, và kẻ
 # chiếm được container không có sẵn npm để kéo thêm mã độc.
 RUN apk upgrade --no-cache && apk add --no-cache su-exec \

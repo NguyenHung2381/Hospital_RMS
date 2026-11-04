@@ -32,8 +32,10 @@ permissions:
 jobs:
   deploy:
     name: Deploy ${{ inputs.environment }}
-    # Runner cài trên chính server (mạng nội bộ bệnh viện, GitHub không gọi vào
-    # được) — runner tự kết nối ra ngoài để nhận job. Mỗi môi trường 1 nhãn.
+    # Runner cài trên chính server Ubuntu (mạng nội bộ bệnh viện, GitHub không gọi
+    # vào được) — runner tự kết nối ra ngoài để nhận job. Mỗi môi trường 1 nhãn.
+    # User chạy runner phải thuộc nhóm docker; backup trước migration cần pg_dump
+    # (postgresql-client) trên máy — xem infra/cai-dat-may-ao-ubuntu.md.
     runs-on: [self-hosted, 'rms-${{ inputs.environment }}']
     environment:
       name: ${{ inputs.environment }}
@@ -45,7 +47,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        shell: powershell
+        shell: bash
     steps:
       - uses: actions/checkout@v5
         with:
@@ -53,21 +55,19 @@ jobs:
       - name: Đăng nhập registry
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: $env:TOKEN | docker login ghcr.io -u $env:GITHUB_ACTOR --password-stdin
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
       - name: Triển khai + smoke test (tự rollback khi hỏng)
         env:
           TAG: ${{ inputs.tag }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
-          DEPLOY_DIR: ${{ vars.DEPLOY_DIR }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || github.workspace }}
           COMPOSE_PROJECT: ${{ vars.COMPOSE_PROJECT || 'hospital_rms' }}
           BACKEND_URL: ${{ vars.BACKEND_URL || 'http://127.0.0.1:3001' }}
           FRONTEND_URL: ${{ vars.FRONTEND_URL || 'http://127.0.0.1:8084' }}
           MIGRATION_BACKUP_DIR: ${{ vars.MIGRATION_BACKUP_DIR }}
           MIGRATION_DB_USER: ${{ secrets.MIGRATION_DB_USER }}
           MIGRATION_DB_PASSWORD: ${{ secrets.MIGRATION_DB_PASSWORD }}
-        run: >-
-          .\scripts\deploy.ps1 -Tag $env:TAG -Registry $env:REGISTRY -ProjectDir $env:DEPLOY_DIR
-          -Project $env:COMPOSE_PROJECT -BackendUrl $env:BACKEND_URL -FrontendUrl $env:FRONTEND_URL
+        run: scripts/deploy.sh "$TAG" "$REGISTRY"
       - name: Đăng xuất registry
         if: always()
         run: docker logout ghcr.io

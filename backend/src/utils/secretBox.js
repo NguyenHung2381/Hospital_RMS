@@ -10,7 +10,7 @@ const logger = require('../config/logger');
 // Khóa: biến TOTP_ENC_KEY (64 ký tự hex) nếu có; không thì file
 // <SECRETS_DIR>/totp.key (mặc định ./secrets — Docker: volume server_secrets),
 // tự sinh ở lần chạy đầu. KHÔNG dẫn xuất từ JWT_SECRET: JWT secret được xoay
-// định kỳ (scripts/rotate-jwt-secrets.ps1), còn khóa này đổi là mọi secret 2FA
+// định kỳ (scripts/rotate-jwt-secrets.sh), còn khóa này đổi là mọi secret 2FA
 // đã lưu không giải mã được nữa. Mất file khóa = người dùng phải thiết lập lại
 // 2FA → sao lưu volume server_secrets cùng DB.
 const PREFIX = 'v1:';

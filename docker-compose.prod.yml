@@ -9,24 +9,24 @@ name: hospital_rms
 
 services:
   backend:
-    # CI/CD đặt BACKEND_IMAGE = ghcr.io/...:<commit SHA> (scripts/deploy.ps1) và
+    # CI/CD đặt BACKEND_IMAGE = ghcr.io/...:<commit SHA> (scripts/deploy.sh) và
     # chạy `up --no-build`; build tay trên server thì giữ tên mặc định như cũ.
     image: ${BACKEND_IMAGE:-hospital_rms-backend}
     build:
       context: ./backend
       target: prod
     # .env.production (nếu có) nạp sau → ghi đè .env: đặt DB_USER/DB_PASSWORD
-    # của login riêng (scripts/create-app-login.sql) ở đây, .env giữ "sa" cho dev.
+    # của role ứng dụng (rms_app, infra/cai-dat-postgresql.md) ở đây.
     env_file:
       - path: ./backend/.env
         required: false
       - path: ./backend/.env.production
         required: false
     environment:
-      # Luôn mã hoá kết nối app <-> SQL Server ở prod (ghi đè DB_ENCRYPT trong
-      # backend/.env). SQL Server chưa cài chứng chỉ vẫn tự sinh cert tự ký →
-      # DB_TRUST_SERVER_CERT=true (mặc định) để chấp nhận; có cert CA thật thì
-      # đặt DB_TRUST_SERVER_CERT=false trong backend/.env.production.
+      # Luôn kết nối PostgreSQL bằng SSL ở prod (ghi đè DB_ENCRYPT trong
+      # backend/.env). Chứng chỉ tự ký của cluster được chấp nhận khi
+      # DB_TRUST_SERVER_CERT=true (mặc định); kiểm tra chứng chỉ thật: đặt
+      # DB_CA_CERT_FILE trong backend/.env.production (infra/cai-dat-postgresql.md).
       DB_ENCRYPT: "true"
       # Ghim cổng API (ghi đè PORT trong backend/.env) — phải khớp proxy_pass
       # trong frontend/nginx.conf.
@@ -53,14 +53,15 @@ services:
       # Access token ngắn hạn (frontend tự làm mới qua refresh cookie). Ghim ở
       # đây để một dòng JWT_EXPIRES_IN lạc trong file .env không kéo dài token.
       JWT_EXPIRES_IN: "15m"
-      # Số worker của src/cluster.js. Server 8 core: 6 worker, chừa 2 core cho SQL
-      # Server (cùng máy, host.docker.internal) + nginx + Redis. Mỗi worker
-      # có pool DB riêng: tổng kết nối SQL Server = WEB_CONCURRENCY × DB_POOL_MAX.
+      # Số worker của src/cluster.js. Server 8 core: 6 worker, chừa 2 core cho
+      # PostgreSQL (cùng máy, host.docker.internal) + nginx + Redis. Mỗi worker
+      # có pool DB riêng: tổng kết nối PostgreSQL = WEB_CONCURRENCY × DB_POOL_MAX
+      # (phải dưới max_connections, xem infra/cai-dat-postgresql.md).
       WEB_CONCURRENCY: "${WEB_CONCURRENCY:-6}"
       DB_POOL_MAX: "${DB_POOL_MAX:-10}"
       # bcrypt (native) chạy trên threadpool libuv, ~200ms CPU/lượt. Mỗi worker
       # chỉ chạy 1 bcrypt cùng lúc (utils/cpuGate.js) → tối đa 6 core cho đăng
-      # nhập (~30 lượt/s), bị dội đăng nhập vẫn còn 2 core cho SQL Server. Hàng
+      # nhập (~30 lượt/s), bị dội đăng nhập vẫn còn 2 core cho PostgreSQL. Hàng
       # đợi 20/worker ≈ chờ tối đa ~4s, quá thì 503.
       UV_THREADPOOL_SIZE: "4"
       LOGIN_MAX_CONCURRENT: "1"
@@ -73,7 +74,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Mở localhost:3001 trên máy server (chỉ loopback, không lộ ra mạng) để
-    # reverse proxy/IIS trên cùng máy gọi được API; nginx (client) vẫn gọi
+    # reverse proxy trên cùng máy gọi được API; nginx (client) vẫn gọi
     # backend:3001 qua mạng nội bộ Docker.
     # BACKEND_BIND: đổi cổng khi chạy thêm bản staging trên cùng máy.
     ports:
@@ -100,7 +101,7 @@ services:
     # redis "started", backend nối vào lúc Redis chưa nhận kết nối nên lần nào
     # deploy log cũng báo "[Cache] Redis không sẵn sàng". required: false — Redis
     # chỉ là cache: hỏng hẳn thì Compose chỉ cảnh báo, backend vẫn chạy (đọc DB).
-    # clamav: `up backend` (kể cả scripts/deploy.ps1) tự kéo image + chạy kèm.
+    # clamav: `up backend` (kể cả scripts/deploy.sh) tự kéo image + chạy kèm.
     # Không chờ healthy — clamd nạp CSDL ~1 phút, không để chặn deploy; trong
     # lúc đó upload bị từ chối 503 (CLAMAV_FAIL_OPEN=false).
     depends_on:

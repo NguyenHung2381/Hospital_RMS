@@ -7,7 +7,7 @@
 #    còn trống/placeholder — dotenv trong app sẽ đọc file này.
 #  - Không có (prod: biến lấy từ env_file): secret lưu ở volume
 #    $JWT_SECRETS_FILE → giữ nguyên qua restart/redeploy, không đăng xuất
-#    người dùng mỗi lần deploy. Đổi định kỳ: scripts/rotate-jwt-secrets.ps1.
+#    người dùng mỗi lần deploy. Đổi định kỳ: scripts/rotate-jwt-secrets.sh.
 set -e
 
 SECRETS_FILE="${JWT_SECRETS_FILE:-/app/secrets/jwt.env}"
