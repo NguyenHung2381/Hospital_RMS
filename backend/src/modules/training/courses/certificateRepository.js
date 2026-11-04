@@ -1,6 +1,6 @@
 const { getPool, sql, withTransaction, nowSql } = require('../../../config/db');
 const { genCertificateId, genCertificateNo } = require('../../../utils/idGenerator');
-const { appErrorCode } = require('../../../utils/dbErrors');
+const { constraintName } = require('../../../utils/dbErrors');
 
 // Truy cập dữ liệu chứng chỉ khóa học — CHỈ SQL, không quy tắc nghiệp vụ,
 // không ném lỗi HTTP, không phát sự kiện (việc của certificateService.js).
@@ -32,36 +32,33 @@ const findEnrollmentStatus = async (enrollmentId) => {
 };
 
 // Cấp chứng chỉ: số CC<năm><4 số> (genCertificateNo) + mã (genCertificateId).
-// Trả { id, cert_no, course_id }; null nếu đăng ký này đã có chứng chỉ (kiểm tra trong
-// cùng câu lệnh với INSERT — không có khe giữa kiểm tra và ghi).
-const DUPLICATE = 51001;
+// Trả { id, cert_no, course_id }; null nếu đăng ký này đã có chứng chỉ. Kiểm tra nằm trong
+// chính câu INSERT (… WHERE NOT EXISTS); 2 request cùng lúc thì UNIQUE uq_cert_enrollment chặn.
 const insert = async ({ enrollmentId, actorId, year, expiryDate }) => {
 	try {
-		const r = await withTransaction(async (tx) =>
-			tx
+		return await withTransaction(async (tx) => {
+			const certNo = await genCertificateNo(tx, year ? Number(year) : undefined);
+			const newId = await genCertificateId(tx);
+			const ins = await tx
 				.request()
-				.input(
-					'cert_no',
-					sql.VarChar(30),
-					await genCertificateNo(tx, year ? Number(year) : undefined),
-				)
-				.input('new_id', sql.VarChar(20), await genCertificateId(tx))
+				.input('cert_no', sql.VarChar(30), certNo)
+				.input('new_id', sql.VarChar(20), newId)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('enrollment_id', sql.VarChar(20), enrollmentId)
 				.input('expiry_date', sql.Date, expiryDate || null).query(`
-      IF EXISTS (SELECT 1 FROM certificates WHERE enrollment_id = @enrollment_id)
-      BEGIN
-        THROW ${DUPLICATE}, N'Học viên này đã được cấp chứng chỉ cho khóa học này rồi.', 1;
-      END
       INSERT INTO certificates (id, enrollment_id, cert_no, expiry_date, created_by)
-      VALUES (@new_id, @enrollment_id, @cert_no, @expiry_date, @actor_id);
-      SELECT @new_id AS id, @cert_no AS cert_no,
-             (SELECT course_id FROM course_enrollments WHERE id = @enrollment_id) AS course_id;
-    `),
-		);
-		return r.recordset[0];
+      -- CAST: tham số dùng cả ở đây lẫn WHERE — PG cần cùng 1 kiểu (không CAST thì text ≠ varchar)
+      SELECT @new_id, CAST(@enrollment_id AS VARCHAR(20)), @cert_no, @expiry_date, @actor_id
+      WHERE NOT EXISTS (SELECT 1 FROM certificates WHERE enrollment_id = @enrollment_id)`);
+			if (!ins.rowsAffected[0]) return null;
+			const course = await tx
+				.request()
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.query('SELECT course_id FROM course_enrollments WHERE id = @enrollment_id');
+			return { id: newId, cert_no: certNo, course_id: course.recordset[0]?.course_id ?? null };
+		});
 	} catch (err) {
-		if (appErrorCode(err) === DUPLICATE) return null;
+		if (constraintName(err) === 'uq_cert_enrollment') return null;
 		throw err;
 	}
 };

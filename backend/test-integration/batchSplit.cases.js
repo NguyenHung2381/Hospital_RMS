@@ -743,6 +743,46 @@ const run = async (t, db, { skip = [] } = {}) => {
 		},
 	);
 
+	// IF EXISTS … THROW … INSERT → INSERT … SELECT … WHERE NOT EXISTS + rowsAffected
+	await step('chặn trùng trong câu INSERT: chứng chỉ, ghi danh, gắn bài học', async () => {
+		const [e] = await q(`
+      SELECT e.id, e.course_id, e.trainee_id, e.program_id FROM course_enrollments e
+      WHERE e.status = 'approved' AND NOT EXISTS (SELECT 1 FROM certificates c WHERE c.enrollment_id = e.id)
+      ORDER BY e.id`);
+		if (e) {
+			const certs = require('../src/modules/training/courses/certificateRepository');
+			const cert = await certs.insert({ enrollmentId: e.id, actorId: actor.id, year: 2026 });
+			assert.match(cert.id, /^CH\d{12}$/);
+			assert.match(cert.cert_no, /^CC2026/);
+			assert.equal(cert.course_id, e.course_id);
+			assert.equal(await certs.insert({ enrollmentId: e.id, actorId: actor.id, year: 2026 }), null);
+
+			// Ghi danh lại đúng khóa + chương trình ⇒ 409 trùng (khóa cuốn chiếu: bỏ qua kiểm sĩ số lớp)
+			await q("UPDATE courses SET is_rolling = 'true' WHERE id = @c", { c: e.course_id });
+			const enroll = require('../src/modules/training/courses/courseEnrollmentService');
+			await assert.rejects(
+				enroll.registerTrainee(e.course_id, e.trainee_id, actor.id, {
+					bypassWindow: true,
+					programId: e.program_id,
+				}),
+				/đã ghi danh chương trình này|đã đăng ký khóa học/,
+			);
+		}
+
+		const [pair] = await q(`
+      SELECT pl.id AS lesson_id, tp.id AS program_id FROM program_lessons pl CROSS JOIN training_programs tp
+      WHERE NOT EXISTS (SELECT 1 FROM lesson_programs x WHERE x.lesson_id = pl.id AND x.program_id = tp.id)
+      ORDER BY pl.id, tp.id`);
+		if (pair) {
+			const lessons = require('../src/modules/training/programs/programLessonService');
+			assert.ok((await lessons.linkLesson(pair.program_id, pair.lesson_id, 1, actor.id)).id);
+			await assert.rejects(
+				lessons.linkLesson(pair.program_id, pair.lesson_id, 1, actor.id),
+				/đã được gắn vào chương trình/,
+			);
+		}
+	});
+
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
 	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {
 		// SQL Server: các STRING_AGG cùng 1 SELECT phải cùng thứ tự → câu riêng cho DESC

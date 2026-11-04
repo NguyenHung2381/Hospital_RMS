@@ -7,7 +7,7 @@ const {
 	nowSql,
 } = require('../../../config/db');
 const { genCourseEnrollmentId } = require('../../../utils/idGenerator');
-const { appErrorCode } = require('../../../utils/dbErrors');
+const { constraintName } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
 const mailQueue = require('../../notifications/mailQueue');
@@ -119,38 +119,35 @@ const registerTrainee = async (
 	// Lớp đầy: ngoại viện bị chặn ngay khi đăng ký (12b); nội viện vẫn nhận, duyệt thì vào danh sách chờ.
 	if (programId) await programClassService.assertRoomForTrainee(course, programId, traineeId);
 
-	const result = await withTransaction(async (tx) =>
-		tx
+	const duplicate = () =>
+		httpError(
+			409,
+			programId
+				? 'Học viên này đã ghi danh chương trình này trong khóa rồi.'
+				: 'Học viên này đã đăng ký khóa học rồi.',
+		);
+	// Kiểm tra trùng nằm trong câu INSERT (… WHERE NOT EXISTS); 2 request cùng lúc thì
+	// UNIQUE uq_enroll_course_trainee_program chặn.
+	const id = await withTransaction(async (tx) => {
+		const newId = await genCourseEnrollmentId(tx);
+		const ins = await tx
 			.request()
-			.input('new_id', sql.VarChar(20), await genCourseEnrollmentId(tx))
+			.input('new_id', sql.VarChar(20), newId)
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('course_id', sql.VarChar(20), courseId)
 			.input('trainee_id', sql.VarChar(20), traineeId)
-			.input('program_id', sql.VarChar(20), programId || null)
-			.query(
-				`
-      IF EXISTS (SELECT 1 FROM course_enrollments WHERE trainee_id = @trainee_id AND course_id = @course_id
-                 AND COALESCE(program_id, '') = COALESCE(@program_id, ''))
-      BEGIN
-        THROW 51000, N'Học viên này đã đăng ký khóa học rồi.', 1;
-      END
+			.input('program_id', sql.VarChar(20), programId || null).query(`
       INSERT INTO course_enrollments (id, course_id, trainee_id, program_id, status, created_by)
-      VALUES (@new_id, @course_id, @trainee_id, @program_id, 'pending', @actor_id);
-      SELECT @new_id AS id;
-    `,
-			),
-	).catch((err) => {
-		if (appErrorCode(err) === 51000) {
-			throw httpError(
-				409,
-				programId
-					? 'Học viên này đã ghi danh chương trình này trong khóa rồi.'
-					: 'Học viên này đã đăng ký khóa học rồi.',
-			);
-		}
-		throw err;
+      -- CAST: tham số dùng cả ở đây lẫn WHERE — PG cần cùng 1 kiểu (không CAST thì text ≠ varchar)
+      SELECT @new_id, CAST(@course_id AS VARCHAR(20)), CAST(@trainee_id AS VARCHAR(20)),
+             CAST(@program_id AS VARCHAR(20)), 'pending', @actor_id
+      WHERE NOT EXISTS (SELECT 1 FROM course_enrollments WHERE trainee_id = @trainee_id AND course_id = @course_id
+                        AND COALESCE(program_id, '') = COALESCE(@program_id, ''))`);
+		if (!ins.rowsAffected[0]) throw duplicate();
+		return newId;
+	}).catch((err) => {
+		throw constraintName(err) === 'uq_enroll_course_trainee_program' ? duplicate() : err;
 	});
-	const id = result.recordset[0].id;
 	if (programId) {
 		await enrollmentProgramService.syncLessons(id);
 		await enrollmentProgramService.fillPracticeDefaults(id);

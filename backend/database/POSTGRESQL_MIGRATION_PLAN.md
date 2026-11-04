@@ -100,7 +100,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
 | `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 5 (comment + migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
-| `N'...'` | 339 (98) → 5 (3 `THROW` + mẫu migration SQL Server) | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
+| `N'...'` | 339 (98) → 2 (mẫu migration SQL Server) | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
 | Định danh `[ten]` | 658 (156) → 0 trong câu SQL (ratchet `bracket_ident`; con số 658 đếm thô, gồm cả mảng JS) | Bỏ ngoặc; tên trùng từ khoá → `"ten"` |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
@@ -120,7 +120,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) → 0 | `upsert({...})` của adapter (PG: `INSERT ... ON CONFLICT DO UPDATE`) |
 | Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
-| `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
+| `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 → 0 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
 | `err.number === 2627/2601` (trùng khoá), `547` (FK), `207/208` | ~20 | `23505`, `23503`, `42703/42P01` |
 | `OFFSET ... FETCH NEXT` | 6 (3) | Giữ nguyên (PG hỗ trợ cú pháp chuẩn này) |
 | `FOR JSON` | 5 (4) → 0 | `jsonArray(select, orderBy)` của adapter (PG: `jsonb_agg(jsonb_strip_nulls(to_jsonb(j)) ORDER BY …)`) |
@@ -268,7 +268,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
 | `@@ROWCOUNT` trong JS | `result.rowCount` | adapter trả `rowsAffected` |
-| `THROW 51000, N'...', 1` | `RAISE EXCEPTION '...' USING ERRCODE = 'P0001', DETAIL = '51000'` | ✗ |
+| `THROW 51000, N'...', 1` | `RAISE EXCEPTION '...' USING ERRCODE = 'P0001', DETAIL = '51000'` | ✓ không dùng nữa: `IF EXISTS … THROW` trước INSERT → `INSERT … SELECT … WHERE NOT EXISTS` + `rowsAffected`, trùng do chạy song song bắt theo tên UNIQUE (`constraintName`) |
 
 ### 4.5 Mã lỗi
 
@@ -548,6 +548,21 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     GPHN. Đã thử: `'NVZ_0001' LIKE 'NVZ[_]%'` → SQL Server 1, PG 0. Chưa gọi `arrangeOne` trong test (chạy
     song song nhiều câu trên 1 transaction; PG còn lô nhiều câu ở `enrollmentRotationService.generate`).
   - Tìm kiếm `LIKE @search` phân biệt hoa/thường trên PG là mục riêng (4.2 — `ILIKE`). Tổng ratchet 35 → 24.
+- [x] `THROW` (throw 2 → 0; thêm 1 chỗ `THROW ${…}` ratchet không đếm; n_prefix 5 → 2). 3 lô kiểm tra trùng
+  `IF EXISTS (…) BEGIN THROW 5100x, N'…', 1; END INSERT …` → 1 câu chạy cả 2 DB:
+  `INSERT INTO t (…) SELECT @a, … WHERE NOT EXISTS (SELECT 1 FROM t WHERE …)`; `rowsAffected[0] = 0` ⇒ đã có.
+  2 request cùng lúc vượt qua NOT EXISTS thì UNIQUE chặn ⇒ bắt theo đúng tên ràng buộc (`constraintName`,
+  cùng tên ở 2 DB, đã kiểm `sys.indexes`) — lỗi trùng khoá khác vẫn ném ra như cũ.
+  - Cấp chứng chỉ (`uq_cert_enrollment`, trả `null`), ghi danh khóa (`uq_enroll_course_trainee_program`,
+    409), gắn bài học vào chương trình (`uq_lsnprog_lesson_program`, 409). Chứng chỉ: bỏ `SELECT @new_id …`
+    cuối lô — mã / số lấy từ JS, `course_id` đọc câu riêng trong cùng transaction.
+  - PG: tham số chuỗi vừa ở danh sách `SELECT` vừa ở `WHERE` ⇒ `inconsistent types deduced` (SELECT suy
+    `text`, so với cột suy `varchar`) → `CAST(@x AS VARCHAR(20))` ở danh sách SELECT (adapter cố ý không ép
+    kiểu chuỗi — xem `pgParams.js`).
+  - `appErrorCode` (dbErrors) không còn chỗ dùng; giữ lại cho hàm PL/pgSQL sau này (`RAISE … DETAIL`).
+  - Kiểm bằng ca "chặn trùng trong câu INSERT" (2 DB): cấp chứng chỉ lần 1 ra mã CH… / số CC2026…, lần 2
+    `null`; ghi danh lại đúng khóa + chương trình ⇒ 409; gắn bài học 2 lần ⇒ lần 2 409. Chưa kiểm nhánh bắt
+    UNIQUE khi chạy song song (PG: lỗi trong transaction test làm hỏng các ca sau). Tổng ratchet 24 → 19.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

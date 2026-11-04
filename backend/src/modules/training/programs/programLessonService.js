@@ -1,6 +1,6 @@
 const { getPool, sql, jsonValues, newIdSql, nowSql, stringAgg } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
-const { appErrorCode } = require('../../../utils/dbErrors');
+const { constraintName } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const trainingFileService = require('../trainingFileService');
 const { assertHttpUrl } = require('../../../utils/safeUrl');
@@ -192,7 +192,9 @@ const setLessonPrograms = async (lessonId, programIds, actorId) => {
 const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
 	const pool = await getPool();
 	const newId = randomId('LP', 18);
-	await pool
+	const duplicate = () => httpError(409, 'Bài học này đã được gắn vào chương trình rồi.');
+	// Kiểm tra trùng nằm trong câu INSERT; 2 request cùng lúc thì UNIQUE uq_lsnprog_lesson_program chặn.
+	const ins = await pool
 		.request()
 		.input('program_id', sql.VarChar(20), programId)
 		.input('lesson_id', sql.VarChar(20), lessonId)
@@ -201,20 +203,15 @@ const linkLesson = async (programId, lessonId, displayOrder, actorId) => {
 		.input('new_id', sql.VarChar(20), newId)
 		.query(
 			`
-      IF EXISTS (SELECT 1 FROM lesson_programs WHERE lesson_id = @lesson_id AND program_id = @program_id)
-      BEGIN
-        THROW 51003, N'Bài học này đã được gắn vào chương trình rồi.', 1;
-      END
       INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
-      VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id);
-    `,
+      -- CAST: tham số dùng cả ở đây lẫn WHERE — PG cần cùng 1 kiểu (không CAST thì text ≠ varchar)
+      SELECT @new_id, CAST(@lesson_id AS VARCHAR(20)), CAST(@program_id AS VARCHAR(20)), @display_order, @actor_id
+      WHERE NOT EXISTS (SELECT 1 FROM lesson_programs WHERE lesson_id = @lesson_id AND program_id = @program_id)`,
 		)
 		.catch((err) => {
-			if (appErrorCode(err) === 51003) {
-				throw httpError(409, 'Bài học này đã được gắn vào chương trình rồi.');
-			}
-			throw err;
+			throw constraintName(err) === 'uq_lsnprog_lesson_program' ? duplicate() : err;
 		});
+	if (!ins.rowsAffected[0]) throw duplicate();
 	broadcast('update', { entity: 'program_lesson' });
 	return { id: newId };
 };

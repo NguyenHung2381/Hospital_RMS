@@ -1,6 +1,6 @@
 {
 	"getdate": 5,
-	"n_prefix": 5,
+	"n_prefix": 2,
 	"isnull": 0,
 	"set_actor": 0,
 	"exec_proc": 2,
@@ -26,6 +26,6 @@
 	"lock_hint": 0,
 	"applock": 3,
 	"temp_table": 0,
-	"throw": 2,
+	"throw": 0,
 	"err_number": 0
 }
