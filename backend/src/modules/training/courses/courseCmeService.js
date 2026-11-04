@@ -13,7 +13,15 @@
  * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
  */
-const { getPool, sql, newIdSql, nowSql, datePart } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	newIdSql,
+	nowSql,
+	datePart,
+	upsert,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const systemSettingService = require('../../settings/systemSettingService');
 const { CLASS_TYPES } = require('./classTypes');
@@ -23,23 +31,51 @@ const TYPES_SQL = CLASS_TYPES.map((t) => `'${t}'`).join(', ');
 
 const isOn = async (key) => (await systemSettingService.getValue(key, 'true')) !== 'false';
 
-// Ghi / cập nhật các dòng CME theo nguồn từ bảng tạm #cme (user_id, title, role,
-// category_id, quantity, credits, activity_date, note). Trả số dòng ghi.
-const UPSERT_SQL = (sourceType) => `
-  MERGE cme_records WITH (HOLDLOCK) AS r
-  USING #cme AS s
-    ON r.source_type = '${sourceType}' AND r.source_id = @course_id AND r.user_id = s.user_id
-  WHEN MATCHED THEN UPDATE SET
-    title = s.title, role = s.role, category_id = s.category_id, quantity = s.quantity, credits = s.credits,
-    activity_date = s.activity_date, year = ${datePart('YEAR', 's.activity_date')}, note = s.note,
-    approval_status = 'approved', reject_reason = NULL, updated_at = ${nowSql}, updated_by = @actor_id
-  WHEN NOT MATCHED THEN
-    INSERT (id, user_id, category_id, title, activity_date, year, role, quantity, credits, note,
-            approval_status, reviewed_by, reviewed_at, source_type, source_id, created_by)
-    VALUES (${newIdSql('CM', 18)}, s.user_id, s.category_id, s.title, s.activity_date,
-            ${datePart('YEAR', 's.activity_date')}, s.role, s.quantity, s.credits, s.note,
-            'approved', @actor_id, ${nowSql}, '${sourceType}', @course_id, @actor_id);
-  SELECT @@ROWCOUNT AS n;`;
+// Ghi / cập nhật các dòng CME của khóa @course_id theo câu SELECT `source` (user_id, title,
+// role, category_id, quantity, credits, activity_date, note) — khóa duy nhất
+// (source_type, source_id, user_id). Số dòng ghi = rowsAffected[0].
+const SAME_AS_INSERT = [
+	'title',
+	'role',
+	'category_id',
+	'quantity',
+	'credits',
+	'activity_date',
+	'year',
+	'note',
+];
+const upsertCmeSql = (sourceType, source) =>
+	upsert({
+		table: 'cme_records',
+		key: ['source_type', 'source_id', 'user_id'],
+		conflictWhere: 'source_type IS NOT NULL',
+		source,
+		values: {
+			id: newIdSql('CM', 18),
+			user_id: 'src.user_id',
+			category_id: 'src.category_id',
+			title: 'src.title',
+			activity_date: 'src.activity_date',
+			year: datePart('YEAR', 'src.activity_date'),
+			role: 'src.role',
+			quantity: 'src.quantity',
+			credits: 'src.credits',
+			note: 'src.note',
+			approval_status: "'approved'",
+			reviewed_by: '@actor_id',
+			reviewed_at: nowSql,
+			source_type: `'${sourceType}'`,
+			source_id: '@course_id',
+			created_by: '@actor_id',
+		},
+		update: {
+			...Object.fromEntries(SAME_AS_INSERT.map((c) => [c, `EXCLUDED.${c}`])),
+			approval_status: "'approved'",
+			reject_reason: 'NULL',
+			updated_at: nowSql,
+			updated_by: '@actor_id',
+		},
+	});
 
 const conversionOf = (categoryId) =>
 	`COALESCE((SELECT conversion_value FROM cme_credit_categories WHERE id = '${categoryId}'), 1)`;
@@ -55,18 +91,26 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(upsertCmeSql(SOURCE.trainee, TRAINEE_SOURCE));
+	const n = r.rowsAffected[0] ?? 0;
+	if (n) broadcast('update', { entity: 'cme_record' });
+	return n;
+};
+
+// Giấy chứng nhận còn hiệu lực của khóa (@enrollment_id NULL = mọi hồ sơ), có tín chỉ > 0
+const TRAINEE_SOURCE = `
+    SELECT x.* FROM (
       SELECT t.staff_user_id AS user_id,
-             LEFT(c.name + COALESCE(' — ' + tp.name, ''), 255) AS title,
-             CAST(N'Học viên' AS NVARCHAR(100)) AS role,
+             LEFT(CONCAT(c.name, CASE WHEN tp.name IS NOT NULL THEN CONCAT(' — ', tp.name) END), 255) AS title,
+             N'Học viên' AS role,
              'DT_KHOAHOC' AS category_id,
              CAST(COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0) AS DECIMAL(8, 2)) AS quantity,
              CAST(COALESCE(tp.credit_hours,
                            (COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)) * ${conversionOf('DT_KHOAHOC')})
                   AS DECIMAL(6, 2)) AS credits,
              COALESCE(c.end_date, cert.issue_date) AS activity_date,
-             CAST(N'Giấy chứng nhận số ' + cert.cert_no AS NVARCHAR(500)) AS note
-      INTO #cme
+             CONCAT(N'Giấy chứng nhận số ', cert.cert_no) AS note
       FROM certificates cert
       JOIN course_enrollments e ON e.id = cert.enrollment_id
       JOIN courses c ON c.id = e.course_id
@@ -76,13 +120,8 @@ const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => 
         (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(program_id) END FROM course_programs WHERE course_id = @course_id))
       WHERE e.course_id = @course_id AND (@enrollment_id IS NULL OR e.id = @enrollment_id)
         AND cert.status <> 'revoked' AND t.staff_user_id IS NOT NULL
-        AND c.training_type_id IN (${TYPES_SQL});
-      DELETE FROM #cme WHERE credits IS NULL OR credits <= 0;
-      ${UPSERT_SQL(SOURCE.trainee)}`);
-	const n = r.recordset[0]?.n ?? 0;
-	if (n) broadcast('update', { entity: 'cme_record' });
-	return n;
-};
+        AND c.training_type_id IN (${TYPES_SQL})
+    ) x WHERE x.credits > 0`;
 
 /** Giấy chứng nhận bị thu hồi (remove=false) hoặc xóa vì cấp nhầm (remove=true). */
 const withdrawForCertificate = async (certId, actorId, { remove = false, reason = null } = {}) => {
@@ -124,44 +163,47 @@ const withdrawForCertificate = async (certId, actorId, { remove = false, reason 
  */
 const syncLecturers = async (courseId, actorId) => {
 	if (!(await isOn('CME_AUTO_LECTURER'))) return 0;
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('course_id', sql.VarChar(20), courseId)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
+	// Xóa dòng của GV không còn trong danh sách rồi ghi / cập nhật, trong 1 transaction
+	const n = await withTransaction(async (tx) => {
+		const req = () =>
+			new sql.Request(tx)
+				.input('course_id', sql.VarChar(20), courseId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		await req().query(`
+      DELETE FROM cme_records
+      WHERE source_type = '${SOURCE.lecturer}' AND source_id = @course_id
+        AND NOT EXISTS (SELECT 1 FROM (${LECTURER_SOURCE}) s WHERE s.user_id = cme_records.user_id)`);
+		const r = await req().query(upsertCmeSql(SOURCE.lecturer, LECTURER_SOURCE));
+		return r.rowsAffected[0] ?? 0;
+	});
+	if (n) broadcast('update', { entity: 'cme_record' });
+	return n;
+};
+
+// Số tiết của từng GV có tài khoản trong khóa @course_id (> 0)
+const LECTURER_SOURCE = `
+    SELECT h.user_id,
+           LEFT(CONCAT(N'Giảng dạy: ', c.name), 255) AS title,
+           N'Giảng viên' AS role,
+           'GIANGDAY' AS category_id,
+           CAST(h.hours AS DECIMAL(8, 2)) AS quantity,
+           CAST(h.hours * ${conversionOf('GIANGDAY')} AS DECIMAL(6, 2)) AS credits,
+           COALESCE(c.end_date, CAST(${nowSql} AS DATE)) AS activity_date,
+           CONCAT(N'Tự động khi khóa điểm — ', h.hours, N' tiết') AS note
+    FROM (
       SELECT lec.user_id,
              SUM(COALESCE(la.hours,
                           CASE WHEN la.role = 'main' AND pl.id IS NOT NULL
                                THEN COALESCE(pl.theory_hours, 0) + COALESCE(pl.practice_hours, 0) END,
                           0)) AS hours
-      INTO #hours
       FROM lecturer_assignments la
       JOIN lecturers lec ON lec.id = la.lecturer_id
       JOIN courses c ON c.id = la.course_id
       LEFT JOIN program_lessons pl ON pl.id = la.subject_id
       WHERE la.course_id = @course_id AND lec.user_id IS NOT NULL AND c.training_type_id IN (${TYPES_SQL})
-      GROUP BY lec.user_id;
-
-      SELECT h.user_id,
-             LEFT(N'Giảng dạy: ' + c.name, 255) AS title,
-             CAST(N'Giảng viên' AS NVARCHAR(100)) AS role,
-             'GIANGDAY' AS category_id,
-             CAST(h.hours AS DECIMAL(8, 2)) AS quantity,
-             CAST(h.hours * ${conversionOf('GIANGDAY')} AS DECIMAL(6, 2)) AS credits,
-             COALESCE(c.end_date, CAST(${nowSql} AS DATE)) AS activity_date,
-             CAST(CONCAT(N'Tự động khi khóa điểm — ', h.hours, N' tiết') AS NVARCHAR(500)) AS note
-      INTO #cme
-      FROM #hours h JOIN courses c ON c.id = @course_id
-      WHERE h.hours > 0;
-
-      DELETE r FROM cme_records r
-      WHERE r.source_type = '${SOURCE.lecturer}' AND r.source_id = @course_id
-        AND NOT EXISTS (SELECT 1 FROM #cme s WHERE s.user_id = r.user_id);
-      ${UPSERT_SQL(SOURCE.lecturer)}`);
-	const n = r.recordset[0]?.n ?? 0;
-	if (n) broadcast('update', { entity: 'cme_record' });
-	return n;
-};
+      GROUP BY lec.user_id
+    ) h JOIN courses c ON c.id = @course_id
+    WHERE h.hours > 0`;
 
 // Bảng điểm đã khóa hết (mọi hồ sơ đã duyệt có dòng điểm khóa) — giống gradebook.locked.
 const gradesLocked = async (courseId) => {

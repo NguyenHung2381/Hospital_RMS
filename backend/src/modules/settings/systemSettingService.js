@@ -1,4 +1,4 @@
-const { getPool, sql, nowSql } = require('../../config/db');
+const { getPool, sql, nowSql, upsert } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 
 // Cấu hình hệ thống qua UI (2026-09-14_system_settings.sql) — thay .env cho các
@@ -154,12 +154,20 @@ const update = async (key, value, actorId) => {
 		.request()
 		.input('key', sql.VarChar(50), key)
 		.input('value', sql.NVarChar(sql.MAX), value === '' ? null : value)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      MERGE system_settings AS tgt
-      USING (SELECT @key AS setting_key) AS src ON tgt.setting_key = src.setting_key
-      WHEN MATCHED THEN UPDATE SET value = @value, updated_at = ${nowSql}, updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT (setting_key, value, created_by, updated_by) VALUES (@key, @value, @actor_id, @actor_id);
-    `);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			upsert({
+				table: 'system_settings',
+				key: ['setting_key'],
+				values: {
+					setting_key: '@key',
+					value: '@value',
+					created_by: '@actor_id',
+					updated_by: '@actor_id',
+				},
+				update: { value: '@value', updated_at: nowSql, updated_by: '@actor_id' },
+			}),
+		);
 	cache = null;
 	if (key === 'SMTP_HOST' && (await getValue('SMTP_HOST')) !== hostBefore) {
 		await pool

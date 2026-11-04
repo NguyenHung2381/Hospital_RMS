@@ -280,15 +280,24 @@ const renderConstraints = (model) => {
 		'-- UNIQUE, CHECK, index',
 	];
 	for (const t of model.tables) {
+		const nullable = (name) =>
+			!t.columns.find((c) => c.name.toLowerCase() === name.toLowerCase())?.notNull;
 		for (const ix of t.indexes || []) {
+			// UNIQUE của SQL Server coi các NULL là trùng nhau (chỉ 1 dòng NULL); PG mặc định
+			// coi là khác nhau → khoá không lọc có cột được NULL phải NULLS NOT DISTINCT
+			// (cũng là điều kiện để ON CONFLICT của upsert bắt được dòng có cột khoá NULL).
+			const nnd =
+				ix.unique && !ix.filter && ix.keys.some((k) => nullable(k.name))
+					? ' NULLS NOT DISTINCT'
+					: '';
 			if (ix.constraint && !ix.filter)
 				out.push(
-					`ALTER TABLE ${q(t.name)} ADD CONSTRAINT ${q(ix.name)} UNIQUE (${keyList(ix.keys)});`,
+					`ALTER TABLE ${q(t.name)} ADD CONSTRAINT ${q(ix.name)} UNIQUE${nnd} (${keyList(ix.keys)});`,
 				);
 			else
 				out.push(
 					`CREATE ${ix.unique ? 'UNIQUE ' : ''}INDEX IF NOT EXISTS ${q(ix.name)} ON ${q(t.name)} (${keyList(ix.keys)})` +
-						`${ix.filter ? ` WHERE ${ix.filter}` : ''};`,
+						`${nnd}${ix.filter ? ` WHERE ${ix.filter}` : ''};`,
 				);
 		}
 		for (const ck of t.checks || [])

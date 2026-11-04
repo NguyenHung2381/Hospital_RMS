@@ -113,11 +113,11 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) → 0 | `stringAgg(x, sep, thứ tự)` của adapter (PG: `string_agg(CAST(x AS TEXT), sep ORDER BY ...)`) |
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
-| `OUTPUT INSERTED/DELETED` | 19 (13) → 1 (`MERGE`) | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
-| `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 1 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
+| `OUTPUT INSERTED/DELETED` | 19 (13) → 0 | `RETURNING` (`insertReturning` / `updateReturning` / `deleteReturning` của adapter) |
+| `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 0 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
-| `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) | `INSERT ... ON CONFLICT DO UPDATE` |
+| `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) → 0 | `upsert({...})` của adapter (PG: `INSERT ... ON CONFLICT DO UPDATE`) |
 | Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 + 6 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
 | `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
@@ -255,7 +255,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `DATEDIFF(day, a, b)` | `b::date - a::date` | ✓ qua adapter: `${dateDiff('DAY', a, b)}` |
 | `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✓ qua adapter: `${formatDate('d', 'DD/MM/YYYY')}`; `YEAR(x)` → `${datePart('YEAR', 'x')}` |
 | `OUTPUT INSERTED.*` | `RETURNING *` | ✓ qua adapter: `insertReturning` / `updateReturning` / `deleteReturning` (cột ghi `new.x` / `old.x`, PG ≥ 18) |
-| `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
+| `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✓ qua adapter: `upsert({ table, key, values, update })` — cần khoá chính / `UNIQUE` trên khoá xung đột (cột được NULL: `NULLS NOT DISTINCT`) |
 | `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
 | `OPENJSON(@ids)` | `= ANY($1::text[])` (truyền mảng JS) | ✗ — có thể chuyển về `IN (@id0, @id1...)` qua `inClause` ở chặng 1 |
 | `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✓ qua adapter: `${stringAgg('x', ',', 'y')}`; `STRING_AGG(x, ',')` không thứ tự chạy nguyên cả 2 DB khi `x` là chuỗi |
@@ -494,7 +494,7 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
       mọi câu phân trang có tham số đều lỗi cú pháp trên PG.
     - Kiểm bằng `test-integration/batchSplit.cases.js` (SQL Server 10/10; PG 4 ca, bỏ 6 ca còn vướng
       `CROSS APPLY`, `GETDATE`, `YEAR` / `CONVERT` — các mục cú pháp khác).
-    - Còn lại (mục khác): 6 bảng tạm `#…` (`courseCmeService` + `MERGE`), `THROW` trong 3 lô kiểm tra trùng (`certificateRepository`, `courseEnrollmentService`, `programLessonService`).
+    - Còn lại (mục khác): 6 bảng tạm `#…` (`courseCmeService` + `MERGE`, đã xong ở mục `MERGE`), `THROW` trong 3 lô kiểm tra trùng (`certificateRepository`, `courseEnrollmentService`, `programLessonService`).
 - [x] Cột BIT so / gán với số (`is_active = 1`, `SET must_change_password = 0`, `<> 1`): 138 chỗ đổi
   sang chữ `'true'` / `'false'` — SQL Server tự đổi chữ thành BIT (vẫn dùng được chỉ mục), PG tự
   ép sang `boolean`; chạy được ở WHERE, SET, `CASE WHEN`, `SUM(CASE …)`. Đổi bằng script hiểu
@@ -616,6 +616,27 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "stringAgg" trong `test-integration/batchSplit.cases.js` (2 DB: thứ tự tăng / giảm, cột số,
     `councilService.getAll` — trước đây lỗi trên PG —, danh sách bài học đúng thứ tự khoa, vòng thực hành).
     Còn vướng mục khác trên PG: `FOR JSON` (cổng công khai, chi tiết chương trình). Tổng ratchet 112 → 100.
+- [x] `MERGE` (merge 7 → 0, kéo theo temp_table 6 → 0, output_clause 1 → 0, identity_fn 1 → 0): helper
+  `upsert({ table, key, values, update, source?, nullable?, conflictWhere?, returning?, action? })` của adapter —
+  SQL Server `MERGE … WITH (HOLDLOCK) AS tgt USING (…) AS src`, PG `INSERT … AS tgt … ON CONFLICT (key) DO UPDATE`.
+  - `update` ghi `EXCLUDED.cột` = giá trị lẽ ra được thêm (SQL Server thay bằng biểu thức trong `values`);
+    `source` = câu SELECT nhiều dòng (bí danh `src`); `action` thêm cột `merge_action` (`$action` / PG 18
+    `old.<key[0]> IS NULL`); `conflictWhere` cho index UNIQUE có lọc (`cme_records … WHERE source_type IS NOT NULL`).
+  - 1 dòng: cấu hình form, giá trị trường tùy chỉnh, cài đặt hệ thống, sổ số CME theo năm (4 chỗ này trước không có
+    `HOLDLOCK` — nay an toàn khi 2 request cùng lúc). Điểm danh học viên: `returning: 'new.*', action: true`,
+    khoá `(user_id, work_date, shift_id)` với `nullable: ['shift_id']`.
+  - CME tự động từ khóa (`courseCmeService`): bỏ bảng tạm `#cme` / `#hours` — câu SELECT thành `source`
+    (`TRAINEE_SOURCE`, `LECTURER_SOURCE`; lọc tín chỉ > 0 trong subquery thay `DELETE FROM #cme`), nối chuỗi `+` →
+    `CONCAT`, bỏ `CAST(… AS NVARCHAR)`. GV: xoá dòng cũ + upsert chạy trong 1 transaction. Số dòng = `rowsAffected`.
+  - **Schema PG — UNIQUE có cột NULL:** SQL Server coi các NULL trùng nhau, PG mặc định không ⇒ 6 khoá không lọc có
+    cột được NULL (`council_members`, `shift_assignments`, `staff_attendance`, `course_enrollments`,
+    `exam_paper_questions`, `lecturer_assignments`) trước đây cho phép dòng trùng trên PG. `gen-baseline.js` sinh
+    `NULLS NOT DISTINCT` (baseline sinh lại: đúng 6 dòng đổi; mốc `pgMigrations.test.js` dời sang 2026-12-14);
+    migration `2026-12-15_unique_nulls_not_distinct` (bản PG dựng lại 6 khoá; bản SQL Server không đổi gì) cho DB PG
+    đã tạo. Phải chạy bằng tài khoản chủ schema (`rms_app` không có quyền ALTER).
+  - Kiểm bằng ca "upsert" (2 DB: thêm rồi sửa, nhiều dòng, `merge_action`, 3 dịch vụ gọi 2 lần vẫn 1 dòng, CME
+    khóa chạy lại không thêm dòng) và "upsert khoá có cột NULL" (SQL Server; PG tự bỏ qua tới khi DB chạy migration
+    — đã thử câu PG trên bảng tạm có `NULLS NOT DISTINCT`: thêm rồi sửa cùng dòng). Tổng ratchet 100 → 79.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

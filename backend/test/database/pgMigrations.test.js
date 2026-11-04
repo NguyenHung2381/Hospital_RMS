@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const BASELINE_CUTOFF = '2026-12-13_toi_uu_index_giai_doan_1.sql';
+const BASELINE_CUTOFF = '2026-12-14_bo_trigger_sinh_ma_khoa.sql';
 const DB_DIR = path.resolve(__dirname, '../../database');
 const sqlFiles = (dir) => fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
 

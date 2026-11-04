@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues, nowSql } = require('../../config/db');
+const { getPool, sql, jsonValues, nowSql, upsert } = require('../../config/db');
 
 // Giá trị trường tùy chỉnh (form_custom_values) — 1 dòng JSON / bản ghi.
 // save() GỘP vào dữ liệu cũ: trường admin đã xóa khỏi cấu hình vẫn giữ giá trị
@@ -54,13 +54,20 @@ const save = async (formKey, recordId, values, actorId = null, runner) => {
 		.input('form_key', sql.VarChar(60), formKey)
 		.input('record_id', sql.VarChar(50), String(recordId))
 		.input('data', sql.NVarChar(sql.MAX), JSON.stringify(merged))
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      MERGE form_custom_values AS tgt
-      USING (SELECT @form_key AS form_key, @record_id AS record_id) AS src
-        ON tgt.form_key = src.form_key AND tgt.record_id = src.record_id
-      WHEN MATCHED THEN UPDATE SET data = @data, updated_at = ${nowSql}, updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT (form_key, record_id, data, created_by) VALUES (@form_key, @record_id, @data, @actor_id);
-    `);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			upsert({
+				table: 'form_custom_values',
+				key: ['form_key', 'record_id'],
+				values: {
+					form_key: '@form_key',
+					record_id: '@record_id',
+					data: '@data',
+					created_by: '@actor_id',
+				},
+				update: { data: '@data', updated_at: nowSql, updated_by: '@actor_id' },
+			}),
+		);
 	return merged;
 };
 

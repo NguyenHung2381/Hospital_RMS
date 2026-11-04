@@ -1,4 +1,4 @@
-const { getPool, sql, crossApply } = require('../../config/db');
+const { getPool, sql, crossApply, upsert } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const attendancePolicy = require('../../utils/attendancePolicy');
 const leavePolicy = require('../../utils/leavePolicy');
@@ -163,7 +163,7 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 
 	const isShift = option.shift_id != null;
 	const pool = await getPool();
-	// MERGE trên UNIQUE(user_id, work_date, shift_id): bấm 2 lần cùng lúc không tạo 2 dòng.
+	// upsert trên UNIQUE(user_id, work_date, shift_id): bấm 2 lần cùng lúc không tạo 2 dòng.
 	// Giờ ca + khóa học chụp lại lúc điểm danh vào — sửa ca / khóa về sau không đổi lịch sử.
 	const row = (
 		await pool
@@ -181,19 +181,37 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 			.input('early', sql.Int, isShift ? shiftLogic.earlyMin(option, now) : null)
 			.input('now', sql.DateTime2, now)
 			.input('ip', sql.VarChar(45), normalizeIp(ip))
-			.input('distance', sql.Int, result.distance_m).query(`
-        MERGE staff_attendance WITH (HOLDLOCK) AS t
-        USING (SELECT @user_id AS user_id, @work_date AS work_date, @shift_id AS shift_id) AS s
-          ON t.user_id = s.user_id AND t.work_date = s.work_date
-             AND (t.shift_id = s.shift_id OR (t.shift_id IS NULL AND s.shift_id IS NULL))
-        WHEN MATCHED THEN UPDATE SET check_out_at = @now, check_out_ip = @ip, check_out_distance_m = @distance, early_min = @early
-        WHEN NOT MATCHED THEN INSERT
-          (user_id, work_date, shift_id, shift_name, shift_code, shift_start_at, shift_end_at,
-           course_id, course_name, check_in_at, check_in_ip, check_in_distance_m, late_min)
-          VALUES (@user_id, @work_date, @shift_id, @shift_name, @shift_code, @shift_start_at, @shift_end_at,
-           @course_id, @course_name, @now, @ip, @distance, @late)
-        OUTPUT inserted.*, $action AS merge_action;
-      `)
+			.input('distance', sql.Int, result.distance_m)
+			.query(
+				upsert({
+					table: 'staff_attendance',
+					key: ['user_id', 'work_date', 'shift_id'],
+					nullable: ['shift_id'],
+					values: {
+						user_id: '@user_id',
+						work_date: '@work_date',
+						shift_id: '@shift_id',
+						shift_name: '@shift_name',
+						shift_code: '@shift_code',
+						shift_start_at: '@shift_start_at',
+						shift_end_at: '@shift_end_at',
+						course_id: '@course_id',
+						course_name: '@course_name',
+						check_in_at: '@now',
+						check_in_ip: '@ip',
+						check_in_distance_m: '@distance',
+						late_min: '@late',
+					},
+					update: {
+						check_out_at: '@now',
+						check_out_ip: '@ip',
+						check_out_distance_m: '@distance',
+						early_min: '@early',
+					},
+					returning: 'new.*',
+					action: true,
+				}),
+			)
 	).recordset[0];
 	broadcast('update', { entity: 'staff_attendance' });
 	const { merge_action, ...record } = row;

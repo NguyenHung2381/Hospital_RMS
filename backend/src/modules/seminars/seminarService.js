@@ -11,6 +11,7 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	upsert,
 } = require('../../config/db');
 const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -543,12 +544,20 @@ const updateRegisterSeq = async (year, lastSeq, actorId) => {
 		.request()
 		.input('year', sql.Int, y)
 		.input('seq', sql.Int, seq)
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      MERGE cme_year_register AS t
-      USING (SELECT @year AS y) AS s ON t.[year] = s.y
-      WHEN MATCHED THEN UPDATE SET last_seq = @seq, updated_at = ${nowSql}, updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT ([year], last_seq, created_by, updated_by) VALUES (@year, @seq, @actor_id, @actor_id);
-    `);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			upsert({
+				table: 'cme_year_register',
+				key: ['year'],
+				values: {
+					year: '@year',
+					last_seq: '@seq',
+					created_by: '@actor_id',
+					updated_by: '@actor_id',
+				},
+				update: { last_seq: '@seq', updated_at: nowSql, updated_by: '@actor_id' },
+			}),
+		);
 	broadcast('update', { entity: 'seminar' });
 	return { year: y, last_seq: seq };
 };

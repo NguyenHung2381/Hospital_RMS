@@ -41,7 +41,7 @@ ALTER TABLE cme_records ADD CONSTRAINT chk_cme_records_source_type CHECK (source
 ALTER TABLE cme_year_register ADD CONSTRAINT chk_cme_year_register_seq CHECK (last_seq>=0);
 ALTER TABLE cme_year_register ADD CONSTRAINT chk_cme_year_register_year CHECK (year>=2000 AND year<=2100);
 ALTER TABLE council_members ADD CONSTRAINT uq_cm_council_role UNIQUE (council_id, role);
-ALTER TABLE council_members ADD CONSTRAINT uq_cm_council_user UNIQUE (council_id, user_id);
+ALTER TABLE council_members ADD CONSTRAINT uq_cm_council_user UNIQUE NULLS NOT DISTINCT (council_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_cm_user ON council_members (user_id);
 ALTER TABLE council_members ADD CONSTRAINT chk_cm_id CHECK (id LIKE 'HDM%');
 ALTER TABLE council_members ADD CONSTRAINT chk_cm_role CHECK (role='member' OR role='reviewer2' OR role='reviewer1' OR role='secretary' OR role='chairman');
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS ix_course_documents_file ON course_documents (file_id
 ALTER TABLE course_documents ADD CONSTRAINT chk_course_documents_id CHECK (id SIMILAR TO 'TL[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]') NOT VALID;
 ALTER TABLE course_documents ADD CONSTRAINT chk_course_documents_source_pair CHECK (source_type='file' AND file_id IS NOT NULL AND external_url IS NULL OR source_type='link' AND external_url IS NOT NULL AND file_id IS NULL);
 ALTER TABLE course_documents ADD CONSTRAINT chk_course_documents_source_type CHECK (source_type='link' OR source_type='file');
-CREATE UNIQUE INDEX IF NOT EXISTS uq_enroll_course_trainee_program ON course_enrollments (course_id, trainee_id, program_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_enroll_course_trainee_program ON course_enrollments (course_id, trainee_id, program_id) NULLS NOT DISTINCT;
 CREATE INDEX IF NOT EXISTS ix_course_enrollments_trainee ON course_enrollments (trainee_id);
 CREATE INDEX IF NOT EXISTS ix_course_enrollments_program ON course_enrollments (program_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_enroll_practice_code ON course_enrollments (practice_code) WHERE (practice_code IS NOT NULL);
@@ -100,7 +100,7 @@ CREATE INDEX IF NOT EXISTS ix_exam_answers_question ON exam_answers (question_id
 CREATE UNIQUE INDEX IF NOT EXISTS uq_examatt_paper_enrollment_no ON exam_attempts (paper_id, enrollment_id, attempt_no);
 CREATE INDEX IF NOT EXISTS ix_exam_attempts_enrollment ON exam_attempts (enrollment_id);
 ALTER TABLE exam_attempts ADD CONSTRAINT chk_examatt_status CHECK (status='graded' OR status='submitted' OR status='in_progress');
-CREATE UNIQUE INDEX IF NOT EXISTS uq_epq_paper_code_question ON exam_paper_questions (paper_id, code_no, question_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_epq_paper_code_question ON exam_paper_questions (paper_id, code_no, question_id) NULLS NOT DISTINCT;
 CREATE INDEX IF NOT EXISTS ix_exam_paper_questions_question ON exam_paper_questions (question_id);
 CREATE INDEX IF NOT EXISTS ix_exam_papers_course ON exam_papers (course_id);
 ALTER TABLE exam_papers ADD CONSTRAINT chk_exam_papers_code_mode CHECK (code_mode IS NULL OR (code_mode='codes' OR code_mode='shuffled' OR code_mode='per_trainee'));
@@ -127,7 +127,7 @@ ALTER TABLE job_execution_log ADD CONSTRAINT uq_job_execution_log_job_key UNIQUE
 ALTER TABLE job_titles ADD CONSTRAINT uq_job_titles_name UNIQUE (name);
 CREATE INDEX IF NOT EXISTS ix_lecass_lecturer ON lecturer_assignments (lecturer_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_lecass_main ON lecturer_assignments (course_id, subject_id) WHERE (role='main' AND subject_id IS NOT NULL);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_lecass_course_subject_lecturer ON lecturer_assignments (course_id, subject_id, lecturer_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_lecass_course_subject_lecturer ON lecturer_assignments (course_id, subject_id, lecturer_id) NULLS NOT DISTINCT;
 ALTER TABLE lecturer_assignments ADD CONSTRAINT chk_lecass_hours CHECK (hours IS NULL OR hours>=0);
 ALTER TABLE lecturer_assignments ADD CONSTRAINT chk_lecass_role CHECK (role='assistant' OR role='main');
 ALTER TABLE lecturer_assignments ADD CONSTRAINT chk_lecturer_assignments_id CHECK (id SIMILAR TO 'PC[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]') NOT VALID;
@@ -221,10 +221,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_seminars_public_token ON seminars (public_t
 ALTER TABLE seminars ADD CONSTRAINT chk_seminars_event_type CHECK (event_type='other' OR event_type='training' OR event_type='sci_conference' OR event_type='intl_seminar' OR event_type='sci_seminar' OR event_type='conference');
 ALTER TABLE seminars ADD CONSTRAINT chk_seminars_scope CHECK (scope='hosted' OR scope='external');
 CREATE UNIQUE INDEX IF NOT EXISTS uq_sending_units_name ON sending_units (name);
-ALTER TABLE shift_assignments ADD CONSTRAINT uq_shift_assignments UNIQUE (user_id, work_date, shift_id);
+ALTER TABLE shift_assignments ADD CONSTRAINT uq_shift_assignments UNIQUE NULLS NOT DISTINCT (user_id, work_date, shift_id);
 CREATE INDEX IF NOT EXISTS ix_shift_assignments_date ON shift_assignments (work_date);
 CREATE UNIQUE INDEX IF NOT EXISTS ux_shift_patterns_default ON shift_patterns (is_default) WHERE (is_default = true);
-ALTER TABLE staff_attendance ADD CONSTRAINT uq_staff_attendance_user_date_shift UNIQUE (user_id, work_date, shift_id);
+ALTER TABLE staff_attendance ADD CONSTRAINT uq_staff_attendance_user_date_shift UNIQUE NULLS NOT DISTINCT (user_id, work_date, shift_id);
 CREATE INDEX IF NOT EXISTS ix_staff_attendance_date ON staff_attendance (work_date);
 CREATE INDEX IF NOT EXISTS ix_staff_attendance_course_date ON staff_attendance (course_id, work_date) WHERE (course_id IS NOT NULL);
 ALTER TABLE staff_practice_licenses ADD CONSTRAINT uq_stafflic_user UNIQUE (user_id);

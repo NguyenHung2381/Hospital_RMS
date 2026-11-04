@@ -452,6 +452,28 @@ const insertReturning = (insert, rest, cols) => `${insert} ${rest} RETURNING ${c
 /** @param {string} del @param {string} where @param {string} cols */
 const deleteReturning = (del, where, cols) => `${del} WHERE ${where} RETURNING ${cols}`;
 
+// Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
+// `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
+/**
+ * @param {{ table: string, key: string[], values: Record<string, string>,
+ *   update: Record<string, string>, source?: string, nullable?: string[],
+ *   conflictWhere?: string, returning?: string, action?: boolean }} o
+ */
+const upsert = ({ table, key, values, update, source, conflictWhere, returning, action }) => {
+	const cols = Object.keys(values);
+	const vals = cols.map((c) => values[c]).join(', ');
+	const ret = [
+		returning,
+		action && `CASE WHEN old.${key[0]} IS NULL THEN 'INSERT' ELSE 'UPDATE' END AS merge_action`,
+	].filter(Boolean);
+	return `INSERT INTO ${table} AS tgt (${cols.join(', ')})
+${source ? `SELECT ${vals} FROM (${source}) AS src` : `VALUES (${vals})`}
+ON CONFLICT (${key.join(', ')})${conflictWhere ? ` WHERE ${conflictWhere}` : ''}
+DO UPDATE SET ${Object.entries(update)
+		.map(([c, e]) => `${c} = ${e}`)
+		.join(', ')}${ret.length ? `\nRETURNING ${ret.join(', ')}` : ''}`;
+};
+
 // Cùng giao diện với db.mssql.js: mỗi câu 1 lời gọi, cùng tham số của `req`. Trong
 // transaction thì chạy lần lượt (1 kết nối); ngoài transaction chạy song song.
 /**
@@ -500,6 +522,7 @@ module.exports = {
 	updateReturning,
 	insertReturning,
 	deleteReturning,
+	upsert,
 	sslOptions,
 	toMssqlResult,
 };

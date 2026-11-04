@@ -1,4 +1,4 @@
-const { getPool, sql, nowSql } = require('../../config/db');
+const { getPool, sql, nowSql, upsert } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 const registry = require('./formRegistry');
@@ -70,12 +70,20 @@ const save = async (formKey, override, actorId) => {
 		.request()
 		.input('key', sql.VarChar(60), formKey)
 		.input('config', sql.NVarChar(sql.MAX), JSON.stringify(override))
-		.input('actor_id', sql.VarChar(20), actorId).query(`
-      MERGE form_configs AS tgt
-      USING (SELECT @key AS form_key) AS src ON tgt.form_key = src.form_key
-      WHEN MATCHED THEN UPDATE SET config = @config, updated_at = ${nowSql}, updated_by = @actor_id
-      WHEN NOT MATCHED THEN INSERT (form_key, config, created_by, updated_by) VALUES (@key, @config, @actor_id, @actor_id);
-    `);
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			upsert({
+				table: 'form_configs',
+				key: ['form_key'],
+				values: {
+					form_key: '@key',
+					config: '@config',
+					created_by: '@actor_id',
+					updated_by: '@actor_id',
+				},
+				update: { config: '@config', updated_at: nowSql, updated_by: '@actor_id' },
+			}),
+		);
 	cache = null;
 	broadcast('update', { entity: 'form_config' });
 	return (await listForAdmin()).find((f) => f.key === formKey);

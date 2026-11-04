@@ -673,6 +673,147 @@ const run = async (t, db, { skip = [] } = {}) => {
 			for (const x of rounds) assert.ok(Array.isArray(x.department_ids));
 		}
 	});
+
+	// MERGE → upsert (SQL Server MERGE … WITH (HOLDLOCK), PG INSERT … ON CONFLICT)
+	await step('upsert: thêm rồi sửa, nhiều dòng, merge_action, dịch vụ dùng upsert', async () => {
+		const one = (v) =>
+			new sql.Request(tx)
+				.input('key', sql.VarChar(50), 'ZZ_UPSERT')
+				.input('value', sql.NVarChar(sql.MAX), v)
+				.query(
+					db.upsert({
+						table: 'system_settings',
+						key: ['setting_key'],
+						values: { setting_key: '@key', value: '@value' },
+						update: { value: 'EXCLUDED.value', updated_at: db.nowSql },
+						returning: 'new.setting_key, new.value',
+						action: true,
+					}),
+				)
+				.then((r) => ({ ...r.recordset[0] }));
+		assert.deepEqual(await one('một'), {
+			setting_key: 'ZZ_UPSERT',
+			value: 'một',
+			merge_action: 'INSERT',
+		});
+		assert.deepEqual(await one('hai'), {
+			setting_key: 'ZZ_UPSERT',
+			value: 'hai',
+			merge_action: 'UPDATE',
+		});
+		const multi = await new sql.Request(tx).query(
+			db.upsert({
+				table: 'system_settings',
+				key: ['setting_key'],
+				source: "SELECT 'ZZ_UPSERT' AS k, N'ba' AS v UNION ALL SELECT 'ZZ_UPSERT2', N'bốn'",
+				values: { setting_key: 'src.k', value: 'src.v' },
+				update: { value: 'EXCLUDED.value' },
+			}),
+		);
+		assert.equal(multi.rowsAffected[0], 2);
+		assert.deepEqual(
+			(
+				await q(
+					"SELECT value FROM system_settings WHERE setting_key LIKE 'ZZ_UPSERT%' ORDER BY setting_key",
+				)
+			).map((r) => r.value),
+			['ba', 'bốn'],
+		);
+		// SQL Server thay EXCLUDED.x bằng giá trị thêm nên x phải có trong values (PG tự hiểu)
+		if (db.client === 'mssql')
+			assert.throws(
+				() =>
+					db.upsert({ table: 't', key: ['a'], values: { a: '@a' }, update: { b: 'EXCLUDED.b' } }),
+				/EXCLUDED\.b/,
+			);
+
+		// Dịch vụ: gọi 2 lần vẫn 1 dòng, giá trị mới nhất
+		const settings = require('../src/modules/settings/systemSettingService');
+		await settings.update('ZZ_UPSERT3', 'x', actor.id);
+		await settings.update('ZZ_UPSERT3', 'y', actor.id);
+		assert.deepEqual(
+			(await q("SELECT value FROM system_settings WHERE setting_key = 'ZZ_UPSERT3'")).map(
+				(r) => r.value,
+			),
+			['y'],
+		);
+		const custom = require('../src/modules/forms/formCustomValueService');
+		await custom.save('zz_form', 'R1', { a: 1 }, actor.id);
+		await custom.save('zz_form', 'R1', { b: 2 }, actor.id);
+		const cv = await q("SELECT data FROM form_custom_values WHERE form_key = 'zz_form'");
+		assert.equal(cv.length, 1);
+		assert.deepEqual(JSON.parse(cv[0].data), { a: 1, b: 2 });
+		const seminars = require('../src/modules/seminars/seminarService');
+		const [{ y }] = await q('SELECT COALESCE(MAX(cme_year), 2099) AS y FROM seminar_participants');
+		await seminars.updateRegisterSeq(Number(y), 9000, actor.id);
+		await seminars.updateRegisterSeq(Number(y), 9001, actor.id);
+		const reg = await q('SELECT last_seq FROM cme_year_register WHERE year = @y', { y: Number(y) });
+		assert.deepEqual(
+			reg.map((r) => Number(r.last_seq)),
+			[9001],
+		);
+
+		// CME tự động từ khóa: chạy lại thì cập nhật, không thêm dòng
+		const courseCme = require('../src/modules/training/courses/courseCmeService');
+		const [c] = await q('SELECT id FROM courses ORDER BY id');
+		if (c) {
+			const count = async () =>
+				Number(
+					(
+						await q(
+							"SELECT COUNT(*) AS n FROM cme_records WHERE source_id = @c AND source_type LIKE 'course_%'",
+							{
+								c: c.id,
+							},
+						)
+					)[0].n,
+				);
+			const t1 = await courseCme.syncTrainees(c.id, actor.id);
+			const l1 = await courseCme.syncLecturers(c.id, actor.id);
+			const n1 = await count();
+			assert.equal(await courseCme.syncTrainees(c.id, actor.id), t1);
+			assert.equal(await courseCme.syncLecturers(c.id, actor.id), l1);
+			assert.equal(await count(), n1);
+		}
+	});
+
+	await step('upsert khoá có cột NULL: điểm danh không theo ca 2 lần vẫn 1 dòng', async (st) => {
+		if (db.client === 'pg') {
+			const [ix] = await q(`
+        SELECT i.indnullsnotdistinct AS nnd FROM pg_index i
+        JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = 'uq_staff_attendance_user_date_shift'`);
+			if (!ix?.nnd)
+				return st.skip('DB PG chưa chạy migration 2026-12-15_unique_nulls_not_distinct');
+		}
+		const up = (now) =>
+			new sql.Request(tx)
+				.input('user_id', sql.VarChar(20), actor.id)
+				.input('work_date', sql.Date, '2030-01-02')
+				.input('shift_id', sql.Int, null)
+				.input('now', sql.DateTime2, now)
+				.query(
+					db.upsert({
+						table: 'staff_attendance',
+						key: ['user_id', 'work_date', 'shift_id'],
+						nullable: ['shift_id'],
+						values: {
+							user_id: '@user_id',
+							work_date: '@work_date',
+							shift_id: '@shift_id',
+							check_in_at: '@now',
+						},
+						update: { check_out_at: '@now' },
+						returning: 'new.id',
+						action: true,
+					}),
+				)
+				.then((r) => r.recordset[0]);
+		const a = await up(new Date('2030-01-02T01:00:00Z'));
+		const b = await up(new Date('2030-01-02T09:00:00Z'));
+		assert.equal(a.merge_action, 'INSERT');
+		assert.equal(b.merge_action, 'UPDATE');
+		assert.equal(String(a.id), String(b.id));
+	});
 };
 
 module.exports = { run };

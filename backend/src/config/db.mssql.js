@@ -309,6 +309,50 @@ const insertReturning = (insert, rest, cols) => `${insert} OUTPUT ${outputExpr(c
  */
 const deleteReturning = (del, where, cols) => `${del} OUTPUT ${outputExpr(cols)} WHERE ${where}`;
 
+// Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
+//   table   bảng đích (bí danh tgt — dùng được trong update)
+//   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
+//   values  { cột: biểu thức } của dòng thêm (tham số @x, hoặc src.x khi có source)
+//   update  { cột: biểu thức } khi đã có dòng; `EXCLUDED.cột` = giá trị lẽ ra được thêm
+//   source  (tuỳ chọn) câu SELECT nhiều dòng, bí danh src
+//   nullable  cột khoá được NULL (so NULL = NULL như UNIQUE của SQL Server; PG cần
+//             UNIQUE NULLS NOT DISTINCT)
+//   conflictWhere  điều kiện của index UNIQUE có lọc (chỉ PG dùng)
+//   returning  cột trả về (`new.*`, `new.id`…); action = thêm cột merge_action 'INSERT' | 'UPDATE'
+//             (PG: dựa vào old.<key[0]> — key[0] phải NOT NULL)
+// SQL Server: MERGE … WITH (HOLDLOCK); PG: INSERT … ON CONFLICT … DO UPDATE.
+/**
+ * @param {{ table: string, key: string[], values: Record<string, string>,
+ *   update: Record<string, string>, source?: string, nullable?: string[],
+ *   conflictWhere?: string, returning?: string, action?: boolean }} o
+ */
+const upsert = ({ table, key, values, update, source, nullable = [], returning, action }) => {
+	const cols = Object.keys(values);
+	const excluded = (/** @type {string} */ e) =>
+		e.replace(/\bEXCLUDED\.(\w+)/g, (_, c) => {
+			if (!(c in values)) throw new Error(`upsert: EXCLUDED.${c} không có trong values`);
+			return `(${values[c]})`;
+		});
+	const on = key
+		.map((k) =>
+			nullable.includes(k)
+				? `(tgt.${k} = ${values[k]} OR (tgt.${k} IS NULL AND ${values[k]} IS NULL))`
+				: `tgt.${k} = ${values[k]}`,
+		)
+		.join(' AND ');
+	const out = [returning && outputExpr(returning), action && '$action AS merge_action'].filter(
+		Boolean,
+	);
+	return `MERGE ${table} WITH (HOLDLOCK) AS tgt
+USING (${source ?? 'SELECT 1 AS one'}) AS src ON ${on}
+WHEN MATCHED THEN UPDATE SET ${Object.entries(update)
+		.map(([c, e]) => `${c} = ${excluded(e)}`)
+		.join(', ')}
+WHEN NOT MATCHED THEN INSERT (${cols.join(', ')}) VALUES (${cols.map((c) => values[c]).join(', ')})${
+		out.length ? `\nOUTPUT ${out.join(', ')}` : ''
+	};`;
+};
+
 // Nhiều câu SELECT dùng chung tham số đã gắn vào `req` → mảng tập kết quả, câu thứ
 // i ứng với phần tử thứ i (mỗi câu phải trả về đúng 1 tập kết quả). SQL Server: ghép
 // thành 1 lô, 1 lượt gọi như trước. Bản PG (db.pg.js) chạy từng câu riêng.
@@ -348,5 +392,6 @@ module.exports = {
 	updateReturning,
 	insertReturning,
 	deleteReturning,
+	upsert,
 	tlsOptions,
 };
