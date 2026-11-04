@@ -9,6 +9,7 @@ const {
 	queryAll,
 	vnTodaySql,
 	nowSql,
+	outerApply,
 } = require('../../config/db');
 const { genRoundId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -103,7 +104,8 @@ const getRoundLevelId = async (roundId) => {
 
 // Cùng quy tắc với getRoundLevelId, dùng trong SELECT danh sách / chi tiết đợt.
 const ROUND_LEVEL_APPLY = `
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT CASE WHEN COUNT(*) = 1 THEN MAX(s.level_id) END AS level_id
       FROM (
         SELECT level_id FROM research_round_levels WHERE round_id = r.id
@@ -112,7 +114,9 @@ const ROUND_LEVEL_APPLY = `
         WHERE rtl.round_type_id = r.round_type_id
           AND NOT EXISTS (SELECT 1 FROM research_round_levels WHERE round_id = r.id)
       ) s
-    ) rl
+    `,
+			'rl',
+		)}
     LEFT JOIN levels lv ON lv.id = rl.level_id`;
 
 // Đề tài (trừ bài báo) của đợt nhận lại cấp độ của đợt — gọi khi đổi cấp độ /

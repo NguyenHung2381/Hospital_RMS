@@ -1,5 +1,6 @@
 // SQL dùng chung cho checklist giấy tờ học viên (giai đoạn 3) — file riêng không phụ
 // thuộc service nào để traineeService và traineeRecordService cùng dùng mà không vòng require.
+const { outerApply } = require('../../../config/db');
 
 // Loại giấy tờ dt bắt buộc với học viên t: t có ghi danh (chưa bị từ chối) vào khóa
 // mang loại nằm trong dt.required_for_types (danh sách id cách nhau dấu phẩy).
@@ -15,17 +16,23 @@ const DOC_SUBMITTED_SQL = (t, dt) => `EXISTS (
   )`;
 // Cột "Hồ sơ x/y" + lọc "thiếu hồ sơ" ở danh sách học viên (traineeService.getAll)
 // (SQL Server không cho subquery trong SUM ⇒ đếm qua OUTER APPLY)
-const DOC_COUNT_APPLY = `OUTER APPLY (
+const DOC_COUNT_APPLY = outerApply(
+	`
     SELECT COUNT(*) AS doc_required, COUNT(ok.x) AS doc_done
     FROM trainee_document_types dt
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT 1 AS x FROM trainee_documents sd
       JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
       WHERE sd.trainee_id = t.id AND sd.doc_type = dt.id AND sd.status = 'approved'
       ORDER BY sd.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-    ) ok
+    `,
+			'ok',
+		)}
     WHERE ${DOC_REQUIRED_SQL('t', 'dt')}
-  ) dc`;
+  `,
+	'dc',
+);
 const DOC_MISSING_SQL = `EXISTS (
     SELECT 1 FROM trainee_document_types dt
     WHERE ${DOC_REQUIRED_SQL('t', 'dt')} AND NOT ${DOC_SUBMITTED_SQL('t', 'dt')}

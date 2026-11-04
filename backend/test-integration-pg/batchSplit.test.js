@@ -22,7 +22,7 @@ const { run } = require('../test-integration/batchSplit.cases');
 
 test('lô đã tách trên PostgreSQL thật (rollback)', async (t) => {
 	// Các ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này — bật lại khi các mục đó xong:
-	// phân trang (CROSS APPLY), dashboard (CONVERT / YEAR), đồng bộ bài học + xoá buổi học
+	// phân trang (DATEADD), dashboard (CONVERT / YEAR), đồng bộ bài học + xoá buổi học
 	// (lessonProgressService: UPDATE … FROM rồi SELECT @@ROWCOUNT trong 1 lô), xoá thông
 	// báo theo lô (DATEADD).
 	await run(t, db, {

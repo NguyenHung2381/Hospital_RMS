@@ -10,7 +10,14 @@
  * Vòng đã có kết quả (Đạt / Không đạt) là lịch sử: sinh lại / xếp lại không xóa, không đổi ngày.
  * Danh sách trả kèm cảnh báo từng dòng (không chặn).
  */
-const { getPool, sql, newIdSql, withTransaction, nowSql } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	newIdSql,
+	withTransaction,
+	nowSql,
+	crossApply,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { formatDuration } = require('../../../utils/trainingDuration');
@@ -401,13 +408,16 @@ const CARRY_FROM = `
   FROM enrollment_rotations o
   JOIN course_enrollments oe ON oe.id = o.enrollment_id
   JOIN course_enrollments e ON e.id = @id AND e.trainee_id = oe.trainee_id AND oe.id <> e.id
-  CROSS APPLY (
+  ${crossApply(
+		`
     SELECT pl.id, pl.title FROM lesson_programs lp
     JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind = 'rotation'
     WHERE lp.program_id = e.program_id
       AND (pl.id = o.lesson_id OR EXISTS (SELECT 1 FROM lesson_departments ld
                                           WHERE ld.lesson_id = pl.id AND ld.department_id = o.department_id))
-    ORDER BY CASE WHEN pl.id = o.lesson_id THEN 0 ELSE 1 END, lp.display_order OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) m
+    ORDER BY CASE WHEN pl.id = o.lesson_id THEN 0 ELSE 1 END, lp.display_order OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+		'm',
+	)}
   WHERE o.result = 'pass'
     AND NOT EXISTS (SELECT 1 FROM enrollment_rotations x
                     WHERE x.enrollment_id = @id AND x.result = 'pass' AND x.lesson_id = m.id

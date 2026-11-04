@@ -125,6 +125,34 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.equal(Number(n0.n) - Number(n1.n), deleted);
 	});
 
+	// CROSS / OUTER APPLY qua crossApply / outerApply của adapter (PG: JOIN LATERAL)
+	await step(
+		'crossApply / outerApply: giữ / bỏ dòng đúng, dịch vụ dùng APPLY chạy được',
+		async () => {
+			const [r] = await q(`
+      SELECT COUNT(*) AS n, COUNT(x.id) AS has_user, COUNT(z.none) AS none_n
+      FROM roles r
+      ${db.crossApply('SELECT COUNT(*) AS n FROM users u WHERE u.role_id = r.id', 'uc')}
+      ${db.outerApply(
+				'SELECT u.id FROM users u WHERE u.role_id = r.id ORDER BY u.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+				'x',
+			)}
+      ${db.outerApply('SELECT 1 AS none FROM users u WHERE 1 = 0', 'z')}`);
+			const [{ n: roles }] = await q('SELECT COUNT(*) AS n FROM roles');
+			assert.equal(Number(r.n), Number(roles)); // outerApply rỗng vẫn giữ dòng
+			assert.equal(Number(r.none_n), 0);
+			const [e] = await q(
+				`SELECT COUNT(*) AS n FROM roles r ${db.crossApply('SELECT u.id FROM users u WHERE 1 = 0', 'e')}`,
+			);
+			assert.equal(Number(e.n), 0); // crossApply rỗng bỏ dòng
+			const roleRows = await require('../src/modules/access/roleService').getAll({ limit: 3 });
+			assert.ok((roleRows.data ?? roleRows).every((x) => Number.isInteger(Number(x.user_count))));
+			await require('../src/modules/cme/cmeRequirementService').getComplianceReport(2026);
+			await require('../src/modules/attendance/leaveRequestService').list({});
+			await require('../src/modules/rounds/roundService').getAll({});
+		},
+	);
+
 	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {
 		const [cnt] = await q(`
       SELECT SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS on_n,

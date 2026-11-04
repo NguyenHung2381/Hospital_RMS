@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, queryAll } = require('../../config/db');
+const { getPool, sql, withActorTransaction, queryAll, crossApply } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -50,7 +50,7 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
              SUM(CASE WHEN uc.user_count > 0 THEN 1 ELSE 0 END) AS with_users,
              SUM(uc.user_count) AS total_users
       FROM roles r
-      CROSS APPLY (SELECT COUNT(*) AS user_count FROM users u WHERE u.role_id = r.id) uc
+      ${crossApply(`SELECT COUNT(*) AS user_count FROM users u WHERE u.role_id = r.id`, 'uc')}
 			`,
 		]);
 		const statsRow = sets[2][0];

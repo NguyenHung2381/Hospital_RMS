@@ -1,4 +1,4 @@
-const { getPool, sql, jsonValues, nowSql } = require('../../config/db');
+const { getPool, sql, jsonValues, nowSql, crossApply } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const notificationService = require('../notifications/notificationService');
 const { findActiveUserIdsWhere } = require('../access/permissionService');
@@ -222,8 +222,11 @@ const SELECT_ADMIN = `
   SELECT r.*, t.id AS trainee_id, t.full_name, t.department_id, d.name AS department_name,
          u.full_name AS reviewer_name
   FROM attendance_leave_requests r
-  CROSS APPLY (SELECT id, full_name, department_id FROM trainees WHERE user_id = r.user_id
-               ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) t
+  ${crossApply(
+		`SELECT id, full_name, department_id FROM trainees WHERE user_id = r.user_id
+               ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+		't',
+	)}
   LEFT JOIN departments d ON d.id = t.department_id
   LEFT JOIN users u ON u.id = r.reviewed_by
 `;

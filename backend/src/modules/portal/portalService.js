@@ -4,7 +4,7 @@
  * actor.id (trainees.user_id / staff_user_id, lecturers.user_id, seminar_participants.user_id,
  * cme_records.user_id) nên không cần quyền courses:read / seminars:read.
  */
-const { getPool, sql, queryAll, vnTodaySql } = require('../../config/db');
+const { getPool, sql, queryAll, vnTodaySql, crossApply } = require('../../config/db');
 const courseDocumentService = require('../training/courses/courseDocumentService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
@@ -64,13 +64,16 @@ const getMyTraining = async (actor) => {
            (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
            (SELECT COUNT(*) FROM class_sessions WHERE course_id = c.id) AS session_count
     FROM courses c
-    CROSS APPLY (
+    ${crossApply(
+			`
       SELECT COUNT(*) AS n, STRING_AGG(s.title, ', ') AS subjects
       FROM lecturer_assignments la
       JOIN lecturers l ON l.id = la.lecturer_id AND l.user_id = @uid
       LEFT JOIN program_lessons s ON s.id = la.subject_id
       WHERE la.course_id = c.id
-    ) x
+    `,
+			'x',
+		)}
     WHERE x.n > 0
     ORDER BY c.start_date DESC
 		`,

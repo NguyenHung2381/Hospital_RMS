@@ -111,7 +111,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
 | `DATEADD` / `DATEDIFF` | 31 (18) | `+ interval '...'`, `date_part`, phép trừ ngày |
 | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` | 25 (13) | `string_agg(x, ',' ORDER BY ...)` |
-| `CROSS APPLY` / `OUTER APPLY` | 25 (19) | `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true` |
+| `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 14 | `RETURNING` (`updateReturning` của adapter) |
 | `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) | `RETURNING id`, `rowCount`, không có tương đương trực tiếp |
@@ -256,7 +256,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `CONVERT(VARCHAR, d, 103)` | `to_char(d, 'DD/MM/YYYY')` | ✗ — nên định dạng ở JS |
 | `OUTPUT INSERTED.*` | `RETURNING *` | ✗ |
 | `MERGE ... WITH (HOLDLOCK)` | `INSERT ... ON CONFLICT (...) DO UPDATE` | ✗ — cần index `UNIQUE` trên khoá xung đột |
-| `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✗ |
+| `CROSS APPLY (SELECT TOP 1 ...)` | `CROSS JOIN LATERAL (SELECT ... LIMIT 1)` | ✓ qua adapter: `${crossApply(`SELECT … ORDER BY … OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 'x')}` |
 | `OPENJSON(@ids)` | `= ANY($1::text[])` (truyền mảng JS) | ✗ — có thể chuyển về `IN (@id0, @id1...)` qua `inClause` ở chặng 1 |
 | `STRING_AGG(x, ',') WITHIN GROUP (ORDER BY y)` | `string_agg(x, ',' ORDER BY y)` | ✗ |
 | `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✗ — hoặc gom ở JS |
@@ -534,6 +534,15 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     ORDER BY id OFFSET 0 ROWS FETCH NEXT @batch ROWS ONLY)` + `rowsAffected` (bảng không có trigger).
   - Kiểm bằng ca "TOP n đã đổi" và "xoá thông báo cũ theo lô" trong `test-integration/batchSplit.cases.js`
     (PG bỏ ca xoá thông báo vì còn `DATEADD`). Tổng ratchet 267 → 200.
+- [x] `CROSS / OUTER APPLY` (25 → 2, còn trong comment): helper `crossApply(subquery, alias)` /
+  `outerApply(subquery, alias)` của adapter — SQL Server sinh `CROSS / OUTER APPLY (…) alias`, PG sinh
+  `CROSS JOIN LATERAL (…) alias` / `LEFT JOIN LATERAL (…) alias ON true` (2 DB không có cú pháp chung).
+  23 chỗ đổi bằng script (APPLY lồng nhau đổi từ trong ra ngoài, vd. `DOC_COUNT_APPLY`). Bỏ luôn
+  `SET NOCOUNT ON` cuối cùng (`userService.getGlobalStats`, chỉ 1 câu SELECT). Kiểm bằng ca
+  "crossApply / outerApply" trong `test-integration/batchSplit.cases.js` (2 DB: APPLY rỗng giữ / bỏ dòng
+  đúng; `roleService.getAll`, báo cáo tuân thủ CME, đơn nghỉ, đợt đăng ký). Các hàm khác có APPLY còn
+  vướng mục khác trên PG: `DATEADD` (hạn bổ sung, phân trang người dùng), `YEAR` (báo cáo đào tạo),
+  nối chuỗi `+` (danh sách học viên theo loại khóa). Tổng ratchet 200 → 177.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

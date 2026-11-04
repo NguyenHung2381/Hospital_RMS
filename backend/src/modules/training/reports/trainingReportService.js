@@ -4,7 +4,7 @@
  *   2. trainees() — danh sách học viên đã duyệt + điểm, xếp loại, chuyên cần
  * Năm của khóa = năm ngày bắt đầu (chưa có ngày bắt đầu thì lấy ngày tạo).
  */
-const { getPool, sql } = require('../../../config/db');
+const { getPool, sql, outerApply } = require('../../../config/db');
 const { COURSE_DISPLAY_STATUS } = require('../courses/courseService');
 const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
 
@@ -47,13 +47,16 @@ const trainees = async (year) => {
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN departments d ON d.id = t.department_id
     LEFT JOIN grades g ON g.enrollment_id = e.id AND g.subject_id IS NULL
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT COUNT(*) AS total_sessions,
              SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS attended
       FROM class_sessions cs
       LEFT JOIN attendance a ON a.session_id = cs.id AND a.enrollment_id = e.id
       WHERE cs.course_id = e.course_id AND ${SESSION_IN_PROGRAM_SQL('cs', 'e')}
-    ) att
+    `,
+			'att',
+		)}
     WHERE e.status = 'approved' AND ${COURSE_IN_YEAR}
     ORDER BY COALESCE(c.start_date, c.created_at), c.name, t.full_name
   `);

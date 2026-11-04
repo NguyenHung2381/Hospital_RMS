@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll, nowSql } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql, crossApply } = require('../../config/db');
 const { remember } = require('../../utils/cache');
 const { todayVN } = require('../../utils/vnDate');
 const { COURSE_DISPLAY_STATUS } = require('../training/courses/courseService');
@@ -290,8 +290,11 @@ const getTrainingStats = async () =>
     FROM course_programs cp
     JOIN courses c ON c.id = cp.course_id AND c.status <> 'cancelled'
     JOIN training_programs tp ON tp.id = cp.program_id
-    CROSS APPLY (SELECT COUNT(*) AS n FROM course_enrollments e
-                 WHERE e.course_id = c.id AND e.program_id = cp.program_id AND e.status = 'approved') a
+    ${crossApply(
+			`SELECT COUNT(*) AS n FROM course_enrollments e
+                 WHERE e.course_id = c.id AND e.program_id = cp.program_id AND e.status = 'approved'`,
+			'a',
+		)}
     WHERE tp.max_capacity > 0
     ORDER BY a.n * 1.0 / tp.max_capacity DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
 			`,

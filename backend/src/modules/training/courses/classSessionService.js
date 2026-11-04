@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, queryAll, nowSql } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	queryAll,
+	nowSql,
+	outerApply,
+} = require('../../../config/db');
 const { genClassSessionId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
@@ -146,13 +153,16 @@ const listSessions = async (courseId) => {
     FROM class_sessions sess
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT STRING_AGG(CONCAT(oc.name, ' ', COALESCE(o.start_time, ''), '–', COALESCE(o.end_time, '')), '; ')
              AS lecturer_clashes
       FROM class_sessions o
       JOIN courses oc ON oc.id = o.course_id
       WHERE ${LECTURER_CLASH_SQL('sess', 'o')}
-    ) clash
+    `,
+			'clash',
+		)}
     WHERE sess.course_id = @course_id
     ORDER BY sess.session_date, sess.start_time
   `);

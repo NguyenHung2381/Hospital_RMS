@@ -201,6 +201,16 @@ const newIdSql = (prefix, n) => {
 // múi giờ (mục 4.3 kế hoạch PG): nowSql = giờ VN (thay GETDATE / SYSDATETIME), utcNowSql =
 // giờ UTC cho các cột ghi chú "lưu giờ UTC" (thay GETUTCDATE / SYSUTCDATETIME), vnTodaySql =
 // ngày hôm nay theo giờ VN, không phụ thuộc múi giờ máy chủ DB.
+// Subquery tương quan theo từng dòng (cùng tên ở db.pg.js): crossApply bỏ dòng khi
+// subquery rỗng, outerApply giữ dòng (cột NULL). SQL Server: CROSS / OUTER APPLY; PG: JOIN LATERAL.
+/**
+ * @param {string} subquery câu SELECT (không có ngoặc ngoài)
+ * @param {string} alias
+ */
+const crossApply = (subquery, alias) => `CROSS APPLY (${subquery}) ${alias}`;
+/** @param {string} subquery @param {string} alias */
+const outerApply = (subquery, alias) => `OUTER APPLY (${subquery}) ${alias}`;
+
 const nowSql = 'GETDATE()';
 const utcNowSql = 'SYSUTCDATETIME()';
 const vnTodaySql = 'CAST(DATEADD(HOUR, 7, SYSUTCDATETIME()) AS DATE)';
@@ -246,6 +256,8 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	crossApply,
+	outerApply,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

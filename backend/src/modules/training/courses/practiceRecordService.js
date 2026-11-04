@@ -7,7 +7,7 @@
  * (vài trăm – vài nghìn hồ sơ).
  * Phạm vi 'assigned' (giảng viên) chỉ thấy khóa mình được phân công.
  */
-const { getPool, sql, boolExpr } = require('../../../config/db');
+const { getPool, sql, boolExpr, outerApply } = require('../../../config/db');
 const { scopeOf } = require('../../../permissions/authz');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
@@ -56,25 +56,34 @@ const list = async (actor = null) => {
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     -- Đếm vòng: đạt / không đạt / đã qua ngày kết thúc mà chưa có kết quả (chờ NHD đánh giá)
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT COUNT(*) AS total,
              SUM(CASE WHEN x.result = 'pass' THEN 1 ELSE 0 END) AS passed,
              SUM(CASE WHEN x.result = 'fail' THEN 1 ELSE 0 END) AS failed,
              SUM(CASE WHEN x.result = 'pending' AND x.end_date < @today THEN 1 ELSE 0 END) AS awaiting
-      FROM enrollment_rotations x WHERE x.enrollment_id = e.id) rc
+      FROM enrollment_rotations x WHERE x.enrollment_id = e.id`,
+			'rc',
+		)}
     -- Vòng đang diễn ra hôm nay
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT x.round_title, x.department_id, x.department_name, x.mentor_user_id, x.mentor_name, x.end_date
       FROM enrollment_rotations x
       WHERE x.enrollment_id = e.id AND x.start_date <= @today AND x.end_date >= @today AND x.result <> 'fail'
-      ORDER BY x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) cur
+      ORDER BY x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+			'cur',
+		)}
     LEFT JOIN departments cd ON cd.id = cur.department_id
     -- Vòng kế tiếp (khi hôm nay chưa vào vòng nào / giữa 2 vòng)
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT x.round_title, x.department_id, x.department_name, x.start_date
       FROM enrollment_rotations x
       WHERE x.enrollment_id = e.id AND x.start_date > @today
-      ORDER BY x.start_date, x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) nx
+      ORDER BY x.start_date, x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+			'nx',
+		)}
     LEFT JOIN departments nd ON nd.id = nx.department_id
     WHERE ${where.join(' AND ')}
     ORDER BY e.registered_at DESC`);

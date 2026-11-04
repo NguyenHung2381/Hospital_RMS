@@ -69,7 +69,7 @@ const PATTERNS = [
 		pg: 'interval / date_part',
 	},
 	{ key: 'within_group', re: /\bWITHIN\s+GROUP\b/gi, pg: 'string_agg(x, sep ORDER BY ...)' },
-	{ key: 'apply', re: /\b(CROSS|OUTER)\s+APPLY\b/gi, pg: 'JOIN LATERAL' },
+	{ key: 'apply', re: /\b(CROSS|OUTER)\s+APPLY\b/gi, pg: 'crossApply / outerApply (adapter)' },
 	{ key: 'like_class', re: /\bLIKE\s+'[^'\n]*\[[^'\n]*'/gi, pg: "~ '^...[0-9]$'" },
 	{ key: 'output_clause', re: /\bOUTPUT\s+(INSERTED|DELETED)\b/gi, pg: 'RETURNING' },
 	{

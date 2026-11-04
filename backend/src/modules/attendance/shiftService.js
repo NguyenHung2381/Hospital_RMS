@@ -5,6 +5,7 @@ const {
 	boolExpr,
 	jsonValues,
 	utcNowSql,
+	crossApply,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const {
@@ -280,8 +281,11 @@ const traineePeriods = async ({ from, to, userId, departmentId }) => {
       JOIN trainees t ON t.id = e.trainee_id
       JOIN users u ON u.id = t.user_id AND u.is_active = 'true'
       LEFT JOIN departments d ON d.id = t.department_id
-      CROSS APPLY (SELECT COALESCE(e.start_date, c.start_date) AS start_date,
-                          COALESCE(e.end_date, c.end_date) AS end_date) p
+      ${crossApply(
+				`SELECT COALESCE(e.start_date, c.start_date) AS start_date,
+                          COALESCE(e.end_date, c.end_date) AS end_date`,
+				'p',
+			)}
       WHERE e.status = 'approved' AND c.status <> 'cancelled'
         AND t.is_active = 'true' AND t.hidden_at IS NULL
         AND (p.start_date IS NOT NULL OR c.is_rolling = 'true')

@@ -69,7 +69,6 @@ const getGlobalStats = async (pool) => {
 	const r = await (
 		await inputRoleId(pool.request(), 'trainee_role', ROLE.TRAINEE)
 	).query(`
-    SET NOCOUNT ON;
     SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN is_active = 'true' THEN 1 ELSE 0 END) AS active,

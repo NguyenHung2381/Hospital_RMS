@@ -5,6 +5,7 @@ const {
 	updateReturning,
 	vnTodaySql,
 	nowSql,
+	crossApply,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const mailService = require('../../notifications/mailService');
@@ -277,7 +278,7 @@ const syncCourseDates = (req) =>
 	req.query(`
     UPDATE c SET start_date = x.s, end_date = x.e, updated_at = ${nowSql}
     FROM courses c
-    CROSS APPLY (SELECT MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs WHERE course_id = c.id) x
+    ${crossApply(`SELECT MIN(start_date) AS s, MAX(end_date) AS e FROM course_programs WHERE course_id = c.id`, 'x')}
     WHERE c.id = @course_id AND x.s IS NOT NULL`);
 
 const datesInput = (req, { start_date = null, end_date = null }) => {

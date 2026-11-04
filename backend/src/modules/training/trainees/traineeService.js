@@ -5,6 +5,7 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	outerApply,
 } = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -83,7 +84,8 @@ const getAll = async (
 
 	// Lượt ghi danh gần nhất thuộc loại đang lọc — cột riêng của từng tab.
 	const latestEnrollment = training_type_id
-		? `OUTER APPLY (
+		? `${outerApply(
+				`
 		    SELECT e.id AS enrollment_id, e.practice_code, e.start_date AS enrollment_start_date,
 		           e.end_date AS enrollment_end_date, e.status AS enrollment_status,
 		           c.name AS course_name, tp.name AS program_name,
@@ -97,7 +99,9 @@ const getAll = async (
 		    LEFT JOIN training_programs tp ON tp.id = e.program_id
 		    WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id
 		    ORDER BY e.created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-		  ) le`
+		  `,
+				'le',
+			)}`
 		: '';
 
 	const sets = await queryAll(req, [

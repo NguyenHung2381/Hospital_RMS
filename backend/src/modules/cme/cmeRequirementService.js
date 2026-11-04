@@ -1,4 +1,4 @@
-const { getPool, sql, nowSql } = require('../../config/db');
+const { getPool, sql, nowSql, outerApply } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { isDeptAccountSql } = require('../../utils/deptAccount');
@@ -87,15 +87,21 @@ const getComplianceReport = async (year) => {
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN seminar_participants p ON p.user_id = u.id
-    OUTER APPLY (
+    ${outerApply(
+			`
       SELECT SUM(credits) AS manual_credits FROM cme_records WHERE user_id = u.id AND year = @year AND approval_status = 'approved'
-    ) cr
-    OUTER APPLY (
+    `,
+			'cr',
+		)}
+    ${outerApply(
+			`
       SELECT required_credits
       FROM cme_requirements
       WHERE year = @year AND (department_id = u.department_id OR department_id IS NULL)
       ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-    ) req
+    `,
+			'req',
+		)}
     WHERE u.is_active = 'true' AND req.required_credits IS NOT NULL
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự
       AND NOT ${isDeptAccountSql('u')}

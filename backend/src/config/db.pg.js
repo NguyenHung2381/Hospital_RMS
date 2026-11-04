@@ -359,6 +359,16 @@ const newIdSql = (prefix, n) => {
 // ngày hôm nay theo giờ VN, không phụ thuộc múi giờ máy chủ DB.
 // PG: now() là lúc bắt đầu transaction (SQL Server: lúc chạy câu) — trong 1 transaction
 // mọi dòng cùng 1 mốc. Đổi múi giờ tường minh nên không phụ thuộc cấu hình timezone của DB.
+// Subquery tương quan theo từng dòng (cùng tên ở db.mssql.js): crossApply bỏ dòng khi
+// subquery rỗng, outerApply giữ dòng (cột NULL). SQL Server: CROSS / OUTER APPLY; PG: JOIN LATERAL.
+/**
+ * @param {string} subquery câu SELECT (không có ngoặc ngoài)
+ * @param {string} alias
+ */
+const crossApply = (subquery, alias) => `CROSS JOIN LATERAL (${subquery}) ${alias}`;
+/** @param {string} subquery @param {string} alias */
+const outerApply = (subquery, alias) => `LEFT JOIN LATERAL (${subquery}) ${alias} ON true`;
+
 const nowSql = "(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')";
 const utcNowSql = "(now() AT TIME ZONE 'UTC')";
 const vnTodaySql = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
@@ -405,6 +415,8 @@ module.exports = {
 	jsonValues,
 	jsonRows,
 	newIdSql,
+	crossApply,
+	outerApply,
 	nowSql,
 	utcNowSql,
 	vnTodaySql,

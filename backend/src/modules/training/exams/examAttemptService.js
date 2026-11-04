@@ -1,4 +1,12 @@
-const { getPool, sql, jsonRows, newIdSql, updateReturning, nowSql } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	jsonRows,
+	newIdSql,
+	updateReturning,
+	nowSql,
+	outerApply,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { randomUUID } = require('crypto');
 const { httpError } = require('../../../utils/httpError');
@@ -36,8 +44,11 @@ const listAvailablePapersForUser = async (actor) => {
     JOIN courses c ON c.id = p.course_id
     JOIN course_enrollments e ON e.course_id = c.id AND e.status = 'approved' AND ${PAPER_FOR_ENROLLMENT_SQL('p', 'e')}
     JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t', '@user_id')}
-    OUTER APPLY (SELECT x.id, x.status, x.attempt_no FROM exam_attempts x
-                 WHERE x.paper_id = p.id AND x.enrollment_id = e.id ORDER BY x.attempt_no DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) att
+    ${outerApply(
+			`SELECT x.id, x.status, x.attempt_no FROM exam_attempts x
+                 WHERE x.paper_id = p.id AND x.enrollment_id = e.id ORDER BY x.attempt_no DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+			'att',
+		)}
     WHERE p.status = 'published'
     ORDER BY p.created_at DESC
   `);
