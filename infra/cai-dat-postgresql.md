@@ -63,6 +63,16 @@ sudo -u postgres psql -c "SHOW shared_buffers; SHOW timezone; SHOW shared_preloa
 
 Phải thấy `3GB`, `Asia/Ho_Chi_Minh`, `pg_stat_statements,auto_explain`.
 
+Backend production luôn kết nối mã hoá (`DB_ENCRYPT: "true"` trong
+`docker-compose.prod.yml`), nên PostgreSQL phải bật SSL:
+
+```bash
+sudo -u postgres psql -c "SHOW ssl;"     # phải là on
+```
+
+Ubuntu thường tự bật SSL với chứng chỉ tự ký khi tạo cluster. Nếu ra `off`, đặt
+`ssl = on`, `ssl_cert_file`, `ssl_key_file` trong `rms.conf` rồi khởi động lại.
+
 ## 4. Mở cổng cho container, chặn bên ngoài
 
 `rms.conf` cho PostgreSQL nghe mọi địa chỉ, vì cổng `docker0` có thể chưa có lúc
@@ -109,9 +119,10 @@ Chạy bằng `rms_migrate`, trong thư mục `backend/`. Có 2 trường hợp:
 DB_CLIENT=pg DB_SERVER=127.0.0.1 DB_USER=rms_migrate npm run migrate init
 ```
 
-**Chuyển dữ liệu từ SQL Server** (`POSTGRESQL_MIGRATION_PLAN.md` mục 6.5): biến
-`DB_*` trỏ tới SQL Server nguồn, `PG_TARGET_*` trỏ tới PG đích (mặc định
-`127.0.0.1:5432/rms_hospital`, user `rms_migrate`, mật khẩu đọc từ pgpass).
+**Chuyển dữ liệu từ SQL Server**: **không** chạy `migrate init`, để DB rỗng và làm
+theo `infra/chuyen-du-lieu-sang-postgresql.md`. Tài liệu đó hướng dẫn kiểm tra
+dữ liệu, diễn tập, ngày chuyển thật, cách quay lại và xử lý sự cố. Tóm tắt các lệnh
+(`backend/scripts/pg-transfer/`):
 
 ```bash
 npm run pg:transfer precheck   # chỉ đọc SQL Server: dữ liệu nào sẽ làm lỗi/đổi nghĩa
@@ -119,8 +130,9 @@ npm run pg:transfer load       # DB PG rỗng → 00, 01, COPY, 02, 03, setval, 
 npm run pg:transfer verify     # so số dòng + checksum từng bảng, identity, ràng buộc
 ```
 
-`load` chỉ chạy trên DB rỗng: chạy lại thì xoá DB (`DROP DATABASE rms_hospital
-WITH (FORCE)`) rồi làm lại bước 5. Mã thoát khác 0 = có lỗi chặn / chênh lệch.
+Trên server, image production không có `npm`: gọi `node scripts/pg-transfer/index.js …`
+trong container backend (cách chạy ở mục A.2 của runbook). `load` chỉ chạy trên DB
+rỗng. Mã thoát khác 0 = có lỗi chặn / chênh lệch.
 
 `00_extensions.sql` tự dừng nếu DB sai encoding, PostgreSQL < 18 hoặc thiếu ICU
 (collation tiếng Việt và `rms_ci`).

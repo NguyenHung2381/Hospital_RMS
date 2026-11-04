@@ -923,7 +923,8 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
 
 ### Chặng 4 — Cutover (1 buổi + 1–2 tuần theo dõi)
 
-Runbook (điền thời gian thật sau diễn tập):
+Runbook (điền thời gian thật sau diễn tập). Bản hướng dẫn từng lệnh cho người vận
+hành: `infra/chuyen-du-lieu-sang-postgresql.md`.
 
 1. T–7 ngày: đóng băng schema; thông báo lịch bảo trì.
 2. T–1 ngày: diễn tập lần cuối với dữ liệu mới nhất.
