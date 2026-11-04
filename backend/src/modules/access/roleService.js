@@ -1,4 +1,11 @@
-const { getPool, sql, withActorTransaction, queryAll, crossApply } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	queryAll,
+	crossApply,
+	ilike,
+} = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -30,7 +37,7 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 			.input('limit', sql.Int, pg.limit);
 
 		if (search) {
-			where += ' AND (r.name LIKE @search OR r.description LIKE @search)';
+			where += ` AND (${ilike('r.name', '@search')} OR ${ilike('r.description', '@search')})`;
 			req.input('search', sql.NVarChar, `%${search}%`);
 		}
 

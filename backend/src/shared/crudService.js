@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, queryAll, nowSql } = require('../config/db');
+const { getPool, sql, withActorTransaction, queryAll, nowSql, ilike } = require('../config/db');
 const { randomId } = require('../utils/idGenerator');
 const { broadcast } = require('../modules/events/eventService');
 const { paging } = require('../utils/paging');
@@ -41,7 +41,7 @@ const createCrudService = (
 				.input('limit', sql.Int, pg.limit);
 
 			if (search) {
-				where += ' AND (name LIKE @search OR description LIKE @search)';
+				where += ` AND (${ilike('name', '@search')} OR ${ilike('description', '@search')})`;
 				req.input('search', sql.NVarChar, `%${search}%`);
 			}
 

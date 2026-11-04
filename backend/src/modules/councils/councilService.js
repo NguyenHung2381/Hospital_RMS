@@ -6,6 +6,8 @@ const {
 	queryAll,
 	nowSql,
 	stringAgg,
+	ilike,
+	likeCi,
 } = require('../../config/db');
 const { genCouncilId, genCouncilMemberId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -310,7 +312,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
       SELECT id, full_name, organization, specialty_group, phone, email
       FROM external_reviewers
       WHERE is_active = 'true'
-        AND (@search = '%%' OR full_name LIKE @search OR organization LIKE @search)
+        AND (@search = '%%' OR ${ilike('full_name', '@search')} OR ${ilike('organization', '@search')})
       ORDER BY full_name OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
     `);
 		return result.recordset.map((r) => ({ ...r, is_external: true }));
@@ -346,9 +348,9 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
         WHERE cm.council_id = @council_id AND cm.user_id = u.id
       )
       AND (@search = '%%'
-        OR u.full_name LIKE @search
-        OR u.username LIKE @search
-        OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)
+        OR ${ilike('u.full_name', '@search')}
+        OR ${likeCi('u.username', '@search')}
+        OR ${ilike('CAST(u.staff_number AS VARCHAR(20))', '@search')})
     ORDER BY u.can_sit_council DESC, u.full_name OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
   `);
 	return result.recordset.map((u) => ({

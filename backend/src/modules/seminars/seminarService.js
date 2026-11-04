@@ -12,6 +12,7 @@ const {
 	queryAll,
 	nowSql,
 	upsert,
+	ilike,
 } = require('../../config/db');
 const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -68,7 +69,7 @@ const getAll = async ({
 	if (search) {
 		req.input('search', sql.NVarChar, `%${search}%`);
 		clauses.push(
-			'(s.title LIKE @search OR s.location LIKE @search OR s.speakers LIKE @search OR s.host_chair LIKE @search)',
+			`(${ilike('s.title', '@search')} OR ${ilike('s.location', '@search')} OR ${ilike('s.speakers', '@search')} OR ${ilike('s.host_chair', '@search')})`,
 		);
 	}
 	clauses.push(inClause(req, 's.scope', 'sc', splitList(scope), sql.VarChar));
@@ -486,7 +487,7 @@ const cmeRegister = async ({ year = undefined, search = undefined, page = 1, lim
 	if (search) {
 		req.input('search', sql.NVarChar, `%${search}%`);
 		clauses.push(
-			'(p.cme_certificate_no LIKE @search OR p.full_name LIKE @search OR p.organization LIKE @search OR s.title LIKE @search)',
+			`(${ilike('p.cme_certificate_no', '@search')} OR ${ilike('p.full_name', '@search')} OR ${ilike('p.organization', '@search')} OR ${ilike('s.title', '@search')})`,
 		);
 	}
 	const where = `WHERE ${clauses.join(' AND ')}`;

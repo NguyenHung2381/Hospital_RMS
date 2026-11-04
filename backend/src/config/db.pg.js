@@ -475,6 +475,13 @@ const jsonArray = (select, orderBy, { nested = false } = {}) => {
 /** @param {string} text */
 const nstr = (text) => `'${text.replace(/'/g, "''")}'`;
 
+// Cùng giao diện với db.mssql.js (xem chú thích ở đó). Không dùng `COLLATE "default"` để
+// gộp 2 hàm: đổi collation làm PG bỏ index trigram (03_toi_uu.sql) — đã thử EXPLAIN.
+/** @param {string} expr @param {string} pattern */
+const ilike = (expr, pattern) => `${expr} ILIKE ${pattern} ESCAPE ''`;
+/** @param {string} expr @param {string} pattern */
+const likeCi = (expr, pattern) => `${expr} LIKE ${pattern} ESCAPE ''`;
+
 // Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
 /**
@@ -548,6 +555,8 @@ module.exports = {
 	upsert,
 	jsonArray,
 	nstr,
+	ilike,
+	likeCi,
 	sslOptions,
 	toMssqlResult,
 };

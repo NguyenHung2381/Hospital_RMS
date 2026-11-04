@@ -6,6 +6,8 @@ const {
 	boolExpr,
 	queryAll,
 	nowSql,
+	ilike,
+	likeCi,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -55,7 +57,9 @@ const getAll = async ({
 
 	if (active_only !== 'false') where.push("l.is_active = 'true'");
 	if (search) {
-		where.push('(l.full_name LIKE @search OR l.specialty LIKE @search OR l.email LIKE @search)');
+		where.push(
+			`(${ilike('l.full_name', '@search')} OR ${ilike('l.specialty', '@search')} OR ${likeCi('l.email', '@search')})`,
+		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;

@@ -7,6 +7,7 @@ const {
 	queryAll,
 	vnTodaySql,
 	nowSql,
+	ilike,
 } = require('../../../config/db');
 const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -121,7 +122,7 @@ const getAll = async (
 	const where = ['1=1'];
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 	if (search) {
-		where.push('c.name LIKE @search');
+		where.push(ilike('c.name', '@search'));
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (program_id) {

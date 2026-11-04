@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, nowSql, deleteReturning } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	withTransaction,
+	nowSql,
+	deleteReturning,
+	ilike,
+} = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
@@ -34,7 +41,7 @@ const listQuestions = async ({
 		req.input('question_type', sql.VarChar(20), question_type);
 	}
 	if (search) {
-		where.push('q.question_text LIKE @search');
+		where.push(ilike('q.question_text', '@search'));
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	const r = await req.query(`

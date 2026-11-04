@@ -1,4 +1,4 @@
-const { getPool, sql, withTransaction, nowSql } = require('../../config/db');
+const { getPool, sql, withTransaction, nowSql, ilike } = require('../../config/db');
 const { genExternalReviewerId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -20,7 +20,7 @@ const getAll = async ({
 		req.input('specialty_group', sql.NVarChar(100), specialty_group);
 	}
 	if (search) {
-		where += ' AND (full_name LIKE @search OR organization LIKE @search)';
+		where += ` AND (${ilike('full_name', '@search')} OR ${ilike('organization', '@search')})`;
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 

@@ -214,7 +214,8 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
   `_CI_AS`, không phải sửa câu SQL. **Không dùng `citext`**: tham số kiểu
   `text` (`$1::text`, cách adapter gửi chuỗi) so với cột `citext` lại thành
   so sánh phân biệt hoa/thường và bỏ qua index; với `rms_ci` thì không.
-- Tìm kiếm `LIKE @search` (27 file): đổi sang `ILIKE`. Nếu cần tìm không dấu
+- Tìm kiếm `LIKE @search` (27 file): đổi sang `ILIKE` — **đã xong** qua helper
+  `ilike` / `likeCi` của adapter (xem mục checklist "ILIKE tìm kiếm"). Nếu cần tìm không dấu
   ("nguyen" khớp "Nguyễn"), thêm extension `unaccent` và index theo biểu thức.
   Hiện tại SQL Server `_CI_AS` **có** phân biệt dấu, nên tìm không dấu là tính
   năng mới, không bắt buộc.
@@ -264,6 +265,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✓ không dùng nữa: LIKE thô + regex JS (`idGenerator.maxSeq`), `LEFT(code, n) = '...'`; CHECK của PG baseline dùng `SIMILAR TO` |
 | `[col]` | `"col"` hoặc bỏ ngoặc | ✓ bỏ ngoặc (`session`, `year` không là từ khoá ở cả 2 DB); alias trùng từ khoá → `"open"`, `"group"` (nháy kép chạy cả 2 DB) |
 | `N'chuỗi'` | `'chuỗi'` | ✓ qua adapter: `${nstr('chuỗi')}` (SQL Server cần `N` cho chữ Việt) |
+| `col LIKE @search` (CI_AS) | `col ILIKE $1 ESCAPE ''`; cột `rms_ci`: `col LIKE $1 ESCAPE ''` | ✓ qua adapter: `${ilike('u.full_name', '@search')}`, cột rms_ci (username, email, mã) `${likeCi('u.username', '@search')}` |
 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✓ không còn: khoá dải mã → `lockResource` của adapter (`idGenerator.nextId`) |
 | `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
@@ -563,6 +565,25 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "chặn trùng trong câu INSERT" (2 DB): cấp chứng chỉ lần 1 ra mã CH… / số CC2026…, lần 2
     `null`; ghi danh lại đúng khóa + chương trình ⇒ 409; gắn bài học 2 lần ⇒ lần 2 409. Chưa kiểm nhánh bắt
     UNIQUE khi chạy song song (PG: lỗi trong transaction test làm hỏng các ca sau). Tổng ratchet 24 → 19.
+- [x] ILIKE tìm kiếm (luật ratchet mới `like_search`: 61 → 0, 18 file; tổng ratchet vẫn 19). Helper của
+  adapter: `ilike(expr, pattern)` (SQL Server `LIKE`, PG `ILIKE … ESCAPE ''`) cho cột thường;
+  `likeCi(expr, pattern)` (SQL Server `LIKE`, PG `LIKE … ESCAPE ''`) cho cột collation `rms_ci`
+  (`username`, `email`, mã khoa `d.code`, mã chương trình `p.code`). `idGenerator` giữ `LIKE @pattern` thô
+  (mẫu mã nội bộ, không phải chữ người dùng gõ).
+  - Đã thử trên PG 18: `ILIKE` trên cột `rms_ci` báo lỗi "nondeterministic collations are not supported
+    for ILIKE" ⇒ cần 2 hàm. `LIKE` trên cột `rms_ci` không phân biệt hoa/thường và vẫn dùng index. Gộp 2 hàm
+    bằng `COLLATE "default"` làm PG bỏ index trigram (`03_toi_uu.sql`, đã xem EXPLAIN) ⇒ không dùng.
+    `ESCAPE ''` để `\` là ký tự thường như SQL Server (không ảnh hưởng index).
+  - Giống SQL Server CI_AS: `NGUYỄN ĐỨC` khớp `%nguyễn đức%`; vẫn phân biệt dấu (`Nguyễn` không khớp
+    `%nguyen%`). Còn khác: `[...]` trong chữ người dùng gõ là lớp ký tự ở SQL Server, ký tự thường ở PG.
+  - Sửa luôn lỗi cũ: câu đếm của `departmentService.getAll` thiếu alias `d` (`FROM departments ${where}`) ⇒
+    tìm khoa theo từ khoá báo lỗi trên cả 2 DB.
+  - Kiểm bằng ca "ilike / likeCi" (2 DB): hoa/thường, dấu, `\`, `likeCi` trên `users.username`; các hàm tìm
+    (người dùng, khoa, giảng viên, đề tài, chương trình, vai trò, danh mục crudService…) tìm chữ thường
+    và chữ hoa ra cùng kết quả. Thử ngược: đổi `ilike` của PG thành `LIKE` thường ⇒ ca này báo lỗi.
+  - Thấy khi test, chưa sửa (ngoài mục này): trên PG, danh sách học viên (`traineeService.getAll`) còn
+    `CHARINDEX(',' + … + ',')` ở `traineeDocumentSql.js` (mục `string_fn`); `personMergeService` còn tiền
+    tố schema `dbo.` (ratchet chưa đếm). Ca test tạm bỏ 2 hàm này khi chạy PG.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

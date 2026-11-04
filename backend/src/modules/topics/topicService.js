@@ -1,4 +1,5 @@
 const { getPool, sql, withActorTransaction, actorRequest, queryAll } = require('../../config/db');
+const { ilike } = require('../../config/db');
 const { genTopicId } = require('../../utils/idGenerator');
 const { ensureApproval, withApprovalSync } = require('./approvalRecord');
 const { broadcast } = require('../events/eventService');
@@ -52,9 +53,8 @@ const getAll = async (filters, actor = null) => {
 
 	if (search) {
 		// t.id để tìm theo mã đề tài; u.full_name để tìm theo người nộp (màn phê duyệt)
-		baseClauses.push(
-			'(t.title LIKE @search OR t.description LIKE @search OR t.id LIKE @search OR u.full_name LIKE @search)',
-		);
+		const cols = ['t.title', 't.description', 't.id', 'u.full_name'];
+		baseClauses.push(`(${cols.map((c) => ilike(c, '@search')).join(' OR ')})`);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	// scope 'all' được lọc theo participant_id tùy ý; các scope hẹp hơn chỉ được

@@ -84,6 +84,12 @@ const PATTERNS = [
 		pg: "LIKE thô + lọc JS / LEFT(x, n) = '...'",
 	},
 	{
+		// Tìm kiếm `cột LIKE @search`: SQL Server không phân biệt hoa/thường (CI_AS), PG có
+		key: 'like_search',
+		re: /\bLIKE\s+@(search|kw)\w*/gi,
+		pg: 'ilike / likeCi (adapter)',
+	},
+	{
 		// Tên cột / alias trong ngoặc vuông: `t.[session]`, `AS [open]`. Chỉ bắt sau `x.` hoặc
 		// từ khoá SQL viết HOA để không trùng mảng JS (`[text]`, `obj?.[key]`).
 		key: 'bracket_ident',

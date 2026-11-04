@@ -5,6 +5,8 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	ilike,
+	likeCi,
 } = require('../../config/db');
 const { genDeptId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -46,8 +48,7 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
 			.input('limit', sql.Int, pg.limit);
 
 		if (search) {
-			where +=
-				' AND (d.name LIKE @search OR d.code LIKE @search OR d.abbreviation LIKE @search OR d.description LIKE @search)';
+			where += ` AND (${ilike('d.name', '@search')} OR ${likeCi('d.code', '@search')} OR ${ilike('d.abbreviation', '@search')} OR ${ilike('d.description', '@search')})`;
 			req.input('search', sql.NVarChar, `%${search}%`);
 		}
 
@@ -59,7 +60,7 @@ const getAll = async ({ page = 1, limit = 100, search = undefined } = {}) => {
       ${pg.fetchClause}
 			`,
 			`
-      SELECT COUNT(*) AS total FROM departments ${where}
+      SELECT COUNT(*) AS total FROM departments d ${where}
 			`,
 		]);
 		return {

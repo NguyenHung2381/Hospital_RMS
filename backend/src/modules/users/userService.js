@@ -11,6 +11,8 @@ const {
 	nowSql,
 	utcNowSql,
 	dateDiff,
+	likeCi,
+	ilike,
 } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -128,16 +130,16 @@ const getAll = async ({
 		// tránh SQL Server ép kiểu cả cột sang NVARCHAR (hủy index, tốn CPU).
 		// full_name là nvarchar -> tham số NVarChar riêng.
 		const orParts = [
-			'u.username LIKE @search',
-			'u.full_name LIKE @search_n',
-			'u.email LIKE @search',
+			likeCi('u.username', '@search'),
+			ilike('u.full_name', '@search_n'),
+			likeCi('u.email', '@search'),
 		];
 		req.input('search', sql.VarChar(120), `%${term}%`);
 		req.input('search_n', sql.NVarChar(220), `%${term}%`);
 		// Chỉ ép kiểu staff_number khi chuỗi tìm là số — bỏ CAST khỏi nhánh phổ
 		// biến (tìm theo tên), nơi nó vô hiệu hóa mọi index.
 		if (/^\d+$/.test(term)) {
-			orParts.push('CAST(u.staff_number AS VARCHAR(20)) LIKE @search');
+			orParts.push(ilike('CAST(u.staff_number AS VARCHAR(20))', '@search'));
 		}
 		baseClauses.push(`(${orParts.join(' OR ')})`);
 	}
@@ -487,11 +489,11 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 		const term = q.trim();
 		// Tham số đúng kiểu cột (username varchar / full_name nvarchar) để không
 		// ép kiểu cả cột; chỉ CAST staff_number khi chuỗi tìm là số.
-		const orParts = ['u.username LIKE @search', 'u.full_name LIKE @search_n'];
+		const orParts = [likeCi('u.username', '@search'), ilike('u.full_name', '@search_n')];
 		req.input('search', sql.VarChar(120), `%${term}%`);
 		req.input('search_n', sql.NVarChar(220), `%${term}%`);
 		if (/^\d+$/.test(term)) {
-			orParts.push('CAST(u.staff_number AS VARCHAR(20)) LIKE @search');
+			orParts.push(ilike('CAST(u.staff_number AS VARCHAR(20))', '@search'));
 		}
 		where += ` AND (${orParts.join(' OR ')})`;
 	}

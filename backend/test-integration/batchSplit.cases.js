@@ -968,6 +968,85 @@ const run = async (t, db, { skip = [] } = {}) => {
 		await require('../src/modules/cme/cmeReportService').getData({ year: 2026 });
 	});
 
+	await step(
+		'ilike / likeCi: không phân biệt hoa/thường, phân biệt dấu, dịch vụ tìm kiếm',
+		async () => {
+			const { ilike, likeCi, nstr } = db;
+			const yes = async (cond, inputs) =>
+				(await q(`SELECT CASE WHEN ${cond} THEN 1 ELSE 0 END AS ok`, inputs))[0].ok === 1;
+			assert.equal(await yes(ilike(nstr('NGUYỄN ĐỨC Anh'), nstr('%nguyễn đức%'))), true);
+			assert.equal(await yes(ilike(nstr('Nguyễn'), nstr('%nguyen%'))), false); // phân biệt dấu
+			assert.equal(await yes(ilike("'a\\b'", "'a\\b'")), true); // `\` là ký tự thường
+			assert.equal(await yes(ilike(nstr('ab'), '@p'), { p: '%B' }), true);
+
+			// likeCi trên cột rms_ci (PG) — username / email
+			const [u] = await q(
+				`SELECT id, username, full_name FROM users WHERE username IS NOT NULL AND full_name IS NOT NULL ORDER BY id`,
+			);
+			if (u) {
+				const hit = await q(`SELECT id FROM users WHERE ${likeCi('username', '@p')}`, {
+					p: u.username.toUpperCase(),
+				});
+				assert.ok(hit.some((r) => r.id === u.id));
+			}
+
+			// Dịch vụ: tìm bằng chữ thường và chữ hoa ra cùng kết quả
+			const ids = (r) => (r.data ?? r).map((x) => x.id ?? x.candidate_id ?? JSON.stringify(x));
+			const same = async (label, fn, term) => {
+				const lo = ids(await fn(term.toLowerCase()));
+				const up = ids(await fn(term.toUpperCase()));
+				assert.deepEqual(up, lo, label);
+				return lo;
+			};
+			const users = require('../src/modules/users/userService');
+			if (u) {
+				const term = u.full_name.split(' ').pop();
+				await same('user theo tên', (s) => users.getAll({ search: s, meta: '0', limit: 50 }), term);
+				await same('user theo username', (s) => users.getAll({ search: s, meta: '0' }), u.username);
+			}
+			const [d] = await q('SELECT name, code FROM departments ORDER BY id');
+			const depts = require('../src/modules/catalog/departmentService');
+			if (d) {
+				assert.ok((await same('khoa theo mã', (s) => depts.getAll({ search: s }), d.code)).length);
+				await same('khoa theo tên', (s) => depts.getAll({ search: s }), d.name);
+			}
+			const kw = 'n';
+			const calls = [
+				[
+					'học viên',
+					(s) => require('../src/modules/training/trainees/traineeService').getAll({ search: s }),
+				],
+				[
+					'giảng viên',
+					(s) => require('../src/modules/training/lecturers/lecturerService').getAll({ search: s }),
+				],
+				['đề tài', (s) => require('../src/modules/topics/topicService').getAll({ search: s })],
+				[
+					'chương trình',
+					(s) =>
+						require('../src/modules/training/programs/trainingProgramService').getAll({
+							search: s,
+						}),
+				],
+				[
+					'gộp hồ sơ',
+					(s) => require('../src/modules/persons/personMergeService').listCandidates({ search: s }),
+				],
+				['vai trò', (s) => require('../src/modules/access/roleService').getAll({ search: s })],
+				[
+					'cấp (crudService)',
+					(s) => require('../src/modules/catalog/levelService').getAll({ search: s }),
+				],
+			];
+			// Chưa chạy được trên PG (ngoài mục tìm kiếm):
+			//   học viên  — CHARINDEX(',' + …) ở traineeDocumentSql (mục string_fn)
+			//   gộp hồ sơ — tiền tố schema dbo. ở personMergeService
+			const pgTodo = ['học viên', 'gộp hồ sơ'];
+			for (const [label, fn] of calls)
+				if (!(db.client === 'pg' && pgTodo.includes(label))) await same(label, fn, kw);
+		},
+	);
+
 	await step('upsert khoá có cột NULL: điểm danh không theo ca 2 lần vẫn 1 dòng', async (st) => {
 		if (db.client === 'pg') {
 			const [ix] = await q(`

@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll, nowSql } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql, ilike } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
@@ -27,7 +27,7 @@ const getAll = async ({ page = 1, limit = 20, search = undefined, status = undef
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
-		where.push('(s.title LIKE @search OR s.description LIKE @search)');
+		where.push(`(${ilike('s.title', '@search')} OR ${ilike('s.description', '@search')})`);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (status) {

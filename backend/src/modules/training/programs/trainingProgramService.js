@@ -8,6 +8,8 @@ const {
 	nowSql,
 	stringAgg,
 	jsonArray,
+	ilike,
+	likeCi,
 } = require('../../../config/db');
 const { randomId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -150,7 +152,9 @@ const getAll = async ({
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
-		where.push('(p.name LIKE @search OR p.code LIKE @search OR p.description LIKE @search)');
+		where.push(
+			`(${ilike('p.name', '@search')} OR ${likeCi('p.code', '@search')} OR ${ilike('p.description', '@search')})`,
+		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
 	if (department_id) {

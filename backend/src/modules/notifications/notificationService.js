@@ -225,7 +225,7 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
 		req.input('type', sql.VarChar(50), type);
 	}
 	if (search) {
-		conditions.push('(n.title LIKE @search OR n.message LIKE @search)');
+		conditions.push(`(${db.ilike('n.title', '@search')} OR ${db.ilike('n.message', '@search')})`);
 		req.input('search', sql.NVarChar(255), `%${search}%`);
 	}
 	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

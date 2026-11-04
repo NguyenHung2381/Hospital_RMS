@@ -1,4 +1,13 @@
-const { getPool, sql, withActor, queryAll, updateReturning, nowSql } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActor,
+	queryAll,
+	updateReturning,
+	nowSql,
+	ilike,
+	likeCi,
+} = require('../../config/db');
 const { paging } = require('../../utils/paging');
 const { broadcast } = require('../events/eventService');
 const personService = require('./personService');
@@ -126,8 +135,8 @@ const listCandidates = async (
 	}
 	const kw = String(search || '').trim();
 	if (kw) {
-		where.push(`(a.full_name LIKE @kw OR b.full_name LIKE @kw OR a.email LIKE @kw OR b.email LIKE @kw
-		             OR a.phone LIKE @kw OR b.phone LIKE @kw)`);
+		where.push(`(${ilike('a.full_name', '@kw')} OR ${ilike('b.full_name', '@kw')} OR ${likeCi('a.email', '@kw')} OR ${likeCi('b.email', '@kw')}
+		             OR ${ilike('a.phone', '@kw')} OR ${ilike('b.phone', '@kw')})`);
 		req.input('kw', sql.NVarChar(200), `%${kw}%`);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;

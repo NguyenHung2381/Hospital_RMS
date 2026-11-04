@@ -7,6 +7,7 @@ const {
 	jsonValues,
 	utcNowSql,
 	nowSql,
+	likeCi,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
@@ -44,7 +45,7 @@ const genTraineeUsernameInTx = async (tx, fullName, traineeRoleId) => {
 			.input('role_id', sql.VarChar(6), traineeRoleId)
 			.query(
 				`SELECT username, CASE WHEN role_id = @role_id THEN 1 ELSE 0 END AS is_trainee
-				 FROM users WHERE username LIKE @pattern`,
+				 FROM users WHERE ${likeCi('username', '@pattern')}`,
 			)
 	).recordset;
 	return nextTraineeUsername(

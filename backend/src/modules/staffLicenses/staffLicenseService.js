@@ -5,6 +5,7 @@ const {
 	actorRequest,
 	queryAll,
 	nowSql,
+	ilike,
 } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
@@ -35,7 +36,7 @@ const getAll = async ({
 
 	if (search) {
 		where.push(
-			'(u.full_name LIKE @search OR sl.license_no LIKE @search OR sl.practice_scope LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)',
+			`(${ilike('u.full_name', '@search')} OR ${ilike('sl.license_no', '@search')} OR ${ilike('sl.practice_scope', '@search')} OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)`,
 		);
 		req.input('search_exact', sql.VarChar(20), String(search).trim());
 		req.input('search', sql.NVarChar, `%${search}%`);
@@ -118,7 +119,7 @@ const getMentors = async ({
 	const q = String(search ?? '').trim();
 	if (q) {
 		where.push(
-			'(u.full_name LIKE @search OR sl.license_no LIKE @search OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)',
+			`(${ilike('u.full_name', '@search')} OR ${ilike('sl.license_no', '@search')} OR CAST(u.staff_number AS VARCHAR(20)) = @search_exact)`,
 		);
 		req.input('search', sql.NVarChar, `%${q}%`);
 		req.input('search_exact', sql.VarChar(20), q);

@@ -328,6 +328,17 @@ const jsonArray = (select, orderBy, opts = {}) => `(${select} ORDER BY ${orderBy
 /** @param {string} text */
 const nstr = (text) => `N'${text.replace(/'/g, "''")}'`;
 
+// Tìm chuỗi không phân biệt hoa/thường, phân biệt dấu (như collation CI_AS):
+//   ilike('u.full_name', '@search')  — cột thường (PG: ILIKE)
+//   likeCi('u.username', '@search')  — cột PG có collation rms_ci: username, email, mã
+//     (PG: LIKE — cột đã không phân biệt hoa/thường; ILIKE báo lỗi trên collation này)
+// SQL Server: LIKE (collation CI_AS). PG thêm ESCAPE '' để `\` là ký tự thường như SQL Server.
+// Còn khác: `[...]` trong chuỗi tìm là lớp ký tự ở SQL Server, ký tự thường ở PG.
+/** @param {string} expr @param {string} pattern */
+const ilike = (expr, pattern) => `${expr} LIKE ${pattern}`;
+/** @param {string} expr @param {string} pattern */
+const likeCi = (expr, pattern) => `${expr} LIKE ${pattern}`;
+
 // Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
 //   table   bảng đích (bí danh tgt — dùng được trong update)
 //   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
@@ -414,5 +425,7 @@ module.exports = {
 	upsert,
 	jsonArray,
 	nstr,
+	ilike,
+	likeCi,
 	tlsOptions,
 };

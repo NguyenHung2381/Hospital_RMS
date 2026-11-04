@@ -6,6 +6,8 @@ const {
 	queryAll,
 	nowSql,
 	outerApply,
+	ilike,
+	likeCi,
 } = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -58,7 +60,7 @@ const getAll = async (
 
 	if (search) {
 		where.push(
-			'(t.full_name LIKE @search OR t.national_id LIKE @search OR t.phone LIKE @search OR t.email LIKE @search)',
+			`(${ilike('t.full_name', '@search')} OR ${ilike('t.national_id', '@search')} OR ${ilike('t.phone', '@search')} OR ${likeCi('t.email', '@search')})`,
 		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}
