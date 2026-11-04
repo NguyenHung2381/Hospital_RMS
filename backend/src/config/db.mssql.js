@@ -339,6 +339,16 @@ const ilike = (expr, pattern) => `${expr} LIKE ${pattern}`;
 /** @param {string} expr @param {string} pattern */
 const likeCi = (expr, pattern) => `${expr} LIKE ${pattern}`;
 
+// Vị trí chuỗi con (1 = đầu chuỗi, 0 = không có) và độ dài chuỗi bỏ khoảng trắng cuối.
+//   strPos("CONCAT(',', x, ',')", "CONCAT(',', y, ',')") > 0  — y có trong danh sách x
+//   strLen('x') — như LEN của SQL Server (không đếm khoảng trắng cuối)
+// Lưu ý: CHARINDEX theo collation (CI_AS — không phân biệt hoa/thường), strpos của PG có phân biệt
+// ⇒ chỉ dùng cho mã / số, không dùng cho chữ người dùng gõ.
+/** @param {string} haystack @param {string} needle */
+const strPos = (haystack, needle) => `CHARINDEX(${needle}, ${haystack})`;
+/** @param {string} expr */
+const strLen = (expr) => `LEN(${expr})`;
+
 // Thêm, trùng khoá thì sửa (upsert) — 1 câu, an toàn khi 2 request cùng lúc.
 //   table   bảng đích (bí danh tgt — dùng được trong update)
 //   key     cột khoá xung đột: phải là khoá chính / UNIQUE (PG cần cho ON CONFLICT)
@@ -427,5 +437,7 @@ module.exports = {
 	nstr,
 	ilike,
 	likeCi,
+	strPos,
+	strLen,
 	tlsOptions,
 };

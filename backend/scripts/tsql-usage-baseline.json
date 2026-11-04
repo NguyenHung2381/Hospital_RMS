@@ -22,7 +22,7 @@
 	"cast_tsql_type": 0,
 	"bit_literal": 0,
 	"convert": 0,
-	"string_fn": 3,
+	"string_fn": 0,
 	"merge": 0,
 	"lock_hint": 0,
 	"applock": 3,

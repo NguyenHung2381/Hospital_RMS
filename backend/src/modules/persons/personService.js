@@ -6,6 +6,7 @@ const {
 	lockResource,
 	nextSequenceValues,
 	nowSql,
+	strLen,
 } = require('../../config/db');
 const { isMissingObject } = require('../../utils/dbErrors');
 const { normalizeGender } = require('../../utils/gender');
@@ -237,7 +238,7 @@ const matchExisting = async (tx, source, id, row) => {
 		const pid = await pickUnique(
 			tx,
 			`${base} AND p.name_key = ${NAME_KEY('@name')}
-			   AND LEN(dbo.fn_normalize_phone(@phone)) >= 8
+			   AND ${strLen('dbo.fn_normalize_phone(@phone)')} >= 8
 			   AND dbo.fn_normalize_phone(p.phone) = dbo.fn_normalize_phone(@phone)`,
 			bind,
 		);
@@ -451,7 +452,7 @@ const syncPending = async (source, { limit = 500, actorId = undefined } = {}) =>
 			.request()
 			.input('limit', sql.Int, limit)
 			.query(
-				`SELECT id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LEN(LTRIM(RTRIM(${cfg.name}))) > 0 ORDER BY id OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`,
+				`SELECT id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LTRIM(RTRIM(${cfg.name})) <> '' ORDER BY id OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`,
 			);
 		return await syncPersons(
 			source,

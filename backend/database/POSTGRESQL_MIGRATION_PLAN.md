@@ -248,7 +248,8 @@ như thể giờ đó là UTC**. Cách làm:
 | `ISNULL(a, b)` | `COALESCE(a, b)` | ✓ — đổi ngay ở chặng 1 |
 | `SELECT TOP 10 ...` | `... LIMIT 10` | ✓ `ORDER BY … OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY` (SQL Server bắt buộc `ORDER BY`); kiểm tra tồn tại: `SELECT 1 WHERE EXISTS (…)` |
 | `GETDATE()` | `LOCALTIMESTAMP` | ✓ qua adapter: `${nowSql}` (giờ VN), `${utcNowSql}`, `${vnTodaySql}`. Không dùng `CURRENT_TIMESTAMP`: PG trả `timestamptz`, JS đọc lệch 7 giờ |
-| `LEN(s)` | `length(s)` | ✗ (LEN bỏ khoảng trắng cuối) |
+| `LEN(s)` | `length(s)` | ✓ qua adapter: `${strLen('s')}` (PG `length(rtrim(s))` — LEN bỏ khoảng trắng cuối); kiểm chuỗi rỗng: `LTRIM(RTRIM(s)) <> ''` |
+| `CHARINDEX(sub, s)` | `strpos(s, sub)` | ✓ qua adapter: `${strPos('s', 'sub')}` (chỉ cho mã: CHARINDEX theo CI_AS, strpos phân biệt hoa/thường) |
 | `a + b` (nối chuỗi) | `a \|\| b` hoặc `concat(a, b)` | `CONCAT(a, b)` ✓ |
 | `CAST(x AS NVARCHAR(20))` | `x::text` | `CAST(x AS VARCHAR(20))` ✓ |
 | `IIF`, `CASE` | `CASE` | `CASE` ✓ |
@@ -583,7 +584,23 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
     và chữ hoa ra cùng kết quả. Thử ngược: đổi `ilike` của PG thành `LIKE` thường ⇒ ca này báo lỗi.
   - Thấy khi test, chưa sửa (ngoài mục này): trên PG, danh sách học viên (`traineeService.getAll`) còn
     `CHARINDEX(',' + … + ',')` ở `traineeDocumentSql.js` (mục `string_fn`); `personMergeService` còn tiền
-    tố schema `dbo.` (ratchet chưa đếm). Ca test tạm bỏ 2 hàm này khi chạy PG.
+    tố schema `dbo.` (ratchet chưa đếm). Ca test tạm bỏ 2 hàm này khi chạy PG. (Học viên: đã xong ở mục
+    `string_fn` bên dưới.)
+- [x] Hàm chuỗi `LEN` / `CHARINDEX` (string_fn 3 → 0; tổng ratchet 19 → 16). Helper của adapter
+  `strPos(haystack, needle)` (SQL Server `CHARINDEX(needle, haystack)`, PG `strpos(haystack, needle)`) và
+  `strLen(expr)` (SQL Server `LEN`, PG `length(rtrim(expr))` cho giống LEN bỏ khoảng trắng cuối).
+  - Giấy tờ bắt buộc theo loại khóa (`traineeDocumentSql.js`): `CHARINDEX(',' + id + ',', ',' + REPLACE(ds, ' ',
+    '') + ',')` → `strPos(CONCAT(',', REPLACE(ds, ' ', ''), ','), CONCAT(',', id, ','))`. Đây là chỗ nối chuỗi
+    bằng `+` duy nhất còn trong SQL (đã quét); làm hỏng danh sách / hồ sơ học viên trên PG kể cả khi không lọc.
+  - `personService`: `LEN(dbo.fn_normalize_phone(@phone)) >= 8` → `strLen(…)` (PG baseline có
+    `fn_normalize_phone`); `LEN(LTRIM(RTRIM(x))) > 0` → `LTRIM(RTRIM(x)) <> ''` (NULL vẫn bị loại như cũ).
+    `personService` vẫn chưa chạy trên PG (`dbo.`, `OBJECT_ID` / `COL_LENGTH`) — mục riêng.
+  - Lưu ý: `CHARINDEX` theo collation (CI_AS) không phân biệt hoa/thường, `strpos` có ⇒ `strPos` chỉ dùng
+    cho mã / số, không cho chữ người dùng gõ (tìm kiếm dùng `ilike`).
+  - Kiểm bằng ca "strPos / strLen" (2 DB): mã trong danh sách có khoảng trắng khớp, mã ngắn hơn không
+    khớp; `strLen('ab  ')` = 2; thêm 2 loại giấy tờ (1 khớp đúng mã, 1 có mã dài hơn) ⇒ số giấy tờ bắt buộc
+    ở hồ sơ học viên +1, danh sách ra cùng số. Ca "ilike / likeCi" bỏ ngoại lệ học viên trên PG. Thử
+    ngược: `strPos` của PG cộng thêm 1 ⇒ ca này báo lỗi.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

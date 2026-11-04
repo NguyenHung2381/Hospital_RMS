@@ -482,6 +482,12 @@ const ilike = (expr, pattern) => `${expr} ILIKE ${pattern} ESCAPE ''`;
 /** @param {string} expr @param {string} pattern */
 const likeCi = (expr, pattern) => `${expr} LIKE ${pattern} ESCAPE ''`;
 
+// Cùng giao diện với db.mssql.js. strLen bỏ khoảng trắng cuối cho giống LEN của SQL Server.
+/** @param {string} haystack @param {string} needle */
+const strPos = (haystack, needle) => `strpos(${haystack}, ${needle})`;
+/** @param {string} expr */
+const strLen = (expr) => `length(rtrim(${expr}))`;
+
 // Cùng giao diện với db.mssql.js (xem chú thích ở đó). INSERT … ON CONFLICT … DO UPDATE:
 // `EXCLUDED.cột` giữ nguyên nghĩa của PG; khoá có cột NULL cần UNIQUE NULLS NOT DISTINCT.
 /**
@@ -557,6 +563,8 @@ module.exports = {
 	nstr,
 	ilike,
 	likeCi,
+	strPos,
+	strLen,
 	sslOptions,
 	toMssqlResult,
 };

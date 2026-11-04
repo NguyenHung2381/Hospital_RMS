@@ -1,6 +1,6 @@
 // SQL dùng chung cho checklist giấy tờ học viên (giai đoạn 3) — file riêng không phụ
 // thuộc service nào để traineeService và traineeRecordService cùng dùng mà không vòng require.
-const { outerApply } = require('../../../config/db');
+const { outerApply, strPos } = require('../../../config/db');
 
 // Loại giấy tờ dt bắt buộc với học viên t: t có ghi danh (chưa bị từ chối) vào khóa
 // mang loại nằm trong dt.required_for_types (danh sách id cách nhau dấu phẩy).
@@ -8,7 +8,7 @@ const DOC_REQUIRED_SQL = (t, dt) => `EXISTS (
     SELECT 1 FROM course_enrollments re JOIN courses rc ON rc.id = re.course_id
     WHERE re.trainee_id = ${t}.id AND re.status <> 'rejected' AND rc.training_type_id IS NOT NULL
       AND ${dt}.required_for_types IS NOT NULL
-      AND CHARINDEX(',' + rc.training_type_id + ',', ',' + REPLACE(${dt}.required_for_types, ' ', '') + ',') > 0
+      AND ${strPos(`CONCAT(',', REPLACE(${dt}.required_for_types, ' ', ''), ',')`, "CONCAT(',', rc.training_type_id, ',')")} > 0
   )`;
 const DOC_SUBMITTED_SQL = (t, dt) => `EXISTS (
     SELECT 1 FROM trainee_documents sd JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'

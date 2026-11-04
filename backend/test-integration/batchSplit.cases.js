@@ -1038,12 +1038,49 @@ const run = async (t, db, { skip = [] } = {}) => {
 					(s) => require('../src/modules/catalog/levelService').getAll({ search: s }),
 				],
 			];
-			// Chưa chạy được trên PG (ngoài mục tìm kiếm):
-			//   học viên  — CHARINDEX(',' + …) ở traineeDocumentSql (mục string_fn)
-			//   gộp hồ sơ — tiền tố schema dbo. ở personMergeService
-			const pgTodo = ['học viên', 'gộp hồ sơ'];
+			// Chưa chạy được trên PG (ngoài mục tìm kiếm): gộp hồ sơ — tiền tố schema dbo. ở personMergeService
+			const pgTodo = ['gộp hồ sơ'];
 			for (const [label, fn] of calls)
 				if (!(db.client === 'pg' && pgTodo.includes(label))) await same(label, fn, kw);
+		},
+	);
+
+	await step(
+		'strPos / strLen: mã trong danh sách phẩy, độ dài bỏ khoảng trắng cuối, giấy tờ học viên',
+		async () => {
+			const { strPos, strLen } = db;
+			const list = "CONCAT(',', REPLACE(' A1, BB ', ' ', ''), ',')";
+			const [r] = await q(
+				`SELECT ${strPos(list, "',BB,'")} AS hit, ${strPos(list, "',B,'")} AS miss,
+			        ${strLen("'ab  '")} AS len2, ${strLen("''")} AS len0`,
+			);
+			assert.ok(r.hit > 0);
+			assert.deepEqual({ miss: r.miss, len2: r.len2, len0: r.len0 }, { miss: 0, len2: 2, len0: 0 });
+			const [blank] = await q(
+				"SELECT COUNT(*) AS n FROM (SELECT '  ' AS x UNION ALL SELECT 'a ' UNION ALL SELECT NULL) s WHERE LTRIM(RTRIM(x)) <> ''",
+			);
+			assert.equal(Number(blank.n), 1);
+
+			// Giấy tờ bắt buộc theo loại khóa (traineeDocumentSql): khớp đúng mã, không khớp mã dài hơn
+			const trainees = require('../src/modules/training/trainees/traineeService');
+			const [e] = await q(`
+      SELECT e.trainee_id, c.training_type_id FROM course_enrollments e JOIN courses c ON c.id = e.course_id
+      JOIN trainees t ON t.id = e.trainee_id
+      WHERE e.status <> 'rejected' AND c.training_type_id IS NOT NULL AND t.hidden_at IS NULL ORDER BY e.id`);
+			await trainees.getAll({ limit: 5, missing_docs: '1' });
+			if (!e) return;
+			const before = (await trainees.getById(e.trainee_id, true)).doc_required;
+			await q(
+				`INSERT INTO trainee_document_types (id, name, required_for_types) VALUES
+         ('DTZZ1', 'zz1', @in), ('DTZZ2', 'zz2', @longer)`,
+				{ in: ` X9, ${e.training_type_id} `, longer: `${e.training_type_id}Z` },
+			);
+			const after = await trainees.getById(e.trainee_id, true);
+			assert.equal(Number(after.doc_required), Number(before) + 1);
+			// Danh sách (OUTER APPLY đếm) ra cùng số với trang hồ sơ
+			const rows = await trainees.getAll({ training_type_id: e.training_type_id, limit: 100 });
+			const row = rows.data.find((x) => x.id === e.trainee_id);
+			if (row) assert.equal(Number(row.doc_required), Number(after.doc_required));
 		},
 	);
 
