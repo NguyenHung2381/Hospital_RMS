@@ -118,9 +118,10 @@ const pushExamScore = async (attemptId, actorId) => {
 			.input('program_id', sql.VarChar(20), a.enrollment_program)
 			.input('attempt_no', sql.Int, a.attempt_no).query(`
         SELECT p.weight,
-               (SELECT TOP 1 x.score10 FROM exam_attempts x
+               (SELECT x.score10 FROM exam_attempts x
                 WHERE x.paper_id = p.id AND x.enrollment_id = @enrollment_id AND x.attempt_no = @attempt_no
-                  AND x.status = 'graded') AS score10
+                  AND x.status = 'graded'
+                ORDER BY x.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS score10
         FROM exam_papers p
         WHERE p.course_id = @course_id AND p.purpose = 'final' AND p.exam_part = 'theory' AND p.status <> 'draft'
           AND (p.program_id IS NULL OR @program_id IS NULL OR p.program_id = @program_id)`)

@@ -16,10 +16,11 @@ const emailFromStaffAccount = async (staffNumber) => {
 	);
 	const rows = (
 		await req.query(`
-			SELECT TOP 2 email FROM users
+			SELECT email FROM users
 			WHERE staff_number = @sn AND is_active = 'true'
 			  AND (role_id IS NULL OR role_id <> @trainee_role)
 			  AND email IS NOT NULL AND email NOT LIKE '%.local'
+			ORDER BY id OFFSET 0 ROWS FETCH NEXT 2 ROWS ONLY
 		`)
 	).recordset;
 	return rows.length === 1 ? rows[0].email : null;

@@ -84,8 +84,7 @@ const getStats = async (year = null) =>
     -- • approver/date lấy theo cột audit updated_* mà trg_approvals_audit ghi khi
     --   sp_approve_topic đổi trạng thái. created_by/created_at là người & thời
     --   điểm NỘP hồ sơ, không phải người/lúc phê duyệt.
-    SELECT TOP 20
-      a.id, a.topic_id, t.title AS topic_title,
+    SELECT a.id, a.topic_id, t.title AS topic_title,
       t.status,
       a.comment,
       COALESCE(a.updated_at, a.created_at) AS created_at,
@@ -94,7 +93,7 @@ const getStats = async (year = null) =>
     INNER JOIN ${TOPICS} t ON t.id = a.topic_id
     LEFT JOIN users u ON u.id = COALESCE(a.updated_by, a.created_by)
     WHERE t.status IN ('approved', 'rejected', 'supplement')
-    ORDER BY COALESCE(a.updated_at, a.created_at) DESC
+    ORDER BY COALESCE(a.updated_at, a.created_at) DESC OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
 			`,
 			`
     -- Council progress-review completion: expected = mỗi ghế hội đồng × mỗi đề tài của hội đồng đó
@@ -276,25 +275,25 @@ const getTrainingStats = async () =>
 			`,
 			`
     -- Lịch học 7 ngày tới
-    SELECT TOP 20 sess.id, sess.session_date, sess.start_time, sess.end_time, sess.room,
+    SELECT sess.id, sess.session_date, sess.start_time, sess.end_time, sess.room,
            c.name AS course_name, s.title AS subject_name, l.full_name AS lecturer_name
     FROM class_sessions sess
     JOIN courses c ON c.id = sess.course_id
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
     WHERE sess.session_date >= CAST(${nowSql} AS DATE) AND sess.session_date <= DATEADD(DAY, 7, CAST(${nowSql} AS DATE))
-    ORDER BY sess.session_date, sess.start_time
+    ORDER BY sess.session_date, sess.start_time OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
 			`,
 			`
     -- Top lớp đầy chỗ nhất (lớp = chương trình trong khóa, sĩ số tối đa của chương trình)
-    SELECT TOP 10 c.id, CONCAT(c.name, ' · ', COALESCE(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
+    SELECT c.id, CONCAT(c.name, ' · ', COALESCE(tp.code, tp.name)) AS name, tp.max_capacity AS capacity, a.n AS approved_count
     FROM course_programs cp
     JOIN courses c ON c.id = cp.course_id AND c.status <> 'cancelled'
     JOIN training_programs tp ON tp.id = cp.program_id
     CROSS APPLY (SELECT COUNT(*) AS n FROM course_enrollments e
                  WHERE e.course_id = c.id AND e.program_id = cp.program_id AND e.status = 'approved') a
     WHERE tp.max_capacity > 0
-    ORDER BY a.n * 1.0 / tp.max_capacity DESC
+    ORDER BY a.n * 1.0 / tp.max_capacity DESC OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY
 			`,
 			`
     -- Học viên theo đối tượng
@@ -508,22 +507,22 @@ const getSeminarStats = async () =>
 			`,
 				`
     -- Hội thảo sắp diễn ra
-    SELECT TOP 8 s.id, s.title, s.start_date, s.end_date, s.location, s.scope, s.grants_cme,
+    SELECT s.id, s.title, s.start_date, s.end_date, s.location, s.scope, s.grants_cme,
       (SELECT COUNT(*) FROM seminar_participants sp WHERE sp.seminar_id = s.id) AS participant_count
     FROM seminars s
     WHERE s.start_date >= @today
-    ORDER BY s.start_date ASC
+    ORDER BY s.start_date ASC OFFSET 0 ROWS FETCH NEXT 8 ROWS ONLY
 			`,
 				`
     -- Khoa/phòng có nhiều lượt tham dự nhất trong năm (nhân sự nội viện)
-    SELECT TOP 8 COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
+    SELECT COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định') AS name,
       COUNT(*) AS cnt,
       SUM(CASE WHEN sp.cme_status IN ('issued', 'signed') THEN 1 ELSE 0 END) AS cme_cnt
     FROM seminar_participants sp
     INNER JOIN seminars s ON s.id = sp.seminar_id
     WHERE s.event_year = @year AND sp.source = 'internal'
     GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(sp.department_raw)), ''), N'Chưa xác định')
-    ORDER BY cnt DESC
+    ORDER BY cnt DESC OFFSET 0 ROWS FETCH NEXT 8 ROWS ONLY
 			`,
 			],
 		);

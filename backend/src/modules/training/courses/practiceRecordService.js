@@ -64,17 +64,17 @@ const list = async (actor = null) => {
       FROM enrollment_rotations x WHERE x.enrollment_id = e.id) rc
     -- Vòng đang diễn ra hôm nay
     OUTER APPLY (
-      SELECT TOP 1 x.round_title, x.department_id, x.department_name, x.mentor_user_id, x.mentor_name, x.end_date
+      SELECT x.round_title, x.department_id, x.department_name, x.mentor_user_id, x.mentor_name, x.end_date
       FROM enrollment_rotations x
       WHERE x.enrollment_id = e.id AND x.start_date <= @today AND x.end_date >= @today AND x.result <> 'fail'
-      ORDER BY x.seq) cur
+      ORDER BY x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) cur
     LEFT JOIN departments cd ON cd.id = cur.department_id
     -- Vòng kế tiếp (khi hôm nay chưa vào vòng nào / giữa 2 vòng)
     OUTER APPLY (
-      SELECT TOP 1 x.round_title, x.department_id, x.department_name, x.start_date
+      SELECT x.round_title, x.department_id, x.department_name, x.start_date
       FROM enrollment_rotations x
       WHERE x.enrollment_id = e.id AND x.start_date > @today
-      ORDER BY x.start_date, x.seq) nx
+      ORDER BY x.start_date, x.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) nx
     LEFT JOIN departments nd ON nd.id = nx.department_id
     WHERE ${where.join(' AND ')}
     ORDER BY e.registered_at DESC`);

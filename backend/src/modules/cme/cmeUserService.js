@@ -40,12 +40,12 @@ const getUserCme = async (userId, year) => {
     ORDER BY r.year DESC, r.activity_date DESC, r.created_at DESC
 		`,
 			`
-    SELECT TOP 1 req.required_credits
+    SELECT req.required_credits
     FROM users u
     JOIN cme_requirements req ON req.year = @year
      AND (req.department_id = u.department_id OR req.department_id IS NULL)
     WHERE u.id = @uid
-    ORDER BY CASE WHEN req.department_id IS NOT NULL THEN 0 ELSE 1 END
+    ORDER BY CASE WHEN req.department_id IS NOT NULL THEN 0 ELSE 1 END OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 		`,
 		],
 	);

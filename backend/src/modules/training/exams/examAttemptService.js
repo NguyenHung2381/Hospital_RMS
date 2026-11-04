@@ -36,8 +36,8 @@ const listAvailablePapersForUser = async (actor) => {
     JOIN courses c ON c.id = p.course_id
     JOIN course_enrollments e ON e.course_id = c.id AND e.status = 'approved' AND ${PAPER_FOR_ENROLLMENT_SQL('p', 'e')}
     JOIN trainees t ON t.id = e.trainee_id AND ${TRAINEE_OF_USER_SQL('t', '@user_id')}
-    OUTER APPLY (SELECT TOP 1 x.id, x.status, x.attempt_no FROM exam_attempts x
-                 WHERE x.paper_id = p.id AND x.enrollment_id = e.id ORDER BY x.attempt_no DESC) att
+    OUTER APPLY (SELECT x.id, x.status, x.attempt_no FROM exam_attempts x
+                 WHERE x.paper_id = p.id AND x.enrollment_id = e.id ORDER BY x.attempt_no DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) att
     WHERE p.status = 'published'
     ORDER BY p.created_at DESC
   `);
@@ -121,7 +121,7 @@ const startAttempt = async (paperId, actor) => {
 			.input('paper_id', sql.VarChar(20), paperId)
 			.input('enrollment_id', sql.VarChar(20), info.enrollment_id)
 			.query(
-				'SELECT TOP 1 * FROM exam_attempts WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id ORDER BY attempt_no DESC',
+				'SELECT * FROM exam_attempts WHERE paper_id = @paper_id AND enrollment_id = @enrollment_id ORDER BY attempt_no DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 			)
 	).recordset[0];
 

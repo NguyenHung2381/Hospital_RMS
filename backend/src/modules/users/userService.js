@@ -501,10 +501,10 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 	}
 
 	const result = await req.query(`
-    SELECT TOP (@limit) u.id, u.full_name, u.username, u.staff_number, u.email, u.department_id
+    SELECT u.id, u.full_name, u.username, u.staff_number, u.email, u.department_id
     FROM users u
     ${where}
-    ORDER BY u.full_name
+    ORDER BY u.full_name OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY
   `);
 
 	// Mọi tài khoản đăng nhập đều gọi được (chọn người khi thêm thành viên) ⇒ không

@@ -91,10 +91,10 @@ const getComplianceReport = async (year) => {
       SELECT SUM(credits) AS manual_credits FROM cme_records WHERE user_id = u.id AND year = @year AND approval_status = 'approved'
     ) cr
     OUTER APPLY (
-      SELECT TOP 1 required_credits
+      SELECT required_credits
       FROM cme_requirements
       WHERE year = @year AND (department_id = u.department_id OR department_id IS NULL)
-      ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END
+      ORDER BY CASE WHEN department_id IS NOT NULL THEN 0 ELSE 1 END OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
     ) req
     WHERE u.is_active = 'true' AND req.required_credits IS NOT NULL
       -- Bỏ tài khoản khoa/phòng: tài khoản dùng chung, không phải nhân sự

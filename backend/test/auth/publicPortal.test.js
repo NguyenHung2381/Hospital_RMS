@@ -23,7 +23,7 @@ const log = install(async (text, inputs) => {
 			? [{ full_name: 'Nguyễn Văn An' }]
 			: [];
 	}
-	if (/SELECT TOP 1 \* FROM trainees WHERE national_id/.test(text))
+	if (/SELECT \* FROM trainees WHERE national_id/.test(text))
 		return inputs.national_id === TRAINEE.national_id ? [TRAINEE] : [];
 	return [];
 });

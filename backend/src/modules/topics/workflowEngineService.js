@@ -26,7 +26,7 @@ const hasActiveDefinition = async (resource) => {
 			.request()
 			.input('resource', sql.VarChar(50), resource)
 			.query(
-				"SELECT TOP 1 id FROM workflow_definitions WHERE resource = @resource AND is_active = 'true'",
+				"SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM workflow_definitions WHERE resource = @resource AND is_active = 'true')",
 			);
 		return !!r.recordset[0];
 	} catch (err) {
@@ -41,7 +41,7 @@ const getActiveDefinition = async (resource) => {
 		.request()
 		.input('resource', sql.VarChar(50), resource)
 		.query(
-			"SELECT TOP 1 * FROM workflow_definitions WHERE resource = @resource AND is_active = 'true'",
+			"SELECT * FROM workflow_definitions WHERE resource = @resource AND is_active = 'true' ORDER BY created_at DESC, id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY",
 		);
 	const def = defRes.recordset[0];
 	if (!def) return null;
@@ -189,7 +189,7 @@ const getOrCreateInstance = async (definition, entityId, actorId) => {
 		.input('definition_id', sql.VarChar(20), definition.id)
 		.input('entity_id', sql.VarChar(20), entityId)
 		.query(
-			'SELECT TOP 1 * FROM workflow_instances WHERE definition_id = @definition_id AND entity_id = @entity_id ORDER BY created_at DESC',
+			'SELECT * FROM workflow_instances WHERE definition_id = @definition_id AND entity_id = @entity_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 		);
 	if (existing.recordset[0]) return existing.recordset[0];
 
@@ -375,7 +375,7 @@ const getStatusForEntity = async (resource, entityId) => {
 		.input('definition_id', sql.VarChar(20), definition.id)
 		.input('entity_id', sql.VarChar(20), entityId)
 		.query(
-			'SELECT TOP 1 * FROM workflow_instances WHERE definition_id = @definition_id AND entity_id = @entity_id ORDER BY created_at DESC',
+			'SELECT * FROM workflow_instances WHERE definition_id = @definition_id AND entity_id = @entity_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 		);
 	const instance = instRes.recordset[0];
 	if (!instance)

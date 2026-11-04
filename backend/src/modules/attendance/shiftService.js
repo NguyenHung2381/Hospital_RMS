@@ -119,7 +119,7 @@ const removeShift = async (id) => {
 		await pool
 			.request()
 			.input('id', sql.Int, id)
-			.query('SELECT TOP 1 1 AS x FROM shift_assignments WHERE shift_id = @id')
+			.query('SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM shift_assignments WHERE shift_id = @id)')
 	).recordset[0];
 	if (used)
 		throw httpError(

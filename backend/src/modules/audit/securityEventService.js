@@ -64,10 +64,10 @@ const getAll = async ({
 	}
 
 	const result = await req.query(`
-		SELECT TOP (@limit) *
+		SELECT *
 		FROM security_events
 		WHERE ${where.join(' AND ')}
-		ORDER BY id DESC
+		ORDER BY id DESC OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY
 	`);
 
 	const data = result.recordset;

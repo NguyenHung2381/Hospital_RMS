@@ -43,7 +43,7 @@ const login = async (
 	const byEmail = String(username).includes('@');
 	const result = await pool.request().input('login', sql.VarChar(100), String(username).trim())
 		.query(`
-      SELECT TOP 2 u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
+      SELECT u.id, u.username, u.password, u.full_name, u.email, u.staff_number,
              u.role_id, u.is_active, u.department_id,
              u.account_expires_at, u.failed_login_count, u.locked_until,
              u.totp_enabled, u.password_changed_at, u.must_change_password, u.twofa_required_since,
@@ -52,6 +52,7 @@ const login = async (
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
       WHERE ${byEmail ? 'u.email' : 'u.username'} = @login
+      ORDER BY u.id OFFSET 0 ROWS FETCH NEXT 2 ROWS ONLY
     `);
 
 	const user = result.recordset.length === 1 ? result.recordset[0] : null;

@@ -80,12 +80,13 @@ const findStaff = async (fullName, staffNumber) => {
 	const r = await (
 		await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)
 	).input('sn', sql.Int, Number(staffNumber)).query(`
-      SELECT TOP 1 u.id, u.full_name, u.staff_number, u.date_of_birth, u.gender, u.phone_number,
+      SELECT u.id, u.full_name, u.staff_number, u.date_of_birth, u.gender, u.phone_number,
              u.email, q.code AS title_prefix, q.name AS qualification, d.name AS department_name
       FROM users u
       LEFT JOIN qualifications q ON q.id = u.qualification_id
       LEFT JOIN departments d ON d.id = u.department_id
-      WHERE u.staff_number = @sn AND u.is_active = 'true' AND u.role_id <> @dept_head_role`);
+      WHERE u.staff_number = @sn AND u.is_active = 'true' AND u.role_id <> @dept_head_role
+      ORDER BY u.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`);
 	const u = r.recordset[0];
 	if (!u || norm(u.full_name) !== norm(fullName))
 		throw httpError(404, 'Không tìm thấy nhân viên khớp họ tên và mã nhân viên đã nhập.');

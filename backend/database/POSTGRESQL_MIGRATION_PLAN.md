@@ -106,7 +106,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
 | `DECLARE @...` (batch nhiều câu) | 80 (47) → 1 (chỉ còn `sp_getapplock` trong `db.mssql.js`) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
-| `TOP n` | 71 (45) | `LIMIT n` (hoặc `FETCH FIRST n ROWS ONLY`, chạy cả 2 DB) |
+| `TOP n` | 71 (45) → 1 (nhãn Excel, không phải SQL) | `ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` (chạy cả 2 DB) |
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
 | `DATEADD` / `DATEDIFF` | 31 (18) | `+ interval '...'`, `date_part`, phép trừ ngày |
@@ -245,7 +245,7 @@ như thể giờ đó là UTC**. Cách làm:
 | T-SQL | PostgreSQL | Chạy được trên cả 2? |
 |---|---|---|
 | `ISNULL(a, b)` | `COALESCE(a, b)` | ✓ — đổi ngay ở chặng 1 |
-| `SELECT TOP 10 ...` | `... LIMIT 10` | Dùng `OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY` (cần `ORDER BY`) nếu muốn chạy cả 2 |
+| `SELECT TOP 10 ...` | `... LIMIT 10` | ✓ `ORDER BY … OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY` (SQL Server bắt buộc `ORDER BY`); kiểm tra tồn tại: `SELECT 1 WHERE EXISTS (…)` |
 | `GETDATE()` | `LOCALTIMESTAMP` | ✓ qua adapter: `${nowSql}` (giờ VN), `${utcNowSql}`, `${vnTodaySql}`. Không dùng `CURRENT_TIMESTAMP`: PG trả `timestamptz`, JS đọc lệch 7 giờ |
 | `LEN(s)` | `length(s)` | ✗ (LEN bỏ khoảng trắng cuối) |
 | `a + b` (nối chuỗi) | `a \|\| b` hoặc `concat(a, b)` | `CONCAT(a, b)` ✓ |
@@ -521,6 +521,19 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "nowSql / utcNowSql / vnTodaySql" trong `test-integration/batchSplit.cases.js`
     (2 DB, lệch đúng 7 giờ, ngày VN khớp `todayKeyVN`); PG bật thêm ca vòng thực hành và khoá tài
     khoản học viên.
+- [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
+  - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
+    `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc
+    `($1::int)`).
+  - Kiểm tra tồn tại `SELECT TOP 1 1 [AS x] FROM …` → `SELECT 1 [AS x] WHERE EXISTS (SELECT 1 FROM …)`
+    (SQL Server và PG đều cho `SELECT … WHERE` không có `FROM`).
+  - 21 chỗ chưa có `ORDER BY` (sửa tay) — thêm thứ tự xác định: hồ sơ học viên theo tài khoản lấy
+    bản mới nhất (`created_at DESC`, giống `traineeRecordService`); `TOP 2` dò trùng email / username
+    và các chỗ còn lại theo `id`; định nghĩa workflow đang bật lấy bản mới nhất.
+  - `DELETE TOP (@batch)` + `SELECT @@ROWCOUNT` (dọn thông báo) → `DELETE … WHERE id IN (SELECT id …
+    ORDER BY id OFFSET 0 ROWS FETCH NEXT @batch ROWS ONLY)` + `rowsAffected` (bảng không có trigger).
+  - Kiểm bằng ca "TOP n đã đổi" và "xoá thông báo cũ theo lô" trong `test-integration/batchSplit.cases.js`
+    (PG bỏ ca xoá thông báo vì còn `DATEADD`). Tổng ratchet 267 → 200.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

@@ -104,7 +104,9 @@ const ensureUniqueUsername = async (executor, baseUsername, userId) => {
 		const existing = await executor
 			.request()
 			.input('username_check', sql.VarChar(100), username)
-			.query(`SELECT TOP 1 id FROM users WHERE username = @username_check`);
+			.query(
+				`SELECT id FROM users WHERE username = @username_check ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+			);
 		if (!existing.recordset[0] || existing.recordset[0].id === userId) {
 			return username;
 		}
@@ -198,7 +200,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				.input('member_id', sql.VarChar(22), member.id)
 				.input('staff_number', sql.Int, staffNumber)
 				.input('email', sql.VarChar(255), member.email || null).query(`
-					SELECT TOP 1 u.id, u.username, u.role_id, u.is_active, u.account_expires_at,
+					SELECT u.id, u.username, u.role_id, u.is_active, u.account_expires_at,
 					       r.code AS role_code
 					FROM users u
 					LEFT JOIN roles r ON r.id = u.role_id
@@ -207,7 +209,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					   OR (@email IS NOT NULL AND u.email = @email)
 					ORDER BY CASE WHEN u.topic_member_id = @member_id THEN 0 ELSE 1 END,
 					         CASE WHEN u.staff_number = @staff_number THEN 0 ELSE 1 END,
-					         CASE WHEN @email IS NOT NULL AND u.email = @email THEN 0 ELSE 1 END
+					         CASE WHEN @email IS NOT NULL AND u.email = @email THEN 0 ELSE 1 END OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 				`);
 			const existingUser = existingUserResult.recordset[0];
 

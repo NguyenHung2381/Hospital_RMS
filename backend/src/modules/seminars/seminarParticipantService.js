@@ -244,8 +244,9 @@ const requiredAbsentees = async (seminarId) => {
       JOIN users u ON u.department_id = r.department_id
       LEFT JOIN departments d ON d.id = u.department_id
       ${deptAccountJoinSql('u')}
-      OUTER APPLY (SELECT TOP 1 p.id, p.ticket_code, p.checked_in_at FROM seminar_participants p
-                   WHERE p.seminar_id = r.seminar_id AND p.user_id = u.id) p
+      OUTER APPLY (SELECT p.id, p.ticket_code, p.checked_in_at FROM seminar_participants p
+                   WHERE p.seminar_id = r.seminar_id AND p.user_id = u.id
+                   ORDER BY p.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) p
       WHERE r.seminar_id = @sid AND ${staffWhere}
         AND (p.id IS NULL OR (p.ticket_code IS NOT NULL AND p.checked_in_at IS NULL))
       ORDER BY d.name, u.full_name;

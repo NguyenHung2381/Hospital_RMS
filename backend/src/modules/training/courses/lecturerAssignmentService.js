@@ -89,7 +89,7 @@ const resolveLecturerId = async (id, actorId) => {
 	const userId = String(id).slice(STAFF_PREFIX.length);
 	const pool = await getPool();
 	const r = await pool.request().input('uid', sql.VarChar(20), userId).query(`
-    SELECT (SELECT TOP 1 id FROM lecturers WHERE user_id = @uid) AS lecturer_id, sl.license_no
+    SELECT (SELECT id FROM lecturers WHERE user_id = @uid ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS lecturer_id, sl.license_no
     FROM users u LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
     WHERE u.id = @uid
   `);
@@ -212,9 +212,9 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('lesson_id', sql.VarChar(20), lessonId).query(`
-      SELECT TOP 1 1 AS ok FROM course_programs cp
+      SELECT 1 AS ok WHERE EXISTS (SELECT 1 FROM course_programs cp
       JOIN lesson_programs lp ON lp.program_id = cp.program_id
-      WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id
+      WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id)
     `);
 	if (!inCourse.recordset.length) {
 		throw httpError(400, 'Bài học không thuộc chương trình của khóa học.');
@@ -318,9 +318,9 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
           WHERE course_id = @course_id AND subject_id = @lesson_id
 				`,
 					`
-          SELECT TOP 1 1 AS ok FROM course_programs cp
+          SELECT 1 AS ok WHERE EXISTS (SELECT 1 FROM course_programs cp
           JOIN lesson_programs lp ON lp.program_id = cp.program_id
-          WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id
+          WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id)
 				`,
 				],
 			);

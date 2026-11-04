@@ -246,7 +246,9 @@ const remove = async (id, actorId) => {
 		used = await pool
 			.request()
 			.input('id', sql.VarChar(20), id)
-			.query('SELECT TOP 1 1 AS x FROM lecturer_assignments WHERE lecturer_id = @id');
+			.query(
+				'SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM lecturer_assignments WHERE lecturer_id = @id)',
+			);
 	} catch {
 		// Bảng lecturer_assignments chưa tồn tại (Giai đoạn 4 chưa chạy) ⇒ coi như chưa dùng.
 	}

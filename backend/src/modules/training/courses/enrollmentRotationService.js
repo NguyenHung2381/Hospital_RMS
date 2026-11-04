@@ -402,12 +402,12 @@ const CARRY_FROM = `
   JOIN course_enrollments oe ON oe.id = o.enrollment_id
   JOIN course_enrollments e ON e.id = @id AND e.trainee_id = oe.trainee_id AND oe.id <> e.id
   CROSS APPLY (
-    SELECT TOP 1 pl.id, pl.title FROM lesson_programs lp
+    SELECT pl.id, pl.title FROM lesson_programs lp
     JOIN program_lessons pl ON pl.id = lp.lesson_id AND pl.lesson_kind = 'rotation'
     WHERE lp.program_id = e.program_id
       AND (pl.id = o.lesson_id OR EXISTS (SELECT 1 FROM lesson_departments ld
                                           WHERE ld.lesson_id = pl.id AND ld.department_id = o.department_id))
-    ORDER BY CASE WHEN pl.id = o.lesson_id THEN 0 ELSE 1 END, lp.display_order) m
+    ORDER BY CASE WHEN pl.id = o.lesson_id THEN 0 ELSE 1 END, lp.display_order OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) m
   WHERE o.result = 'pass'
     AND NOT EXISTS (SELECT 1 FROM enrollment_rotations x
                     WHERE x.enrollment_id = @id AND x.result = 'pass' AND x.lesson_id = m.id

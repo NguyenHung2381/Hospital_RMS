@@ -127,7 +127,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 				(
 					await new sql.Request(tx)
 						.input('email', sql.VarChar(255), email)
-						.query('SELECT TOP 1 1 AS x FROM users WHERE email = @email')
+						.query('SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM users WHERE email = @email)')
 				).recordset.length > 0;
 			const storedEmail = email && !emailTaken ? email : `${userId.toLowerCase()}@trainee.local`;
 

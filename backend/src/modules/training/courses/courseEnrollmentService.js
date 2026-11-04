@@ -74,7 +74,7 @@ const assertSingleProgram = async (traineeId, programId) => {
 			.request()
 			.input('trainee_id', sql.VarChar(20), traineeId)
 			.input('program_id', sql.VarChar(20), programId).query(`
-      SELECT TOP 1 tp.name AS program_name, c.name AS course_name
+      SELECT tp.name AS program_name, c.name AS course_name
       FROM course_enrollments e
       JOIN courses c ON c.id = e.course_id AND c.status <> 'cancelled'
       JOIN training_programs tp ON tp.id = e.program_id
@@ -82,7 +82,8 @@ const assertSingleProgram = async (traineeId, programId) => {
       WHERE e.trainee_id = @trainee_id AND e.program_id <> @program_id
         AND e.status IN ('pending', 'approved', 'waitlisted')
         AND (COALESCE(cp.end_date, c.end_date) IS NULL
-             OR COALESCE(cp.end_date, c.end_date) >= ${vnTodaySql})`)
+             OR COALESCE(cp.end_date, c.end_date) >= ${vnTodaySql})
+      ORDER BY e.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
 	).recordset[0];
 	if (busy)
 		throw httpError(
@@ -201,7 +202,9 @@ const registerStaff = async (
 	const linked = await pool
 		.request()
 		.input('uid', sql.VarChar(20), userId)
-		.query('SELECT TOP 1 id FROM trainees WHERE staff_user_id = @uid ORDER BY created_at DESC');
+		.query(
+			'SELECT id FROM trainees WHERE staff_user_id = @uid ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
 	let traineeId = linked.recordset[0]?.id;
 
 	if (!traineeId) {

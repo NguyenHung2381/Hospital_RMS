@@ -19,9 +19,10 @@ const DOC_COUNT_APPLY = `OUTER APPLY (
     SELECT COUNT(*) AS doc_required, COUNT(ok.x) AS doc_done
     FROM trainee_document_types dt
     OUTER APPLY (
-      SELECT TOP 1 1 AS x FROM trainee_documents sd
+      SELECT 1 AS x FROM trainee_documents sd
       JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
       WHERE sd.trainee_id = t.id AND sd.doc_type = dt.id AND sd.status = 'approved'
+      ORDER BY sd.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
     ) ok
     WHERE ${DOC_REQUIRED_SQL('t', 'dt')}
   ) dc`;

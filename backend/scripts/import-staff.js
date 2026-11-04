@@ -242,7 +242,9 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 		await pool
 			.request()
 			.input('role', sql.VarChar(20), adminRoleId)
-			.query("SELECT TOP 1 id FROM users WHERE role_id = @role AND is_active = 'true' ORDER BY id")
+			.query(
+				"SELECT id FROM users WHERE role_id = @role AND is_active = 'true' ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY",
+			)
 	).recordset[0]?.id;
 	if (!actorId) throw new Error('Không tìm thấy tài khoản quản trị để ghi người thực hiện');
 

@@ -46,9 +46,9 @@ const isRevoked = async (did) => {
 		.request()
 		.input('did', sql.VarChar(50), did)
 		.input('days', sql.Int, DEVICE_TOKEN_TTL_DAYS + 1).query(`
-			SELECT TOP 1 1 AS revoked FROM security_events
+			SELECT 1 AS revoked WHERE EXISTS (SELECT 1 FROM security_events
 			WHERE event_type = 'device_untrusted' AND target_type = 'device'
-				AND target_id = @did AND created_at > DATEADD(DAY, -@days, ${nowSql})
+				AND target_id = @did AND created_at > DATEADD(DAY, -@days, ${nowSql}))
 		`);
 	if (!result.recordset.length) return false;
 	if (revokedCache.size >= MAX_TRACKED_DEVICES) revokedCache.clear();

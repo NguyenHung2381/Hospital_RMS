@@ -152,7 +152,7 @@ const getMyCourse = async (courseId, actor) => {
 		pool.request().input('id', sql.VarChar(20), courseId).input('uid', sql.VarChar(20), actor.id),
 		[
 			`
-    SELECT TOP 1 c.id, c.name, c.description, c.start_date, c.end_date, c.status,
+    SELECT c.id, c.name, c.description, c.start_date, c.end_date, c.status,
            c.enrollment_start_date, c.enrollment_end_date, e.status AS enrollment_status,
            c.is_rolling, e.id AS enrollment_id,
            -- Hồ sơ thực hành GPHN (khóa mở liên tục) — học viên xem ở tab "Thực hành"
@@ -168,7 +168,7 @@ const getMyCourse = async (courseId, actor) => {
     JOIN courses c ON c.id = e.course_id
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     WHERE c.id = @id
-    ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END
+    ORDER BY CASE WHEN e.status = 'approved' THEN 0 ELSE 1 END OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 		`,
 			`
     SELECT d.id, d.doc_type, d.title, d.exam_type, d.source_type, d.external_url, d.created_at,

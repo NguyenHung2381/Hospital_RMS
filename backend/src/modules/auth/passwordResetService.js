@@ -48,8 +48,9 @@ const invalidOtp = () => ({ statusCode: 400, message: 'Mã OTP không đúng ho�
 const findActiveUser = async (pool, login) => {
 	const rows = (
 		await pool.request().input('login', sql.VarChar(100), login)
-			.query(`SELECT TOP 2 id, username, full_name, email FROM users
-				WHERE ${login.includes('@') ? 'email' : 'username'} = @login AND is_active = 'true'`)
+			.query(`SELECT id, username, full_name, email FROM users
+				WHERE ${login.includes('@') ? 'email' : 'username'} = @login AND is_active = 'true'
+				ORDER BY id OFFSET 0 ROWS FETCH NEXT 2 ROWS ONLY`)
 	).recordset;
 	return rows.length === 1 ? rows[0] : null;
 };

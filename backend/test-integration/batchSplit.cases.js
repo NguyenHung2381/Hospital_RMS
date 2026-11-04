@@ -90,11 +90,39 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.equal(r.vn_date.toISOString().slice(0, 10), todayKeyVN());
 		// Ghi / so sánh với cột thời gian
 		await q(`UPDATE users SET updated_at = ${db.nowSql} WHERE id = @id`, { id: actor.id });
+		// Giờ VN đi trước giờ UTC 7 tiếng (không so <= nowSql: trigger audit của users
+		// có thể ghi lại updated_at chính xác hơn mức làm tròn 3ms của GETDATE())
 		const [u] = await q(
-			`SELECT updated_at FROM users WHERE id = @id AND updated_at <= ${db.nowSql}`,
+			`SELECT updated_at FROM users WHERE id = @id AND updated_at > ${db.utcNowSql}`,
 			{ id: actor.id },
 		);
 		assert.ok(Math.abs(u.updated_at.getTime() - r.vn.getTime()) < 60000);
+	});
+
+	// TOP n → ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY / EXISTS (chạy cả 2 DB)
+	await step('TOP n đã đổi: FETCH NEXT, EXISTS', async () => {
+		const users = await require('../src/modules/users/userService').searchForMember({
+			q: '',
+			limit: 3,
+		});
+		assert.ok(users.data.length >= 1 && users.data.length <= 3);
+		const events = await require('../src/modules/audit/securityEventService').getAll({
+			limit: 2,
+		});
+		assert.ok(events.data.length <= 2);
+		assert.equal(
+			typeof (await require('../src/modules/topics/workflowEngineService').hasActiveDefinition(
+				'topic',
+			)),
+			'boolean',
+		);
+	});
+
+	await step('xoá thông báo cũ theo lô (DELETE … WHERE id IN (… FETCH NEXT))', async () => {
+		const [n0] = await q(`SELECT COUNT(*) AS n FROM notifications`);
+		const deleted = await require('../src/jobs/notificationCleanupJob').deleteBatch();
+		const [n1] = await q(`SELECT COUNT(*) AS n FROM notifications`);
+		assert.equal(Number(n0.n) - Number(n1.n), deleted);
 	});
 
 	await step("cột BIT so / gán bằng 'true' / 'false': WHERE, SET, CASE, SUM", async () => {

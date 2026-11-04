@@ -26,8 +26,9 @@ const SELECT_SQL = `
   FROM seminars s
   LEFT JOIN departments od ON od.id = s.organizer_department_id
   LEFT JOIN hospital_training_topics ht ON ht.id = s.topic_id
-  OUTER APPLY (SELECT TOP 1 x.id, x.checked_in_at, x.cme_status, x.cme_credits, x.created_by
-               FROM seminar_participants x WHERE x.seminar_id = s.id AND x.user_id = @uid) p
+  OUTER APPLY (SELECT x.id, x.checked_in_at, x.cme_status, x.cme_credits, x.created_by
+               FROM seminar_participants x WHERE x.seminar_id = s.id AND x.user_id = @uid
+               ORDER BY x.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) p
   WHERE ${HOSPITAL_TRAINING_SQL}`;
 
 const withActions = (row) => ({

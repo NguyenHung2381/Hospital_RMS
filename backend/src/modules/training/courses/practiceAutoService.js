@@ -292,9 +292,9 @@ const arrangeOne = async (
 			.request()
 			.input('program_id', sql.VarChar(20), e.program_id)
 			.input('id', sql.VarChar(20), enrollmentId).query(`
-        SELECT TOP 1 professional_field, practice_form FROM course_enrollments
+        SELECT professional_field, practice_form FROM course_enrollments
         WHERE program_id = @program_id AND id <> @id AND professional_field IS NOT NULL AND practice_form IS NOT NULL
-        GROUP BY professional_field, practice_form ORDER BY COUNT(*) DESC`)
+        GROUP BY professional_field, practice_form ORDER BY COUNT(*) DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
 	).recordset[0];
 	const { code, number } = e.practice_code
 		? { code: e.practice_code, number: null }

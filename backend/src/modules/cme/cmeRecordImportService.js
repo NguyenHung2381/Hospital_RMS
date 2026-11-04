@@ -306,7 +306,7 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 		pool.request().input('sn', sql.Int, staffNumber).input('dept', sql.VarChar(20), department_id),
 		[
 			`
-      SELECT TOP 1 id, full_name, is_active FROM users WHERE staff_number = @sn
+      SELECT id, full_name, is_active FROM users WHERE staff_number = @sn ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 		`,
 			`
       SELECT id, name, code FROM departments WHERE id = @dept

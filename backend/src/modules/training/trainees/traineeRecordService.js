@@ -87,7 +87,9 @@ const traineeOfUser = async (pool, userId) => {
 		await pool
 			.request()
 			.input('uid', sql.VarChar(20), userId)
-			.query('SELECT TOP 1 id FROM trainees WHERE user_id = @uid ORDER BY created_at DESC')
+			.query(
+				'SELECT id FROM trainees WHERE user_id = @uid ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			)
 	).recordset[0];
 	if (!t) throw httpError(404, 'Tài khoản của bạn chưa gắn với hồ sơ học viên.');
 	return t.id;
@@ -102,9 +104,9 @@ const myTraineeId = async (userId) => {
 	const pool = await getPool();
 	const t = (
 		await pool.request().input('uid', sql.VarChar(20), userId).query(`
-      SELECT TOP 1 t.id FROM trainees t
+      SELECT t.id FROM trainees t
       WHERE ${TRAINEE_OF_USER_SQL('t')}
-      ORDER BY CASE WHEN t.user_id = @uid THEN 0 ELSE 1 END, t.created_at DESC`)
+      ORDER BY CASE WHEN t.user_id = @uid THEN 0 ELSE 1 END, t.created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
 	).recordset[0];
 	if (!t) throw httpError(404, 'Bạn chưa có hồ sơ học viên — hãy đăng ký một khóa học.');
 	return t.id;

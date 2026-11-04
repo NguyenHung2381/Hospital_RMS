@@ -30,10 +30,10 @@ const findOverdue = async (today) => {
                 THEN 1 ELSE 0 END AS requested_after_deadline
     FROM topics t
     CROSS APPLY (
-      SELECT TOP 1 rd.id, rd.name, rd.deadline_date
+      SELECT rd.id, rd.name, rd.deadline_date
       FROM round_deadlines rd
       WHERE rd.round_id = t.round_id AND rd.deadline_type = 'supplement'
-      ORDER BY rd.deadline_date DESC
+      ORDER BY rd.deadline_date DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
     ) dl
     LEFT JOIN approvals a ON a.topic_id = t.id AND a.status = 'supplement'
     WHERE t.status = 'supplement' AND dl.deadline_date < @today

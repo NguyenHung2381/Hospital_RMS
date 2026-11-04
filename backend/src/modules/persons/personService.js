@@ -448,7 +448,7 @@ const syncPending = async (source, { limit = 500, actorId = undefined } = {}) =>
 			.request()
 			.input('limit', sql.Int, limit)
 			.query(
-				`SELECT TOP (@limit) id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LEN(LTRIM(RTRIM(${cfg.name}))) > 0 ORDER BY id`,
+				`SELECT id FROM dbo.${cfg.table} WHERE person_id IS NULL AND LEN(LTRIM(RTRIM(${cfg.name}))) > 0 ORDER BY id OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY`,
 			);
 		return await syncPersons(
 			source,
@@ -510,7 +510,7 @@ const releasePerson = async (source, id, personId, { actorId = undefined } = {})
 						await new sql.Request(tx)
 							.input('pid', sql.VarChar(20), pid)
 							.query(
-								`SELECT TOP 1 id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id`,
+								`SELECT id FROM dbo.${SOURCES[next].table} WHERE person_id = @pid ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
 							)
 					).recordset[0];
 					if (!other) continue;

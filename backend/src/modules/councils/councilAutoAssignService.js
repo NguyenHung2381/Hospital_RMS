@@ -53,7 +53,7 @@ const pickInternal = async (
 		return `@u${i}`;
 	});
 	const result = await req.query(`
-    SELECT TOP 1 u.id, u.${flagCol} AS has_flag, d.specialty_group AS user_sg
+    SELECT u.id, u.${flagCol} AS has_flag, d.specialty_group AS user_sg
     FROM users u
     LEFT JOIN departments d ON d.id = u.department_id
     LEFT JOIN (
@@ -70,7 +70,7 @@ const pickInternal = async (
       CASE WHEN u.${flagCol} = 1 THEN 0 ELSE 1 END,
       CASE WHEN d.specialty_group = @sg THEN 0 ELSE 1 END,
       COALESCE(lt.load_count, 0) ASC,
-      u.full_name ASC
+      u.full_name ASC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
   `);
 	return result.recordset[0] || null;
 };
@@ -95,12 +95,12 @@ const pickExternal = async (pool, { specialtyGroup, usedExternalReviewerIds, all
 		allowedClause = `AND id IN (${allowedParams.join(',')})`;
 	}
 	const result = await req.query(`
-    SELECT TOP 1 id, full_name
+    SELECT id, full_name
     FROM external_reviewers
     WHERE is_active = 'true' AND specialty_group = @sg
       ${allowedClause}
       ${usedParams.length ? `AND id NOT IN (${usedParams.join(',')})` : ''}
-    ORDER BY full_name
+    ORDER BY full_name OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
   `);
 	return result.recordset[0] || null;
 };

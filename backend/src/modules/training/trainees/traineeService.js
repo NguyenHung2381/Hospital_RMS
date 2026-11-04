@@ -84,19 +84,19 @@ const getAll = async (
 	// Lượt ghi danh gần nhất thuộc loại đang lọc — cột riêng của từng tab.
 	const latestEnrollment = training_type_id
 		? `OUTER APPLY (
-		    SELECT TOP 1 e.id AS enrollment_id, e.practice_code, e.start_date AS enrollment_start_date,
+		    SELECT e.id AS enrollment_id, e.practice_code, e.start_date AS enrollment_start_date,
 		           e.end_date AS enrollment_end_date, e.status AS enrollment_status,
 		           c.name AS course_name, tp.name AS program_name,
-		           (SELECT TOP 1 r.department_name FROM enrollment_rotations r
+		           (SELECT r.department_name FROM enrollment_rotations r
 		            WHERE r.enrollment_id = e.id AND CAST(${nowSql} AS DATE) BETWEEN r.start_date AND r.end_date
-		            ORDER BY r.seq) AS current_department,
+		            ORDER BY r.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS current_department,
 		           (SELECT COUNT(*) FROM course_enrollments e2 JOIN courses c2 ON c2.id = e2.course_id
 		            WHERE e2.trainee_id = t.id AND e2.status <> 'rejected' AND c2.training_type_id = @training_type_id) AS type_enrollment_count
 		    FROM course_enrollments e
 		    JOIN courses c ON c.id = e.course_id
 		    LEFT JOIN training_programs tp ON tp.id = e.program_id
 		    WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id
-		    ORDER BY e.created_at DESC
+		    ORDER BY e.created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
 		  ) le`
 		: '';
 

@@ -109,7 +109,9 @@ const createMine = async (userId, body) => {
 		pool
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
-			.query('SELECT TOP 1 id, full_name, department_id FROM trainees WHERE user_id = @user_id'),
+			.query(
+				'SELECT id, full_name, department_id FROM trainees WHERE user_id = @user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+			),
 		shiftService.traineePeriods({ from, to, userId }),
 		shiftService.listPatterns(),
 		shiftService.shiftsMap(),
@@ -142,10 +144,11 @@ const createMine = async (userId, body) => {
 			.input('from', sql.Date, from)
 			.input('to', sql.Date, to)
 			.input('shift_id', sql.Int, shiftId).query(`
-        SELECT TOP 1 id, status FROM attendance_leave_requests
+        SELECT id, status FROM attendance_leave_requests
         WHERE user_id = @user_id AND status IN ('pending', 'approved')
           AND from_date <= @to AND to_date >= @from
           AND (shift_id IS NULL OR @shift_id IS NULL OR shift_id = @shift_id)
+        ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
       `)
 	).recordset[0];
 	if (dup)
@@ -219,7 +222,8 @@ const SELECT_ADMIN = `
   SELECT r.*, t.id AS trainee_id, t.full_name, t.department_id, d.name AS department_name,
          u.full_name AS reviewer_name
   FROM attendance_leave_requests r
-  CROSS APPLY (SELECT TOP 1 id, full_name, department_id FROM trainees WHERE user_id = r.user_id) t
+  CROSS APPLY (SELECT id, full_name, department_id FROM trainees WHERE user_id = r.user_id
+               ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) t
   LEFT JOIN departments d ON d.id = t.department_id
   LEFT JOIN users u ON u.id = r.reviewed_by
 `;

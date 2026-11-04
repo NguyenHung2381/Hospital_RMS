@@ -60,11 +60,13 @@ const getAll = async ({ page = 1, limit = 20, round_id = undefined, status = und
     SELECT c.*, r.name AS round_name,
            (SELECT COUNT(*) FROM topics t WHERE t.council_id = c.id) AS topic_count,
            (SELECT COUNT(DISTINCT cm.role) FROM council_members cm WHERE cm.council_id = c.id) AS member_count,
-           (SELECT TOP 1 cm.user_id FROM council_members cm WHERE cm.council_id = c.id AND cm.role = 'chairman') AS chairman_user_id,
-           (SELECT TOP 1 COALESCE(u.full_name, er.full_name) FROM council_members cm
+           (SELECT cm.user_id FROM council_members cm WHERE cm.council_id = c.id AND cm.role = 'chairman'
+            ORDER BY cm.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS chairman_user_id,
+           (SELECT COALESCE(u.full_name, er.full_name) FROM council_members cm
               LEFT JOIN users u ON u.id = cm.user_id
               LEFT JOIN external_reviewers er ON er.id = cm.external_reviewer_id
-            WHERE cm.council_id = c.id AND cm.role = 'chairman') AS chairman_name,
+            WHERE cm.council_id = c.id AND cm.role = 'chairman'
+            ORDER BY cm.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS chairman_name,
            (SELECT STRING_AGG(CONCAT(
               CASE cm.role WHEN 'chairman' THEN 'CT' WHEN 'secretary' THEN 'TK'
                 WHEN 'reviewer1' THEN 'PB1' WHEN 'reviewer2' THEN 'PB2' ELSE 'TV' END,
@@ -302,11 +304,11 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
 	if (type === 'external') {
 		const req = pool.request().input('search', sql.NVarChar, `%${search}%`);
 		const result = await req.query(`
-      SELECT TOP 20 id, full_name, organization, specialty_group, phone, email
+      SELECT id, full_name, organization, specialty_group, phone, email
       FROM external_reviewers
       WHERE is_active = 'true'
         AND (@search = '%%' OR full_name LIKE @search OR organization LIKE @search)
-      ORDER BY full_name
+      ORDER BY full_name OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
     `);
 		return result.recordset.map((r) => ({ ...r, is_external: true }));
 	}
@@ -318,7 +320,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
 	await inputRoleId(req, 'dept_head_role', ROLE.DEPT_HEAD);
 
 	const result = await req.query(`
-    SELECT TOP 20 u.id, u.username, u.full_name, u.staff_number,
+    SELECT u.id, u.username, u.full_name, u.staff_number,
            u.department_id, d.name AS department_name,
            d.specialty_group, q.code AS qualification,
            u.can_sit_council, u.can_chair_council,
@@ -344,7 +346,7 @@ const getEligibleUsers = async (councilId, search = '', type = 'internal') => {
         OR u.full_name LIKE @search
         OR u.username LIKE @search
         OR CAST(u.staff_number AS VARCHAR(20)) LIKE @search)
-    ORDER BY u.can_sit_council DESC, u.full_name
+    ORDER BY u.can_sit_council DESC, u.full_name OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY
   `);
 	return result.recordset.map((u) => ({
 		...u,

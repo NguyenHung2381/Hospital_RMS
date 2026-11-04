@@ -38,8 +38,8 @@ async function isTopicActionAllowed(topicId, actorUserId, action) {
 		.request()
 		.input('tid', sql.VarChar(15), topicId)
 		.input('uid', sql.VarChar(20), actorUserId).query(`
-			SELECT TOP 1 1 FROM topic_members
-			WHERE topic_id = @tid AND user_id = @uid AND role IN ('leader', 'secretary')
+			SELECT 1 WHERE EXISTS (SELECT 1 FROM topic_members
+			WHERE topic_id = @tid AND user_id = @uid AND role IN ('leader', 'secretary'))
 		`);
 	if (!roleRes.recordset[0]) return false;
 

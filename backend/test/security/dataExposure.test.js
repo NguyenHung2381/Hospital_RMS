@@ -28,8 +28,8 @@ const USERS = [
 let dbDown = false;
 install(async (text, inputs) => {
 	if (dbDown) throw Object.assign(new Error('Login failed for user rms_app'), { code: 'ELOGIN' });
-	if (/SELECT TOP \(@limit\) u\.id, u\.full_name/.test(text)) return USERS;
-	if (/SELECT TOP 2 email FROM users/.test(text)) {
+	if (/SELECT u\.id, u\.full_name, u\.username, u\.staff_number/.test(text)) return USERS;
+	if (/SELECT email FROM users\s+WHERE staff_number = @sn/.test(text)) {
 		const hits = USERS.filter((u) => u.staff_number === inputs.sn && !u.email.endsWith('.local'));
 		return hits.map((u) => ({ email: u.email }));
 	}

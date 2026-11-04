@@ -47,7 +47,9 @@ const loadContext = async (userId) => {
 		pool
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
-			.query('SELECT TOP 1 id, full_name FROM trainees WHERE user_id = @user_id'),
+			.query(
+				`SELECT id, full_name FROM trainees WHERE user_id = @user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
+			),
 		shiftService.traineePeriods({ from, to, userId }),
 		shiftService.listPatterns(),
 		shiftService.assignmentsForUser(userId, from, to),
@@ -56,7 +58,7 @@ const loadContext = async (userId) => {
 			.request()
 			.input('user_id', sql.VarChar(20), userId)
 			.query(
-				'SELECT TOP 60 * FROM staff_attendance WHERE user_id = @user_id AND course_id IS NOT NULL ORDER BY work_date DESC, check_in_at DESC',
+				'SELECT * FROM staff_attendance WHERE user_id = @user_id AND course_id IS NOT NULL ORDER BY work_date DESC, check_in_at DESC OFFSET 0 ROWS FETCH NEXT 60 ROWS ONLY',
 			),
 	]);
 	return {
@@ -265,7 +267,7 @@ const getByDate = async (dateArg, actor) => {
 		req.query(`
       SELECT a.*, t.id AS trainee_id, t.full_name, d.name AS department_name
       FROM staff_attendance a
-      CROSS APPLY (SELECT TOP 1 * FROM trainees WHERE user_id = a.user_id) t
+      CROSS APPLY (SELECT * FROM trainees WHERE user_id = a.user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) t
       LEFT JOIN departments d ON d.id = t.department_id
       WHERE a.work_date = @date AND a.course_id IS NOT NULL${dept !== undefined ? ' AND t.department_id = @dept' : ''}
     `),

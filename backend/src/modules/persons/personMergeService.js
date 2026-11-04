@@ -174,7 +174,7 @@ const recordsOf = async (pool, personId) => {
 		.input('trainee', sql.NVarChar(50), 'Học viên')
 		.input('lecturer', sql.NVarChar(50), 'Giảng viên')
 		.input('reviewer', sql.NVarChar(50), 'Chuyên gia ngoài viện').query(`
-		SELECT TOP (60) source, ref_id, label FROM (
+		SELECT source, ref_id, label FROM (
 			SELECT 'users' AS source, u.id AS ref_id, CONCAT(u.username, ' · ', COALESCE(d.name, @no_dept)) AS label
 			FROM dbo.users u LEFT JOIN dbo.departments d ON d.id = u.department_id WHERE u.person_id = @pid
 			UNION ALL
@@ -191,7 +191,7 @@ const recordsOf = async (pool, personId) => {
 			UNION ALL
 			SELECT 'seminar_participants', p.id, s.title
 			FROM dbo.seminar_participants p JOIN dbo.seminars s ON s.id = p.seminar_id WHERE p.person_id = @pid
-		) z ORDER BY source, ref_id`);
+		) z ORDER BY source, ref_id OFFSET 0 ROWS FETCH NEXT 60 ROWS ONLY`);
 	return r.recordset;
 };
 

@@ -140,7 +140,7 @@ const register = async (data, files, custom = null) => {
 			.request()
 			.input('national_id', sql.VarChar(20), data.national_id)
 			.query(
-				'SELECT TOP 1 * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC',
+				'SELECT * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 			);
 		trainee = existing.recordset[0] || null;
 		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây

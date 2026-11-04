@@ -117,7 +117,9 @@ const remove = async (id, actorId) => {
 	const used = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
-		.query('SELECT TOP 1 1 FROM council_members WHERE external_reviewer_id = @id');
+		.query(
+			'SELECT 1 WHERE EXISTS (SELECT 1 FROM council_members WHERE external_reviewer_id = @id)',
+		);
 	if (used.recordset.length) {
 		await pool
 			.request()
