@@ -86,7 +86,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | Driver | `mssql` 12 (tedious), pool chung ở `backend/src/config/db.js` | Thay bằng `pg` (node-postgres). `getPool`, `sql`, `withTransaction` được import ở 130 file. |
 | Cấu hình | `DB_SERVER`, `DB_PORT=1433`, `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT`, `DB_POOL_MAX` (`src/config/env.js`) | Đổi sang `DB_HOST`, `DB_PORT=5432`, `DB_SSLMODE`... Cảnh báo prod (`DB_USER=sa`) cần viết lại. |
 | Vị trí DB | Ngoài Docker, trên máy host hoặc máy riêng (`host.docker.internal`) | Cần chọn nơi đặt PG (mục 3). |
-| Migration | `src/database/migrator.js`: tách batch theo `GO`, khoá `sp_getapplock`, `BACKUP DATABASE ... COPY_ONLY`, bảng `dbo.schema_migrations` | Viết lại phần phụ thuộc T-SQL (mục 5.3). |
+| Migration | `src/database/migrator.js`: tách batch theo `GO`, khoá `sp_getapplock`, `BACKUP DATABASE ... COPY_ONLY`, bảng `dbo.schema_migrations` | ✓ Phần chạm DB tách thành driver `migrator.mssql.js` / `migrator.pg.js` (mục 5.3). |
 | Deploy | `scripts/deploy.ps1` chạy `node scripts/migrate.js` bằng login có quyền ALTER/BACKUP | Đổi cách backup trước migration (`pg_dump`). |
 | CI | `.github/workflows/ci.yml` **không cần DB**: test dùng CSDL giả `test/**/fakeDb.js` | Nên thêm job có service container PostgreSQL (mục 7). |
 | Smoke test | `test-integration/smoke.test.js` gọi mọi API GET trên DB thật, so dạng JSON với baseline | Công cụ rất có giá trị để so SQL Server và PG trên cùng dữ liệu. |
@@ -99,13 +99,13 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `@ten` tham số đặt tên + `.input(name, sql.Type, v)` | 1.848 (118) | `$1, $2…` (thứ tự) — xử lý tự động trong lớp adapter, mục 5.1 |
 | `sql.NVarChar`, `sql.Int`, `sql.DateTime`... | 2.115 (119) | Bỏ, hoặc chỉ dùng để ép kiểu `$1::int` khi cần |
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
-| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 1 (migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
-| `N'...'` | 339 (98) → 2 (mẫu migration SQL Server) | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
+| `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 0 | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
+| `N'...'` | 339 (98) → 0 | `nstr('...')` của adapter (SQL Server `N'...'`, PG `'...'`) |
 | Định danh `[ten]` | 658 (156) → 0 trong câu SQL (ratchet `bracket_ident`; con số 658 đếm thô, gồm cả mảng JS) | Bỏ ngoặc; tên trùng từ khoá → `"ten"` |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
-| `DECLARE @...` (batch nhiều câu) | 80 (47) → 1 (chỉ còn `sp_getapplock` trong `db.mssql.js`) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
+| `DECLARE @...` (batch nhiều câu) | 80 (47) → 0 (chỉ còn trong `db.mssql.js` / `migrator.mssql.js`, ratchet bỏ qua) | Viết lại: CTE, nhiều lời gọi JS, hoặc hàm PL/pgSQL |
 | `TOP n` | 71 (45) → 1 (nhãn Excel, không phải SQL) | `ORDER BY … OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` (chạy cả 2 DB) |
 | `NEWID()` | 42 (27) — **đã đổi hết** | `randomId` / `randomHex32` (JS) hoặc `newIdSql` của adapter |
 | `OPENJSON(@ids)` | 31 (15) | `= ANY($1::text[])` hoặc `jsonb_array_elements_text($1)` |
@@ -119,7 +119,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) → 0 | `upsert({...})` của adapter (PG: `INSERT ... ON CONFLICT DO UPDATE`) |
-| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 → 1 (migrator SQL Server) | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
+| Gợi ý khoá `UPDLOCK/HOLDLOCK`, `sp_getapplock` | 5 → 0 + 6 → 0 | `SELECT ... FOR UPDATE`; khoá dải mã → `pg_advisory_xact_lock(hashtext(...))` |
 | Bảng tạm `#t`, biến bảng `@t TABLE` | 21 (3) + 8 | `CREATE TEMP TABLE ... ON COMMIT DROP`, CTE |
 | `THROW 5xxxx` / `RAISERROR` + kiểm `err.number` | 7 → 0 + 45 (19) | `RAISE EXCEPTION ... USING ERRCODE`; đọc `err.code` (mã SQLSTATE) |
 | `err.number === 2627/2601` (trùng khoá), `547` (FK), `207/208` | ~20 | `23505`, `23503`, `42703/42P01` |
@@ -269,7 +269,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `N'chuỗi'` | `'chuỗi'` | ✓ qua adapter: `${nstr('chuỗi')}` (SQL Server cần `N` cho chữ Việt) |
 | `col LIKE @search` (CI_AS) | `col ILIKE $1 ESCAPE ''`; cột `rms_ci`: `col LIKE $1 ESCAPE ''` | ✓ qua adapter: `${ilike('u.full_name', '@search')}`, cột rms_ci (username, email, mã) `${likeCi('u.username', '@search')}` |
 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✓ không còn: khoá dải mã → `lockResource` của adapter (`idGenerator.nextId`) |
-| `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtextextended('x', 0))` | ✓ qua adapter: `lockResource(tx, 'x', timeoutMs)` (khoá theo transaction, quá hạn trả false); còn ở `migrator.js` (nhánh SQL Server, mục 5.3) |
+| `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtextextended('x', 0))` | ✓ qua adapter: `lockResource(tx, 'x', timeoutMs)` (khoá theo transaction, quá hạn trả false); migrator: `pg_advisory_lock` theo phiên (`migrator.pg.js`) |
 | `SCOPE_IDENTITY()` | `INSERT ... RETURNING id` | ✗ |
 | `@@ROWCOUNT` trong JS | `result.rowCount` | adapter trả `rowsAffected` |
 | `THROW 51000, N'...', 1` | `RAISE EXCEPTION '...' USING ERRCODE = 'P0001', DETAIL = '51000'` | ✓ không dùng nữa: `IF EXISTS … THROW` trước INSERT → `INSERT … SELECT … WHERE NOT EXISTS` + `rowsAffected`, trùng do chạy song song bắt theo tên UNIQUE (`constraintName`) |
@@ -350,7 +350,9 @@ Phần lớn việc này **làm được ngay trên SQL Server** (chặng 1) mà
   2. Dữ liệu danh mục cố định (quyền, vai trò, danh mục mặc định) đưa vào
      `0001_seed.sql` hoặc lấy từ dữ liệu thật khi chuyển.
   3. Migration sau cutover viết bằng SQL PostgreSQL, tiếp tục quy ước đặt tên và idempotent hiện có.
-- `migrator.js` cần đổi: bỏ tách batch theo `GO` (PG chạy được nhiều lệnh trong
+- **Đã làm** (driver PG từ chặng 2; tách file ở chặng 1, mục "migrator" của checklist): `migrator.js` chỉ
+  còn phần chung (trạng thái, file gộp, đổi tên, thứ tự chạy); phần chạm DB ở `migrator.mssql.js` (T-SQL,
+  ratchet bỏ qua, xoá sau cutover) và `migrator.pg.js`. Các việc đã đổi so với bản SQL Server: bỏ tách batch theo `GO` (PG chạy được nhiều lệnh trong
   1 file khi không có tham số); khoá `sp_getapplock` → `pg_advisory_lock`; bảng
   `schema_migrations` bỏ tiền tố `dbo.`; `BACKUP DATABASE` → gọi `pg_dump` (chạy
   ở phía ứng dụng, không cần thư mục trên máy DB); có thể chạy cả file trong 1
@@ -664,6 +666,16 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Sau đó (getdate 5 → 1, tổng 14 → 10): 4 chỗ còn lại là comment, viết lại theo tên helper (`nowSql` /
     `utcNowSql`) và ghi rõ cả 2 driver đọc cột giờ không múi giờ như UTC. Còn 1 ở phần SQL Server của
     `migrator.js` (mục 5.3).
+- [x] Migrator (mục 5.3; ratchet getdate / declare / applock / dbo_prefix ở migrator và n_prefix ở `scripts/migrate.js`
+  → 0, tổng 10 → 3). Driver PG đã có từ chặng 2; còn lại là T-SQL cố ý của driver SQL Server nằm chung file.
+  - Tách như cặp `db.mssql.js` / `db.pg.js`: `src/database/migrator.mssql.js` (tách batch `GO`, `sp_getapplock`,
+    `BACKUP DATABASE`, `OBJECT_ID`, bảng `dbo.schema_migrations`) và `migrator.pg.js` (transaction mỗi file,
+    `pg_advisory_lock`, `pg_dump`, baseline 00–04 cho DB trống). `migrator.js` chỉ nạp driver theo `DB_CLIENT`.
+    Ratchet bỏ qua `migrator.mssql.js` như `db.mssql.js` — sau cutover xoá 2 file này.
+  - Mẫu file mới của `npm run migrate new` chuyển vào driver (`migrator.template(name)`); `splitBatches` (chỉ SQL
+    Server) export từ `migrator.mssql.js`, test cập nhật theo.
+  - Không đổi logic: kiểm bằng unit test `test/database/` (40) và `migrator.status()` chỉ đọc trên cả 2 DB —
+    kết quả trùng với bản cũ (SQL Server 18/19 file, PG 1/2 file; cùng chờ `2026-12-15_unique_nulls_not_distinct`).
 - [x] `TOP n` (67 → 1): viết lại bằng cú pháp chuẩn chạy cả 2 DB.
   - Câu / subquery / `APPLY` đã có `ORDER BY` (44 chỗ, script): bỏ `TOP n`, thêm
     `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` sau `ORDER BY` (tham số `@limit` được, adapter PG bọc

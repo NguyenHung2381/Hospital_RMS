@@ -32,36 +32,6 @@ const flagCommand = args.map((a) => FLAG_COMMANDS[a]).find(Boolean);
 const command = flagCommand ?? words[0] ?? 'up';
 const rest = flagCommand ? words : words.slice(1);
 
-const TEMPLATE = (
-	name,
-) => `/* ============================================================================
- * ${name.replace(/\.sql$/, '')}
- * ----------------------------------------------------------------------------
- *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
- * Idempotent — mỗi bước tự kiểm tra (OBJECT_ID / COL_LENGTH / sys.indexes)
- * nên chạy lại nhiều lần an toàn. Chỉ THÊM (bảng/cột/index); xóa hay đổi tên
- * thì để bản phát hành sau, khi code cũ không còn dùng.
- * ==========================================================================*/
-
--- Bảng mới: luôn có created_at, created_by, updated_at DATETIME2 NULL, updated_by VARCHAR(20) NULL
--- IF COL_LENGTH(N'dbo.<bảng>', N'<cột>') IS NULL
---     ALTER TABLE [dbo].[<bảng>] ADD [<cột>] NVARCHAR(255) NULL;
--- GO
-`;
-
-const PG_TEMPLATE = (
-	name,
-) => `/* ============================================================================
- * ${name.replace(/\.sql$/, '')}  (PostgreSQL — bản SQL Server cùng tên ở database/migrations/)
- * ----------------------------------------------------------------------------
- *   <Mô tả thay đổi: bảng / cột nào, để làm gì, ai dùng>
- * Chạy trong 1 transaction (thêm dòng "-- @no-transaction" nếu cần CREATE
- * INDEX CONCURRENTLY). Idempotent: IF NOT EXISTS / CREATE OR REPLACE.
- * ==========================================================================*/
-
--- ALTER TABLE <bảng> ADD COLUMN IF NOT EXISTS <cột> varchar(255);
-`;
-
 const printStatus = (s) => {
 	if (!s.tracked)
 		console.log('⚠️  Chưa có bảng schema_migrations (DB chưa từng chạy migration qua script)');
@@ -127,7 +97,7 @@ const COMMANDS = {
 	new: () => {
 		const name = migrator.nextFilename(rest.join(' '));
 		const file = path.join(migrator.MIGRATIONS_DIR, name);
-		fs.writeFileSync(file, (migrator.client === 'pg' ? PG_TEMPLATE : TEMPLATE)(name));
+		fs.writeFileSync(file, migrator.template(name));
 		console.log(`Đã tạo ${path.relative(process.cwd(), file)}`);
 	},
 	help: () => console.log(USAGE),

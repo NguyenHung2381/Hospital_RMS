@@ -30,6 +30,8 @@ const SKIP = new Set(
 		'scripts/pg/gen-baseline.js',
 		// Adapter SQL Server: chỉ chạy khi DB_CLIENT=mssql, xoá sau cutover
 		'src/config/db.mssql.js',
+		// Driver SQL Server của migrator (GO, sp_getapplock, BACKUP DATABASE), xoá cùng lúc
+		'src/database/migrator.mssql.js',
 		// Adapter PG: dựng lại recordsets/rowsAffected... để code cũ chạy được
 		'src/config/db.pg.js',
 	].map((f) => path.join(ROOT, f)),

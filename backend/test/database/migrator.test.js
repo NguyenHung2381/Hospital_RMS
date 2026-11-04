@@ -1,8 +1,8 @@
 // Phần thuần của bộ chạy migration (không cần DB) + quy ước tên file thật.
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { splitBatches } = require('../../src/database/migrator.mssql');
 const {
-	splitBatches,
 	checksum,
 	nextFilename,
 	listFiles,
