@@ -5,7 +5,7 @@
  * - Chỉ chọn đợt có sẵn (quản lý NCKH tạo đợt cũ trước ở trang Đợt nghiên cứu),
  *   không xét mốc "Đăng ký đề tài" của đợt.
  * - Đề tài vào hàng "Chờ duyệt" (trigger trg_topic_auto_approval tạo approvals)
- *   với is_legacy = 1 để người duyệt biết đây là đề tài đã hoàn thành.
+ *   với is_legacy = true để người duyệt biết đây là đề tài đã hoàn thành.
  * - File đính kèm tải lên sau qua POST /topics/:id/files — deadlineGuard cho chủ
  *   nhiệm/thư ký thao tác với đề tài is_legacy đang chờ duyệt/bổ sung.
  */

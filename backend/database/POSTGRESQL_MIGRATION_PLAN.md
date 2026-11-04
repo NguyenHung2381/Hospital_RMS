@@ -513,8 +513,24 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   comment). Kiểm bằng ca "cột BIT so / gán bằng 'true' / 'false'" trong
   `test-integration/batchSplit.cases.js` (2 DB). Các ca PG khác vẫn bỏ vì vướng mục khác
   (đã bật lại ở mục `@@ROWCOUNT`).
-  Còn lại (phát hiện dần qua test PG): `VALUES (…, 1)` / `CASE … THEN 1 ELSE 0` ghi vào cột
-  boolean, `COALESCE(cột_bit, 0)` — PG cũng không tự ép số sang boolean ở các chỗ này.
+  ~~Còn lại (phát hiện dần qua test PG): `VALUES (…, 1)` / `CASE … THEN 1 ELSE 0` ghi vào cột
+  boolean, `COALESCE(cột_bit, 0)`~~ — đã xong ở đợt 2 dưới.
+- [x] Đợt 2 cột boolean (bit_literal 14 → 0, cast_tsql_type 1 → 0). Quét bằng script: mọi `INSERT INTO
+  … (cột) VALUES / SELECT` có cột boolean nhận số; `cột = CASE … THEN 1`; `COALESCE(cột, 0/1)`;
+  `IN (0, 1)`; `MAX/MIN(cột)`; `${x ? 1 : 0}`; tham số boolean khai báo kiểu số. Lỗi thật (PG báo
+  `column … is of type boolean but expression is of type integer` / không gộp được kiểu trong `CASE`):
+  - `must_change_password` = `1` trong 4 câu tạo tài khoản: tạo người dùng, tạo tài khoản nhân viên,
+    cấp tài khoản học viên, cấp tài khoản thành viên đề tài → `'true'`.
+  - Mở lại tài khoản đề tài hết hạn: `is_active = CASE … THEN 1 ELSE is_active END` → `THEN 'true'`.
+  - Ứng viên giảng viên (`listLecturerCandidates`): `CAST(0 AS BIT)` trong `UNION` với cột boolean →
+    `castBool("'false'")` (PG: `CAST(0 AS BIT)` là kiểu bit(1), không phải boolean); `'user:' + u.id` →
+    `CONCAT`. Hàm này nay chạy được trên PG.
+  - 14 comment `cột = 0 / 1` viết lại thành `= false / true` để ratchet không đếm.
+  - Kiểm bằng ca "boolean: tài khoản mới bắt đổi mật khẩu, ứng viên giảng viên" (2 DB; `syncPerson` thay
+    bằng hàm rỗng trong ca vì personService còn `OBJECT_ID`). Đã thử ngược: bỏ phần sửa thì PG lỗi đúng
+    câu trên. Cấp tài khoản học viên / thành viên đề tài **không** gọi trong test — 2 hàm tự mở
+    transaction riêng rồi commit, sẽ ghi thật vào DB dev. Ratchet chưa bắt được dạng `VALUES (…, 1)`
+    (cần biết vị trí cột) — viết SQL mới nhớ dùng `'true'` / `'false'`. Tổng ratchet 50 → 35.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
   đổi bằng script sang đoạn SQL của adapter chèn vào chuỗi (chuỗi `'...'` chuyển sang template):
   - `${nowSql}` giờ VN: SQL Server `GETDATE()`; PG `(now() AT TIME ZONE 'Asia/Ho_Chi_Minh')` —

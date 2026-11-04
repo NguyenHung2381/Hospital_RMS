@@ -146,7 +146,7 @@ const grantAccounts = async (traineeIds, actorId) => {
           )
           VALUES (
             @uid, @username, @password, @full_name, @email,
-            @phone_number, @role_id, @actor_id, 1, ${utcNowSql}
+            @phone_number, @role_id, @actor_id, 'true', ${utcNowSql}
           )
         `);
 

@@ -12,7 +12,7 @@ const tempPasswordPolicy = require('../permissions/tempPasswordPolicy');
 // Xác thực 2 lớp cho mọi API cần token:
 //   Lớp 1 — JWT: chữ ký hợp lệ + chưa hết hạn (stateless, không biết được
 //     việc xảy ra SAU khi token phát hành).
-//   Lớp 2 — DB (qua cache 60s): tài khoản còn is_active=1, chưa quá
+//   Lớp 2 — DB (qua cache 60s): tài khoản còn is_active = true, chưa quá
 //     account_expires_at, kèm role_id/department_id HIỆN TẠI. Bắt
 //     được trường hợp lớp 1 không thấy: admin vô hiệu hóa tài khoản sau khi
 //     access token đã phát hành — access token cũ (sống tới 8h) sẽ bị chặn

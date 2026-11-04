@@ -5,6 +5,7 @@ const {
 	queryAll,
 	nowSql,
 	formatDate,
+	castBool,
 } = require('../../../config/db');
 const { genLecturerAssignmentId } = require('../../../utils/idGenerator');
 const { isUniqueViolation } = require('../../../utils/dbErrors');
@@ -77,7 +78,7 @@ const listLecturerCandidates = async (courseId) => {
       AND (NOT EXISTS ${depts} OR u.department_id IS NULL OR u.department_id IN ${depts}
         OR l.id IN (SELECT lecturer_id FROM lecturer_assignments WHERE course_id = @course_id))
     UNION ALL
-    SELECT '${STAFF_PREFIX}' + u.id, u.full_name, sl.primary_specialty, CAST(0 AS BIT), NULL, NULL,
+    SELECT CONCAT('${STAFF_PREFIX}', u.id), u.full_name, sl.primary_specialty, ${castBool("'false'")}, NULL, NULL,
            d.name, 'staff'
     FROM staff_practice_licenses sl
     JOIN users u ON u.id = sl.user_id

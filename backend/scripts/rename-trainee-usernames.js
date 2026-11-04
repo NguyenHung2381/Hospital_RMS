@@ -5,7 +5,7 @@
 // cuối CCCD, rồi 4 số cuối mã học viên.
 // Số thứ tự đánh lại từ 0001 theo từng viết tắt, theo thứ tự cấp tài khoản
 // (account_granted_at, mã tài khoản) — chạy lại cho cùng kết quả, không đổi gì thêm.
-// Tài khoản CHƯA đổi mật khẩu lần nào (must_change_password = 1) được đặt lại
+// Tài khoản CHƯA đổi mật khẩu lần nào (must_change_password = true) được đặt lại
 // mật khẩu = username mới cho khớp quy tắc "mật khẩu mặc định = tên đăng nhập";
 // tài khoản đã tự đặt mật khẩu giữ nguyên mật khẩu.
 // Mặc định CHỈ LIỆT KÊ; thêm --apply để đổi thật. In bảng username cũ → mới để

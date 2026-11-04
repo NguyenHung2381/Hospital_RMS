@@ -255,7 +255,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 					VALUES (
 						@uid, @username, @password, @full_name, @staff_number, @email,
 						@phone_number, @position_detail, @department_id, @role_id,
-						@topic_member_id, @expires_at, @actor_id, 1, ${utcNowSql}
+						@topic_member_id, @expires_at, @actor_id, 'true', ${utcNowSql}
 					)
 				`);
 			} else {
@@ -288,7 +288,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						UPDATE users
 						SET role_id = @role_id,
 						    is_active = CASE
-						        WHEN is_active = 'false' AND account_expires_at < CAST(${nowSql} AS DATE) THEN 1
+						        WHEN is_active = 'false' AND account_expires_at < CAST(${nowSql} AS DATE) THEN 'true'
 						        ELSE is_active END,
 						    account_expires_at = CASE
 						        WHEN account_expires_at IS NULL OR @expires_at IS NULL THEN account_expires_at

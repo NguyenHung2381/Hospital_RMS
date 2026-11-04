@@ -279,7 +279,7 @@ const create = async (data, actorId) => {
       INSERT INTO users (id, username, password, staff_number, full_name, email, department_id, role_id, created_by,
                          must_change_password, temp_password_issued_at)
       VALUES (@new_id, @username, @password, @staff_number, @full_name, @email, @department_id, @role_id, @actor_id,
-              1, ${utcNowSql});
+              'true', ${utcNowSql});
     `);
 		return id;
 	}, pool);
@@ -368,7 +368,7 @@ const remove = async (id, actorId) => {
 
 	// Nhiều FK trỏ tới users.id KHÔNG có ON DELETE CASCADE (đề tài/hội đồng/đợt/tệp
 	// do user tạo, ghế hội đồng, tài khoản liên hệ khoa...). Không thể xóa cứng mà
-	// giữ được lịch sử → chặn và yêu cầu vô hiệu hóa tài khoản (is_active = 0).
+	// giữ được lịch sử → chặn và yêu cầu vô hiệu hóa tài khoản (is_active = false).
 	const check = await pool.request().input('id', sql.VarChar(20), id).query(`
 		SELECT
 			(SELECT COUNT(*) FROM topics WHERE created_by = @id) AS topics_created,
@@ -564,7 +564,7 @@ const createStaffAccount = async (
         INSERT INTO users (id, username, password, full_name, staff_number, department_id, role_id, created_by,
                            must_change_password, temp_password_issued_at)
         VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id,
-                1, ${utcNowSql})
+                'true', ${utcNowSql})
       `);
 		return { userId, username };
 	}, pool);

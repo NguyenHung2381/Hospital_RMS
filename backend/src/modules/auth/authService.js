@@ -96,8 +96,8 @@ const login = async (
 	// Thiết bị quen có bộ đếm riêng, không phải chờ kẻ đang dội tài khoản này.
 	await (device ? verifyPassword() : withAttemptGuard(userAttemptKey(user.id), verifyPassword));
 
-	// is_active = 0 bao gồm cả TK bị vô hiệu hóa thủ công lẫn TK hết hạn
-	// (sp_deactivate_expired_accounts set is_active=0 mỗi đêm). Chỉ báo SAU khi
+	// is_active = false bao gồm cả TK bị vô hiệu hóa thủ công lẫn TK hết hạn
+	// (sp_deactivate_expired_accounts set is_active = false mỗi đêm). Chỉ báo SAU khi
 	// mật khẩu đúng — người không biết mật khẩu không phân biệt được tài khoản
 	// bị vô hiệu hóa với tài khoản không tồn tại.
 	if (!user.is_active) throw httpError(403, 'Tài khoản đã bị vô hiệu hóa hoặc hết hạn sử dụng');

@@ -78,7 +78,7 @@ const passwordRule =
 
 // Mật khẩu mặc định khi TẠO tài khoản mới hoặc quản trị ĐẶT LẠI mật khẩu = đúng
 // tên đăng nhập. Không qua checkPassword (thường < 10 ký tự, chứa username) nên
-// mọi luồng dùng nó phải đặt must_change_password = 1 để bắt đổi ở lần đăng nhập đầu.
+// mọi luồng dùng nó phải đặt must_change_password = true để bắt đổi ở lần đăng nhập đầu.
 const defaultPassword = (username) => String(username);
 
 module.exports = { MIN_LENGTH, checkPassword, passwordRule, defaultPassword };

@@ -241,7 +241,7 @@ const setup2FA = async (userId) => {
 		.query('SELECT username, totp_enabled FROM users WHERE id = @id');
 	const user = userRes.recordset[0];
 	if (!user) throw httpError(404, 'Người dùng không tồn tại');
-	// Đang bật 2FA thì KHÔNG cho thiết lập lại: bước dưới đặt totp_enabled = 0,
+	// Đang bật 2FA thì KHÔNG cho thiết lập lại: bước dưới đặt totp_enabled = false,
 	// tức là tắt 2FA — chỉ cần access token (không mật khẩu, không OTP) là kẻ
 	// chiếm được phiên tắt được 2FA và gắn authenticator của chính họ. Muốn đổi
 	// thiết bị xác thực thì tắt trước qua /2fa/disable (yêu cầu mật khẩu).

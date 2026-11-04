@@ -170,7 +170,7 @@ const savePattern = async (id, { name, days, is_default }) => {
 		if (found !== ids.length) throw httpError(400, 'Mẫu có ca không tồn tại');
 	}
 	const row = await withTransaction(async (tx) => {
-		// Bỏ mặc định cũ trước (UNIQUE index lọc is_default = 1)
+		// Bỏ mặc định cũ trước (UNIQUE index lọc is_default = true)
 		if (is_default)
 			await new sql.Request(tx)
 				.input('id', sql.Int, id ?? 0)

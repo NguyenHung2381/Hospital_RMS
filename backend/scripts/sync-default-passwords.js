@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Đặt lại mật khẩu = đúng tên đăng nhập (defaultPassword) cho tài khoản còn dùng
-// mật khẩu mặc định (must_change_password = 1) mà mật khẩu lệch username — vd. sau
+// mật khẩu mặc định (must_change_password = true) mà mật khẩu lệch username — vd. sau
 // khi chạy rename:*-usernames, mật khẩu mặc định vẫn là username CŨ.
 // Đi qua userService.resetPassword: vẫn bắt đổi mật khẩu lần đầu, thu hồi phiên,
 // ghi security event. --all: áp cho MỌI tài khoản (kể cả đã tự đổi mật khẩu).

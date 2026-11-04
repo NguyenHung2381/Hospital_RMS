@@ -651,6 +651,39 @@ const run = async (t, db, { skip = [] } = {}) => {
 		assert.equal(p.origin_id, u.id);
 	});
 
+	// Cột boolean nhận 'true' / 'false' (PG không tự ép số 1 / 0 vào boolean khi INSERT, CASE).
+	// Chỉ gọi hàm chạy trong withTransaction (đã thay bằng tx rollback) — grantAccounts của
+	// học viên / thành viên đề tài tự mở transaction riêng nên không gọi ở đây.
+	await step('boolean: tài khoản mới bắt đổi mật khẩu, ứng viên giảng viên', async () => {
+		const personSvc = require('../src/modules/persons/personService');
+		const realSync = personSvc.syncPerson;
+		// personService còn OBJECT_ID / COL_LENGTH (chưa chạy trên PG) — ngoài phạm vi ca này
+		personSvc.syncPerson = async () => null;
+		try {
+			const users = require('../src/modules/users/userService');
+			const mustChange = async (id) =>
+				(await q('SELECT must_change_password AS m FROM users WHERE id = @id', { id }))[0].m;
+			const u1 = await users.create({ username: 'zz_bool_test', full_name: 'ZZ Bool' }, actor.id);
+			assert.equal(!!(await mustChange(u1.id)), true);
+			const u2 = await users.createStaffAccount({ full_name: 'ZZ Bool Hai' }, actor.id);
+			assert.equal(!!(await mustChange(u2.id)), true);
+		} finally {
+			personSvc.syncPerson = realSync;
+		}
+
+		// UNION cột boolean với hằng (trước là CAST(0 AS BIT) + nối chuỗi bằng +)
+		const lec = require('../src/modules/training/courses/lecturerAssignmentService');
+		const [c] = await q('SELECT id FROM courses ORDER BY id');
+		if (c) {
+			const list = await lec.listLecturerCandidates(c.id);
+			for (const r of list) assert.equal(typeof r.is_external, 'boolean');
+			for (const r of list.filter((x) => x.group === 'staff')) {
+				assert.match(r.id, /^user:/);
+				assert.equal(r.is_external, false);
+			}
+		}
+	});
+
 	// STRING_AGG(x, sep) WITHIN GROUP (ORDER BY o) → stringAgg(x, sep, o)
 	await step('stringAgg: nối theo thứ tự, cột số, dịch vụ dùng stringAgg chạy được', async () => {
 		// SQL Server: các STRING_AGG cùng 1 SELECT phải cùng thứ tự → câu riêng cho DESC

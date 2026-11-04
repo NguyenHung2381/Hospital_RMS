@@ -2,12 +2,12 @@
 // Rà soát tài khoản còn dùng mật khẩu mặc định — chạy tay (bcrypt ~0,2s/tài
 // khoản nên không chạy lúc khởi động):
 //
-//   1. Tài khoản đã gỡ cờ bắt đổi (must_change_password = 0) mà mật khẩu vẫn là
+//   1. Tài khoản đã gỡ cờ bắt đổi (must_change_password = false) mà mật khẩu vẫn là
 //      mật khẩu mặc định: '123456' (kiểu cũ) hoặc = tên đăng nhập
 //      (utils/passwordPolicy.defaultPassword). Ai biết username là đăng nhập được
 //      ⇒ đánh dấu bắt đổi mật khẩu + bắt đầu tính hạn dùng mật khẩu tạm
 //      (temp_password_issued_at, permissions/tempPasswordPolicy.js).
-//   2. Báo cáo tài khoản đang chờ đổi mật khẩu tạm (must_change_password = 1):
+//   2. Báo cáo tài khoản đang chờ đổi mật khẩu tạm (must_change_password = true):
 //      bao nhiêu đã quá hạn (không đăng nhập được nữa), bao nhiêu sắp hết hạn.
 //      Tài khoản thiếu mốc cấp (vd đánh dấu bằng script cũ) được ghi mốc = bây giờ.
 //

@@ -180,7 +180,7 @@ const listStaffCandidates = async () => {
 };
 
 // Ghi danh 1 nhân viên nội viện: dùng lại hồ sơ học viên tạo từ nhân viên này nếu
-// có, chưa có thì tự tạo từ thông tin users (is_employee = 1, staff_user_id = nhân
+// có, chưa có thì tự tạo từ thông tin users (is_employee = true, staff_user_id = nhân
 // viên). Hồ sơ KHÔNG gắn user_id vào tài khoản nhân viên (tài khoản học viên cấp
 // riêng), nhưng staff_user_id đủ để nhân viên xem khóa học / lịch / điểm danh, tự
 // quét QR và thi online ngay bằng tài khoản nội viện (xem traineeOfUser.js).
