@@ -8,12 +8,12 @@ const path = require('path');
 const { pipeline } = require('stream/promises');
 const { Transform } = require('stream');
 const { from: copyFrom } = require('pg-copy-streams');
-const rules = require('../pg/schemaRules');
+const rules = require('./schemaRules');
 const { copyLine, bracket } = require('./columns');
 const { readSource, readTarget, buildPlan, sourceSelect } = require('./catalog');
 const { openTarget } = require('./connect');
 
-const BASELINE_DIR = path.resolve(__dirname, '../../database/pg/baseline');
+const BASELINE_DIR = path.resolve(__dirname, '../../database/baseline');
 const PARALLEL = Number(process.env.PG_TRANSFER_PARALLEL || 3);
 
 const runFile = async (client, file) => {

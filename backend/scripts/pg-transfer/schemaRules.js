@@ -1,6 +1,6 @@
-// Quy tắc riêng khi sinh schema PostgreSQL từ SQL Server
-// (database/DB_SCALING_PLAN.md mục 5, giai đoạn 2). Sửa ở đây rồi chạy lại
-// `npm run pg:baseline`, không sửa tay file sinh ra.
+// Quy tắc đổi schema SQL Server → PostgreSQL (database/DB_SCALING_PLAN.md mục 5,
+// giai đoạn 2). Baseline đã sinh từ đây (công cụ sinh đã gỡ); giờ pg-transfer dùng
+// để đổi kiểu dữ liệu lúc chép. Sửa ở đây thì sửa cả database/baseline/ cho khớp.
 
 // Không chuyển: bảng theo dõi migration của SQL Server (PG có migrator riêng).
 const SKIP_TABLES = new Set(['schema_migrations']);

@@ -9,11 +9,17 @@ const { pipeline } = require('stream/promises');
 const { Writable } = require('stream');
 const { StringDecoder } = require('string_decoder');
 const { to: copyTo } = require('pg-copy-streams');
-const { normalize, targetExpr, parseCopyLine, TableDigest, bucketOf } = require('./columns');
+const {
+	normalize,
+	targetExpr,
+	parseCopyLine,
+	TableDigest,
+	bucketOf,
+	objectName,
+} = require('./columns');
 const { readSource, readTarget, buildPlan, sourceSelect } = require('./catalog');
 const { openTarget } = require('./connect');
 const { parallel } = require('./load');
-const { objectName } = require('../pg/tsqlToPg');
 
 const MAX_SHOWN = 5;
 
@@ -149,7 +155,7 @@ const run = async (pool, log) => {
 		const { rows: invalid } = await client.query(`
 			SELECT conrelid::regclass::text AS t, conname FROM pg_constraint
 			WHERE connamespace = 'public'::regnamespace AND NOT convalidated`);
-		// CHECK WITH NOCHECK ở SQL Server → NOT VALID có chủ đích (gen-baseline.js)
+		// CHECK WITH NOCHECK ở SQL Server → NOT VALID có chủ đích (02_constraints_indexes.sql)
 		const { recordset: nocheck } = await pool
 			.request()
 			.query('SELECT name FROM sys.check_constraints WHERE is_not_trusted = 1');

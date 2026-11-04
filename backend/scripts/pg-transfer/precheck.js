@@ -4,12 +4,12 @@
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const rules = require('../pg/schemaRules');
+const rules = require('./schemaRules');
 const { bracket } = require('./columns');
 const { readSource } = require('./catalog');
+const { KNOWN_OBJECTS, sourceVersionProblem } = require('./sourceVersion');
 
-const OBJECTS_DIR = path.resolve(__dirname, '../../database/objects');
-const BASELINE_TABLES = path.resolve(__dirname, '../../database/pg/baseline/01_tables.sql');
+const BASELINE_TABLES = path.resolve(__dirname, '../../database/baseline/01_tables.sql');
 const CHAR_TYPES = new Set(['char', 'nchar', 'varchar', 'nvarchar', 'text', 'ntext']);
 
 const count = async (pool, query) =>
@@ -71,6 +71,10 @@ const untrustedConstraints = async (pool, blockers, warnings) => {
 const run = async (pool, log) => {
 	const blockers = [];
 	const warnings = [];
+	// 0. DB nguồn đủ migration T-SQL (cùng phiên bản với baseline PG)
+	const version = await sourceVersionProblem(pool);
+	if (version) blockers.push(version);
+
 	const source = await readSource(pool);
 
 	// 1. Bảng nguồn khớp baseline PG (baseline sinh từ DB khác / cũ → lệch)
@@ -83,11 +87,13 @@ const run = async (pool, log) => {
 	);
 	for (const key of source.keys()) {
 		if (!rules.SKIP_TABLES.has(key) && !baselineTables.has(key))
-			blockers.push(`Bảng ${key} chưa có trong baseline PG — chạy npm run pg:baseline`);
+			blockers.push(`Bảng ${key} chưa có trong baseline PG — DB nguồn khác phiên bản code này`);
 	}
 	for (const t of baselineTables) {
 		if (!source.has(t))
-			blockers.push(`Baseline PG có bảng ${t} nhưng DB nguồn không có — chạy npm run pg:baseline`);
+			blockers.push(
+				`Baseline PG có bảng ${t} nhưng DB nguồn không có — DB nguồn khác phiên bản code này`,
+			);
 	}
 
 	// 2. Ràng buộc không tin cậy
@@ -150,27 +156,16 @@ const run = async (pool, log) => {
 			`DB nguồn dùng collation ${coll} (không phân biệt dấu) — PG rms_ci phân biệt dấu`,
 		);
 
-	// 5. Object trong DB nhưng không có trong database/objects/ (sẽ không được chuyển)
-	const files = new Set(
-		fs
-			.readdirSync(OBJECTS_DIR, { recursive: true })
-			.filter((f) => String(f).endsWith('.sql'))
-			.map((f) =>
-				path
-					.basename(String(f), '.sql')
-					.replace(/^dbo\./, '')
-					.toLowerCase(),
-			),
-	);
+	// 5. Object trong DB ngoài danh sách đã biết (sẽ không được chuyển)
 	const objects = (
 		await pool.request().query(`
 			SELECT o.name, o.type_desc FROM sys.objects o
 			WHERE o.is_ms_shipped = 0 AND o.type IN ('P', 'FN', 'IF', 'TF', 'TR', 'V')`)
 	).recordset;
 	for (const o of objects) {
-		if (!files.has(o.name.toLowerCase()))
+		if (!KNOWN_OBJECTS.has(o.name.toLowerCase()))
 			warnings.push(
-				`${o.type_desc} ${o.name} có trong DB nhưng không có trong database/objects/ — không được chuyển`,
+				`${o.type_desc} ${o.name} có trong DB nhưng không thuộc hệ thống — không được chuyển`,
 			);
 	}
 

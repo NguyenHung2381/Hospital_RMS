@@ -8,6 +8,14 @@ const net = require('net');
 
 const bracket = (name) => `[${String(name).replace(/]/g, ']]')}]`;
 
+// Tên index / ràng buộc phía PG: chữ thường, tối đa 63 byte (cùng quy tắc lúc
+// sinh baseline từ SQL Server).
+const objectName = (name) =>
+	String(name)
+		.toLowerCase()
+		.replace(/[^a-z0-9_]/g, '_')
+		.slice(0, 63);
+
 /**
  * Loại giá trị của 1 cột, dùng chung cho load và verify.
  * `src`: { type, scale } từ sys.columns; `pgType`: data_type của PG.
@@ -204,6 +212,7 @@ class TableDigest {
 
 module.exports = {
 	bracket,
+	objectName,
 	kindOf,
 	sourceExpr,
 	copyField,

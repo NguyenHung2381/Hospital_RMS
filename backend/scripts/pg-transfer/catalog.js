@@ -1,5 +1,5 @@
 // Danh mục bảng/cột 2 phía và kế hoạch chép từng bảng (cột nào, theo thứ tự nào).
-const rules = require('../pg/schemaRules');
+const rules = require('./schemaRules');
 const { kindOf, sourceExpr, bracket } = require('./columns');
 
 /** Bảng/cột/khoá chính ở SQL Server (chỉ đọc). */
@@ -52,7 +52,7 @@ const readTarget = async (client) => {
 /**
  * Ghép 2 phía → [{ table, source, pk, columns: [{ name, src, pgType, kind, generated }] }].
  * Lệch cấu trúc (thiếu bảng/cột) thì trả `problems` — schema baseline cũ so
- * với DB nguồn: chạy lại `npm run pg:baseline`.
+ * với DB nguồn: DB nguồn khác phiên bản code (xem sourceVersion.js).
  */
 const buildPlan = (source, target) => {
 	const problems = [];
