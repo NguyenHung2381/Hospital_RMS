@@ -69,7 +69,7 @@ const listLecturerCandidates = async (courseId) => {
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
     SELECT l.id, l.full_name, l.specialty, l.is_external, l.academic_degree, l.academic_rank,
            d.name AS department_name,
-           CASE WHEN u.department_id IN ${depts} THEN 'department' ELSE 'other' END AS [group]
+           CASE WHEN u.department_id IN ${depts} THEN 'department' ELSE 'other' END AS "group"
     FROM lecturers l
     LEFT JOIN users u ON u.id = l.user_id
     LEFT JOIN departments d ON d.id = u.department_id

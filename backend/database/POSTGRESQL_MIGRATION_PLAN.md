@@ -101,7 +101,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `recordset` / `recordsets[i]` (nhiều kết quả trong 1 batch) | 673 / 91 — **recordsets đã hết** (`queryAll`) | `rows`; nhiều kết quả → tách thành nhiều câu |
 | `GETDATE()`, `SYSDATETIME()`, `SYSUTCDATETIME()` | 212 (86) → 5 (comment + migrator SQL Server) | `nowSql` / `utcNowSql` / `vnTodaySql` của adapter — xem mục 4.3 về múi giờ |
 | `N'...'` | 339 (98) | `'...'` (PG luôn là UTF-8) |
-| Định danh `[ten]` | 658 (156) | `"ten"` hoặc bỏ ngoặc |
+| Định danh `[ten]` | 658 (156) → 0 trong câu SQL (ratchet `bracket_ident`; con số 658 đếm thô, gồm cả mảng JS) | Bỏ ngoặc; tên trùng từ khoá → `"ten"` |
 | `ISNULL(` | 108 (33) — **đã đổi hết** | `COALESCE(` (chạy được trên cả 2 DB) |
 | `EXEC sp_set_actor @actor_id; ...` | 76 (27) | `set_config('app.current_user_id', $1, true)` trong transaction |
 | `EXEC sp_gen_*` / `.execute(...)` | ~20 / 10 → 0 (đã xong) | Hàm sinh mã `src/utils/idGenerator.js` (mục 5.4) |
@@ -262,7 +262,7 @@ như thể giờ đó là UTC**. Cách làm:
 | `FOR JSON PATH` | `json_agg(json_build_object(...))` | ✓ qua adapter: `${jsonArray('SELECT … FROM … WHERE …', 'thứ tự')}` (lồng trong jsonArray khác: `{ nested: true }`) |
 | `NEWID()` | `gen_random_uuid()` | ✗ |
 | `WHERE id LIKE 'LDT[0-9][0-9]'` | `WHERE id ~ '^LDT[0-9]{2}$'` | ✗ |
-| `[col]` | `"col"` hoặc bỏ ngoặc | Bỏ ngoặc ✓ (khi tên không trùng từ khoá) |
+| `[col]` | `"col"` hoặc bỏ ngoặc | ✓ bỏ ngoặc (`session`, `year` không là từ khoá ở cả 2 DB); alias trùng từ khoá → `"open"`, `"group"` (nháy kép chạy cả 2 DB) |
 | `N'chuỗi'` | `'chuỗi'` | ✗ (SQL Server cần `N` cho chữ Việt) |
 | `SELECT ... WITH (UPDLOCK, HOLDLOCK)` | `SELECT ... FOR UPDATE` | ✗ — khoá dải mã chưa tồn tại → advisory lock |
 | `sp_getapplock 'x'` | `SELECT pg_advisory_xact_lock(hashtext('x'))` | ✗ |
@@ -649,6 +649,16 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "jsonArray" trong `test-integration/batchSplit.cases.js` (2 DB: helper trực tiếp — thứ tự, bỏ NULL,
     lồng, rỗng; khoa bắt buộc đúng thứ tự DB, file kết quả CME, CME cá nhân, danh sách chương trình, khóa mở đăng
     ký). Các hàm này nay chạy được trên PG. Tổng ratchet 79 → 74.
+- [x] Tên trong ngoặc vuông `[tên]` (bracket_ident 12 → 0): mẫu ratchet mới — chỉ bắt sau `x.` hoặc từ khoá
+  SQL viết HOA để không trùng mảng JS. Đã thử 2 DB (chỉ SELECT) trước khi đổi:
+  - `t.[session]` → `t.session` (hội đồng: đề tài của hội đồng, đề tài chưa gán, chi tiết hội đồng, đặt buổi,
+    xuất lịch bảo vệ, tiến độ của tôi); `[year]` → `year` (sổ đăng ký CME) — không là từ khoá ở cả 2 DB.
+  - Alias trùng từ khoá → nháy kép: `AS "open"` (tập huấn bệnh viện của tôi), `AS "group"` (ứng viên giảng
+    viên). Driver SQL Server bật sẵn `QUOTED_IDENTIFIER`; PG giữ đúng chữ thường.
+  - Kiểm bằng ca "đặt buổi bảo vệ" (thêm đọc lại `session` ở 4 chỗ + tiến độ), ca mới "alias là từ khoá: open"
+    và đọc lại sổ CME theo năm trong ca upsert (2 DB). PG bật lại ca "đặt buổi bảo vệ". Còn lại:
+    `listLecturerCandidates` vẫn chưa chạy được trên PG vì `+` nối chuỗi / `CAST(0 AS BIT)` — mục riêng.
+  - Tổng ratchet giữ 74 (mẫu mới thêm 12 rồi về 0).
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**

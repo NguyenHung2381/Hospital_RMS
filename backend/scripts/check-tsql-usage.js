@@ -72,6 +72,13 @@ const PATTERNS = [
 	{ key: 'within_group', re: /\bWITHIN\s+GROUP\b/gi, pg: 'string_agg(x, sep ORDER BY ...)' },
 	{ key: 'apply', re: /\b(CROSS|OUTER)\s+APPLY\b/gi, pg: 'crossApply / outerApply (adapter)' },
 	{ key: 'like_class', re: /\bLIKE\s+'[^'\n]*\[[^'\n]*'/gi, pg: "~ '^...[0-9]$'" },
+	{
+		// Tên cột / alias trong ngoặc vuông: `t.[session]`, `AS [open]`. Chỉ bắt sau `x.` hoặc
+		// từ khoá SQL viết HOA để không trùng mảng JS (`[text]`, `obj?.[key]`).
+		key: 'bracket_ident',
+		re: /(\b\w+\.|\b(AS|SET|WHERE|CASE|SELECT|BY|ON|AND|OR|JOIN|FROM|INTO|UPDATE)\s+)\[[A-Za-z_]\w*\]/g,
+		pg: 'tên trần, hoặc "tên" khi là từ khoá (chạy cả 2 DB)',
+	},
 	{ key: 'output_clause', re: /\bOUTPUT\s+(INSERTED|DELETED)\b/gi, pg: 'RETURNING' },
 	{
 		key: 'identity_fn',

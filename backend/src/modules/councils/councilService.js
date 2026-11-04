@@ -129,7 +129,7 @@ const getById = async (id) => {
 	council.members = members.recordset.map(normalizeMember);
 
 	const topics = await pool.request().input('council_id', sql.VarChar(15), id).query(`
-      SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
+      SELECT t.id, t.title, t.status, t.session, t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
       WHERE t.council_id = @council_id

@@ -455,7 +455,7 @@ const statsCme = async ({ year = undefined } = {}) => {
 	req.input('year', sql.Int, y);
 	const r = await req.query(`
     SELECT
-      (SELECT COALESCE(last_seq, 0) FROM cme_year_register WHERE [year] = @year) AS last_seq,
+      (SELECT COALESCE(last_seq, 0) FROM cme_year_register WHERE year = @year) AS last_seq,
       COUNT(*) AS total,
       SUM(CASE WHEN participation_type = 'speaker' THEN 1 ELSE 0 END) AS speakers,
       SUM(CASE WHEN participation_type = 'attendee' THEN 1 ELSE 0 END) AS attendees,
@@ -510,7 +510,7 @@ const cmeRegister = async ({ year = undefined, search = undefined, page = 1, lim
       ${where}
 		`,
 		`
-      SELECT COALESCE(last_seq, 0) AS last_seq FROM cme_year_register WHERE [year] = @year
+      SELECT COALESCE(last_seq, 0) AS last_seq FROM cme_year_register WHERE year = @year
 		`,
 	]);
 	return {

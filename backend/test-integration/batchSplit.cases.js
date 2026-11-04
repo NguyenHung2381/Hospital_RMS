@@ -488,6 +488,35 @@ const run = async (t, db, { skip = [] } = {}) => {
 			svc.setTopicSession('KHONG_CO', ct.topic_id, 'morning', actor.id),
 			/không thuộc hội đồng/,
 		);
+		// Cột session (trước là `[session]`) đọc lại được ở mọi chỗ
+		const mine = (rows) => rows.find((x) => x.id === ct.topic_id)?.session;
+		assert.equal(mine(await svc.getTopics(ct.council_id)), 'morning');
+		const council = await require('../src/modules/councils/councilService').getById(ct.council_id);
+		assert.equal(mine(council.topics), 'morning');
+		const [{ round_id }] = await q('SELECT round_id FROM councils WHERE id = @c', {
+			c: ct.council_id,
+		});
+		const exp = require('../src/modules/councils/councilExportRepository');
+		assert.equal(mine(await exp.listTopics(round_id)), 'morning');
+		assert.ok(Array.isArray(await svc.getUnassignedTopics(round_id)));
+		const progress = require('../src/modules/councils/councilProgressService');
+		assert.ok(await progress.getMyProgress(actor.id));
+	});
+
+	await step('alias là từ khoá: "open" của tập huấn bệnh viện', async () => {
+		const self = require('../src/modules/seminars/hospitalTrainingSelfService');
+		// Biến 1 hội thảo bất kỳ thành tập huấn bệnh viện chưa có ngày (rollback sau)
+		const [s] = await q('SELECT id FROM seminars ORDER BY id');
+		if (s) {
+			await q(
+				`UPDATE seminars SET event_type = 'training', scope = 'hosted', start_date = NULL, end_date = NULL
+         WHERE id = @id`,
+				{ id: s.id },
+			);
+			const row = (await self.listForMe(actor.id)).find((x) => x.id === s.id);
+			assert.ok(row);
+			assert.equal(!!row.open, true);
+		}
 	});
 
 	await step(
@@ -752,6 +781,8 @@ const run = async (t, db, { skip = [] } = {}) => {
 			reg.map((r) => Number(r.last_seq)),
 			[9001],
 		);
+		// Đọc lại theo cột year (trước là `[year]`)
+		assert.equal(Number((await seminars.cmeRegister({ year: y })).last_seq), 9001);
 
 		// CME tự động từ khóa: chạy lại thì cập nhật, không thêm dòng
 		const courseCme = require('../src/modules/training/courses/courseCmeService');

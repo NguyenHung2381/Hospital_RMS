@@ -19,7 +19,7 @@ const listTopics = async (roundId) =>
 		await (
 			await request(roundId)
 		).query(`
-      SELECT t.id, t.title, t.[session], t.council_id,
+      SELECT t.id, t.title, t.session, t.council_id,
              d.name AS department_name, cat.name AS category_name,
              c.location
       FROM topics t
@@ -28,7 +28,7 @@ const listTopics = async (roundId) =>
       LEFT JOIN categories cat ON cat.id = t.category_id
       WHERE c.round_id = @round_id
       ORDER BY c.id,
-        CASE t.[session] WHEN 'morning' THEN 0 WHEN 'afternoon' THEN 1 ELSE 2 END,
+        CASE t.session WHEN 'morning' THEN 0 WHEN 'afternoon' THEN 1 ELSE 2 END,
         t.created_at
     `)
 	).recordset;

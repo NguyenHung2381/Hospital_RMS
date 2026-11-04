@@ -21,12 +21,9 @@ const db = require('../src/config/db');
 const { run } = require('../test-integration/batchSplit.cases');
 
 test('lô đã tách trên PostgreSQL thật (rollback)', async (t) => {
-	// Các ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này — bật lại khi các mục đó xong:
-	// đặt buổi bảo vệ (tên cột trong ngoặc vuông `[session]`); person mới (personService kiểm
-	// schema bằng OBJECT_ID / COL_LENGTH).
-	await run(t, db, {
-		skip: ['đặt buổi bảo vệ: sai hội đồng thì 404', 'person mới: mã PS + 8 số lấy từ sequence'],
-	});
+	// Ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này — bật lại khi mục đó xong:
+	// person mới (personService kiểm schema bằng OBJECT_ID / COL_LENGTH).
+	await run(t, db, { skip: ['person mới: mã PS + 8 số lấy từ sequence'] });
 	// Sau rollback của run() (hook chạy theo thứ tự đăng ký)
 	t.after(async () => (await db.getPool()).close());
 });

@@ -15,6 +15,7 @@
 	"within_group": 0,
 	"apply": 2,
 	"like_class": 7,
+	"bracket_ident": 0,
 	"output_clause": 0,
 	"identity_fn": 0,
 	"cast_tsql_type": 1,

@@ -21,7 +21,7 @@ const SELECT_SQL = `
                                 WHERE r.seminar_id = s.id AND r.department_id = me.department_id)`)} AS required,
          p.id AS participant_id, p.checked_in_at, p.cme_status, p.cme_credits,
          ${boolExpr(`p.created_by = @uid`)} AS self_registered,
-         ${boolExpr(`s.start_date IS NULL OR s.start_date >= ${VN_TODAY}`)} AS [open],
+         ${boolExpr(`s.start_date IS NULL OR s.start_date >= ${VN_TODAY}`)} AS "open",
          ${boolExpr(`s.start_date IS NULL OR s.start_date > ${VN_TODAY}`)} AS before_day
   FROM seminars s
   LEFT JOIN departments od ON od.id = s.organizer_department_id

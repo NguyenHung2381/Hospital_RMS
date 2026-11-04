@@ -7,7 +7,7 @@ const { httpError } = require('../../utils/httpError');
 const getUnassignedTopics = async (roundId) => {
 	const pool = await getPool();
 	const result = await pool.request().input('round_id', sql.VarChar(10), roundId).query(`
-      SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
+      SELECT t.id, t.title, t.status, t.session, t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
       WHERE t.round_id = @round_id AND t.council_id IS NULL
@@ -19,7 +19,7 @@ const getUnassignedTopics = async (roundId) => {
 const getTopics = async (councilId) => {
 	const pool = await getPool();
 	const result = await pool.request().input('council_id', sql.VarChar(15), councilId).query(`
-      SELECT t.id, t.title, t.status, t.[session], t.department_id, d.name AS department_name
+      SELECT t.id, t.title, t.status, t.session, t.department_id, d.name AS department_name
       FROM topics t
       LEFT JOIN departments d ON d.id = t.department_id
       WHERE t.council_id = @council_id
@@ -70,7 +70,7 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
 			.input('council_id', sql.VarChar(15), councilId)
 			.input('topic_id', sql.VarChar(15), topicId)
 			.input('session', sql.VarChar(10), session || null).query(`
-      UPDATE topics SET [session] = @session
+      UPDATE topics SET session = @session
       WHERE id = @topic_id AND council_id = @council_id
     `),
 	);

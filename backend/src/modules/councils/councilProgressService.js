@@ -91,7 +91,7 @@ const getMyProgress = async (userId) => {
 		[
 			`
       SELECT s.topic_id AS id, s.role AS my_role,
-             t.title, t.[session], t.status,
+             t.title, t.session, t.status,
              d.name AS department_name, cat.name AS category_name,
              c.id AS council_id, c.name AS council_name, c.location,
              ${formatDate('c.defense_date', 'DD/MM/YYYY')} AS defense_date,
@@ -103,7 +103,7 @@ const getMyProgress = async (userId) => {
       LEFT JOIN categories cat ON cat.id = t.category_id
       LEFT JOIN research_rounds r ON r.id = c.round_id
       ORDER BY c.round_id DESC, c.id,
-        CASE t.[session] WHEN 'morning' THEN 0 WHEN 'afternoon' THEN 1 ELSE 2 END,
+        CASE t.session WHEN 'morning' THEN 0 WHEN 'afternoon' THEN 1 ELSE 2 END,
         t.created_at
 		`,
 			`
