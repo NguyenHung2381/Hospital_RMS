@@ -22,13 +22,9 @@ const { run } = require('../test-integration/batchSplit.cases');
 
 test('lô đã tách trên PostgreSQL thật (rollback)', async (t) => {
 	// Các ca dưới còn cú pháp T-SQL khác ngoài phạm vi mục này — bật lại khi các mục đó xong:
-	// đồng bộ bài học + xoá buổi học (lessonProgressService: UPDATE … FROM rồi SELECT
-	// @@ROWCOUNT trong 1 lô).
+	// đặt buổi bảo vệ (tên cột trong ngoặc vuông `[session]`).
 	await run(t, db, {
-		skip: [
-			'đồng bộ bài học của chương trình vào hồ sơ: chép đủ, chạy lại thì 0',
-			'xoá buổi học: đọc khóa / bài rồi xoá dòng',
-		],
+		skip: ['đặt buổi bảo vệ: sai hội đồng thì 404'],
 	});
 	// Sau rollback của run() (hook chạy theo thứ tự đăng ký)
 	t.after(async () => (await db.getPool()).close());

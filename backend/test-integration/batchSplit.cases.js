@@ -388,6 +388,152 @@ const run = async (t, db, { skip = [] } = {}) => {
 		);
 		assert.equal((await q('SELECT id FROM class_sessions WHERE id = @id', { id: s.id })).length, 0);
 	});
+
+	// @@ROWCOUNT → rowsAffected[0] của câu ghi; "IF @@ROWCOUNT = 0 INSERT" → sửa rồi thêm bằng JS.
+	const [ct] = await q(`
+    SELECT c.id AS council_id, t.id AS topic_id FROM councils c
+    JOIN topics t ON 1 = 1 ORDER BY c.id, t.id`);
+	const assignCouncil = async () => {
+		await q(
+			`UPDATE topics SET round_id = (SELECT round_id FROM councils WHERE id = @c), council_id = NULL
+       WHERE id = @t`,
+			{ c: ct.council_id, t: ct.topic_id },
+		);
+		const svc = require('../src/modules/councils/councilAssignmentService');
+		return svc.assignTopics(ct.council_id, [ct.topic_id, 'KHONG_CO'], actor.id);
+	};
+
+	await step(
+		'rowsAffected: gán đề tài, ghế thay, kết luận hội đồng, nộp lại, xoá khoa',
+		async () => {
+			if (ct) {
+				assert.deepEqual(await assignCouncil(), { assigned: 1 });
+				const svc = require('../src/modules/councils/councilAssignmentService');
+				const seats = () =>
+					q('SELECT role, user_id FROM council_seat_substitutes WHERE topic_id = @t', {
+						t: ct.topic_id,
+					});
+				await svc.setSeatSubstitute(ct.council_id, ct.topic_id, 'chairman', actor.id, actor.id);
+				await svc.setSeatSubstitute(ct.council_id, ct.topic_id, 'chairman', actor.id, actor.id);
+				assert.deepEqual(await seats(), [{ role: 'chairman', user_id: actor.id }]);
+				await assert.rejects(
+					svc.setSeatSubstitute('KHONG_CO', ct.topic_id, 'member', actor.id, actor.id),
+					/không thuộc hội đồng/,
+				);
+
+				// actor giữ ghế chủ tịch (ghế thay) → chốt kết luận 2 lần: thêm rồi sửa, vẫn 1 dòng
+				const progress = require('../src/modules/councils/councilProgressService');
+				await progress.upsertResult(ct.topic_id, actor.id, { conclusion: 'pass' });
+				await progress.upsertResult(ct.topic_id, actor.id, { conclusion: 'revise' });
+				assert.deepEqual(
+					await q('SELECT conclusion FROM council_topic_results WHERE topic_id = @t', {
+						t: ct.topic_id,
+					}),
+					[{ conclusion: 'revise' }],
+				);
+				await progress.upsertReview(ct.topic_id, actor.id, { progress_percent: 10 });
+				await progress.upsertReview(ct.topic_id, actor.id, { progress_percent: 40 });
+				const reviews = await q(
+					'SELECT progress_percent FROM council_progress_reviews WHERE topic_id = @t',
+					{ t: ct.topic_id },
+				);
+				assert.deepEqual(
+					reviews.map((r) => Number(r.progress_percent)),
+					[40],
+				);
+
+				// Nộp lại: chỉ khi đề tài đang 'supplement' mới đưa phiếu duyệt về 'pending'
+				const notif = require('../src/modules/notifications/notificationService');
+				const realPush = notif.pushWithEmail;
+				notif.pushWithEmail = async () => {};
+				t.after(() => {
+					notif.pushWithEmail = realPush;
+				});
+				const approvalSvc = require('../src/modules/topics/topicApprovalService');
+				const approvals = () =>
+					q('SELECT status FROM approvals WHERE topic_id = @t', { t: ct.topic_id });
+				await q("UPDATE approvals SET status = 'approved' WHERE topic_id = @t", { t: ct.topic_id });
+				await q("UPDATE topics SET status = 'submitted' WHERE id = @t", { t: ct.topic_id });
+				await approvalSvc.submit(ct.topic_id, actor.id);
+				for (const a of await approvals()) assert.equal(a.status, 'approved');
+				await q("UPDATE topics SET status = 'supplement' WHERE id = @t", { t: ct.topic_id });
+				await approvalSvc.submit(ct.topic_id, actor.id);
+				for (const a of await approvals()) assert.equal(a.status, 'pending');
+				const [tp] = await q('SELECT status FROM topics WHERE id = @t', { t: ct.topic_id });
+				assert.equal(tp.status, 'submitted');
+			}
+
+			// Xoá khoa: các câu gỡ liên kết chạy lần lượt trong cùng transaction
+			const [d] = await q(`
+      SELECT d.id FROM departments d
+      WHERE EXISTS (SELECT 1 FROM users u WHERE u.department_id = d.id) ORDER BY d.id`);
+			if (d) {
+				await require('../src/modules/catalog/departmentService').remove(d.id, actor.id);
+				assert.equal(
+					(await q('SELECT id FROM departments WHERE id = @id', { id: d.id })).length,
+					0,
+				);
+				const left = await q('SELECT id FROM users WHERE department_id = @id', { id: d.id });
+				assert.equal(left.length, 0);
+			}
+		},
+	);
+
+	await step('đặt buổi bảo vệ: sai hội đồng thì 404', async () => {
+		if (!ct) return;
+		await assignCouncil();
+		const svc = require('../src/modules/councils/councilAssignmentService');
+		await svc.setTopicSession(ct.council_id, ct.topic_id, 'morning', actor.id);
+		await assert.rejects(
+			svc.setTopicSession('KHONG_CO', ct.topic_id, 'morning', actor.id),
+			/không thuộc hội đồng/,
+		);
+	});
+
+	await step(
+		'rowsAffected: trạng thái bài học, hoàn thành thực hành, chép vòng, thu hồi',
+		async () => {
+			// Tính lại trạng thái bài: lần 2 không còn gì để đổi
+			const lesson = require('../src/modules/training/courses/lessonProgressService');
+			const [c] = await q(`
+      SELECT e.course_id FROM course_enrollments e
+      WHERE EXISTS (SELECT 1 FROM enrollment_lessons el WHERE el.enrollment_id = e.id)
+      ORDER BY e.course_id`);
+			if (c) {
+				// Làm lệch 1 dòng để chắc có ít nhất 1 dòng đổi
+				await q(
+					`UPDATE enrollment_lessons SET status = 'in_progress', completed_at = NULL
+         WHERE enrollment_id = (SELECT MIN(e.id) FROM course_enrollments e
+                                JOIN enrollment_lessons el ON el.enrollment_id = e.id
+                                WHERE e.course_id = @c)`,
+					{ c: c.course_id },
+				);
+				assert.ok((await lesson.recompute({ courseId: c.course_id })) > 0);
+				assert.equal(await lesson.recompute({ courseId: c.course_id }), 0);
+			}
+
+			const practice = require('../src/modules/training/courses/practiceAutoService');
+			assert.equal(typeof (await practice.completeFinished()), 'number');
+			assert.equal(await practice.completeFinished(), 0);
+
+			const rot = require('../src/modules/training/courses/enrollmentRotationService');
+			const [e] = await q('SELECT id FROM course_enrollments ORDER BY id');
+			if (e) {
+				const n1 = await rot.carryOver(e.id, actor.id);
+				assert.equal(typeof n1, 'number');
+				assert.equal(await rot.carryOver(e.id, actor.id), 0);
+			}
+			await assert.rejects(rot.update('KHONG_CO', { note: 'x' }, actor.id), /Không tìm thấy/);
+
+			const certs = require('../src/modules/training/courses/certificateRepository');
+			assert.equal(await certs.revoke({ certId: 'KHONG_CO', reason: null, actorId: actor.id }), 0);
+
+			const cme = require('../src/modules/seminars/seminarCmeService');
+			assert.deepEqual(await cme.setCmeStatus('KHONG_CO', ['KHONG_CO'], 'signed', actor.id), {
+				updated: 0,
+			});
+		},
+	);
 };
 
 module.exports = { run };

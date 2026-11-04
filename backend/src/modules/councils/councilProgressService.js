@@ -8,7 +8,7 @@
  *
  * File đánh giá tái dùng bảng files: batch có note = EVAL_NOTE.
  */
-const { getPool, sql, queryAll, nowSql, formatDate } = require('../../config/db');
+const { getPool, sql, queryAll, withTransaction, nowSql, formatDate } = require('../../config/db');
 const fileService = require('../topics/fileService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
@@ -178,6 +178,14 @@ const getMyProgress = async (userId) => {
 	}));
 };
 
+// Sửa dòng đã có, chưa có thì thêm, trong 1 transaction. makeReq(tx) dựng
+// request kèm đủ tham số cho cả 2 câu.
+const upsertRow = (makeReq, updateSql, insertSql) =>
+	withTransaction(async (tx) => {
+		const r = await makeReq(tx).query(updateSql);
+		if (!r.rowsAffected[0]) await makeReq(tx).query(insertSql);
+	});
+
 const upsertReview = async (topicId, userId, { progress_percent, rating, comment }) => {
 	if (rating != null && !RATINGS.includes(rating)) {
 		throw httpError(400, 'Xếp loại tiến độ không hợp lệ.');
@@ -188,24 +196,25 @@ const upsertReview = async (topicId, userId, { progress_percent, rating, comment
 			status: 403,
 		});
 	}
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('user_id', sql.VarChar(20), userId)
-		.input('role', sql.VarChar(15), roles[0])
-		.input('progress_percent', sql.Int, progress_percent ?? null)
-		.input('rating', sql.VarChar(15), rating || null)
-		.input('comment', sql.NVarChar(sql.MAX), sanitizeComment(comment, topicId)).query(`
-      UPDATE council_progress_reviews
+	const safeComment = sanitizeComment(comment, topicId);
+	await upsertRow(
+		(tx) =>
+			tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('user_id', sql.VarChar(20), userId)
+				.input('role', sql.VarChar(15), roles[0])
+				.input('progress_percent', sql.Int, progress_percent ?? null)
+				.input('rating', sql.VarChar(15), rating || null)
+				.input('comment', sql.NVarChar(sql.MAX), safeComment),
+		`UPDATE council_progress_reviews
       SET progress_percent = @progress_percent, rating = @rating,
           comment = @comment, role = @role, updated_at = ${nowSql}, updated_by = @user_id
-      WHERE topic_id = @topic_id AND user_id = @user_id;
-      IF @@ROWCOUNT = 0
-        INSERT INTO council_progress_reviews
-          (topic_id, user_id, role, progress_percent, rating, comment, created_by)
-        VALUES (@topic_id, @user_id, @role, @progress_percent, @rating, @comment, @user_id);
-    `);
+      WHERE topic_id = @topic_id AND user_id = @user_id`,
+		`INSERT INTO council_progress_reviews
+        (topic_id, user_id, role, progress_percent, rating, comment, created_by)
+      VALUES (@topic_id, @user_id, @role, @progress_percent, @rating, @comment, @user_id)`,
+	);
 };
 
 const assertSecretary = async (topicId, userId) => {
@@ -231,23 +240,23 @@ const upsertResult = async (topicId, userId, { conclusion, general_comment }) =>
 		throw httpError(400, 'Kết luận không hợp lệ.');
 	}
 	await assertChairman(topicId, userId);
-	const pool = await getPool();
-	await pool
-		.request()
-		.input('topic_id', sql.VarChar(15), topicId)
-		.input('user_id', sql.VarChar(20), userId)
-		.input('conclusion', sql.VarChar(15), conclusion || null)
-		.input('general_comment', sql.NVarChar(sql.MAX), sanitizeComment(general_comment, topicId))
-		.query(`
-      UPDATE council_topic_results
+	const safeComment = sanitizeComment(general_comment, topicId);
+	await upsertRow(
+		(tx) =>
+			tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('user_id', sql.VarChar(20), userId)
+				.input('conclusion', sql.VarChar(15), conclusion || null)
+				.input('general_comment', sql.NVarChar(sql.MAX), safeComment),
+		`UPDATE council_topic_results
       SET conclusion = @conclusion, general_comment = @general_comment,
           decided_by = @user_id, updated_at = ${nowSql}, updated_by = @user_id
-      WHERE topic_id = @topic_id;
-      IF @@ROWCOUNT = 0
-        INSERT INTO council_topic_results
-          (topic_id, conclusion, general_comment, decided_by, updated_at, created_by, updated_by)
-        VALUES (@topic_id, @conclusion, @general_comment, @user_id, ${nowSql}, @user_id, @user_id);
-    `);
+      WHERE topic_id = @topic_id`,
+		`INSERT INTO council_topic_results
+        (topic_id, conclusion, general_comment, decided_by, updated_at, created_by, updated_by)
+      VALUES (@topic_id, @conclusion, @general_comment, @user_id, ${nowSql}, @user_id, @user_id)`,
+	);
 };
 
 const uploadEvalFiles = async (topicId, filesData, userId) => {

@@ -166,27 +166,22 @@ const update = async (id, data, actorId) => {
 
 // Xóa khoa/phòng: gỡ liên kết (set NULL) mọi bản ghi đang trỏ tới khoa này
 // thay vì xóa kèm, để giữ lại user / đề tài. Riêng topic_related_departments có
-// department_id NOT NULL nên phải xóa dòng. Toàn bộ chạy trong 1 transaction.
+// department_id NOT NULL nên phải xóa dòng. Toàn bộ chạy trong 1 transaction:
+// câu nào lỗi thì withActorTransaction rollback cả.
+const REMOVE_DEPT_SQL = [
+	'UPDATE users SET department_id = NULL WHERE department_id = @id',
+	'UPDATE topics SET department_id = NULL WHERE department_id = @id',
+	'UPDATE topic_members SET department_id = NULL WHERE department_id = @id',
+	'UPDATE departments SET parent_id = NULL WHERE parent_id = @id',
+	'DELETE FROM topic_related_departments WHERE department_id = @id',
+	'DELETE FROM departments WHERE id = @id',
+];
 const remove = async (id, actorId) => {
-	await withActorTransaction(actorId, (tx) =>
-		tx.request().input('id', sql.VarChar(20), id).input('actor_id', sql.VarChar(20), actorId)
-			.query(`
-      BEGIN TRANSACTION;
-      BEGIN TRY
-        UPDATE users SET department_id = NULL WHERE department_id = @id;
-        UPDATE topics SET department_id = NULL WHERE department_id = @id;
-        UPDATE topic_members SET department_id = NULL WHERE department_id = @id;
-        UPDATE departments SET parent_id = NULL WHERE parent_id = @id;
-        DELETE FROM topic_related_departments WHERE department_id = @id;
-        DELETE FROM departments WHERE id = @id;
-        COMMIT TRANSACTION;
-      END TRY
-      BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        THROW;
-      END CATCH;
-    `),
-	);
+	await withActorTransaction(actorId, async (tx) => {
+		for (const text of REMOVE_DEPT_SQL) {
+			await tx.request().input('id', sql.VarChar(20), id).query(text);
+		}
+	});
 	await invalidate(CACHE_PREFIX);
 	broadcast('update', { entity: 'department' });
 };

@@ -85,10 +85,9 @@ const revoke = async ({ certId, reason, actorId }) => {
       UPDATE certificates
       SET status = 'revoked', revoked_at = ${nowSql}, revoked_by = @actor_id, revoke_reason = @reason,
           updated_at = ${nowSql}, updated_by = @actor_id
-      WHERE id = @id AND status <> 'revoked';
-      SELECT @@ROWCOUNT AS affected;
+      WHERE id = @id AND status <> 'revoked'
     `);
-	return r.recordset[0]?.affected ?? 0;
+	return r.rowsAffected[0] ?? 0;
 };
 
 module.exports = { listByCourse, findEnrollmentStatus, insert, deleteById, revoke };

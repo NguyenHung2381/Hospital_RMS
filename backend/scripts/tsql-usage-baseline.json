@@ -16,7 +16,7 @@
 	"apply": 2,
 	"like_class": 7,
 	"output_clause": 14,
-	"identity_fn": 15,
+	"identity_fn": 1,
 	"cast_tsql_type": 5,
 	"bit_literal": 14,
 	"convert": 0,

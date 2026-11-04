@@ -131,11 +131,10 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 		.join(',');
 	const r = await req.query(`
     UPDATE seminar_participants SET cme_status = @status
-    WHERE seminar_id = @sid AND cme_seq IS NOT NULL AND id IN (${inParams});
-    SELECT @@ROWCOUNT AS updated;
+    WHERE seminar_id = @sid AND cme_seq IS NOT NULL AND id IN (${inParams})
   `);
 	broadcast('update', { entity: 'seminar' });
-	return { updated: r.recordset[0].updated };
+	return { updated: r.rowsAffected[0] ?? 0 };
 };
 
 module.exports = {

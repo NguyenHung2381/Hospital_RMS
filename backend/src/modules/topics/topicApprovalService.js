@@ -78,20 +78,23 @@ const approve = async (topicId, status, comment, actorId) => {
 };
 
 const submit = async (topicId, actorId) => {
-	await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
-			.input('topic_id', sql.VarChar(15), topicId)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
+	await withActorTransaction(actorId, async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		const r = await req().query(`
       UPDATE topics SET status = 'submitted', updated_at = ${nowSql}, updated_by = @actor_id
-      WHERE id = @topic_id AND status = 'supplement';
-      -- Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
-      IF @@ROWCOUNT > 0
+      WHERE id = @topic_id AND status = 'supplement'`);
+		// Nộp lại: reset verdict cũ, nếu không getApprovals vẫn trả kết quả duyệt lần trước
+		if (r.rowsAffected[0] > 0) {
+			await req().query(`
         UPDATE approvals SET status = 'pending', comment = NULL,
           updated_at = ${nowSql}, updated_by = @actor_id
-        WHERE topic_id = @topic_id;
-    `),
-	);
+        WHERE topic_id = @topic_id`);
+		}
+	});
 
 	// Thông báo cho các tài khoản có quyền duyệt / xem toàn bộ đề tài
 	const ids = await findActiveUserIdsWhere(

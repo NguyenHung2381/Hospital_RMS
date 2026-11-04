@@ -14,6 +14,10 @@ const { broadcast } = require('../../events/eventService');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 
 const ATTENDED = "('present', 'late')";
+// Dòng của CTE next ứng với dòng enrollment_lessons đang sửa. Viết bằng subquery tương
+// quan (không dùng UPDATE … FROM: cú pháp SQL Server và PG khác nhau).
+const SAME_LESSON = `WHERE n.enrollment_id = enrollment_lessons.enrollment_id
+                       AND n.lesson_id = enrollment_lessons.lesson_id`;
 
 /**
  * Tính lại trạng thái bài của các hồ sơ được chọn. Đúng 1 trong các bộ lọc:
@@ -54,16 +58,17 @@ const recompute = async ({ sessionId = null, courseId = null, enrollmentId = nul
                     ELSE 'not_started' END AS status
         FROM counts
       )
-      UPDATE el
-      SET status = n.status,
-          completed_at = CASE WHEN n.status = 'done' THEN n.last_attended END,
+      UPDATE enrollment_lessons
+      SET status = (SELECT n.status FROM next n ${SAME_LESSON}),
+          completed_at = (SELECT CASE WHEN n.status = 'done' THEN n.last_attended END
+                          FROM next n ${SAME_LESSON}),
           updated_at = ${nowSql}
-      FROM enrollment_lessons el
-      JOIN next n ON n.enrollment_id = el.enrollment_id AND n.lesson_id = el.lesson_id
-      WHERE el.status <> n.status
-         OR (n.status = 'done' AND (el.completed_at IS NULL OR el.completed_at <> n.last_attended));
-      SELECT @@ROWCOUNT AS n;`);
-	const changed = r.recordset[0]?.n ?? 0;
+      WHERE EXISTS (
+        SELECT 1 FROM next n ${SAME_LESSON}
+          AND (enrollment_lessons.status <> n.status
+               OR (n.status = 'done' AND (enrollment_lessons.completed_at IS NULL
+                                          OR enrollment_lessons.completed_at <> n.last_attended))))`);
+	const changed = r.rowsAffected[0] ?? 0;
 	if (changed) broadcast('update', { entity: 'course_enrollment' });
 	return changed;
 };

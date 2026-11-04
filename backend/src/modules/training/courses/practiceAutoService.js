@@ -366,19 +366,20 @@ const arrangeCourse = async (courseId, actorId) => {
 const completeFinished = async () => {
 	const pool = await getPool();
 	const r = await pool.request().input('today', sql.Date, todayVN()).query(`
-    UPDATE e SET progress_status = 'completed', progress_date = e.end_date, updated_at = ${nowSql}
-    FROM course_enrollments e
-    WHERE e.status = 'approved' AND COALESCE(e.progress_status, 'in_progress') = 'in_progress'
-      AND e.end_date < @today
-      AND EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = e.id)
-      AND NOT EXISTS (SELECT 1 FROM enrollment_rotations p WHERE p.enrollment_id = e.id AND p.result = 'pending')
+    UPDATE course_enrollments
+    SET progress_status = 'completed', progress_date = end_date, updated_at = ${nowSql}
+    WHERE status = 'approved' AND COALESCE(progress_status, 'in_progress') = 'in_progress'
+      AND end_date < @today
+      AND EXISTS (SELECT 1 FROM enrollment_rotations r WHERE r.enrollment_id = course_enrollments.id)
+      AND NOT EXISTS (SELECT 1 FROM enrollment_rotations p
+                      WHERE p.enrollment_id = course_enrollments.id AND p.result = 'pending')
       AND NOT EXISTS (
         SELECT 1 FROM enrollment_rotations f
-        WHERE f.enrollment_id = e.id AND f.result = 'fail'
+        WHERE f.enrollment_id = course_enrollments.id AND f.result = 'fail'
           AND NOT EXISTS (SELECT 1 FROM enrollment_rotations x
-                          WHERE x.enrollment_id = e.id AND x.lesson_id = f.lesson_id AND x.attempt_no > f.attempt_no));
-    SELECT @@ROWCOUNT AS n;`);
-	const n = r.recordset[0]?.n ?? 0;
+                          WHERE x.enrollment_id = f.enrollment_id AND x.lesson_id = f.lesson_id
+                            AND x.attempt_no > f.attempt_no))`);
+	const n = r.rowsAffected[0] ?? 0;
 	if (n) {
 		logger.info(`[job:practice_complete] ${n} hồ sơ thực hành chuyển "Hoàn thành".`);
 		notify();

@@ -396,10 +396,9 @@ const submitTest = async (code, answers) => {
       UPDATE seminar_participants
       SET test_answers = @answers, test_correct = @correct, test_total = @total,
           test_score = @score, test_max_score = @max_score, test_submitted_at = ${nowSql}
-      WHERE id = @id AND test_submitted_at IS NULL;
-      SELECT @@ROWCOUNT AS n;
+      WHERE id = @id AND test_submitted_at IS NULL
     `);
-	if (!u.recordset[0].n) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
+	if (!u.rowsAffected[0]) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
 	broadcast('update', { entity: 'seminar' });
 	return {
 		correct: g.correct,

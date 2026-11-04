@@ -240,15 +240,16 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 			? `AND lecturer_id NOT IN (${keep.map((_, i) => `@l${i}`).join(', ')})`
 			: '';
 		// Hạ hết về 'assistant' trước để đổi GV chính không vướng UQ_lecass_main.
-		const existing = await req.query(`
-      DELETE FROM lecturer_assignments
-      WHERE course_id = @course_id AND subject_id = @lesson_id ${notKept};
-      UPDATE lecturer_assignments SET role = 'assistant'
-      WHERE course_id = @course_id AND subject_id = @lesson_id;
-      SELECT id, lecturer_id FROM lecturer_assignments
-      WHERE course_id = @course_id AND subject_id = @lesson_id;
-    `);
-		const existingId = new Map(existing.recordset.map((r) => [r.lecturer_id, r.id]));
+		const sets = await queryAll(req, [
+			`DELETE FROM lecturer_assignments
+      WHERE course_id = @course_id AND subject_id = @lesson_id ${notKept}`,
+			`UPDATE lecturer_assignments SET role = 'assistant'
+      WHERE course_id = @course_id AND subject_id = @lesson_id`,
+			`SELECT id, lecturer_id FROM lecturer_assignments
+      WHERE course_id = @course_id AND subject_id = @lesson_id`,
+		]);
+		const existing = sets[sets.length - 1];
+		const existingId = new Map(existing.map((r) => [r.lecturer_id, r.id]));
 		for (const [lecturerId, { role, hours }] of wanted) {
 			const id = existingId.get(lecturerId);
 			if (id) {

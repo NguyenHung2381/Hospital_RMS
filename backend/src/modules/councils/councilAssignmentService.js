@@ -42,11 +42,10 @@ const assignTopics = async (councilId, topicIds, actorId) => {
     UPDATE topics
     SET council_id = @council_id
     WHERE id IN (${idParams})
-      AND round_id = (SELECT round_id FROM councils WHERE id = @council_id);
-    SELECT @@ROWCOUNT AS assigned;
+      AND round_id = (SELECT round_id FROM councils WHERE id = @council_id)
   `);
 	broadcast('update', { entity: 'topic' });
-	return { assigned: result.recordset[0].assigned };
+	return { assigned: result.rowsAffected[0] ?? 0 };
 };
 
 const unassignTopic = async (councilId, topicId, actorId) => {
@@ -72,11 +71,10 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
 			.input('topic_id', sql.VarChar(15), topicId)
 			.input('session', sql.VarChar(10), session || null).query(`
       UPDATE topics SET [session] = @session
-      WHERE id = @topic_id AND council_id = @council_id;
-      SELECT @@ROWCOUNT AS updated;
+      WHERE id = @topic_id AND council_id = @council_id
     `),
 	);
-	if (!result.recordset[0].updated) {
+	if (!result.rowsAffected[0]) {
 		throw Object.assign(new Error('Đề tài không thuộc hội đồng này.'), { status: 404 });
 	}
 	broadcast('update', { entity: 'topic' });
@@ -85,29 +83,31 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
 // Ghế thay thế theo đề tài: với một đề tài cụ thể, thay người ngồi một ghế của
 // hội đồng (thành viên gốc là tác giả, hoặc cần chuyên gia đúng ngành phản biện).
 const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
-			.input('actor_id', sql.VarChar(20), actorId)
+	const ok = await withActorTransaction(actorId, async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('role', sql.VarChar(15), role)
+				.input('user_id', sql.VarChar(20), userId);
+		const found = await req()
 			.input('council_id', sql.VarChar(15), councilId)
-			.input('topic_id', sql.VarChar(15), topicId)
-			.input('role', sql.VarChar(15), role)
-			.input('user_id', sql.VarChar(20), userId).query(`
-      IF NOT EXISTS (SELECT 1 FROM topics WHERE id = @topic_id AND council_id = @council_id)
-        SELECT 0 AS ok;
-      ELSE
-      BEGIN
+			.query('SELECT 1 AS x FROM topics WHERE id = @topic_id AND council_id = @council_id');
+		if (!found.recordset.length) return false;
+		// Có ghế thay rồi thì sửa, chưa có thì thêm (cùng transaction).
+		const upd = await req().query(`
         UPDATE council_seat_substitutes
         SET user_id = @user_id, created_by = @actor_id, updated_at = ${nowSql}, updated_by = @actor_id
-        WHERE topic_id = @topic_id AND role = @role;
-        IF @@ROWCOUNT = 0
+        WHERE topic_id = @topic_id AND role = @role`);
+		if (!upd.rowsAffected[0]) {
+			await req().query(`
           INSERT INTO council_seat_substitutes (topic_id, role, user_id, created_by)
-          VALUES (@topic_id, @role, @user_id, @actor_id);
-        SELECT 1 AS ok;
-      END
-    `),
-	);
-	if (!result.recordset[0].ok) {
+          VALUES (@topic_id, @role, @user_id, @actor_id)`);
+		}
+		return true;
+	});
+	if (!ok) {
 		throw httpError(404, 'Đề tài không thuộc hội đồng này.');
 	}
 	broadcast('update', { entity: 'council' });

@@ -320,15 +320,13 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 		}
 	}
 	const r = await req
-		.query(
-			`UPDATE enrollment_rotations SET ${sets.join(', ')} WHERE id = @id; SELECT @@ROWCOUNT AS n;`,
-		)
+		.query(`UPDATE enrollment_rotations SET ${sets.join(', ')} WHERE id = @id`)
 		.catch((err) => {
 			if (String(err.message).includes('CHK_enrrot_dates'))
 				throw httpError(400, 'Ngày kết thúc phải sau ngày bắt đầu.');
 			throw err;
 		});
-	if (!r.recordset[0]?.n) throw httpError(404, 'Không tìm thấy vòng thực hành.');
+	if (!r.rowsAffected[0]) throw httpError(404, 'Không tìm thấy vòng thực hành.');
 	notify();
 };
 
@@ -441,10 +439,9 @@ const carryOver = async (enrollmentId, actorId) => {
                                         ${cols.join(', ')}, result, note, created_by)
       SELECT ${newId}, @id, m.id, m.title, o.seq, o.department_id, o.department_name,
              ${cols.map((c) => `o.${c}`).join(', ')}, 'pass',
-             N'Công nhận từ hồ sơ ' + COALESCE(oe.practice_code, oe.id), @actor_id
-      ${CARRY_FROM};
-      SELECT @@ROWCOUNT AS n;`);
-	return r.recordset[0].n;
+             CONCAT(N'Công nhận từ hồ sơ ', COALESCE(oe.practice_code, oe.id)), @actor_id
+      ${CARRY_FROM}`);
+	return r.rowsAffected[0] ?? 0;
 };
 
 const remove = async (rotationId) => {

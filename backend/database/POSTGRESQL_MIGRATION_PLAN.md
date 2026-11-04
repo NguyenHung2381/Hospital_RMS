@@ -114,7 +114,7 @@ bước A và giữ máy Windows hiện tại tới khi xong bước B.
 | `CROSS APPLY` / `OUTER APPLY` | 25 (19) → 2 (comment) | `crossApply` / `outerApply` của adapter (PG: `CROSS JOIN LATERAL` / `LEFT JOIN LATERAL ... ON true`) |
 | `LIKE ... ESCAPE`, `LIKE '[0-9]'` | 25 (4) + nhiều mẫu `[0-9]` | PG `LIKE` **không** có lớp ký tự `[...]` → dùng `~ '^...[0-9]{3}$'` |
 | `OUTPUT INSERTED/DELETED` | 19 (13) → 14 | `RETURNING` (`updateReturning` của adapter) |
-| `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) | `RETURNING id`, `rowCount`, không có tương đương trực tiếp |
+| `SCOPE_IDENTITY()`, `@@ROWCOUNT`, `@@TRANCOUNT` | 18 (13) → 1 | `rowsAffected[0]` của câu ghi (PG: `rowCount`); upsert `IF @@ROWCOUNT = 0` viết bằng JS |
 | `CAST(... AS NVARCHAR/BIT/DATETIME)` | 59 (35) | `::text`, `::boolean`, `::timestamp`. Cột boolean trong SELECT: `boolExpr(đk)` / `castBool(x)` của adapter (SQL Server ra BIT, PG ra boolean) |
 | `CONVERT(`, `TRY_CAST(` | 20 (8) → 0 | `formatDate` / `tryCastInt` của adapter (PG: `to_char`, regex rồi `CAST`) |
 | `MERGE` (có `WITH (HOLDLOCK)`) | 10 (9) | `INSERT ... ON CONFLICT DO UPDATE` |
@@ -502,7 +502,7 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   `bit_literal` (30 cột boolean của `database/pg/baseline/01_tables.sql`; mốc 14 = chỗ trong
   comment). Kiểm bằng ca "cột BIT so / gán bằng 'true' / 'false'" trong
   `test-integration/batchSplit.cases.js` (2 DB). Các ca PG khác vẫn bỏ vì vướng mục khác
-  (`lessonProgressService`: `UPDATE … FROM` + `SELECT @@ROWCOUNT` trong 1 lô).
+  (đã bật lại ở mục `@@ROWCOUNT`).
   Còn lại (phát hiện dần qua test PG): `VALUES (…, 1)` / `CASE … THEN 1 ELSE 0` ghi vào cột
   boolean, `COALESCE(cột_bit, 0)` — PG cũng không tự ép số sang boolean ở các chỗ này.
 - [x] Giờ hiện tại (`GETDATE` / `SYSDATETIME` / `GETUTCDATE` / `SYSUTCDATETIME`, 188 → 5): 185 chỗ
@@ -565,6 +565,28 @@ thường. Mỗi nhóm là 1 PR nhỏ theo module.
   - Kiểm bằng ca "formatDate / datePart / tryCastInt" trong `test-integration/batchSplit.cases.js` (2 DB;
     báo cáo đào tạo theo năm); PG bật thêm ca dashboard. Còn vướng mục khác trên PG: tiến độ hội đồng
     (tên cột `[…]`), CME cá nhân (`FOR JSON`). Tổng ratchet 155 → 139.
+- [x] `@@ROWCOUNT` / `@@TRANCOUNT` (identity_fn 15 → 1): số dòng đổi lấy từ `rowsAffected[0]` của chính câu
+  ghi (adapter PG dựng từ `rowCount`). Mọi trigger đều `SET NOCOUNT ON` nên trên SQL Server số này là của câu
+  chính, không lẫn câu trong trigger (đã thử trên `topics`, `users`, `seminar_participants`, `approvals`,
+  `departments` — 2 DB cùng số).
+  - `SELECT @@ROWCOUNT AS n` cuối lô → bỏ, đọc `rowsAffected[0]`: gán đề tài vào hội đồng, đặt buổi bảo vệ,
+    đổi trạng thái CME hội thảo, nộp bài kiểm tra hội thảo, thu hồi chứng chỉ, sửa / chép vòng thực hành
+    (chép vòng: nối chuỗi `+` → `CONCAT`), hoàn thành thực hành, tính lại trạng thái bài học.
+  - `IF @@ROWCOUNT = 0 INSERT` (upsert) → JS trong 1 transaction: `UPDATE`, không có dòng nào thì `INSERT`
+    (ghế thay của hội đồng, nhận xét tiến độ, kết luận hội đồng — helper `upsertRow`).
+  - `IF @@ROWCOUNT > 0 UPDATE` (nộp lại đề tài → phiếu duyệt về `pending`) → câu thứ 2 chỉ chạy khi câu 1 đổi dòng.
+  - Xoá khoa: bỏ `BEGIN TRANSACTION / TRY / CATCH … @@TRANCOUNT … THROW` lồng trong lô — 6 câu chạy lần lượt
+    trong `withActorTransaction` (lỗi thì transaction ngoài rollback).
+  - `UPDATE alias … FROM` của 2 chỗ trên (tính lại bài học, hoàn thành thực hành) → `UPDATE bảng SET … WHERE`
+    với subquery tương quan theo tên bảng (cú pháp `UPDATE … FROM` của 2 DB khác nhau). Còn ~8 chỗ
+    `UPDATE alias … FROM` khác (ratchet chưa đếm) — làm ở mục riêng.
+  - Sửa thêm: lô `DELETE; UPDATE; SELECT` có tham số của `lecturerAssignmentService.setLessonLecturers`
+    (PG không ghép được) → `queryAll`. Đây là lỗi thật của ca "xoá buổi học" trên PG.
+  - Còn lại: `courseCmeService` (`MERGE … USING #cme; SELECT @@ROWCOUNT`) — làm cùng mục `MERGE` / bảng tạm.
+  - Kiểm bằng 3 ca "rowsAffected: …" và "đặt buổi bảo vệ" trong `test-integration/batchSplit.cases.js`
+    (2 DB: upsert chạy 2 lần vẫn 1 dòng, nộp lại chỉ reset phiếu khi đang `supplement`, tính lại lần 2 = 0,
+    sai hội đồng → 404). PG bật lại ca đồng bộ bài học và xoá buổi học; chỉ bỏ ca "đặt buổi bảo vệ"
+    (tên cột `[session]`). Tổng ratchet 139 → 125.
 - [ ] Bỏ các chỗ phụ thuộc thứ tự ngầm: mọi câu trả danh sách phải có `ORDER BY`.
 - [x] Ghi baseline smoke test (`UPDATE_SNAPSHOTS=1 npm run test:smoke`, đã ghi 2026-11-03;
   bản 24/10 lưu ở `get-shapes.2026-10-24.bak.json`) **trước**
