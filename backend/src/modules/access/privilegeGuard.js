@@ -60,7 +60,11 @@ const assertCanAssignRole = async (actor, roleId) => {
 // hạn theo khoa) và tài khoản đích không được mang quyền cao hơn actor.
 const assertCanManageUser = async (actor, target) => {
 	if (isSuperuser(actor)) return;
-	if (scopeOf(actor, 'users') !== 'all' && target.department_id !== actor.department_id) {
+	// Giới hạn theo khoa mà actor chưa có khoa ⇒ từ chối (NULL === NULL không phải "cùng khoa")
+	if (
+		scopeOf(actor, 'users') !== 'all' &&
+		(!actor.department_id || target.department_id !== actor.department_id)
+	) {
 		throw forbiddenError('Bạn không có quyền thao tác trên tài khoản ngoài khoa của mình');
 	}
 	try {

@@ -835,8 +835,8 @@ function AddStaffModal({
 				/>
 			</div>
 			<div className={styles.hint}>
-				Tạo luôn tài khoản vai trò Thành viên: mật khẩu ban đầu là <b>tên đăng nhập</b>, bắt đổi ở lần đăng nhập
-				đầu.
+				Tạo luôn tài khoản vai trò Thành viên với <b>mật khẩu tạm ngẫu nhiên</b> (hiện 1 lần sau khi tạo), bắt
+				đổi ở lần đăng nhập đầu.
 			</div>
 		</Modal>
 	);
@@ -1199,7 +1199,8 @@ function ImportModal({
 		onDone();
 	};
 
-	const accounts = [...(result?.created_staff ?? []), ...manualAccounts].map((u) => patchedStaff[u.id] ?? u);
+	// Gộp (không thay) bản đã bổ sung để giữ temporary_password của response tạo tài khoản
+	const accounts = [...(result?.created_staff ?? []), ...manualAccounts].map((u) => ({ ...u, ...patchedStaff[u.id] }));
 	const incomplete = accounts.filter((u) => u.missing_name || u.missing_department);
 	// Danh sách tài khoản để phát cho nhân viên — CSV có BOM để Excel đọc đúng tiếng Việt
 	const downloadAccounts = () => {
@@ -1210,7 +1211,7 @@ function ImportModal({
 				u.full_name,
 				u.department_name ?? '',
 				u.username,
-				u.username,
+				u.temporary_password ?? '',
 				[u.missing_name && 'Cần bổ sung tên', u.missing_department && 'Cần bổ sung khoa'].filter(Boolean).join('; '),
 			]),
 		].map((r) => r.map(csvCell).join(','));
@@ -1603,8 +1604,8 @@ function ImportModal({
 					<>
 						<div className={styles.accountsHeader}>
 							<span className={styles.formLabel}>
-								Tài khoản vừa tạo ({accounts.length}) — mật khẩu ban đầu là tên đăng nhập, bắt đổi khi đăng nhập
-								lần đầu. Đã gửi thông báo tới từng tài khoản mới; danh sách cũng lưu trong mục Thông báo của bạn.
+								Tài khoản vừa tạo ({accounts.length}) — mật khẩu tạm chỉ hiện ở đây, hãy tải danh sách trước khi
+								đóng; bắt đổi khi đăng nhập lần đầu. Mất mật khẩu thì đặt lại ở màn Người dùng.
 							</span>
 							<div style={{ display: 'flex', gap: 6 }}>
 								{canUpdateStaff && incomplete.length > 0 && (
@@ -1651,7 +1652,7 @@ function ImportModal({
 											</td>
 											<td>{u.department_name ?? <Badge tone='amber'>Cần bổ sung khoa</Badge>}</td>
 											<td>{u.username}</td>
-											<td>{u.username}</td>
+											<td>{u.temporary_password ?? '—'}</td>
 										</tr>
 									))}
 								</tbody>

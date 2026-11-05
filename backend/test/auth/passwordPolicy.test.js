@@ -1,7 +1,23 @@
 // Chính sách mật khẩu dùng chung (utils/passwordPolicy.js).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { checkPassword, MIN_LENGTH } = require('../../src/utils/passwordPolicy');
+const {
+	checkPassword,
+	generateTempPassword,
+	MIN_LENGTH,
+} = require('../../src/utils/passwordPolicy');
+
+test('mật khẩu tạm: ngẫu nhiên, đạt chính sách, không chứa tên đăng nhập', () => {
+	const seen = new Set();
+	for (let i = 0; i < 200; i++) {
+		const pw = generateTempPassword('nva_0001');
+		assert.equal(pw.length, 12);
+		assert.equal(checkPassword(pw, { username: 'nva_0001' }), null);
+		assert.notEqual(pw, 'nva_0001');
+		seen.add(pw);
+	}
+	assert.equal(seen.size, 200);
+});
 
 test('từ chối mật khẩu mặc định cũ và mật khẩu ngắn', () => {
 	assert.ok(checkPassword('123456'));

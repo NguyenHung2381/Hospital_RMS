@@ -1,8 +1,8 @@
 const systemSettingService = require('../modules/settings/systemSettingService');
 
 // Hạn dùng của mật khẩu tạm — mật khẩu do người khác cấp (tạo tài khoản, quản
-// trị đặt lại, cấp tài khoản học viên / thành viên đề tài), thường là mật khẩu
-// mặc định = tên đăng nhập (utils/passwordPolicy.defaultPassword).
+// trị đặt lại, cấp tài khoản học viên / thành viên đề tài), sinh ngẫu nhiên
+// (utils/passwordPolicy.generateTempPassword); tài khoản cũ có thể còn mật khẩu = tên đăng nhập.
 //
 // Cờ must_change_password chỉ bắt "người đăng nhập đầu tiên" đổi mật khẩu: tên
 // đăng nhập dễ đoán (NVA_0001, chữ cái đầu + mã NV...) nên kẻ gian vào trước

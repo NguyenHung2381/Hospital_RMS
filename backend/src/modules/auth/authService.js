@@ -123,13 +123,12 @@ const login = async (
 		throw httpError(403, tempPasswordPolicy.EXPIRED_MESSAGE);
 	}
 
-	// Đăng nhập đúng trên thiết bị quen không xóa bộ đếm/khóa của thiết bị lạ
-	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
-	// nhập. Bộ đếm của thiết bị quen được reset trong issueDeviceToken().
-	if (!device) await resetFailedLogins(pool, user);
-
 	// Tài khoản đã bật 2FA: dừng lại ở đây, KHÔNG phát token thật — chỉ trả 1
 	// pre-auth token ngắn hạn để client gọi tiếp /auth/2fa/verify kèm mã OTP.
+	// KHÔNG xóa bộ đếm đăng nhập sai ở bước này: bộ đếm (chung cho sai mật khẩu
+	// và sai mã 2FA) là lớp duy nhất chặn dò mã 6 số từ nhiều IP. Xóa ở đây thì
+	// kẻ đã có mật khẩu cứ dò (ngưỡng − 1) mã rồi đăng nhập lại là bộ đếm về 0,
+	// không bao giờ bị khóa. Bộ đếm chỉ xóa khi qua đủ 2 bước (verify2FALogin).
 	if (user.totp_enabled) {
 		// Khóa riêng 'pre-auth-2fa' (utils/keys.js): token này không bao giờ được
 		// chấp nhận như access token. `rm` giữ lựa chọn "ghi nhớ" sang bước 2.
@@ -140,6 +139,11 @@ const login = async (
 		);
 		return { requires_2fa: true, pre_auth_token: preAuthToken };
 	}
+
+	// Đăng nhập đúng trên thiết bị quen không xóa bộ đếm/khóa của thiết bị lạ
+	// — nếu không, kẻ tấn công được làm lại từ đầu mỗi khi chủ tài khoản đăng
+	// nhập. Bộ đếm của thiết bị quen được reset trong issueDeviceToken().
+	if (!device) await resetFailedLogins(pool, user);
 
 	return issueTokens(pool, user, ip, userAgent, device, remember);
 };

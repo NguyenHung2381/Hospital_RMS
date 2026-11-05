@@ -16,6 +16,8 @@ const assert = require('node:assert/strict');
 const { install } = require('./fakeDb');
 
 const TRAINEE = { id: 'HV1', national_id: '040200001234', dob: new Date('2000-05-15T00:00:00Z') };
+// Hồ sơ cũ thiếu ngày sinh — không đối chiếu được chủ hồ sơ
+const NO_DOB = { id: 'HV2', national_id: '040200009999', dob: null };
 const log = install(async (text, inputs) => {
 	if (/FROM trainees t\s+JOIN course_enrollments/.test(text)) {
 		const d = inputs.dob;
@@ -24,7 +26,7 @@ const log = install(async (text, inputs) => {
 			: [];
 	}
 	if (/SELECT \* FROM trainees WHERE national_id/.test(text))
-		return inputs.national_id === TRAINEE.national_id ? [TRAINEE] : [];
+		return [TRAINEE, NO_DOB].filter((t) => t.national_id === inputs.national_id);
 	return [];
 });
 const courseEnrollmentService = require('../../src/modules/training/courses/courseEnrollmentService');
@@ -129,6 +131,21 @@ test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh thì bị từ chố
 		national_id: TRAINEE.national_id,
 		dob: '2000-05-15',
 	});
-	assert.equal(ok.trainee_id, 'HV1');
+	assert.equal(ok.enrollment_id, 'GD1');
+	assert.equal(ok.trainee_id, undefined, 'không trả mã hồ sơ học viên cho người gọi ẩn danh');
 	assert.ok(log.length > 0);
+});
+
+test('đăng ký: hồ sơ cũ không có ngày sinh — vẫn ghi danh nhưng không đính giấy tờ vào hồ sơ đó', async () => {
+	const before = log.length;
+	const r = await portal.register(
+		{ course_id: 'KH1', full_name: 'X', national_id: NO_DOB.national_id, dob: '1990-01-01' },
+		[{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' }],
+		['national_id'],
+	);
+	assert.deepEqual(r, { enrollment_id: 'GD1', documents_skipped: true });
+	assert.ok(
+		!log.slice(before).some((q) => /INSERT INTO trainee_documents/i.test(q.text)),
+		'không ghi giấy tờ',
+	);
 });

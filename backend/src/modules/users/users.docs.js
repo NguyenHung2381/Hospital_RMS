@@ -178,7 +178,7 @@
  *         application/json:
  *           schema:
  *             type: object
- *             description: Bỏ trống new_password ⇒ đặt về mật khẩu mặc định = tên đăng nhập (trả về trong data.temporary_password). Mật khẩu tạm phải đổi ở lần đăng nhập tới và hết hạn sau TEMP_PASSWORD_TTL_DAYS ngày
+ *             description: Bỏ trống new_password ⇒ sinh mật khẩu tạm ngẫu nhiên (trả về trong data.temporary_password). Mật khẩu tạm phải đổi ở lần đăng nhập tới và hết hạn sau TEMP_PASSWORD_TTL_DAYS ngày
  *             properties:
  *               new_password:
  *                 type: string

@@ -44,8 +44,9 @@ const EMPTY_FORM = {
 };
 
 // Trang mở ra khi quét QR đăng ký hội nghị (QR do ban tổ chức tải ở trang chi
-// tiết hội nghị, gắn vào văn bản). Đăng ký xong chuyển sang trang vé — trang vé
-// tự lưu ảnh QR cá nhân về máy.
+// tiết hội nghị, gắn vào văn bản). Ngoại viện đăng ký xong chuyển sang trang vé — trang vé
+// tự lưu ảnh QR cá nhân về máy. Nội viện không nhận vé trên trình duyệt (ai biết họ tên +
+// mã NV cũng đăng ký thay được): vé gửi email hồ sơ nhân sự hoặc nhận tại ban tổ chức.
 export default function SeminarRegisterPublic() {
 	const { token = '' } = useParams();
 	const navigate = useNavigate();
@@ -55,6 +56,10 @@ export default function SeminarRegisterPublic() {
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
+	// Nội viện: vé không trả về trình duyệt — gửi email hồ sơ nhân sự / nhận tại ban tổ chức
+	const [delivered, setDelivered] = useState<{ ticket_delivery?: string; email_hint?: string } | null>(
+		null,
+	);
 	// Nhân viên nội viện tìm thấy theo họ tên + mã NV (null = chưa tra / không khớp)
 	const [staff, setStaff] = useState<SeminarStaff | null>(null);
 	const [lookingUp, setLookingUp] = useState(false);
@@ -134,7 +139,7 @@ export default function SeminarRegisterPublic() {
 		try {
 			// Nội viện chỉ gửi họ tên + mã NV — backend tự lấy phần còn lại từ hồ sơ nhân sự
 			const { full_name, staff_number, website, ...rest } = form;
-			const { ticket_code } = await registerSeminar(token, {
+			const res = await registerSeminar(token, {
 				full_name,
 				website,
 				...(form.source === 'internal' ? { staff_number } : rest),
@@ -142,7 +147,8 @@ export default function SeminarRegisterPublic() {
 				custom,
 				...captcha.payload,
 			});
-			if (ticket_code) navigate(`/hoi-nghi/ve/${ticket_code}`, { state: { justRegistered: true } });
+			if (res.ticket_code) navigate(`/hoi-nghi/ve/${res.ticket_code}`, { state: { justRegistered: true } });
+			else if (res.ticket_delivery) setDelivered(res);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
 		} finally {
@@ -190,7 +196,13 @@ export default function SeminarRegisterPublic() {
 				</div>
 			</div>
 
-			{!seminar.registration_open ? (
+			{delivered ? (
+				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+					{delivered.ticket_delivery === 'email'
+						? `Đăng ký thành công. Thẻ đại biểu kèm mã QR đã được gửi tới email ${delivered.email_hint ?? 'trong hồ sơ nhân sự'} — dùng mã QR đó để điểm danh và làm bài kiểm tra.`
+						: 'Đăng ký thành công. Vui lòng nhận thẻ đại biểu (mã QR điểm danh) tại bàn ban tổ chức.'}
+				</div>
+			) : !seminar.registration_open ? (
 				<div className={`${styles.alertBox} ${styles.alertError}`}>
 					<AlertSvg /> Hội nghị đã kết thúc, không nhận đăng ký.
 				</div>

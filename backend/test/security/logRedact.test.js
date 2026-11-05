@@ -113,6 +113,31 @@ test('che lại dòng log cũ, kể cả body bị cắt ngắn không parse đ�
 	assert.equal(cut.body, '{"username":"a","code":"[hidden]","phone":"[hidden]","note":"dài…');
 });
 
+test('cấu hình bí mật: che `value` của PUT /system-settings/<khóa bí mật>, giữ khóa thường', () => {
+	const { redactBody } = require('../../src/utils/logRedact');
+	for (const key of ['SMTP_PASS', 'RECAPTCHA_SECRET_KEY', 'smtp_pass'])
+		assert.deepEqual(redactBody({ value: 'DUMMY-SECRET' }, `/api/v1/system-settings/${key}`), {
+			value: '[hidden]',
+		});
+	assert.deepEqual(redactBody({ value: 'smtp.x.vn' }, '/api/v1/system-settings/SMTP_HOST'), {
+		value: 'smtp.x.vn',
+	});
+	// Trường `value` ở API khác không bị che nhầm
+	assert.deepEqual(redactBody({ value: 'x' }, '/api/v1/form-configs/topic'), { value: 'x' });
+
+	// Che lại log cũ — cả khi parse được lẫn khi body bị cắt ngắn
+	const old = redactActivityRecord({
+		path: '/api/v1/system-settings/SMTP_PASS',
+		body: JSON.stringify({ value: 'DUMMY-SECRET' }),
+	});
+	assert.deepEqual(JSON.parse(old.body), { value: '[hidden]' });
+	const cut = redactActivityRecord({
+		path: '/api/v1/system-settings/RECAPTCHA_SECRET_KEY',
+		body: '{"value":"DUMMY-SECRET","x":"dài…',
+	});
+	assert.equal(cut.body, '{"value":"[hidden]","x":"dài…');
+});
+
 test('activityLogger ghi log đã che (body, query, params, referer)', async () => {
 	const auditLogger = require('../../src/config/auditLogger');
 	const lines = [];
@@ -146,6 +171,21 @@ test('activityLogger ghi log đã che (body, query, params, referer)', async () 
 		code: '[hidden]',
 		national_id: '[hidden]',
 	});
+
+	activityLogger(
+		{
+			method: 'PUT',
+			originalUrl: '/api/v1/system-settings/SMTP_PASS',
+			params: { key: 'SMTP_PASS' },
+			headers: {},
+			body: { value: 'DUMMY-SMTP-SECRET' },
+			ip: '10.0.0.1',
+		},
+		res,
+		() => {},
+	);
+	handlers.close();
+	assert.ok(!JSON.stringify(lines[1]).includes('DUMMY-SMTP-SECRET'), 'không lưu mật khẩu SMTP');
 });
 
 test('script che log cũ: mặc định chỉ xem; --apply ghi đè, giữ mtime, bỏ qua file đang ghi', () => {

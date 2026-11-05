@@ -107,6 +107,12 @@ const lookupStaff = async (token, fullName, staffNumber) => {
 	};
 };
 
+// a***@bv.vn — đủ để người đăng ký biết vé gửi về hộp thư nào, không lộ địa chỉ
+const maskEmail = (e) => {
+	const [name, domain] = String(e).split('@');
+	return `${name.slice(0, 1)}***@${domain}`;
+};
+
 // Email tài khoản tự sinh (`...@member.local`) không nhận được thư
 const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
 
@@ -178,6 +184,18 @@ const registerPublic = async (token, data, custom = null) => {
 	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
 	if (person.email) {
 		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, person, ticketCode));
+	}
+	// Nội viện: chỉ cần họ tên + mã NV (dễ biết) là đăng ký được thay người khác
+	// ⇒ KHÔNG trả vé cho người gọi (vé = điểm danh + làm bài test lấy CME đứng
+	// tên nhân viên đó). Vé gửi tới email trong hồ sơ nhân sự; không gửi được thì
+	// nhân viên nhận vé tại ban tổ chức (trang chi tiết hội nghị có mã vé).
+	if (data.source === 'internal') {
+		const byEmail = Boolean(person.email) && (await mailService.isEnabled('SEMINAR_BADGE'));
+		return {
+			ticket_code: null,
+			ticket_delivery: byEmail ? 'email' : 'organizer',
+			...(byEmail ? { email_hint: maskEmail(person.email) } : {}),
+		};
 	}
 	return { ticket_code: ticketCode };
 };

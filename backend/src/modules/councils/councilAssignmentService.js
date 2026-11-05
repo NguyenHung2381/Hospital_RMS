@@ -1,4 +1,4 @@
-const { getPool, sql, withActorTransaction, actorRequest, nowSql } = require('../../config/db');
+const { getPool, sql, withActorTransaction, nowSql } = require('../../config/db');
 const { broadcast } = require('../events/eventService');
 const { httpError } = require('../../utils/httpError');
 
@@ -32,32 +32,48 @@ const getTopics = async (councilId) => {
 const assignTopics = async (councilId, topicIds, actorId) => {
 	if (!Array.isArray(topicIds) || topicIds.length === 0) return { assigned: 0 };
 
-	const req = actorRequest(actorId)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('council_id', sql.VarChar(15), councilId);
-	topicIds.forEach((id, i) => req.input(`id${i}`, sql.VarChar(15), id));
 	const idParams = topicIds.map((_, i) => `@id${i}`).join(',');
+	const moved = `id IN (${idParams})
+      AND round_id = (SELECT round_id FROM councils WHERE id = @council_id)`;
 
-	const result = await req.query(`
-    UPDATE topics
-    SET council_id = @council_id
-    WHERE id IN (${idParams})
-      AND round_id = (SELECT round_id FROM councils WHERE id = @council_id)
-  `);
+	const result = await withActorTransaction(actorId, async (tx) => {
+		const req = () => {
+			const r = tx
+				.request()
+				.input('actor_id', sql.VarChar(20), actorId)
+				.input('council_id', sql.VarChar(15), councilId);
+			topicIds.forEach((id, i) => r.input(`id${i}`, sql.VarChar(15), id));
+			return r;
+		};
+		// Đề tài chuyển từ hội đồng khác sang: ghế thay thế (theo đề tài) là của hội
+		// đồng cũ — xóa trước, không để người thay ghế cũ giữ quyền chủ tịch/thư ký
+		// với đề tài ở hội đồng mới (councilProgressService.SEAT_CTE).
+		await req().query(`
+      DELETE FROM council_seat_substitutes WHERE topic_id IN (
+        SELECT id FROM topics WHERE ${moved} AND council_id IS NOT NULL AND council_id <> @council_id)`);
+		return req().query(`UPDATE topics SET council_id = @council_id WHERE ${moved}`);
+	});
 	broadcast('update', { entity: 'topic' });
 	return { assigned: result.rowsAffected[0] ?? 0 };
 };
 
 const unassignTopic = async (councilId, topicId, actorId) => {
-	await withActorTransaction(actorId, (tx) =>
-		tx
+	await withActorTransaction(actorId, async (tx) => {
+		const r = await tx
 			.request()
 			.input('actor_id', sql.VarChar(20), actorId)
 			.input('council_id', sql.VarChar(15), councilId)
-			.input('topic_id', sql.VarChar(15), topicId).query(`
-      UPDATE topics SET council_id = NULL WHERE id = @topic_id AND council_id = @council_id;
-    `),
-	);
+			.input('topic_id', sql.VarChar(15), topicId)
+			.query(
+				'UPDATE topics SET council_id = NULL WHERE id = @topic_id AND council_id = @council_id',
+			);
+		// Đề tài rời hội đồng ⇒ ghế thay thế theo đề tài hết hiệu lực
+		if (r.rowsAffected[0])
+			await tx
+				.request()
+				.input('topic_id', sql.VarChar(15), topicId)
+				.query('DELETE FROM council_seat_substitutes WHERE topic_id = @topic_id');
+	});
 	broadcast('update', { entity: 'topic' });
 };
 

@@ -132,4 +132,6 @@ export interface CmeImportCreatedStaff {
 	department_name: string | null;
 	missing_name: boolean;
 	missing_department: boolean;
+	/** Mật khẩu tạm ngẫu nhiên — chỉ có trong response tạo tài khoản, không lưu lại được */
+	temporary_password?: string;
 }

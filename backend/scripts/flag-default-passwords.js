@@ -3,8 +3,8 @@
 // khoản nên không chạy lúc khởi động):
 //
 //   1. Tài khoản đã gỡ cờ bắt đổi (must_change_password = false) mà mật khẩu vẫn là
-//      mật khẩu mặc định: '123456' (kiểu cũ) hoặc = tên đăng nhập
-//      (utils/passwordPolicy.defaultPassword). Ai biết username là đăng nhập được
+//      mật khẩu mặc định kiểu cũ: '123456' hoặc = tên đăng nhập (trước khi mật
+//      khẩu tạm được sinh ngẫu nhiên). Ai biết username là đăng nhập được
 //      ⇒ đánh dấu bắt đổi mật khẩu + bắt đầu tính hạn dùng mật khẩu tạm
 //      (temp_password_issued_at, permissions/tempPasswordPolicy.js).
 //   2. Báo cáo tài khoản đang chờ đổi mật khẩu tạm (must_change_password = true):
@@ -20,7 +20,6 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 
 const bcrypt = require('bcrypt');
 const { getPool, sql, utcNowSql } = require('../src/config/db');
-const { defaultPassword } = require('../src/utils/passwordPolicy');
 const tempPasswordPolicy = require('../src/permissions/tempPasswordPolicy');
 
 const LEGACY_DEFAULTS = ['123456'];
@@ -31,7 +30,7 @@ const CONCURRENCY = 4;
 
 const usesDefaultPassword = async (u) => {
 	if (!u.password) return false;
-	for (const pw of [defaultPassword(u.username), ...LEGACY_DEFAULTS]) {
+	for (const pw of [String(u.username), ...LEGACY_DEFAULTS]) {
 		if (await bcrypt.compare(pw, u.password)) return true;
 	}
 	return false;

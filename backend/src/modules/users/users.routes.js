@@ -32,7 +32,7 @@ router.post(
 	authorizePermission(['users', 'create']),
 	[
 		body('username').notEmpty(),
-		// Bỏ trống ⇒ mật khẩu mặc định = tên đăng nhập (userService.create)
+		// Bỏ trống ⇒ sinh mật khẩu tạm ngẫu nhiên, trả trong temporary_password (userService.create)
 		body('password').optional({ values: 'falsy' }).custom(passwordRule('username')),
 		body('full_name').notEmpty(),
 	],
@@ -53,9 +53,8 @@ router.delete('/:id', authorizePermission(['users', 'delete']), ctrl.removeOne);
 router.post(
 	'/:id/reset-password',
 	authorizePermission(['users', 'update']),
-	// Bỏ trống new_password ⇒ đặt về mật khẩu mặc định = TÊN ĐĂNG NHẬP (dễ đoán,
-	// không phải chuỗi ngẫu nhiên — userService.resetPassword). Dù đặt tay hay mặc
-	// định, người dùng phải đổi ở lần đăng nhập tới và mật khẩu tạm chỉ dùng được
+	// Bỏ trống new_password ⇒ sinh mật khẩu tạm ngẫu nhiên (userService.resetPassword,
+	// trả trong temporary_password). Dù đặt tay hay tự sinh, người dùng phải đổi ở lần đăng nhập tới và mật khẩu tạm chỉ dùng được
 	// trong TEMP_PASSWORD_TTL_DAYS ngày (permissions/tempPasswordPolicy.js).
 	[body('new_password').optional({ values: 'falsy' }).custom(passwordRule())],
 	validate,

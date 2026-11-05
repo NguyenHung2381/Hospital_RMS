@@ -139,6 +139,10 @@ const register = async (data, files, custom = null) => {
 	}
 
 	let trainee = null;
+	// Hồ sơ cũ khớp CCCD nhưng không có ngày sinh để đối chiếu: người đăng ký chưa
+	// chứng minh là chủ hồ sơ ⇒ vẫn ghi danh (chờ duyệt) nhưng không đính hồ sơ
+	// giấy tờ vào hồ sơ người khác — nộp trực tiếp tại phòng Đào tạo.
+	let unverifiedOwner = false;
 	if (data.national_id) {
 		const pool = await getPool();
 		const existing = await pool
@@ -150,14 +154,14 @@ const register = async (data, files, custom = null) => {
 		trainee = existing.recordset[0] || null;
 		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây
 		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khóa học.
-		// Hồ sơ cũ chưa có ngày sinh (nhập tay/import thiếu) thì không đối chiếu
-		// được — vẫn cho ghi danh vì đăng ký công khai đều phải chờ duyệt.
+		// Số lượt thử theo CCCD bị giới hạn (publicPortalController.register).
 		if (trainee?.dob && toDateKey(trainee.dob) !== toDateKey(data.dob)) {
 			throw httpError(
 				409,
 				'Thông tin không khớp với hồ sơ học viên đã có. Vui lòng kiểm tra lại ngày sinh hoặc liên hệ phòng Đào tạo.',
 			);
 		}
+		unverifiedOwner = Boolean(trainee && !trainee.dob);
 	}
 	if (!trainee) {
 		trainee = await traineeService.create(
@@ -182,8 +186,14 @@ const register = async (data, files, custom = null) => {
 		{ programId: data.program_id || null },
 	);
 	await formCustomValueService.save('course_registration', enrollment.id, custom);
-	if (hasFiles(files)) await attachTraineeDocuments(trainee.id, files, data.doc_types);
-	return { trainee_id: trainee.id, enrollment_id: enrollment.id };
+	const attach = hasFiles(files) && !unverifiedOwner;
+	if (attach) await attachTraineeDocuments(trainee.id, files, data.doc_types);
+	// Không trả mã học viên: người gọi không đăng nhập, mã hồ sơ của người có
+	// CCCD đó không phải việc của họ.
+	return {
+		enrollment_id: enrollment.id,
+		...(hasFiles(files) && !attach ? { documents_skipped: true } : {}),
+	};
 };
 
 // ─── Đăng ký đề tài công khai (rút gọn) ─────────────────────────────────────

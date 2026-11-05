@@ -111,4 +111,27 @@ const findTopicId = async (fileId) => {
 	return recordset[0]?.topic_id ?? null;
 };
 
-module.exports = { uploadFiles, getByTopic, getBatches, deleteFile, findTopicId };
+// Ghi chú lượt tải dành riêng cho file của hội đồng (councilProgressService):
+// trang hội đồng nhận diện file đánh giá / biên bản bằng đúng chuỗi này. Route
+// tải file chung của đề tài không được dùng — nếu không, chủ nhiệm tự tải lên
+// "Biên bản họp hội đồng" giả.
+const COUNCIL_NOTES = Object.freeze({
+	EVAL: 'Đánh giá tiến độ của hội đồng',
+	MINUTES: 'Biên bản họp hội đồng',
+});
+const isCouncilNote = (note) =>
+	/** @type {string[]} */ (Object.values(COUNCIL_NOTES)).includes(
+		String(note ?? '')
+			.normalize('NFC')
+			.trim(),
+	);
+
+module.exports = {
+	uploadFiles,
+	getByTopic,
+	getBatches,
+	deleteFile,
+	findTopicId,
+	COUNCIL_NOTES,
+	isCouncilNote,
+};

@@ -133,7 +133,7 @@ const SECTIONS: Section[] = [
 					{
 						key: 'TEMP_PASSWORD_TTL_DAYS',
 						label: 'Hạn dùng mật khẩu tạm',
-						hint: 'Mật khẩu do quản trị cấp (mặc định = tên đăng nhập) mà quá hạn chưa đổi thì không đăng nhập được nữa, phải "Quên mật khẩu" hoặc nhờ quản trị đặt lại. 0 = không giới hạn.',
+						hint: 'Mật khẩu tạm do quản trị cấp mà quá hạn chưa đổi thì không đăng nhập được nữa, phải "Quên mật khẩu" hoặc nhờ quản trị đặt lại. 0 = không giới hạn.',
 						type: 'number',
 						placeholder: '7',
 						unit: 'ngày',

@@ -4,6 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { install } = require('./fakeDb');
+const { checkPassword } = require('../../src/utils/passwordPolicy');
 
 const ROLES = [
 	{ id: 'VT01', code: 'admin' },
@@ -112,12 +113,15 @@ test('tài khoản thành viên bị khóa tay (chưa hết hạn): báo cần q
 	assert.match(credentials[0].note, /khóa/);
 });
 
-test('thành viên chưa có tài khoản: tạo mới với mật khẩu mặc định = tên đăng nhập, bắt đổi', async () => {
+test('thành viên chưa có tài khoản: tạo mới với mật khẩu tạm ngẫu nhiên, bắt đổi', async () => {
 	members = [member('TM4', 400)];
 	const from = log.length;
 	const { credentials } = await grantAccounts('DT1', null, 'ACTOR');
 	const [w] = writesFor(from, 'NVK10999');
 	assert.match(w.text, /INSERT INTO users[\s\S]*must_change_password/);
 	assert.ok(credentials[0].username);
-	assert.equal(credentials[0].password_plain, credentials[0].username);
+	// Mật khẩu tạm không bao giờ là tên đăng nhập (đoán được), luôn đạt chính sách
+	const pw = credentials[0].password_plain;
+	assert.notEqual(pw, credentials[0].username);
+	assert.equal(checkPassword(pw, { username: credentials[0].username }), null);
 });

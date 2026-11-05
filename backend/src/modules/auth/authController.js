@@ -66,7 +66,9 @@ const login = async (req, res, next) => {
 			}
 			throw err;
 		}
-		await loginShield.recordSuccess({ username });
+		// Còn bước 2FA thì chưa phải "đăng nhập đúng" — giữ bộ đếm lá chắn tới khi
+		// qua mã OTP (verify2FA bên dưới), như bộ đếm khóa tài khoản (authService.login).
+		if (!data.requires_2fa) await loginShield.recordSuccess({ username });
 		return success(res, withRefreshCookie(res, data), 'Đăng nhập thành công');
 	} catch (err) {
 		next(err);
@@ -139,6 +141,7 @@ const verify2FA = asyncHandler(async (req, res) => {
 		req.get('user-agent'),
 		device_token,
 	);
+	if (data.user?.username) await loginShield.recordSuccess({ username: data.user.username });
 	return success(res, withRefreshCookie(res, data), 'Đăng nhập thành công');
 });
 

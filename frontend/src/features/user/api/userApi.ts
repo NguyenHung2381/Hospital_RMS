@@ -39,7 +39,7 @@ interface SimpleListResponse {
 
 export interface CreateUserPayload {
 	username: string;
-	/** Bỏ trống ⇒ server đặt mật khẩu mặc định = tên đăng nhập */
+	/** Bỏ trống ⇒ server sinh mật khẩu tạm ngẫu nhiên, trả trong temporary_password */
 	password?: string;
 	staff_number?: string;
 	full_name: string;
@@ -86,7 +86,7 @@ export const updateUser = (id: string, data: UpdateUserPayload) =>
 export const deleteUser = (id: string) =>
 	apiClient.delete<null>(`/users/${id}`);
 
-// Không truyền newPassword ⇒ server đặt về mật khẩu mặc định = tên đăng nhập,
+// Không truyền newPassword ⇒ server sinh mật khẩu tạm ngẫu nhiên,
 // trả về trong temporary_password. Cả hai cách, người dùng đều phải đổi ở lần đăng nhập tới.
 export const resetUserPassword = (id: string, newPassword?: string) =>
 	apiClient.post<{ temporary_password: string } | null>(`/users/${id}/reset-password`, {

@@ -42,6 +42,17 @@ const USERS = {
 		is_active: 1,
 		totp_enabled: 1,
 	},
+	// Đã có lượt sai (mật khẩu / mã 2FA) trước đó
+	twofa_failed: {
+		id: 'U4',
+		username: 'twofa_failed',
+		email: 'twofa_failed@bv.vn',
+		password: HASH,
+		is_active: 1,
+		totp_enabled: 1,
+		failed_login_count: 3,
+		locked_until: null,
+	},
 };
 const byId = Object.fromEntries(Object.values(USERS).map((u) => [u.id, u]));
 
@@ -84,6 +95,25 @@ test('đăng nhập bằng email; email dùng chung nhiều tài khoản → l�
 test('tài khoản bị vô hiệu hóa: sai mật khẩu → lỗi chung, đúng mật khẩu → mới báo vô hiệu hóa', async () => {
 	await rejectsWith(authService.login('disabled', 'Sai#matkhau3'), 401, /không đúng/);
 	await rejectsWith(authService.login('disabled', 'Dung#matkhau2026'), 403, /vô hiệu hóa/);
+});
+
+test('TK bật 2FA: đúng mật khẩu KHÔNG xóa bộ đếm sai (chặn dò mã 2FA bằng cách đăng nhập lại)', async () => {
+	const before = log.length;
+	const r = await authService.login('twofa_failed', 'Dung#matkhau2026');
+	assert.equal(r.requires_2fa, true);
+	assert.ok(!r.access_token);
+	assert.ok(
+		!log.slice(before).some((q) => /SET failed_login_count = 0/.test(q.text)),
+		'bộ đếm chỉ được xóa sau khi qua bước mã 2FA',
+	);
+});
+
+test('TK không bật 2FA: đúng mật khẩu thì xóa bộ đếm sai', async () => {
+	USERS.active.failed_login_count = 2;
+	const before = log.length;
+	await authService.login('active', 'Dung#matkhau2026');
+	USERS.active.failed_login_count = 0;
+	assert.ok(log.slice(before).some((q) => /SET failed_login_count = 0/.test(q.text)));
 });
 
 test('/2fa/setup bị từ chối khi 2FA đang bật (không ghi đè secret)', async () => {

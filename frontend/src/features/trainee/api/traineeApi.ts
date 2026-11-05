@@ -71,14 +71,14 @@ export interface GrantTraineeAccountsResult {
 }
 
 // Bắt buộc truyền danh sách học viên — backend không còn "cấp cho tất cả".
-// Tên đăng nhập dạng NVA_0001, mật khẩu mặc định = tên đăng nhập.
+// Tên đăng nhập dạng NVA_0001, mật khẩu tạm ngẫu nhiên (trả về 1 lần).
 export const grantTraineeAccounts = (traineeIds: string[]) =>
 	apiClient.post<GrantTraineeAccountsResult>('/trainees/grant-accounts', {
 		trainee_ids: traineeIds,
 	});
 
 // Tài khoản học viên cấp riêng — quản lý tại hồ sơ học viên, không qua /users.
-// Đặt lại về mật khẩu mặc định (= tên đăng nhập), bắt đổi ở lần đăng nhập tới.
+// Đặt lại mật khẩu tạm ngẫu nhiên mới, bắt đổi ở lần đăng nhập tới.
 export const resetTraineeAccountPassword = (traineeId: string) =>
 	apiClient.post<{ temporary_password: string } | null>(
 		`/trainees/${traineeId}/account/reset-password`,

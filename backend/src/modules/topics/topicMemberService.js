@@ -14,7 +14,7 @@ const notifSvc = require('../notifications/notificationService');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
 const { ROLE, requireRoleId } = require('../access/roleCodes');
-const { defaultPassword } = require('../../utils/passwordPolicy');
+const { generateTempPassword } = require('../../utils/passwordPolicy');
 const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 const logger = require('../../config/logger');
@@ -234,8 +234,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						? String(member.email).trim()
 						: `${String(userId).toLowerCase()}@member.local`;
 
-				// Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu.
-				tempPassword = defaultPassword(username);
+				// Mật khẩu tạm ngẫu nhiên — trả cho người cấp (password_plain), bắt đổi ở lần đăng nhập đầu.
+				tempPassword = generateTempPassword(username);
 				await new sql.Request(tx)
 					.input('uid', sql.VarChar(20), userId)
 					.input('username', sql.VarChar(100), username)
@@ -468,11 +468,17 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 		req.input('department_id', sql.VarChar(20), data.department_id);
 	}
 
-	await req.query(
+	const upd = await req.query(
 		`UPDATE topic_members SET ${sets.join(', ')} WHERE id = @id AND topic_id = @topic_id`,
 	);
+	// Thành viên không thuộc đề tài trên URL (quyền sửa xét theo đề tài đó) ⇒ 404,
+	// không đồng bộ hồ sơ / không trả dữ liệu thành viên của đề tài khác.
+	if (!upd.rowsAffected[0]) return null;
 	await personService.syncPerson('topic_members', memberId, { actorId });
-	const result = await pool.request().input('id', sql.VarChar(20), memberId).query(`
+	const result = await pool
+		.request()
+		.input('id', sql.VarChar(20), memberId)
+		.input('topic_id', sql.VarChar(15), topicId).query(`
       SELECT
         tm.id, tm.topic_id, tm.role, tm.department_id,
         tm.staff_number, tm.user_id,
@@ -482,27 +488,26 @@ const updateMember = async (topicId, memberId, data, actorId) => {
         tm.email,
         tm.phone_number AS so_dien_thoai,
         tm.position     AS chuc_vu
-      FROM topic_members tm WHERE tm.id = @id
+      FROM topic_members tm WHERE tm.id = @id AND tm.topic_id = @topic_id
     `);
 	broadcast('update', { entity: 'topic' });
 	return result.recordset[0] || null;
 };
 
 const deleteMember = async (topicId, memberId, actorId) => {
-	const pool = await getPool();
-	// Phải NULL hóa FK trên users trước khi xóa topic_members
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), memberId)
-		.query(`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id`);
-	await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
-			.input('id', sql.VarChar(20), memberId)
-			.input('topic_id', sql.VarChar(15), topicId)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query(`DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`),
-	);
+	await withActorTransaction(actorId, async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('id', sql.VarChar(20), memberId)
+				.input('topic_id', sql.VarChar(15), topicId)
+				.input('actor_id', sql.VarChar(20), actorId);
+		// Phải NULL hóa FK trên users trước khi xóa topic_members — chỉ khi thành viên
+		// thuộc đúng đề tài trên URL (không gỡ liên kết tài khoản của đề tài khác).
+		await req().query(`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id
+          AND EXISTS (SELECT 1 FROM topic_members WHERE id = @id AND topic_id = @topic_id)`);
+		await req().query(`DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`);
+	});
 	broadcast('update', { entity: 'topic' });
 };
 

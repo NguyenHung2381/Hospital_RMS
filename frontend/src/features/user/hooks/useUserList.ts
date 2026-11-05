@@ -224,7 +224,7 @@ export function useUserList(): UserListState {
 				email: form.email || undefined,
 				department_id: form.department_id || undefined,
 				role_id: form.role_id || undefined,
-
+				password: form.password || undefined,
 			});
 			setShowCreate(false);
 			refreshData();
@@ -261,7 +261,7 @@ export function useUserList(): UserListState {
 		showToast('info', `Đã xóa tài khoản ${deleteUser.full_name}`);
 	}, [deleteUser, refreshData]);
 
-	// Server đặt về mật khẩu mặc định = tên đăng nhập; modal
+	// Server sinh mật khẩu tạm ngẫu nhiên; modal
 	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
 	const handleResetPassword = useCallback(async (): Promise<string> => {
 		if (!resetUser) return '';

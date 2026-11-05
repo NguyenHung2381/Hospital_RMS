@@ -121,7 +121,7 @@ export function useDepartmentAccounts() {
 		showToast('info', `Đã xóa tài khoản ${deleteUser.full_name}`);
 	}, [deleteUser]);
 
-	// Server đặt về mật khẩu mặc định = tên đăng nhập; modal
+	// Server sinh mật khẩu tạm ngẫu nhiên; modal
 	// giữ mở để hiển thị mật khẩu, người dùng phải đổi ở lần đăng nhập tới.
 	const handleResetPassword = useCallback(async (): Promise<string> => {
 		if (!resetUser) return '';

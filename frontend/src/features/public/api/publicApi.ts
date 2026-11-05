@@ -121,7 +121,7 @@ export interface RegisterPayload {
 export type TraineeDocType = 'national_id' | 'degree' | 'other';
 
 export const registerCourse = (data: RegisterPayload, files?: File[]) =>
-	request<{ trainee_id: string | null; enrollment_id: string | null }>('/course-registration', {
+	request<{ enrollment_id: string | null; documents_skipped?: boolean }>('/course-registration', {
 		method: 'POST',
 		body: buildBody(data, files),
 	});
@@ -329,7 +329,7 @@ export const lookupSeminarStaff = (token: string, full_name: string, staff_numbe
 		body: JSON.stringify({ full_name, staff_number }),
 	});
 export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
-	request<{ ticket_code: string | null }>(`/seminars/${encodeURIComponent(token)}/register`, {
+	request<{ ticket_code: string | null; ticket_delivery?: 'email' | 'organizer'; email_hint?: string }>(`/seminars/${encodeURIComponent(token)}/register`, {
 		method: 'POST',
 		body: JSON.stringify(data),
 	});

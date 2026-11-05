@@ -34,6 +34,32 @@ const redact = (value, depth = 0) => {
 	return clean;
 };
 
+// PUT /system-settings/<KEY> gửi giá trị trong trường chung `value` — tên trường
+// không nói lên gì nên redact() không che. Khóa cấu hình là bí mật (SMTP_PASS,
+// RECAPTCHA_SECRET_KEY... — tên khóa khớp isSensitiveKey) thì che luôn `value`:
+// người đọc nhật ký (activity_logs:read) không có quyền xem cấu hình bí mật.
+const SETTING_PATH = /\/system-settings\/([^/?#]+)/i;
+const isSecretSettingPath = (pathname) => {
+	const m = typeof pathname === 'string' ? SETTING_PATH.exec(pathname) : null;
+	if (!m) return false;
+	let key = m[1];
+	try {
+		key = decodeURIComponent(key);
+	} catch {
+		// giữ nguyên khóa hỏng mã hóa
+	}
+	return isSensitiveKey(key);
+};
+
+// Body của 1 request: redact() theo tên trường + che `value` của cấu hình bí mật.
+const redactBody = (body, pathname) => {
+	const clean = redact(body);
+	if (clean && typeof clean === 'object' && !Array.isArray(clean) && 'value' in clean) {
+		if (isSecretSettingPath(pathname)) clean.value = HIDDEN;
+	}
+	return clean;
+};
+
 // Đoạn đường dẫn là mã bí mật: mã vé / token QR hội nghị (32 hex), link đăng
 // ký theo đợt (/topic-rounds/by-token/<token>). Biết mã là xem / làm bài thay
 // được, nên không để lại trong log.
@@ -105,16 +131,26 @@ const redactActivityRecord = (record) => {
 	if (typeof out.referer === 'string') out.referer = redactUrl(out.referer);
 	if (out.params && typeof out.params === 'object') out.params = redactParams(out.params);
 	if (typeof out.body === 'string' && out.body) {
+		// Dùng path GỐC (trước khi che) để nhận ra khóa cấu hình bí mật
+		const secretSetting = isSecretSettingPath(record.path);
 		try {
-			out.body = JSON.stringify(redact(JSON.parse(out.body)));
+			out.body = JSON.stringify(redactBody(JSON.parse(out.body), record.path));
 		} catch {
 			// body bị cắt ngắn (…) nên không parse được — che theo mẫu "khóa":"giá trị"
 			out.body = out.body.replace(/"([^"\\]{1,100})":("(?:[^"\\]|\\.)*"|-?[\d.]+)/g, (all, k) =>
-				isSensitiveKey(k) ? `"${k}":"${HIDDEN}"` : all,
+				isSensitiveKey(k) || (secretSetting && k === 'value') ? `"${k}":"${HIDDEN}"` : all,
 			);
 		}
 	}
 	return out;
 };
 
-module.exports = { HIDDEN, isSensitiveKey, redact, redactUrl, redactParams, redactActivityRecord };
+module.exports = {
+	HIDDEN,
+	isSensitiveKey,
+	redact,
+	redactBody,
+	redactUrl,
+	redactParams,
+	redactActivityRecord,
+};

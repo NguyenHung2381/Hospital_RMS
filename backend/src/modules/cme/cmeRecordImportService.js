@@ -168,7 +168,7 @@ const notifyCreatedStaff = async (staff, actorId) => {
 		`Đã tạo ${staff.length} tài khoản nhân viên mới khi nhập CME`,
 		[actorId],
 		{
-			message: `Mật khẩu ban đầu = tên đăng nhập, bắt đổi khi đăng nhập lần đầu.${
+			message: `Mật khẩu tạm ngẫu nhiên đã hiện 1 lần lúc nhập (không lưu ở đây) — mất thì đặt lại ở màn Người dùng; bắt đổi khi đăng nhập lần đầu.${
 				incomplete ? ` ${incomplete} người cần bổ sung thông tin ở màn Người dùng.` : ''
 			} ${list}`,
 		},
@@ -225,6 +225,7 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 				department_name: st.department_name,
 				missing_name: st.missing_name,
 				missing_department: !st.department_id,
+				temporary_password: u.temporary_password,
 			});
 		} catch (err) {
 			failedStaff.add(st.staff_number);
@@ -344,7 +345,7 @@ const createMissingStaff = async ({ staff_number, full_name, department_id }, ac
 		missing_department: false,
 	};
 	await notifyCreatedStaff([staff], actorId);
-	return staff;
+	return { ...staff, temporary_password: u.temporary_password };
 };
 
 module.exports = { importExcel, templateWorkbook, createMissingStaff };

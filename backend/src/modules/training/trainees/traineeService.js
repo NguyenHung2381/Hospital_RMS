@@ -60,8 +60,11 @@ const getAll = async (
 	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
 
 	if (search) {
+		// CCCD bị che với người thiếu quyền read_sensitive ⇒ cũng không cho tìm theo
+		// CCCD, nếu không thì dò từng chữ số qua kết quả lọc là ra số đầy đủ.
+		const byNationalId = canReadSensitive(actor) ? ` OR ${ilike('t.national_id', '@search')}` : '';
 		where.push(
-			`(${ilike('t.full_name', '@search')} OR ${ilike('t.national_id', '@search')} OR ${ilike('t.phone', '@search')} OR ${likeCi('t.email', '@search')})`,
+			`(${ilike('t.full_name', '@search')}${byNationalId} OR ${ilike('t.phone', '@search')} OR ${likeCi('t.email', '@search')})`,
 		);
 		req.input('search', sql.NVarChar, `%${search}%`);
 	}

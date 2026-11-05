@@ -11,7 +11,7 @@ const {
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, requireRoleId } = require('../../access/roleCodes');
-const { defaultPassword } = require('../../../utils/passwordPolicy');
+const { generateTempPassword } = require('../../../utils/passwordPolicy');
 const { traineeUsernamePrefix, nextTraineeUsername } = require('./traineeUsername');
 const userService = require('../../users/userService');
 const { httpError } = require('../../../utils/httpError');
@@ -26,9 +26,9 @@ const userStatusCache = require('../../../permissions/userStatusCache');
 // vẫn được cấp tài khoản học viên riêng, không dùng lại tài khoản nhân viên.
 // Mỗi học viên xử lý trong 1 transaction ngắn riêng (khóa dải mã 'HV' giữ tới
 // khi commit — gộp nhiều học viên vào 1 transaction lớn sẽ giữ khóa quá lâu).
-// Tên đăng nhập "NVA_0001" (xem traineeUsername.js). Mật khẩu mặc định = tên
-// đăng nhập (cả khi cấp lẫn khi đặt lại), bắt đổi ở lần đăng nhập đầu
-// (users.must_change_password).
+// Tên đăng nhập "NVA_0001" (xem traineeUsername.js). Mật khẩu tạm ngẫu nhiên
+// (cả khi cấp lẫn khi đặt lại — utils/passwordPolicy.generateTempPassword), trả
+// cho người cấp 1 lần, bắt đổi ở lần đăng nhập đầu (users.must_change_password).
 
 const TRAINEE_USER_PREFIX = 'HV';
 
@@ -121,7 +121,7 @@ const grantAccounts = async (traineeIds, actorId) => {
 			}
 
 			const username = await genTraineeUsernameInTx(tx, trainee.full_name, traineeRoleId);
-			const tempPassword = defaultPassword(username);
+			const tempPassword = generateTempPassword(username);
 			const passwordHash = await bcrypt.hash(tempPassword, 12);
 			// Email đã thuộc tài khoản khác (thường là tài khoản nhân viên của chính
 			// học viên) ⇒ vẫn cấp tài khoản riêng, dùng email nội bộ thay thế.
@@ -211,7 +211,7 @@ const accountOf = async (traineeId) => {
 	return row;
 };
 
-// Đặt lại mật khẩu về mặc định (= tên đăng nhập), thu hồi mọi phiên đang mở.
+// Đặt lại mật khẩu tạm ngẫu nhiên mới, thu hồi mọi phiên đang mở.
 // Trả { temporary_password } để người cấp gửi lại cho học viên.
 const resetAccountPassword = async (traineeId, actorId, ip = null) => {
 	const { user_id: userId } = await accountOf(traineeId);

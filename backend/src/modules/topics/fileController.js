@@ -4,6 +4,7 @@ const { success, created } = require('../../utils/response');
 const { assertTopicActionWindow } = require('./deadlineGuard');
 const { isDeadlineBound } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { removeUploadedFile } = require('../../utils/uploadPaths');
 
 // Middleware: chỉ áp dụng với vai trò phạm vi "own" (đơn vị/superuser không bị chặn theo mốc)
 const checkUploadWindow = asyncHandler(async (req, res, next) => {
@@ -30,6 +31,14 @@ const upload = asyncHandler(async (req, res) => {
 
 	if (!req.files || req.files.length === 0) {
 		return res.status(400).json({ success: false, message: 'Chưa có file nào được tải lên' });
+	}
+	if (fileService.isCouncilNote(batch_note)) {
+		// multer đã ghi file xuống đĩa — dọn đi vì không lưu lượt tải này
+		for (const f of req.files) removeUploadedFile(`/uploads/topics/${topic_id}/${f.filename}`);
+		return res.status(400).json({
+			success: false,
+			message: 'Ghi chú này dành riêng cho file của hội đồng — vui lòng đặt ghi chú khác.',
+		});
 	}
 
 	const files = req.files.map((f) => ({

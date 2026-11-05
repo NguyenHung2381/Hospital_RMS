@@ -38,12 +38,27 @@ const lookup = asyncHandler(async (req, res) => {
 // Honeypot 'website': người dùng thật không thấy field này (ẩn bằng CSS) nên
 // luôn để trống; bot điền tự động thường điền vào mọi input tìm thấy. Trả về
 // một phản hồi "thành công" giả thay vì báo lỗi, để không lộ cơ chế chống bot.
+// Đăng ký kèm CCCD là phép thử ngày sinh với hồ sơ học viên đã có (sai ⇒ 409)
+// ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò ngày sinh từ nhiều IP.
+const REGISTER_PER_ID_MAX = 5;
+
 const register = asyncHandler(async (req, res) => {
 	if (req.body.website) {
-		return success(res, { trainee_id: null, enrollment_id: null }, 'Đăng ký thành công', 201);
+		return success(res, { enrollment_id: null }, 'Đăng ký thành công', 201);
 	}
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
+	}
+	const nationalId = String(req.body.national_id ?? '').trim();
+	if (
+		nationalId &&
+		!(await attempts.hit('course-registration', nationalId, REGISTER_PER_ID_MAX, 24 * 60 * 60))
+	) {
+		return error(
+			res,
+			'Số CCCD/CMND này đã đăng ký quá nhiều lần hôm nay. Vui lòng thử lại vào ngày mai.',
+			429,
+		);
 	}
 	const result = await service.register(req.body, req.files, req.formCustom);
 	created(res, result, 'Đăng ký khóa học thành công, vui lòng chờ duyệt.');

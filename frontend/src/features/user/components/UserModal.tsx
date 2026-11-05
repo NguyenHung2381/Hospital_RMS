@@ -9,7 +9,7 @@ import styles from '../pages/UserList.module.css';
 import type { FormErrors, User, UserForm } from '../types/user.type';
 import { getInitials } from '../../../shared/utils/helper';
 import { suggestUsername } from '../utils/userHelpers';
-import { checkPassword } from '../../../shared/utils/password';
+import { checkPassword, generateTempPassword } from '../../../shared/utils/password';
 
 function Avatar({
 	name,
@@ -58,8 +58,9 @@ export function UserModal({
 		department_id: user?.department_id ?? defaultDeptId ?? '',
 		role_id: user?.role_id ?? '',
 		is_active: user?.is_active ?? true,
-		// Tạo mới: server đặt mật khẩu mặc định = tên đăng nhập
-		password: '',
+		// Tạo mới: điền sẵn mật khẩu tạm ngẫu nhiên để quản trị chép lại giao cho
+		// người dùng (bắt đổi ở lần đăng nhập đầu)
+		password: mode === 'create' ? generateTempPassword() : '',
 	});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [loading, setLoading] = useState(false);
@@ -103,7 +104,7 @@ export function UserModal({
 			e.email = 'Email không hợp lệ';
 		if (!form.department_id) e.department_id = 'Vui lòng chọn khoa/phòng';
 		if (!form.role_id) e.role_id = 'Vui lòng chọn vai trò';
-		if (form.password) {
+		if (form.password || mode === 'create') {
 			const pwdError = checkPassword(form.password, form.username);
 			if (pwdError) e.password = pwdError;
 		}
@@ -253,6 +254,23 @@ export function UserModal({
 						style={mode === 'edit' ? { opacity: 0.6 } : {}}
 					/>
 				</FormField>
+				{mode === 'create' && (
+					<FormField
+						htmlFor='password'
+						label='Mật khẩu tạm (ghi lại để giao cho người dùng)'
+						required
+						error={errors.password}
+					>
+						<PasswordInput
+							id='password'
+							value={form.password}
+							onChange={(v) => set('password', v)}
+							generate
+							invalid={!!errors.password}
+							className={styles.formInput}
+						/>
+					</FormField>
+				)}
 				{mode === 'edit' && (
 					<FormField
 						htmlFor='password'

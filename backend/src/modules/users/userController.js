@@ -5,6 +5,7 @@ const { buildUserListWorkbook } = require('./exports/userListWorkbook');
 const { createCrudController } = require('../../shared/crudController');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { httpError } = require('../../utils/httpError');
 const { ROLE, roleIdOf } = require('../access/roleCodes');
 const {
 	isSuperuser,
@@ -22,6 +23,10 @@ const getAll = asyncHandler(async (req, res) => {
 	const actor = req.user;
 	const query = { ...req.query };
 	if (isDeptScoped(actor)) {
+		// Bị giới hạn theo khoa mà tài khoản chưa có khoa ⇒ không thấy ai (không để
+		// department_id = NULL thành "không lọc" = mọi khoa).
+		if (!actor.department_id)
+			return success(res, { data: [], pagination: { page: 1, limit: 0, total: 0 } });
 		query.department_id = actor.department_id;
 	}
 	const result = await userService.getAll(query);
@@ -42,7 +47,11 @@ const getById = asyncHandler(async (req, res) => {
 	}
 	const item = await userService.getById(req.params.id);
 	if (!item) return notFound(res);
-	if (!isSelf && isDeptScoped(actor) && item.department_id !== actor.department_id) {
+	if (
+		!isSelf &&
+		isDeptScoped(actor) &&
+		(!actor.department_id || item.department_id !== actor.department_id)
+	) {
 		return forbidden(res, 'Bạn không có quyền xem tài khoản ngoài khoa của mình');
 	}
 	return success(res, item);
@@ -63,10 +72,18 @@ const createOne = asyncHandler(async (req, res) => {
 	return created(res, item);
 });
 
+// Tài khoản học viên theo vòng đời hồ sơ học viên (xóa / ngừng học ⇒ khóa) — chỉ
+// thao tác qua /trainees/:id/account, nơi có các kiểm tra đó. Ở đây bật lại /
+// đặt lại mật khẩu là vượt qua chúng.
+const TRAINEE_ACCOUNT_MSG =
+	'Tài khoản học viên được quản lý tại hồ sơ học viên (Đào tạo → Học viên → Tài khoản).';
+
 // Nạp tài khoản đích + kiểm tra actor được phép thao tác trên nó.
 const loadManageableTarget = async (actor, id) => {
 	const target = await userService.getById(id);
-	if (target) await assertCanManageUser(actor, target);
+	if (!target) return null;
+	if (target.role_code === ROLE.TRAINEE) throw httpError(403, TRAINEE_ACCOUNT_MSG);
+	await assertCanManageUser(actor, target);
 	return target;
 };
 

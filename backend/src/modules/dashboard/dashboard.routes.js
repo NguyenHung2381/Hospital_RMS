@@ -90,7 +90,23 @@ router.get(
 			cmeReportService.getData({ year: year ?? undefined }),
 		]);
 		success(res, {
-			seminars,
+			// Chỉ trường báo cáo cần — getAll trả s.* (gồm câu hỏi + đáp án bài test,
+			// public_token link đăng ký) mà quyền xem báo cáo không được thấy.
+			seminars: seminars.map((s) => ({
+				id: s.id,
+				title: s.title,
+				event_type: s.event_type,
+				scope: s.scope,
+				start_date: s.start_date,
+				end_date: s.end_date,
+				date_text: s.date_text,
+				location: s.location,
+				grants_cme: s.grants_cme,
+				participant_count: s.participant_count,
+				cme_issued_count: s.cme_issued_count,
+				manual_participant_count: s.manual_participant_count,
+				manual_cme_count: s.manual_cme_count,
+			})),
 			cme_people: cme.people.map((p) => ({
 				staff_number: p.staff_number,
 				full_name: p.full_name,

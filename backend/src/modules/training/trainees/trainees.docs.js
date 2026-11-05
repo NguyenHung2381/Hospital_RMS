@@ -43,7 +43,7 @@
  * @swagger
  * /trainees/grant-accounts:
  *   post:
- *     summary: Cấp tài khoản đăng nhập cho học viên (tên đăng nhập NVA_0001, mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu)
+ *     summary: Cấp tài khoản đăng nhập cho học viên (tên đăng nhập NVA_0001, mật khẩu tạm ngẫu nhiên, bắt đổi ở lần đăng nhập đầu)
  *     tags: [Trainees]
  *     requestBody:
  *       content:

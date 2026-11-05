@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 // Chính sách mật khẩu dùng chung cho MỌI nơi đặt mật khẩu: tự đổi mật khẩu,
 // quản trị tạo tài khoản / đặt lại mật khẩu. Trước đây mỗi nơi một kiểu (5, 6
 // hoặc 8 ký tự) nên quản trị đặt được mật khẩu yếu hơn người dùng tự đặt.
@@ -76,9 +78,22 @@ const passwordRule =
 		return true;
 	};
 
-// Mật khẩu mặc định khi TẠO tài khoản mới hoặc quản trị ĐẶT LẠI mật khẩu = đúng
-// tên đăng nhập. Không qua checkPassword (thường < 10 ký tự, chứa username) nên
-// mọi luồng dùng nó phải đặt must_change_password = true để bắt đổi ở lần đăng nhập đầu.
-const defaultPassword = (username) => String(username);
+// Mật khẩu tạm khi TẠO tài khoản / cấp tài khoản / quản trị ĐẶT LẠI mật khẩu:
+// 12 ký tự ngẫu nhiên (~70 bit) từ crypto.randomInt, luôn đạt checkPassword. Trước
+// đây mật khẩu tạm = tên đăng nhập: tên đăng nhập đoán được (chữ cái đầu + mã
+// NV) nên ai đăng nhập trước chủ tài khoản là chiếm luôn. Mọi luồng dùng hàm này
+// vẫn đặt must_change_password = true + temp_password_issued_at và trả mật khẩu
+// cho người cấp (hiển thị 1 lần). Bỏ ký tự dễ nhầm (0/O, 1/l/I) để đọc lại được.
+const TEMP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+const TEMP_LENGTH = 12;
 
-module.exports = { MIN_LENGTH, checkPassword, passwordRule, defaultPassword };
+const generateTempPassword = (username = undefined) => {
+	for (;;) {
+		let pw = '';
+		for (let i = 0; i < TEMP_LENGTH; i++)
+			pw += TEMP_ALPHABET[crypto.randomInt(TEMP_ALPHABET.length)];
+		if (!checkPassword(pw, { username })) return pw;
+	}
+};
+
+module.exports = { MIN_LENGTH, checkPassword, passwordRule, generateTempPassword };

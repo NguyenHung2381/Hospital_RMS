@@ -52,11 +52,32 @@ const getAttemptForGrading = async (attemptId) => {
 // tự tính tổng điểm + đóng lượt (status='graded') + đổ vào bảng điểm (pushExamScore).
 const gradeEssayAnswer = async (attemptId, questionId, score, actorId) => {
 	const pool = await getPool();
+	// Chỉ câu TỰ LUẬN của lượt đã nộp, điểm trong [0, điểm tối đa của câu] —
+	// không ghi đè điểm câu trắc nghiệm (máy chấm) hay cho điểm vượt thang.
+	const target = (
+		await pool
+			.request()
+			.input('attempt_id', sql.VarChar(20), attemptId)
+			.input('question_id', sql.VarChar(20), questionId).query(`
+        SELECT q.question_type, q.points, a.status
+        FROM exam_answers ans
+        JOIN question_bank q ON q.id = ans.question_id
+        JOIN exam_attempts a ON a.id = ans.attempt_id
+        WHERE ans.attempt_id = @attempt_id AND ans.question_id = @question_id`)
+	).recordset[0];
+	if (!target) throw httpError(404, 'Không tìm thấy câu trả lời trong lượt làm bài này.');
+	if (target.question_type !== 'essay') throw httpError(400, 'Chỉ chấm tay câu tự luận.');
+	if (!['submitted', 'graded'].includes(target.status))
+		throw httpError(409, 'Lượt làm bài chưa nộp — chưa chấm được.');
+	const max = Number(target.points ?? 0);
+	const value = Number(score);
+	if (!Number.isFinite(value) || value < 0 || value > max)
+		throw httpError(400, `Điểm phải trong khoảng 0 – ${max}.`);
 	await pool
 		.request()
 		.input('attempt_id', sql.VarChar(20), attemptId)
 		.input('question_id', sql.VarChar(20), questionId)
-		.input('score', sql.Decimal(4, 1), score)
+		.input('score', sql.Decimal(4, 1), value)
 		.query(
 			'UPDATE exam_answers SET score_awarded = @score WHERE attempt_id = @attempt_id AND question_id = @question_id',
 		);

@@ -223,6 +223,8 @@ const remove = async (id, actorId) => {
 		queryBatch(
 			tx.request().input('id', sql.VarChar(15), id).input('actor_id', sql.VarChar(20), actorId),
 			[
+				// Ghế thay thế theo đề tài của hội đồng bị xóa hết hiệu lực cùng hội đồng
+				`DELETE FROM council_seat_substitutes WHERE topic_id IN (SELECT id FROM topics WHERE council_id = @id)`,
 				`UPDATE topics SET council_id = NULL WHERE council_id = @id`,
 				`DELETE FROM council_members WHERE council_id = @id`,
 				`DELETE FROM councils WHERE id = @id`,

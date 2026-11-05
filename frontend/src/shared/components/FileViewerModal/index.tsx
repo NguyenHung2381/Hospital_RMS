@@ -47,6 +47,9 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 							inWrapper: true,
 							breakPages: true,
 							useBase64URL: true,
+							// altChunk = HTML nhúng nguyên văn trong .docx, docx-preview đổ vào iframe
+							// srcdoc cùng origin ứng dụng ⇒ file tải lên chạy được script nếu thiếu CSP.
+							renderAltChunks: false,
 						});
 					}
 				} else {

@@ -17,8 +17,9 @@ const { stripUploadSignatures } = require('../../utils/signedUpload');
 const { toStoredUploadPath } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
 
-const EVAL_NOTE = 'Đánh giá tiến độ của hội đồng'; // ponytail: phân biệt file đánh giá bằng note batch — thêm cột file_type nếu sau này cần chặt chẽ hơn
-const MINUTES_NOTE = 'Biên bản họp hội đồng';
+// Phân biệt file đánh giá / biên bản bằng note batch (route tải file chung của
+// đề tài chặn 2 note này — fileService.isCouncilNote).
+const { EVAL: EVAL_NOTE, MINUTES: MINUTES_NOTE } = fileService.COUNCIL_NOTES;
 
 const RATINGS = ['on_track', 'behind', 'at_risk'];
 const CONCLUSIONS = ['pass', 'fail', 'revise'];
@@ -63,6 +64,7 @@ const SEAT_CTE = `
   UNION
   SELECT s.topic_id, s.role
   FROM council_seat_substitutes s
+  INNER JOIN topics ts ON ts.id = s.topic_id AND ts.council_id IS NOT NULL
   WHERE s.user_id = @user_id
 `;
 

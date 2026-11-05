@@ -52,7 +52,7 @@ export default function UserList() {
 				fileName='tai-khoan'
 				itemLabel='tài khoản'
 				columns={USER_IMPORT_COLS}
-				importHint='Không nhập mật khẩu qua Excel — tài khoản mới dùng mật khẩu mặc định của hệ thống và phải đổi khi đăng nhập.'
+				importHint='Không nhập mật khẩu qua Excel — tài khoản mới nhận mật khẩu tạm ngẫu nhiên không hiển thị ở đây: dùng "Đặt lại mật khẩu" để lấy mật khẩu giao cho người dùng.'
 				importRow={(r) =>
 					createUser({
 						username: r.username,

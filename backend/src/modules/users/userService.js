@@ -29,7 +29,7 @@ const {
 	isDeptAccountJoinedSql,
 } = require('../../utils/deptAccount');
 const { ROLE, requireRoleId, roleIdOf, inputRoleId } = require('../access/roleCodes');
-const { defaultPassword } = require('../../utils/passwordPolicy');
+const { generateTempPassword } = require('../../utils/passwordPolicy');
 const { maskEmail } = require('../../utils/maskEmail');
 const { httpError } = require('../../utils/httpError');
 
@@ -243,8 +243,10 @@ const getById = async (id) => {
 const create = async (data, actorId) => {
 	if (data.role_id) await assertNotTraineeRole(data.role_id);
 	const pool = await getPool();
-	// Không truyền mật khẩu ⇒ mặc định = tên đăng nhập (bắt đổi ở lần đăng nhập đầu)
-	const hashed = await bcrypt.hash(data.password || defaultPassword(data.username), 12);
+	// Không truyền mật khẩu ⇒ sinh mật khẩu tạm ngẫu nhiên, trả về trong
+	// temporary_password cho người tạo (bắt đổi ở lần đăng nhập đầu)
+	const generated = data.password ? null : generateTempPassword(data.username);
+	const hashed = await bcrypt.hash(data.password || generated, 12);
 	// require muộn: topicMemberService nạp nhiều service khác
 	const { genUserIdInTx } = require('../topics/topicMemberService');
 	const roleId = data.role_id || (await requireRoleId(ROLE.MEMBER));
@@ -291,7 +293,7 @@ const create = async (data, actorId) => {
 	const user = await getById(newId);
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
-	return user;
+	return generated ? { ...user, temporary_password: generated } : user;
 };
 
 const update = async (id, data, actorId) => {
@@ -435,8 +437,8 @@ const remove = async (id, actorId) => {
 // Reset mật khẩu bởi người quản lý: thu hồi toàn bộ phiên của tài khoản đích
 // (refresh token + token_version) — người đang giữ phiên cũ (có thể chính là
 // kẻ đã chiếm tài khoản) bị đăng xuất ngay, phải đăng nhập bằng mật khẩu mới.
-// Không truyền newPassword ⇒ về mật khẩu mặc định = tên đăng nhập. Trả về
-// { temporary_password } (chỉ khi tự đặt) để hiển thị cho quản trị.
+// Không truyền newPassword ⇒ sinh mật khẩu tạm ngẫu nhiên. Trả về
+// { temporary_password } (chỉ khi tự sinh) để hiển thị cho quản trị.
 // Mật khẩu này đã qua tay người khác nên luôn bắt đổi ở lần đăng nhập tới.
 const resetPassword = async (id, newPassword, actorId, ip = null) => {
 	const pool = await getPool();
@@ -450,7 +452,7 @@ const resetPassword = async (id, newPassword, actorId, ip = null) => {
 		if (!username) {
 			throw httpError(404, 'Không tìm thấy người dùng');
 		}
-		generated = defaultPassword(username);
+		generated = generateTempPassword(username);
 	}
 	const hashed = await bcrypt.hash(newPassword || generated, 12);
 	await withActorTransaction(actorId, (tx) =>
@@ -532,8 +534,8 @@ const searchForMember = async ({ q, department_id, limit = 10 }) => {
 // Cùng quy ước với cấp tài khoản thành viên đề tài (topicMemberService): mã
 // 'NV' + mã khoa + NNNN, username = chữ cái đầu họ tên + "_" + MNV, vai trò Thành viên.
 // Bắt buộc có họ tên (tên đăng nhập sinh từ họ tên).
-// Mật khẩu mặc định = tên đăng nhập, bắt đổi ở lần đăng nhập đầu.
-// Caller tự kiểm tra quyền users:create. Trả { id, username }.
+// Mật khẩu tạm ngẫu nhiên, bắt đổi ở lần đăng nhập đầu.
+// Caller tự kiểm tra quyền users:create. Trả { id, username, temporary_password }.
 const createStaffAccount = async (
 	{ full_name, staff_number, department_id, department_code },
 	actorId,
@@ -549,7 +551,7 @@ const createStaffAccount = async (
 	const pool = await getPool();
 	const roleId = await requireRoleId(ROLE.MEMBER);
 
-	const { userId, username } = await withTransaction(async (tx) => {
+	const { userId, username, tempPassword } = await withTransaction(async (tx) => {
 		await withActor(tx, actorId);
 		const userId = await genUserIdInTx(tx, department_code || '');
 		if (!userId) throw new Error('Không sinh được mã nhân viên mới');
@@ -558,7 +560,8 @@ const createStaffAccount = async (
 			buildMemberUsername(full_name, staff_number),
 			userId,
 		);
-		const passwordHash = await bcrypt.hash(defaultPassword(username), 12);
+		const tempPassword = generateTempPassword(username);
+		const passwordHash = await bcrypt.hash(tempPassword, 12);
 		await new sql.Request(tx)
 			.input('uid', sql.VarChar(20), userId)
 			.input('username', sql.VarChar(100), username)
@@ -573,13 +576,13 @@ const createStaffAccount = async (
         VALUES (@uid, @username, @password, @full_name, @staff_number, @department_id, @role_id, @actor_id,
                 'true', ${utcNowSql})
       `);
-		return { userId, username };
+		return { userId, username, tempPassword };
 	}, pool);
 
 	await personService.syncPerson('users', userId, { actorId });
 	invalidateStatsCache();
 	broadcast('update', { entity: 'user' });
-	return { id: userId, username };
+	return { id: userId, username, temporary_password: tempPassword };
 };
 
 module.exports = {

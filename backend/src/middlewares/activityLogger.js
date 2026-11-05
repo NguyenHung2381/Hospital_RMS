@@ -1,7 +1,7 @@
 const auditLogger = require('../config/auditLogger');
 const { normalizeIp } = require('../utils/activityDescribe');
 // Che mật khẩu / token / mã OTP / CCCD / ngày sinh / SĐT... ở body, query, đường dẫn
-const { redact, redactUrl, redactParams } = require('../utils/logRedact');
+const { redactBody, redactUrl, redactParams } = require('../utils/logRedact');
 
 const MAX_BODY_LEN = 4000;
 const MAX_UA_LEN = 300;
@@ -17,9 +17,9 @@ const ONLY_METHODS = new Set(
 		.filter(Boolean),
 );
 
-const sanitizeBody = (body) => {
+const sanitizeBody = (body, pathname) => {
 	if (!body || typeof body !== 'object' || !Object.keys(body).length) return null;
-	const json = JSON.stringify(redact(body));
+	const json = JSON.stringify(redactBody(body, pathname));
 	return json.length > MAX_BODY_LEN ? `${json.slice(0, MAX_BODY_LEN)}…` : json;
 };
 
@@ -108,7 +108,7 @@ const activityLogger = (req, res, next) => {
 						: undefined,
 					user_agent: (req.headers['user-agent'] || '').slice(0, MAX_UA_LEN) || undefined,
 					referer: redactUrl(req.headers['referer']) || undefined,
-					body: sanitizeBody(req.body),
+					body: sanitizeBody(req.body, req.originalUrl),
 					files: uploadedFiles(req),
 					error: errorMessage,
 					result_id: resultId,
