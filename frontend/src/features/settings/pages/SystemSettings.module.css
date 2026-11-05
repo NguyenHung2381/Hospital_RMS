@@ -11,7 +11,9 @@
 /* ── Khung 2 cột: menu trái + nội dung ── */
 .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
 .side { display: flex; flex-direction: column; gap: var(--space-3); position: sticky; top: var(--space-4); }
-.side > div:first-child { width: 100%; }
+/* flex: none — SearchInput tự đặt `flex: 1 1 200px` (để giãn ngang trên thanh
+   công cụ); trong cột dọc này 200px sẽ thành chiều cao → khoảng trống lớn. */
+.side > div:first-child { width: 100%; flex: none; }
 .side input { width: 100%; }
 .tabs { display: flex; flex-direction: column; gap: 4px; }
 .tab { display: flex; align-items: center; gap: var(--space-3); text-align: left; padding: 10px 12px; border: 1px solid transparent; border-radius: var(--radius-lg); background: transparent; cursor: pointer; font: inherit; color: var(--color-gray-700); }
