@@ -15,7 +15,15 @@
  *     vòng nào trượt ⇒ hoàn thành.
  * Mọi thứ tự điền vẫn sửa tay được ở hồ sơ; cảnh báo vòng vẫn hiện như cũ.
  */
-const { getPool, sql, queryAll, nowSql, tryCastInt, queryBatch } = require('../../../config/db');
+const {
+	getPool,
+	sql,
+	queryAll,
+	nowSql,
+	tryCastInt,
+	queryBatch,
+	withActorTransaction,
+} = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { norm } = require('../../../utils/vietnameseText');
@@ -241,9 +249,35 @@ const arrangeOne = async (
 			'Có vòng chưa có thời lượng — nhập thời lượng vòng ở màn Chương trình đào tạo.',
 		);
 
+	// Lĩnh vực / hình thức hành nghề: mặc định của chương trình (danh mục) trước,
+	// ô còn trống thì lấy cách ghi hay gặp nhất của cùng chương trình trong sổ
+	await fillPracticeDefaults(enrollmentId);
+	const usual = (
+		await pool
+			.request()
+			.input('program_id', sql.VarChar(20), e.program_id)
+			.input('id', sql.VarChar(20), enrollmentId).query(`
+        SELECT professional_field, practice_form FROM course_enrollments
+        WHERE program_id = @program_id AND id <> @id AND professional_field IS NOT NULL AND practice_form IS NOT NULL
+        GROUP BY professional_field, practice_form ORDER BY COUNT(*) DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
+	).recordset[0];
+
+	// Ghi lịch + mã thực hành + hồ sơ trong 1 transaction: câu nào lỗi thì không để
+	// lại hồ sơ ghi dở (vd. đã có mã thực hành mà học viên chưa ghi legacy_code).
+	await withActorTransaction(actorId, (tx) =>
+		writeSchedule(tx, { e, kept, keptEnd, plan, start, busy, mentors, usual, actorId }),
+	);
+	return { rotations: plan.length };
+};
+
+const writeSchedule = async (
+	tx,
+	{ e, kept, keptEnd, plan, start, busy, mentors, usual, actorId },
+) => {
+	const enrollmentId = e.id;
 	// Vòng đã học đứng trước theo ngày, vòng mới xếp nối sau
 	for (const [i, k] of kept.entries())
-		await pool
+		await tx
 			.request()
 			.input('id', sql.VarChar(20), k.id)
 			.input('seq', sql.Int, (i + 1) * 10)
@@ -253,8 +287,8 @@ const arrangeOne = async (
 		const mentorId = p.department_id
 			? pickMentor(mentors.get(p.department_id) ?? [], busy, p.start_date, p.end_date)
 			: null;
-		const snap = mentorId ? await rotationService.mentorSnapshot(pool, mentorId) : {};
-		const req = pool
+		const snap = mentorId ? await rotationService.mentorSnapshot(tx, mentorId) : {};
+		const req = tx
 			.request()
 			.input('id', sql.VarChar(20), p.id)
 			.input('seq', sql.Int, (i + 1) * 10)
@@ -278,33 +312,21 @@ const arrangeOne = async (
       WHERE id = @id`);
 	}
 
-	const placed = await pool
+	const placed = await tx
 		.request()
 		.input('id', sql.VarChar(20), enrollmentId)
 		.input('no', sql.Bit, false).query(`
     SELECT r.department_name, r.round_title, COALESCE(pl.allow_split, @no) AS allow_split
     FROM enrollment_rotations r LEFT JOIN program_lessons pl ON pl.id = r.lesson_id
     WHERE r.enrollment_id = @id ORDER BY r.seq`);
-	// Lĩnh vực / hình thức hành nghề: mặc định của chương trình (danh mục) trước,
-	// ô còn trống thì lấy cách ghi hay gặp nhất của cùng chương trình trong sổ
-	await fillPracticeDefaults(enrollmentId);
-	const usual = (
-		await pool
-			.request()
-			.input('program_id', sql.VarChar(20), e.program_id)
-			.input('id', sql.VarChar(20), enrollmentId).query(`
-        SELECT professional_field, practice_form FROM course_enrollments
-        WHERE program_id = @program_id AND id <> @id AND professional_field IS NOT NULL AND practice_form IS NOT NULL
-        GROUP BY professional_field, practice_form ORDER BY COUNT(*) DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
-	).recordset[0];
 	const { code, number } = e.practice_code
 		? { code: e.practice_code, number: null }
-		: await practiceCodeFor(pool, e);
+		: await practiceCodeFor(tx, e);
 	const first = kept.find((k) => k.start_date)?.start_date ?? plan[0]?.start_date ?? start;
 	const last = plan.at(-1)?.end_date ?? keptEnd ?? null;
 	// ponytail: mã lấy theo số lớn nhất lúc chạy — 2 người bấm cùng lúc có thể trùng (UQ_enroll_practice_code chặn, bấm lại là xong).
 	await queryBatch(
-		pool
+		tx
 			.request()
 			.input('id', sql.VarChar(20), enrollmentId)
 			.input('trainee_id', sql.VarChar(20), e.trainee_id)
@@ -329,7 +351,6 @@ const arrangeOne = async (
 			`UPDATE trainees SET legacy_code = @number WHERE id = @trainee_id AND legacy_code IS NULL AND @number IS NOT NULL`,
 		],
 	);
-	return { rotations: plan.length };
 };
 
 const arrange = async (enrollmentId, opts, actorId) => {
