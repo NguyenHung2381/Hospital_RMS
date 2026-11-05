@@ -33,14 +33,19 @@ const KNOWN_OBJECTS = new Set(
  * @param {import('mssql').ConnectionPool} pool kết nối tới DB nguồn
  */
 const sourceVersionProblem = async (pool) => {
-	const r = await pool
+	// Hai câu riêng: SQL Server biên dịch cả batch, bảng thiếu thì CASE ... (SELECT FROM bảng đó) vẫn lỗi 208
+	const exists = await pool
 		.request()
-		.input('f', LAST_TSQL_MIGRATION)
-		.query(
-			`SELECT CASE WHEN OBJECT_ID(N'dbo.schema_migrations', N'U') IS NULL THEN -1
-			  ELSE (SELECT COUNT(*) FROM dbo.schema_migrations WHERE filename = @f) END AS n`,
-		);
-	const n = r.recordset[0].n;
+		.query(`SELECT OBJECT_ID(N'dbo.schema_migrations', N'U') AS id`);
+	const n =
+		exists.recordset[0].id == null
+			? -1
+			: (
+					await pool
+						.request()
+						.input('f', LAST_TSQL_MIGRATION)
+						.query(`SELECT COUNT(*) AS n FROM dbo.schema_migrations WHERE filename = @f`)
+				).recordset[0].n;
 	if (n > 0) return null;
 	return (
 		(n < 0

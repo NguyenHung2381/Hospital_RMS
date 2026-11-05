@@ -101,6 +101,7 @@ Cài sẵn PostgreSQL 18 và Docker Desktop, rồi ở thư mục gốc:
 npm run setup:dev              # backend + frontend trong Docker
 npm run setup:dev -- --native  # không Docker (sau đó chạy npm run dev)
 npm run setup:dev -- --db      # nhập lại tài khoản PostgreSQL
+npm run setup:dev -- --bak="D:\backup\RMS.bak"   # chuyển dữ liệu từ backup SQL Server cũ
 ```
 
 Script [scripts/setup-dev.js](scripts/setup-dev.js) làm lần lượt:
@@ -108,13 +109,16 @@ Script [scripts/setup-dev.js](scripts/setup-dev.js) làm lần lượt:
 1. Tạo `backend/.env`, hỏi **tài khoản PostgreSQL** (máy chủ, cổng, database, role, mật khẩu — Enter để giữ giá trị gợi ý), tự sinh JWT secret / `SWAGGER_PASS`. PostgreSQL ở máy khác thì script ghi `DEV_DB_SERVER` vào `.env` cạnh `docker-compose.yml` để container kết nối tới đó.
 2. Build image (hoặc `npm install` với `--native`).
 3. Kiểm tra kết nối. Chưa có DB / role thì tạo bằng `psql` theo `infra/postgresql/01_tao_db_va_role.sql` (hỏi mật khẩu `postgres`); sai mật khẩu / không tới được máy chủ thì cho nhập lại.
-4. `migrate init`.
+   - **DB còn trống** thì hỏi đường dẫn file backup SQL Server cũ (`.bak`; Enter = dựng DB mới trống). Có file thì script dựng SQL Server tạm trong Docker (lần đầu tải image ~1,5 GB), chạy `pg:transfer` restore → precheck → load → verify, xong xoá container cùng bản sao file. Backup phải lấy từ bản code cuối còn SQL Server (đã chạy hết migration T-SQL); precheck báo lỗi thì dừng, không ghi gì vào PostgreSQL. Cần Docker (không dùng được với `--native`) và DB đích phải trống.
+4. `migrate init` (sau khi chuyển từ `.bak`: chạy nốt migration PG).
 5. `init:system`: các vai trò hệ thống và **2 tài khoản quản trị**, in mật khẩu tạm 1 lần:
 
    | Tài khoản | Vai trò | Quyền |
    |---|---|---|
    | `superadmin` | Super Admin (`superadmin`) | Toàn quyền hệ thống |
    | `admin` | Admin (`admin`) | NCKH, hội thảo / CME, đào tạo, quản lý người dùng. Không có: phân quyền, cấu hình hệ thống, nhật ký, quy trình duyệt, cấu hình form, khảo sát |
+
+   Ngay sau khi chuyển từ `.bak`, nếu tài khoản toàn quyền đang hoạt động **duy nhất** là `admin` (của hệ thống cũ) thì script bỏ tài khoản đó rồi tạo 2 tài khoản trên: xoá hẳn nếu không còn dữ liệu liên kết, còn liên kết (đề tài, hội đồng, file…) thì vô hiệu hoá, đổi tên thành `admin_cu` và đăng xuất mọi phiên, giữ lịch sử. DB có sẵn (không chuyển từ `.bak`) không bị đụng tới.
 
 6. `seed:catalogs`: danh mục NCKH (loại / cấp đề tài, loại đợt), đào tạo / CME (loại hình, đối tượng, hồ sơ học viên, tín chỉ CME), nhân sự (chức vụ, chức danh, học hàm / học vị) — từ `backend/database/seed/catalogs.json`.
 7. `docker compose up -d` và chờ app lên.

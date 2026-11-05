@@ -7,6 +7,17 @@
 # chạy với `-p <tên cũ>` hoặc COMPOSE_PROJECT_NAME=<tên cũ> để giữ volume.
 name: hospital_rms
 
+# Log stdout/stderr của container: driver `local` (nén, ghi nhanh hơn json-file)
+# và GIỚI HẠN dung lượng — daemon mặc định json-file không giới hạn, chạy lâu
+# là log clamav/nginx/backend phình tới đầy đĩa server. `docker logs` vẫn đọc
+# bình thường. Log hoạt động của app (audit-*.log, trang /activity-logs) ghi
+# riêng vào volume server_logs, không bị ảnh hưởng.
+x-logging: &default-logging
+  driver: local
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   backend:
     # CI/CD đặt BACKEND_IMAGE = ghcr.io/...:<commit SHA> (scripts/deploy.sh) và
@@ -112,6 +123,7 @@ services:
         condition: service_started
         required: false
     restart: unless-stopped
+    logging: *default-logging
 
   frontend:
     image: ${FRONTEND_IMAGE:-hospital_rms-frontend}
@@ -139,6 +151,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
 
   # Xem docker-compose.yml (dev) để biết lý do tắt persistence + allkeys-lru.
   # Bắt buộc mật khẩu: container khác trong mạng Docker (vd frontend nếu bị
@@ -172,6 +185,7 @@ services:
       start_interval: 1s
     mem_limit: 160m
     restart: unless-stopped
+    logging: *default-logging
 
   # Quét virus file upload — chạy MẶC ĐỊNH cùng stack (~1,5GB RAM). Image
   # clamav/clamav:stable đã kèm sẵn CSDL virus → không cần Internet để khởi
@@ -183,10 +197,16 @@ services:
   clamav:
     image: clamav/clamav:stable
     mem_limit: 2g
+    # clamd quét song song tối đa 10 luồng (MaxThreads) và nạp lại CSDL virus
+    # (~1 phút CPU) mỗi lần freshclam cập nhật — không chặn thì có lúc chiếm
+    # hết core của PostgreSQL (cùng máy) + 6 worker backend. 2 core vẫn quét
+    # 1 file upload bình thường không chậm đi, chỉ hàng đợi khi nhiều file cùng lúc.
+    cpus: "2"
     volumes:
       # CSDL virus — giữ qua lần tạo lại container, không phải tải lại từ đầu
       - clamav_db:/var/lib/clamav
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   clamav_db:

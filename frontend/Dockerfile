@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
-FROM node:24-alpine AS dev
+# Stage cài deps dùng chung cho dev và build (cả 2 cần đủ devDependencies):
+# trước đây mỗi stage tự `npm ci` → build cả 2 target là cài 2 lần và giữ 2
+# layer node_modules (~vài trăm MB) trong build cache.
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 # Cache mount giữ ~/.npm giữa các lần build → build lỗi/retry không phải tải lại
@@ -9,15 +12,13 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000 \
     && cat package.json package-lock.json | md5sum | cut -d' ' -f1 > node_modules/.deps-hash
+
+FROM deps AS dev
 COPY . .
 EXPOSE 5173
 CMD ["node", "node_modules/vite/bin/vite.js"]
 
-FROM node:24-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000
+FROM deps AS build
 # Bỏ file chỉ dùng ở stage prod (cấu hình nginx) — sửa chúng không làm mất cache
 # của bước build (tsc + vite + obfuscator, chậm nhất trong cả quá trình).
 COPY --exclude=nginx.conf --exclude=docker . .

@@ -42,7 +42,8 @@
 #   ADMIN_USERNAME  tên đăng nhập tài khoản Super Admin — toàn quyền (mặc định superadmin)
 #   LIMITED_ADMIN_USERNAME
 #                   tài khoản Admin — chỉ NCKH, đào tạo / CME, người dùng (mặc định admin).
-#                   Chỉ tạo khi DB_MODE=new. Mật khẩu tạm của cả 2 in ra 1 lần ở bước
+#                   Tạo khi DB_MODE=new, hoặc ngay sau khi chuyển từ .bak (thay tài khoản
+#                   "admin" toàn quyền của hệ thống cũ). Mật khẩu tạm của cả 2 in ra 1 lần ở bước
 #                   database, bắt đổi khi đăng nhập lần đầu
 #   REPO_URL        mặc định git@github.com:NguyenHung2381/Hospital_RMS.git
 #   APP_DIR         mặc định /data/code/Hospital_RMS
@@ -718,7 +719,7 @@ run_migrate() { run_backend_script scripts/migrate.js "$@"; }
 step_database() {
 	log "Dựng database ($DB_MODE)"
 	cd "$APP_DIR"
-	local tables
+	local tables transferred=0
 	tables="$(psql -h 127.0.0.1 -U rms_migrate -d rms_hospital -tAc \
 		"SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")"
 	if [ "$tables" -gt 0 ]; then
@@ -737,6 +738,7 @@ step_database() {
 		PG_TARGET_PASSWORD="$(migrate_password)" \
 			bash "$APP_DIR/backend/scripts/pg-transfer/transfer-from-bak.sh" "$BAK_FILE"
 		ok "Chuyển dữ liệu xong"
+		transferred=1
 	else
 		run_migrate init
 		ok "Tạo schema (baseline + migration)"
@@ -744,10 +746,16 @@ step_database() {
 	run_migrate up
 	run_migrate status
 
-	# Vai trò hệ thống + tài khoản Super Admin (+ Admin khi DB mới). Chạy lại an toàn: đã
-	# có thì bỏ qua. DB chuyển từ .bak đã có quản trị → không sinh thêm tài khoản Admin.
+	# Vai trò hệ thống + tài khoản Super Admin + Admin. Chạy lại an toàn: đã có thì bỏ qua.
+	#  - DB mới: tạo cả 2 tài khoản, nạp danh mục.
+	#  - Vừa chuyển từ .bak (lần chạy này): tài khoản toàn quyền duy nhất là "admin" của hệ
+	#    thống cũ thì bỏ nó (xoá / vô hiệu hoá + đổi tên admin_cu), tạo superadmin + admin mới.
+	#  - DB chuyển từ trước (chạy lại): chỉ bảo đảm có Super Admin, không đụng tài khoản cũ.
 	log "Vai trò hệ thống và tài khoản quản trị"
-	if [ "$DB_MODE" = new ]; then
+	if [ "$transferred" = 1 ]; then
+		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" \
+			--admin-username="$LIMITED_ADMIN_USERNAME" --replace-legacy-admin
+	elif [ "$DB_MODE" = new ]; then
 		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" \
 			--admin-username="$LIMITED_ADMIN_USERNAME"
 		# Danh mục NCKH, đào tạo / CME, nhân sự — chỉ nạp bảng còn trống
@@ -891,7 +899,7 @@ summary() {
 	log "XONG"
 	info "Web          : $PUBLIC_URL"
 	local admins="$ADMIN_USERNAME (Super Admin)"
-	[ "$DB_MODE" = new ] && admins+=", $LIMITED_ADMIN_USERNAME (Admin)"
+	admins+=", $LIMITED_ADMIN_USERNAME (Admin, nếu đã tạo)"
 	info "Quản trị     : $admins"
 	info "               mật khẩu tạm in ở bước 'Vai trò hệ thống' phía trên (lần tạo đầu)."
 	info "               Quên/hết hạn: cd $APP_DIR && DB_PASSWORD=\$(awk -F: '\$4==\"rms_migrate\"{print \$5}' ~/.pgpass) \\"

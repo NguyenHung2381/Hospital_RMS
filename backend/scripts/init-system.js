@@ -20,6 +20,12 @@
 //   npm run init:system -- --reset-admin --username=admin
 //       tài khoản superadmin / admin mất mật khẩu / mật khẩu tạm hết hạn / bị khoá: cấp
 //       mật khẩu tạm mới, mở khoá, đăng xuất mọi phiên. KHÔNG tắt 2FA.
+//   npm run init:system -- --replace-legacy-admin
+//       DÙNG NGAY SAU KHI CHUYỂN DỮ LIỆU TỪ .bak (setup-dev / setup-server tự thêm): nếu
+//       tài khoản toàn quyền đang hoạt động DUY NHẤT là "admin" (tài khoản quản trị của
+//       hệ thống cũ) thì bỏ nó rồi tạo superadmin + admin mới. Xoá hẳn nếu không còn
+//       dữ liệu gắn với nó; còn (đề tài, hội đồng, tệp…) thì vô hiệu hoá, đổi tên đăng
+//       nhập thành admin_cu (giữ lịch sử, nhường tên "admin"), đăng xuất mọi phiên.
 //
 // Trên server (image production không có npm), chạy trong image backend bằng role
 // rms_migrate — scripts/setup-server.sh tự làm việc này khi DB_MODE=new:
@@ -59,6 +65,8 @@ const ACCOUNTS = [
 if (process.argv.includes('--no-admin-account')) ACCOUNTS.pop();
 const username = ACCOUNTS[0].username; // --reset-admin
 const resetAdmin = process.argv.includes('--reset-admin');
+const replaceLegacyAdmin = process.argv.includes('--replace-legacy-admin');
+const LEGACY_ADMIN = 'admin';
 
 const printCredentials = (title, password, login = username) => {
 	const ttl = process.env.TEMP_PASSWORD_TTL_DAYS || '7';
@@ -186,6 +194,82 @@ const ensureAccount = async (pool, account, roleId) => {
 	);
 };
 
+// Tên đăng nhập còn trống: admin_cu, admin_cu2, admin_cu3…
+const freeUsername = async (pool, base) => {
+	for (let i = 1; ; i++) {
+		const name = i === 1 ? base : `${base}${i}`;
+		const hit = (
+			await pool
+				.request()
+				.input('username', sql.VarChar(100), name)
+				.query('SELECT 1 FROM users WHERE username = @username')
+		).recordset.length;
+		if (!hit) return name;
+	}
+};
+
+// --replace-legacy-admin: bỏ tài khoản "admin" của hệ thống cũ khi nó là tài khoản
+// toàn quyền duy nhất, để ensureAccount tạo superadmin + admin mới ngay sau đó.
+const replaceLegacy = async (pool, byCode) => {
+	const supers = (
+		await pool.request().query(`
+			SELECT u.id, u.username FROM users u JOIN roles r ON r.id = u.role_id
+			WHERE r.is_superuser AND u.is_active
+		`)
+	).recordset;
+	if (supers.length !== 1 || supers[0].username.toLowerCase() !== LEGACY_ADMIN) {
+		console.log(
+			`• Không thay tài khoản quản trị cũ — tài khoản toàn quyền đang hoạt động: ${
+				supers.map((u) => u.username).join(', ') || '(không có)'
+			}`,
+		);
+		return;
+	}
+	// Chỉ bỏ admin cũ khi CHẮC tạo được superadmin mới — không thì DB mất hết quản trị
+	const sa = ACCOUNTS[0];
+	const problem =
+		sa.username.toLowerCase() === LEGACY_ADMIN
+			? `tài khoản Super Admin mới cũng tên "${LEGACY_ADMIN}"`
+			: !byCode.get(sa.roleCode)
+				? `chưa có vai trò ${sa.roleCode}`
+				: (await freeUsername(pool, sa.username)) !== sa.username
+					? `tên "${sa.username}" đã có người dùng (đặt tên khác bằng --username=)`
+					: null;
+	if (problem) {
+		console.warn(`⚠️  Không thay tài khoản quản trị cũ: ${problem} — giữ nguyên "${LEGACY_ADMIN}"`);
+		return;
+	}
+	const old = supers[0];
+	const userService = require('../src/modules/users/userService');
+	try {
+		await userService.remove(old.id, null);
+		console.log(`✓ Xoá tài khoản quản trị cũ "${old.username}" (${old.id})`);
+		return;
+	} catch (err) {
+		if (err.statusCode !== 409) throw err;
+		console.log(`• "${old.username}" còn dữ liệu liên kết — không xoá hẳn: ${err.message}`);
+	}
+	const newName = await freeUsername(pool, `${LEGACY_ADMIN}_cu`);
+	await withActorTransaction(null, (tx) =>
+		tx
+			.request()
+			.input('id', sql.VarChar(20), old.id)
+			.input('username', sql.VarChar(100), newName)
+			.query(
+				`UPDATE users SET is_active = false, username = @username, token_version = token_version + 1
+				 WHERE id = @id`,
+			),
+	);
+	await pool
+		.request()
+		.input('id', sql.VarChar(20), old.id)
+		.query('DELETE FROM refresh_tokens WHERE user_id = @id');
+	require('../src/permissions/userStatusCache').clear(old.id);
+	console.log(
+		`✓ Vô hiệu hoá tài khoản cũ ${old.id}, đổi tên đăng nhập "${old.username}" → "${newName}" (giữ lịch sử, đã đăng xuất mọi phiên)`,
+	);
+};
+
 const resetAdminPassword = async (pool) => {
 	const user = (
 		await pool.request().input('username', sql.VarChar(100), username).query(`
@@ -231,6 +315,7 @@ const resetAdminPassword = async (pool) => {
 
 	const pool = await getPool();
 	const byCode = await seedRoles(pool);
+	if (replaceLegacyAdmin) await replaceLegacy(pool, byCode);
 	for (const account of ACCOUNTS) {
 		const roleId = byCode.get(account.roleCode);
 		if (!roleId) {

@@ -5,6 +5,7 @@
 //   npm run setup:dev -- --native        # không Docker: npm install 3 chỗ, chạy bằng `npm run dev`
 //   npm run setup:dev -- --no-start      # làm hết, chỉ không khởi động app
 //   npm run setup:dev -- --db            # nhập lại tài khoản PostgreSQL dù .env đã có
+//   npm run setup:dev -- --bak="D:\backup\RMS.bak"   # chuyển dữ liệu từ backup SQL Server cũ
 //   npm run setup:dev -- --superadmin=it01 --admin=nckh01   # tên 2 tài khoản quản trị
 //   npm run setup:dev -- --yes           # không hỏi gì (lấy giá trị từ biến SETUP_*, xem dưới)
 //
@@ -18,6 +19,12 @@
 //      role thì hỏi mật khẩu superuser `postgres` và chạy
 //      infra/postgresql/01_tao_db_va_role.sql bằng psql trên máy này. Sai mật khẩu /
 //      không tới được máy chủ thì cho nhập lại tài khoản.
+//   4b. DB còn trống: hỏi đường dẫn file backup SQL Server cũ (.bak, hoặc --bak=).
+//      Có file → dựng SQL Server TẠM trong Docker, restore → precheck → load → verify
+//      vào PostgreSQL (backend/scripts/pg-transfer, như transfer-from-bak.sh của server)
+//      rồi xoá container tạm. Enter = DB mới (trống). Ngay sau khi chuyển: nếu tài khoản
+//      toàn quyền duy nhất là "admin" của hệ thống cũ thì bỏ nó (xoá; còn dữ liệu liên
+//      kết thì vô hiệu hoá + đổi tên thành admin_cu) và tạo superadmin + admin mới.
 //   5. Dựng schema: `migrate init` (DB trống → baseline + mọi migration; DB đã có →
 //      chỉ chạy file mới). DB có bảng nhưng chưa có schema_migrations → dừng, không đoán.
 //   6. `init:system`: tạo vai trò hệ thống còn thiếu (theo mã) và 2 tài khoản, in mật
@@ -44,6 +51,10 @@
 //   SETUP_PG_SUPERUSER     superuser để tạo DB / role (mặc định postgres)
 //   SETUP_PG_SUPERPASS     mật khẩu superuser (trống = psql tự đọc pgpass)
 //   SETUP_PSQL             đường dẫn psql nếu không có trong PATH
+//   SETUP_BAK_FILE         file .bak cần chuyển (như --bak=)
+//   SETUP_MIGRATE_PASSWORD mật khẩu rms_migrate khi backend/.env dùng role khác (load cần
+//                          quyền tạo bảng)
+//   MSSQL_IMAGE / MSSQL_PID  image SQL Server tạm (mặc định 2025-latest / Express ≤ 10 GB)
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -76,13 +87,14 @@ if (flag('help') || argv.includes('-h')) {
 const NATIVE = flag('native');
 const NO_START = flag('no-start');
 const RECONFIGURE_DB = flag('db');
+const BAK_ARG = opt('bak', '');
 const SUPERADMIN = opt('superadmin', 'superadmin');
 const ADMIN = opt('admin', 'admin');
 const INTERACTIVE = !flag('yes') && !argv.includes('-y') && process.stdin.isTTY;
 const IS_WIN = process.platform === 'win32';
 
 // ── In ra màn hình ──────────────────────────────────────────────────────
-const TOTAL_STEPS = 8;
+let TOTAL_STEPS = 8; // +1 khi chuyển dữ liệu từ .bak
 let stepNo = 0;
 const step = (title) => console.log(`\n\x1b[36m[${++stepNo}/${TOTAL_STEPS}] ${title}\x1b[0m`);
 const info = (msg) => console.log(`  ${msg}`);
@@ -427,9 +439,114 @@ const migrate = (s) => {
 	ok('Schema đã sẵn sàng');
 };
 
-const initSystem = () => {
+// ── Bước 4b: chuyển dữ liệu từ file .bak ───────────────────────────────
+const MSSQL_CONTAINER = 'rms-mssql-restore';
+const BAK_IN_CONTAINER = '/var/opt/mssql/backup/source.bak';
+// "Copy as path" của Windows bọc đường dẫn trong nháy kép
+const cleanPath = (p) => String(p || '').trim().replace(/^["']|["']$/g, '');
+
+const askBakFile = async (s) => {
+	let file = cleanPath(BAK_ARG || process.env.SETUP_BAK_FILE);
+	if (!file && s.empty && INTERACTIVE) {
+		info('DB đang trống. Có file backup SQL Server cũ (.bak) thì nhập đường dẫn để chuyển dữ liệu;');
+		info('Enter = dựng DB mới (trống).');
+		for (let i = 0; i < 3; i++) {
+			file = cleanPath(await ask('File .bak'));
+			if (!file || (fs.existsSync(file) && fs.statSync(file).isFile())) break;
+			warn(`Không thấy file ${file}`);
+		}
+	}
+	if (!file) return null;
+	if (!fs.existsSync(file) || !fs.statSync(file).isFile()) fail(`Không thấy file .bak: ${file}`);
+	if (!s.empty)
+		fail('DB PostgreSQL đã có dữ liệu — chuyển từ .bak cần DB trống. Xoá DB rồi chạy lại (bước 4 tạo lại DB trống), hoặc bỏ --bak.');
+	if (NATIVE) fail('Chuyển dữ liệu từ .bak cần Docker (SQL Server tạm) — chạy lại không có --native.');
+	TOTAL_STEPS++;
+	return path.resolve(file);
+};
+
+const transferFromBak = async (file) => {
+	step('Chuyển dữ liệu từ file .bak (SQL Server tạm trong Docker)');
+	const env = readEnv();
+	// load tạo bảng → cần rms_migrate (chủ DB)
+	const pgUser = 'rms_migrate';
+	const pgPass =
+		getKey(env, 'DB_USER') === pgUser
+			? getKey(env, 'DB_PASSWORD')
+			: process.env.SETUP_MIGRATE_PASSWORD || (await askSecret(`Mật khẩu ${pgUser} (PostgreSQL)`));
+	if (!pgPass) fail(`Thiếu mật khẩu ${pgUser} — đặt SETUP_MIGRATE_PASSWORD rồi chạy lại.`);
+	if (run('docker', ['inspect', MSSQL_CONTAINER], { capture: true }).status === 0)
+		fail(`Đã có container ${MSSQL_CONTAINER} (lần chạy trước) — xoá trước: docker rm -f -v ${MSSQL_CONTAINER}`);
+
+	// Mạng Docker của project dev (tạo nếu chưa có) — SQL Server tạm chỉ nằm trong mạng này, không mở cổng
+	if (compose(['up', '-d', 'redis'], { capture: true }).status !== 0) fail('Không dựng được mạng Docker của project.');
+	const network = `${compose(['config', '--format', 'json'], { capture: true }).out.match(/"name":\s*"([^"]+)"/)?.[1] || 'hospital_rms_dev'}_default`;
+	const composeEnv = fs.existsSync(COMPOSE_ENV) ? fs.readFileSync(COMPOSE_ENV, 'utf8') : '';
+	const pgHost = getKey(composeEnv, 'DEV_DB_SERVER') || 'host.docker.internal';
+	const image = process.env.MSSQL_IMAGE || 'mcr.microsoft.com/mssql/server:2025-latest';
+	// sa phải đủ phức tạp; chỉ truyền qua biến môi trường (`-e TÊN` không kèm giá trị), không in ra
+	const sa = `Rms#${crypto.randomBytes(16).toString('hex')}A`;
+	const secrets = { MSSQL_SA_PASSWORD: sa, MSSQL_SOURCE_PASSWORD: sa, PG_TARGET_PASSWORD: pgPass };
+	const sizeMb = Math.round(fs.statSync(file).size / 1048576);
+
+	const transfer = (...args) =>
+		compose(
+			[
+				'run', '--rm', '--no-deps', '-T',
+				'-e', `MSSQL_SOURCE_HOST=${MSSQL_CONTAINER}`, '-e', 'MSSQL_SOURCE_PASSWORD',
+				'-e', `PG_TARGET_HOST=${pgHost}`, '-e', `PG_TARGET_PORT=${getKey(env, 'DB_PORT') || 5432}`,
+				'-e', `PG_TARGET_DATABASE=${getKey(env, 'DB_DATABASE') || 'rms_hospital'}`,
+				'-e', `PG_TARGET_USER=${pgUser}`, '-e', 'PG_TARGET_PASSWORD',
+				'backend', 'node', 'scripts/pg-transfer/index.js', ...args,
+			],
+			{ env: secrets },
+		).status === 0;
+
+	try {
+		info(`Dựng SQL Server tạm (${image}) — lần đầu tải image khoảng 1,5 GB`);
+		const started = run(
+			'docker',
+			[
+				'run', '-d', '--name', MSSQL_CONTAINER, '--hostname', MSSQL_CONTAINER, '--network', network,
+				'-e', 'ACCEPT_EULA=Y', '-e', `MSSQL_PID=${process.env.MSSQL_PID || 'Express'}`, '-e', 'MSSQL_SA_PASSWORD',
+				'--label', 'rms.purpose=pg-transfer', image,
+			],
+			{ env: secrets, capture: true },
+		);
+		if (started.status !== 0) fail(`Không dựng được SQL Server tạm:\n${started.out.trim()}`);
+		info(`Copy ${path.basename(file)} (${sizeMb} MB) vào container`);
+		const dir = path.posix.dirname(BAK_IN_CONTAINER);
+		const steps = [
+			['exec', '-u', '0', MSSQL_CONTAINER, 'mkdir', '-p', dir],
+			['cp', file, `${MSSQL_CONTAINER}:${BAK_IN_CONTAINER}`],
+			// SQL Server chạy bằng user mssql (uid 10001) — phải đọc được file
+			['exec', '-u', '0', MSSQL_CONTAINER, 'chown', '10001', BAK_IN_CONTAINER],
+		];
+		for (const args of steps) {
+			const r = run('docker', args, { capture: true });
+			if (r.status !== 0) fail(`docker ${args[0]} lỗi:\n${r.out.trim()}`);
+		}
+		info('Restore …');
+		if (!transfer('restore', BAK_IN_CONTAINER)) fail('Restore file .bak lỗi (xem log ở trên).');
+		info('Precheck (chỉ đọc) …');
+		if (!transfer('precheck')) fail('Precheck báo lỗi chặn (xem log ở trên) — sửa dữ liệu nguồn rồi chạy lại.');
+		info('Load → PostgreSQL …');
+		if (!transfer('load'))
+			fail('Load lỗi (xem log ở trên). DB PostgreSQL có thể đã có một phần dữ liệu: xoá DB rms_hospital rồi chạy lại.');
+		info('Verify …');
+		if (!transfer('verify')) fail('Verify thấy chênh lệch giữa SQL Server và PostgreSQL (xem log ở trên).');
+		ok('Đã chuyển dữ liệu từ file .bak');
+	} finally {
+		run('docker', ['rm', '-f', '-v', MSSQL_CONTAINER], { capture: true });
+		info('Đã xoá SQL Server tạm cùng bản sao file .bak');
+	}
+};
+
+const initSystem = ({ replaceLegacy = false } = {}) => {
 	step('Vai trò hệ thống + tài khoản Super Admin / Admin (init:system)');
 	const args = [`--username=${SUPERADMIN}`, `--admin-username=${ADMIN}`];
+	// Chỉ ngay sau khi chuyển từ .bak: thay tài khoản "admin" của hệ thống cũ
+	if (replaceLegacy) args.push('--replace-legacy-admin');
 	if (runBackend('scripts/init-system.js', args).status !== 0) fail('init:system lỗi (xem log ở trên).');
 	info('Mật khẩu tạm (nếu vừa tạo) CHỈ in 1 lần ở trên — lưu lại trước khi đóng cửa sổ.');
 };
@@ -478,9 +595,14 @@ const main = async () => {
 	checkTools();
 	await prepareEnv();
 	installDeps();
-	const s = await ensureDatabase();
+	let s = await ensureDatabase();
+	const bak = await askBakFile(s);
+	if (bak) {
+		await transferFromBak(bak);
+		s = dbCheck();
+	}
 	migrate(s);
-	initSystem();
+	initSystem({ replaceLegacy: !!bak });
 	seedCatalogs();
 	await start();
 	console.log('\n\x1b[32mXong.\x1b[0m Chạy lại lệnh này bất cứ lúc nào — bước đã xong sẽ được bỏ qua.');
