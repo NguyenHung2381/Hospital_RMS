@@ -129,11 +129,13 @@ export const SECTION_TABS: Record<string, SectionTab[]> = {
 		{ to: '/admin/dtlt/lich-hoc', label: 'Lịch học', perm: 'courses:read' },
 		{ to: '/admin/dtlt/hoc-vien', label: 'Học viên', perm: 'trainees:read' },
 	],
+	// Theo luồng việc: mở đợt → hồ sơ từng người → theo dõi hằng ngày → nhập kết quả vòng.
+	// Đợt thực hành đứng đầu như "Khóa học" của DTLT/CTCV.
 	gphn: [
+		{ to: '/admin/practice-batches', label: 'Đợt thực hành', perm: 'courses:read' },
 		{ to: '/admin/practice-records', label: 'Hồ sơ thực hành', perm: 'courses:read' },
 		{ to: '/admin/practice-board', label: 'Theo ngày', perm: 'courses:read' },
 		{ to: '/admin/practice-results', label: 'Nhập kết quả vòng', perm: 'courses:update' },
-		{ to: '/admin/practice-batches', label: 'Đợt thực hành', perm: 'courses:read' },
 		{ to: '/admin/gphn/hoc-vien', label: 'Học viên', perm: 'trainees:read' },
 	],
 	ctcv: [
