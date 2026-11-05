@@ -10,7 +10,7 @@ import type { Lecturer } from '../types/lecturer.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { LecturerDeleteModal } from '../components/LecturerDeleteModal';
 import { LecturerFormModal } from '../components/LecturerFormModal';
@@ -95,14 +95,6 @@ export default function Lecturers() {
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, chuyên môn, email...'
-						/>
-						<DeleteAllButton
-							count={d.total}
-							itemLabel='giảng viên'
-							getIds={d.fetchAllIds}
-							onDelete={d.handleBulkDelete}
-							onDone={rowSel.clearSelection}
-							disabled={d.loading}
 						/>
 					</div>
 				</div>

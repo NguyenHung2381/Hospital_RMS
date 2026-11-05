@@ -122,11 +122,6 @@ thead th.checkCol {
 	composes: btn danger from '@/shared/components/Button/Button.module.css';
 }
 
-/* Nút "Xóa tất cả" trong tableControls — cao bằng ô lọc */
-.deleteAllBtn {
-	composes: btn danger from '@/shared/components/Button/Button.module.css';
-}
-
 .deleteText {
 	margin: 0;
 	font-size: var(--font-size-sm);

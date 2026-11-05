@@ -20,7 +20,7 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { Badge, DatePicker, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import sel from '@/shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, DeleteAllButton, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
+import { BulkButton, BulkDeleteModal, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { apiClient } from '../../../shared/api/axios';
 import {
@@ -33,7 +33,6 @@ import {
 	createCmeRecord,
 	createCmeRecordFromImportRow,
 	deleteCmeRecord,
-	deleteCmeRecords,
 	downloadCmeRecordImportTemplate,
 	exportCmeRecordsExcel,
 	getCmeCreditCategories,
@@ -2061,26 +2060,6 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							<button className={styles.clearSelectionBtn} onClick={clearFilters}>
 								Xóa lọc
 							</button>
-						)}
-						{perms.canCme && (
-							<DeleteAllButton
-								count={filtered.length}
-								itemLabel='ghi nhận CME'
-								getIds={() => filtered.map((r) => r.id)}
-								// Một request duy nhất (API bulk-delete) thay vì gọi lần lượt
-								onDelete={deleteCmeRecords}
-								onDone={() => {
-									rowSel.clearSelection();
-									refresh();
-								}}
-								disabled={bulkBusy}
-								note={
-									<>
-										Áp dụng cho tab {tab === 'approved' ? '"Đã phê duyệt"' : '"Chưa phê duyệt"'}
-										{year !== null && `, năm ${year}`}. File minh chứng đính kèm cũng bị gỡ.
-									</>
-								}
-							/>
 						)}
 					</div>
 				</div>

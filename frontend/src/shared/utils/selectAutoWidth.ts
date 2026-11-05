@@ -5,6 +5,9 @@
 // min-width theo mục dài nhất để giữ đúng hành vi đó.
 // - Chỉ chạy khi base-select thực sự được áp dụng (Chrome/Edge 135+, dùng chuột).
 // - min(…, 100%) để không tràn khung hẹp; tôn trọng max-width của module.
+// - Số đo cũng ghi vào biến `--select-fit`: phần 100% bị tính là 0 khi flex-wrap
+//   đo kích thước nội tại → select phình sau khi xếp dòng, đẩy phần tử kế bên
+//   rớt dòng. Thanh lọc của bảng ghi đè bằng giá trị px (Table.module.css).
 const MQ = window.matchMedia('(hover: hover) and (pointer: fine)');
 const SUPPORTED = typeof CSS !== 'undefined' && CSS.supports('appearance', 'base-select');
 
@@ -16,6 +19,7 @@ function fit(select: HTMLSelectElement) {
 	const cs = getComputedStyle(select);
 	if (cs.appearance !== 'base-select') {
 		if (select.style.minWidth) select.style.minWidth = '';
+		select.style.removeProperty('--select-fit');
 		signatures.delete(select);
 		return;
 	}
@@ -36,6 +40,7 @@ function fit(select: HTMLSelectElement) {
 	const max = parseFloat(cs.maxWidth);
 	if (!Number.isNaN(max)) px = Math.min(px, max);
 	select.style.minWidth = `min(${px}px, 100%)`;
+	select.style.setProperty('--select-fit', `${px}px`);
 }
 
 let queued = false;

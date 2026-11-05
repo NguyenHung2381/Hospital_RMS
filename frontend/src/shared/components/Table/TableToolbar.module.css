@@ -53,8 +53,15 @@
 	color: var(--tone-red-fg);
 }
 
+/* Màn hẹp: ô tìm kiếm giãn vào chỗ trống còn lại trên hàng thay vì
+   width:100% (ép nó rớt xuống dòng riêng); chỉ xuống dòng khi còn < 200px. */
 @media (max-width: 1024px) {
 	.searchBox {
+		flex: 1 1 200px;
+		min-width: 0;
+	}
+	.searchInput,
+	.searchInput:focus {
 		width: 100%;
 	}
 }

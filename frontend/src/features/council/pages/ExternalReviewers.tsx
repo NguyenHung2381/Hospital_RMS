@@ -8,7 +8,6 @@ import sel from '../../../shared/components/Table/RowSelect.module.css';
 import {
 	BulkButton,
 	BulkDeleteModal,
-	DeleteAllButton,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
@@ -115,14 +114,6 @@ export default function ExternalReviewers() {
 								onChange={(e) => d.setSearch(e.target.value)}
 							/>
 						</div>
-						<DeleteAllButton
-							count={d.filtered.length}
-							itemLabel='chuyên gia'
-							getIds={() => d.filtered.map((x) => x.id)}
-							onDelete={d.handleBulkDelete}
-							onDone={rowSel.clearSelection}
-							disabled={d.loading}
-						/>
 					</div>
 				</div>
 

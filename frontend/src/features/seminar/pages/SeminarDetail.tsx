@@ -24,7 +24,6 @@ import { InlineLoading } from '../../../shared/components/Loading';
 import {
 	BulkBar,
 	BulkButton,
-	DeleteAllButton,
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -490,16 +489,6 @@ export default function SeminarDetail() {
 									</button>
 								))}
 							</div>
-							{perms.canUpdate && (
-								<DeleteAllButton
-									count={filtered.length}
-									itemLabel='người tham dự'
-									getIds={() => filtered.map((p) => p.id)}
-									onDelete={d.removeMany}
-									onDone={rowSel.clearSelection}
-									disabled={d.loading}
-								/>
-							)}
 						</div>
 
 						<div className={styles.tableWrap}>

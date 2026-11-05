@@ -11,7 +11,7 @@ import type { Department } from '../types/department.type';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { DeptDeleteModal } from '../components/DeptDeleteModal';
 import { DeptFormModal } from '../components/DeptFormModal';
@@ -106,14 +106,6 @@ export default function Departments() {
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, mã, viết tắt...'
-						/>
-						<DeleteAllButton
-							count={d.total}
-							itemLabel='khoa/phòng'
-							getIds={d.fetchAllIds}
-							onDelete={d.handleBulkDelete}
-							onDone={rowSel.clearSelection}
-							disabled={d.loading}
 						/>
 					</div>
 				</div>

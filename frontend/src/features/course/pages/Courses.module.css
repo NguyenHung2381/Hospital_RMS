@@ -1047,14 +1047,16 @@
 /* Chuyển dạng thẻ / bảng ở danh sách khóa học */
 .viewToggle {
 	display: inline-flex;
-	padding: 3px;
+	box-sizing: border-box;
+	height: 36px;
+	padding: 2px;
 	gap: 2px;
 	border-radius: var(--radius-lg);
 	background: var(--color-gray-100);
 }
 .viewToggle button {
 	width: 34px;
-	height: 32px;
+	height: 100%;
 	display: grid;
 	place-items: center;
 	border: none;

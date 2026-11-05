@@ -7,7 +7,6 @@ import {
 	Badge,
 	BulkBar,
 	Button,
-	DeleteAllButton,
 	Modal,
 	Pagination,
 	QuestionImageField,
@@ -366,15 +365,6 @@ export default function QuestionBank() {
 								Xóa lọc
 							</Button>
 						)}
-						<DeleteAllButton
-							count={filtered.length}
-							itemLabel='câu hỏi'
-							getIds={() => filtered.map((x) => x.id)}
-							onDelete={handleBulkDelete}
-							onDone={rowSel.clearSelection}
-							disabled={busy}
-							note='Câu hỏi đang nằm trong đề kiểm tra sẽ không xóa được và được báo lỗi riêng.'
-						/>
 					</div>
 				</div>
 

@@ -150,16 +150,9 @@ export function useDepartments() {
 		[refreshData],
 	);
 
-	// Id toàn bộ bản ghi khớp từ khóa (mọi trang, limit=0) — cho nút "Xóa tất cả"
-	const fetchAllIds = useCallback(
-		async () => (await getDepartments({ search: debouncedSearch || undefined })).data.map((x) => x.id),
-		[debouncedSearch],
-	);
-
 	return {
 		depts,
 		refreshData,
-		fetchAllIds,
 		isLoadingData,
 		search,
 		modal,

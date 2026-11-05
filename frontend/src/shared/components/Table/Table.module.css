@@ -223,11 +223,21 @@
 	font-weight: var(--font-weight-semibold);
 }
 
+/* Cụm lọc/tìm kiếm luôn dạt phải; xuống dòng thì cả cụm vẫn căn phải. */
 .tableControls {
 	display: flex;
 	align-items: center;
-	gap: var(--space-3);
+	justify-content: flex-end;
+	gap: var(--space-2);
 	flex-wrap: wrap;
+	margin-left: auto;
+}
+
+/* Select trong thanh lọc: chặn theo vw thay vì % — % bị tính là 0 khi flex-wrap
+   đo chỗ, khiến select "phình" sau khi xếp dòng và đẩy ô tìm kiếm rớt dòng.
+   !important để thắng min-width inline do shared/utils/selectAutoWidth.ts đặt. */
+.tableControls select:not([multiple]) {
+	min-width: min(var(--select-fit, 0px), calc(100vw - 2 * var(--space-4))) !important;
 }
 
 .clearSelectionBtn {
@@ -258,17 +268,22 @@
 	pointer-events: none;
 }
 
+/* Ô tìm kiếm & dropdown lọc cao cố định 36px để cùng hàng với nút bấm. */
 .searchInput {
-	padding: var(--space-2) var(--space-3) var(--space-2)
-		calc(var(--space-3) + 14px + var(--space-2));
+	box-sizing: border-box;
+	height: 36px;
+	padding: 0 var(--space-3) 0 calc(var(--space-3) + 14px + var(--space-2));
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-800);
 	background: var(--color-gray-50);
-	width: 220px;
-	transition: all var(--transition-fast);
+	width: 240px;
+	transition:
+		border-color var(--transition-fast),
+		background var(--transition-fast),
+		box-shadow var(--transition-fast);
 	outline: none;
 }
 
@@ -280,7 +295,6 @@
 	border-color: var(--color-primary);
 	background: var(--color-white);
 	box-shadow: var(--focus-ring-input);
-	width: 260px;
 }
 
 /* ── Dropdown lọc (MultiSelect) ──────────────────────────────────────────── */
@@ -290,7 +304,9 @@
 	align-items: center;
 	gap: 4px;
 	white-space: nowrap;
-	padding: var(--space-2) var(--space-3);
+	box-sizing: border-box;
+	height: 36px;
+	padding: 0 var(--space-3);
 	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
@@ -436,6 +452,14 @@
 .emptyDesc {
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-400);
+}
+
+/* Màn hẹp: cụm điều khiển chiếm phần còn lại của hàng để ô tìm kiếm giãn ra. */
+@media (max-width: 1024px) {
+	.tableControls {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */

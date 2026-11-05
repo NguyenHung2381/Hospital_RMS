@@ -277,23 +277,6 @@ export function useAdminNotifications() {
 		}
 	};
 
-	// Batch key toàn bộ thông báo khớp bộ lọc (mọi trang) — cho nút "Xóa tất cả"
-	// (server giới hạn 100 dòng/trang nên lấy lần lượt từng trang)
-	const fetchAllBatchKeys = async () => {
-		const keys: string[] = [];
-		for (let p = 1; ; p++) {
-			const res = await adminGetNotifications({
-				page: p,
-				limit: 100,
-				type: filterType || undefined,
-				search: search || undefined,
-			});
-			keys.push(...res.data.map((r) => r.batch_key));
-			if (res.data.length < 100 || keys.length >= res.pagination.total) break;
-		}
-		return keys;
-	};
-
 	const handleBulkDelete = async (batchKeys: string[]) => {
 		if (!batchKeys.length) return;
 		setDeletingBatch(true);
@@ -380,6 +363,5 @@ export function useAdminNotifications() {
 		handleSend,
 		confirmDelete,
 		handleBulkDelete,
-		fetchAllBatchKeys,
 	};
 }

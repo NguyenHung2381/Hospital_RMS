@@ -14,7 +14,6 @@ import { NOTIF_TYPE_MAP } from '../utils/notifUtils';
 import { relativeTime } from '../../../shared/utils/formatDate';
 import {
 	BulkBar,
-	DeleteAllButton,
 	EmptyState,
 	Pagination,
 	SelectCheckbox,
@@ -44,8 +43,6 @@ interface NotificationHistoryTableProps {
 	onRefresh: () => void;
 	onDeleteRequest: (row: AdminNotification) => void;
 	onBulkDelete: (batchKeys: string[]) => Promise<void> | void;
-	/** Lấy batch key mọi trang khớp bộ lọc — cho nút "Xóa tất cả". */
-	fetchAllBatchKeys: () => Promise<string[]>;
 	onFilterChange: () => void;
 }
 
@@ -69,7 +66,6 @@ export function NotificationHistoryTable({
 	onRefresh,
 	onDeleteRequest,
 	onBulkDelete,
-	fetchAllBatchKeys,
 	onFilterChange,
 }: NotificationHistoryTableProps) {
 	const typeLabel = (t: string) => NOTIF_TYPES.find((x) => x.value === t)?.label ?? t;
@@ -120,15 +116,6 @@ export function NotificationHistoryTable({
 					>
 						<RefreshSvg style={{ width: 14, height: 14 }} />
 					</button>
-					<DeleteAllButton
-						count={total}
-						itemLabel='thông báo'
-						getIds={fetchAllBatchKeys}
-						onDelete={onBulkDelete}
-						onDone={rowSel.clearSelection}
-						disabled={loading}
-						note='Toàn bộ bản ghi thông báo tới người nhận trong các lô này sẽ bị xóa.'
-					/>
 				</div>
 			</div>
 

@@ -149,23 +149,9 @@ export function useCourses(trainingTypeId = '') {
 		[refreshData],
 	);
 
-	// Id toàn bộ bản ghi khớp từ khóa (mọi trang, limit=0) — cho nút "Xóa tất cả"
-	const fetchAllIds = useCallback(
-		async () =>
-			(
-				await getCourses({
-					search: debouncedSearch || undefined,
-					display_status: statusFilter || undefined,
-					...courseTypeFilter(trainingTypeId),
-				})
-			).data.map((x) => x.id),
-		[debouncedSearch, statusFilter, trainingTypeId],
-	);
-
 	return {
 		refreshData,
 		courses,
-		fetchAllIds,
 		isLoadingData,
 		search,
 		statusFilter,

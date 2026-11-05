@@ -8,7 +8,7 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
-import { BulkButton, BulkDeleteModal, DeleteAllButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
+import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { GrantedAccountsModal } from '../components/GrantedAccountsModal';
 import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
@@ -159,14 +159,6 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, CCCD, điện thoại, email...'
-						/>
-						<DeleteAllButton
-							count={d.filtered.length}
-							itemLabel='học viên'
-							getIds={() => d.filtered.map((x) => x.id)}
-							onDelete={d.handleBulkDelete}
-							onDone={rowSel.clearSelection}
-							disabled={d.loading}
 						/>
 					</div>
 				</div>
