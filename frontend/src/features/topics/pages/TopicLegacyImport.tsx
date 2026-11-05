@@ -1,4 +1,5 @@
 import type React from 'react';
+import { SearchableSelect } from '@/shared/components';
 import {
 	AlertSvg,
 	BuildingSvg,
@@ -237,23 +238,15 @@ export default function TopicLegacyImport() {
 										<LockSvg className={styles.lockedFieldLock} />
 									</div>
 								) : (
-									<select
+									<SearchableSelect
 										id='legacy-dept'
-										className={`${styles.formSelect} ${errors.department_id ? styles.hasError : ''}`}
-										aria-invalid={errors.department_id ? true : undefined}
+										options={[{ id: '', name: '-- Chọn khoa/phòng ban --' }, ...s.depts]}
 										value={form.department_id}
-										onChange={(e) => setField('department_id', e.target.value)}
-									>
-										<option value=''>-- Chọn khoa/phòng ban --</option>
-										{s.depts.map((d) => (
-											<option
-												key={d.id}
-												value={d.id}
-											>
-												{d.name}
-											</option>
-										))}
-									</select>
+										onChange={(id) => setField('department_id', id)}
+										placeholder='-- Chọn khoa/phòng ban --'
+										searchPlaceholder='Tìm khoa/phòng...'
+										hasError={!!errors.department_id}
+									/>
 								)}
 								{hint('department_id')}
 								{fieldError('department_id')}

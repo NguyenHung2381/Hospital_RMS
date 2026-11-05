@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CalendarSvg, CheckSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
-import { DatePicker, Modal, MultiSelect, TimePicker } from '@/shared/components';
+import { DatePicker, Modal, MultiSelect, TimePicker, SearchableSelect } from '@/shared/components';
 import {
 	EMPTY_SEMINAR_FORM,
 	EVENT_TYPE_LABELS,
@@ -202,18 +202,16 @@ export function SeminarFormModal({
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Khoa/phòng tổ chức</label>
-							<select
-								className={styles.formInput}
+							<SearchableSelect
+								options={[{ id: '', name: '— Chọn khoa/phòng —' }, ...departments]}
 								value={form.organizer_department_id}
-								onChange={set('organizer_department_id')}
-							>
-								<option value=''>— Chọn khoa/phòng —</option>
-								{departments.map((d) => (
-									<option key={d.id} value={d.id}>
-										{d.name}
-									</option>
-								))}
-							</select>
+								onChange={(id) => {
+									setForm((f) => ({ ...f, organizer_department_id: id }));
+									setErr('');
+								}}
+								placeholder='— Chọn khoa/phòng —'
+								searchPlaceholder='Tìm khoa/phòng...'
+							/>
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Số tiết</label>

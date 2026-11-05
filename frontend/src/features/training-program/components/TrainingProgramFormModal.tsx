@@ -1,5 +1,5 @@
 import { FormField } from '@/shared/components/Input/FormField';
-import { Modal, ModalActions } from '@/shared/components';
+import { Modal, ModalActions, SearchableSelect } from '@/shared/components';
 import React, { useState } from 'react';
 import { ArrowRSvg, LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import {
@@ -400,21 +400,17 @@ export function TrainingProgramFormModal({
 					</>
 				)}
 				<CfgField cfg={cfg} name='department_id' error={errors.department_id} label='Khoa phụ trách giảng dạy'>
-					<select
-						className={styles.formInput}
+					<SearchableSelect
+						options={[{ id: '', name: '-- Chọn khoa/phòng --' }, ...departments]}
 						value={form.department_id}
-						onChange={set('department_id')}
-					>
-						<option value=''>-- Chọn khoa/phòng --</option>
-						{departments.map((d) => (
-							<option
-								key={d.id}
-								value={d.id}
-							>
-								{d.name}
-							</option>
-						))}
-					</select>
+						onChange={(id) => {
+							setForm((f) => ({ ...f, department_id: id }));
+							setErrors((er) => ({ ...er, department_id: '' }));
+						}}
+						placeholder='-- Chọn khoa/phòng --'
+						searchPlaceholder='Tìm khoa/phòng...'
+						hasError={!!errors.department_id}
+					/>
 				</CfgField>
 				<CfgField cfg={cfg} name='department_note' error={errors.department_note} label='Ghi chú khoa phụ trách'>
 					<input

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { SearchableSelect } from '@/shared/components';
 import { AlertSvg as IcAlert } from '@/assets/icons';
 import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { NewMemberForm } from '../hooks/useTopicDrawer';
@@ -232,26 +233,13 @@ export function AddMemberForm({
 					>
 						Khoa / Phòng ban
 					</label>
-					<select
-						className={styles.formSelect}
+					<SearchableSelect
+						options={[{ id: '', name: '— Chọn khoa —' }, ...departments]}
 						value={newMember.department_id}
-						onChange={(e) =>
-							setNewMember((p) => ({
-								...p,
-								department_id: e.target.value,
-							}))
-						}
-					>
-						<option value=''>— Chọn khoa —</option>
-						{departments.map((d) => (
-							<option
-								key={d.id}
-								value={d.id}
-							>
-								{d.name}
-							</option>
-						))}
-					</select>
+						onChange={(id) => setNewMember((p) => ({ ...p, department_id: id }))}
+						placeholder='— Chọn khoa —'
+						searchPlaceholder='Tìm khoa/phòng...'
+					/>
 				</div>
 				<div>
 					<label

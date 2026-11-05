@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DatePicker } from '@/shared/components';
+import { DatePicker, SearchableSelect } from '@/shared/components';
 import { ChevDSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
@@ -362,22 +362,14 @@ export function RotationsPanel({
 							<div className={styles.rotFields}>
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Khoa</span>
-									<select
-										className={styles.subSelect}
+									<SearchableSelect
+										options={[{ id: '', name: '-- Chọn khoa --' }, ...deptOptions(r)]}
 										value={r.department_id ?? ''}
 										disabled={busy}
-										onChange={(e) => save(r.id, { department_id: e.target.value || null })}
-									>
-										<option value=''>-- Chọn khoa --</option>
-										{deptOptions(r).map((d) => (
-											<option
-												key={d.id}
-												value={d.id}
-											>
-												{d.name}
-											</option>
-										))}
-									</select>
+										onChange={(id) => id !== (r.department_id ?? '') && save(r.id, { department_id: id || null })}
+										placeholder='-- Chọn khoa --'
+										searchPlaceholder='Tìm khoa...'
+									/>
 								</div>
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Kết quả</span>

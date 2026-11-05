@@ -4,6 +4,7 @@ import {
 	SearchSvg,
 	UserPlusSvg,
 } from '@/assets/icons';
+import { SearchableSelect } from '@/shared/components';
 import type { SimpleItem, UserSuggestion } from '../api/topicApi';
 import type { ManualForm } from '../hooks/useTopicRegister';
 import type { MemberRole } from '../types/topic.type';
@@ -315,26 +316,13 @@ export function RegisterMemberSection({
 					<div className={styles.formRow}>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Khoa phòng</label>
-							<select
-								className={styles.formSelect}
+							<SearchableSelect
+								options={[{ id: '', name: '-- Chọn khoa/phòng ban --' }, ...depts]}
 								value={manualForm.department_id}
-								onChange={(e) =>
-									setManualForm({
-										...manualForm,
-										department_id: e.target.value,
-									})
-								}
-							>
-								<option value=''>-- Chọn khoa/phòng ban --</option>
-								{depts.map((d) => (
-									<option
-										key={d.id}
-										value={d.id}
-									>
-										{d.name}
-									</option>
-								))}
-							</select>
+								onChange={(id) => setManualForm({ ...manualForm, department_id: id })}
+								placeholder='-- Chọn khoa/phòng ban --'
+								searchPlaceholder='Tìm khoa/phòng...'
+							/>
 						</div>
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Vai trò trong đề tài</label>

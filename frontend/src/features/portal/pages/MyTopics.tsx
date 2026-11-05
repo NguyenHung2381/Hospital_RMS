@@ -170,7 +170,16 @@ export default function MyTopics() {
 								<div
 									key={s.key}
 									className={`${styles.statCard} ${styles[s.cardCls as keyof typeof styles]} ${d.activeTab === s.key ? styles.statActive : ''}`}
+									role='button'
+									tabIndex={0}
+									aria-pressed={d.activeTab === s.key}
 									onClick={() => d.setActiveTab(s.key)}
+									onKeyDown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault();
+											d.setActiveTab(s.key);
+										}
+									}}
 								>
 									<div
 										className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}

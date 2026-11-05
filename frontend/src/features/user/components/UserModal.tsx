@@ -1,7 +1,7 @@
 import { Toggle } from '@/shared/components/Input/Toggle';
 import { FormField } from '@/shared/components/Input/FormField';
 import { PasswordInput } from '@/shared/components/Input/PasswordInput';
-import { Modal } from '@/shared/components';
+import { Modal, SearchableSelect } from '@/shared/components';
 import { CheckSvg, ChevDSvg, EditSvg, KeySvg } from '@/assets/icons';
 import { useState } from 'react';
 import type { SimpleItem } from '../api/userApi';
@@ -279,25 +279,15 @@ export function UserModal({
 					required
 					error={errors.department_id}
 				>
-					<div className={styles.selectWrapper}>
-						<select
-							id='department_id'
-							className={styles.formSelect}
-							value={form.department_id}
-							onChange={(e) => set('department_id', e.target.value)}
-						>
-							<option value=''>— Chọn khoa/phòng —</option>
-							{departments.map((d) => (
-								<option
-									key={d.id}
-									value={d.id}
-								>
-									{d.name}
-								</option>
-							))}
-						</select>
-						<ChevDSvg />
-					</div>
+					<SearchableSelect
+						id='department_id'
+						options={[{ id: '', name: '— Chọn khoa/phòng —' }, ...departments]}
+						value={form.department_id}
+						onChange={(id) => set('department_id', id)}
+						placeholder='— Chọn khoa/phòng —'
+						searchPlaceholder='Tìm khoa/phòng...'
+						hasError={!!errors.department_id}
+					/>
 				</FormField>
 				<FormField
 					htmlFor='role_id'

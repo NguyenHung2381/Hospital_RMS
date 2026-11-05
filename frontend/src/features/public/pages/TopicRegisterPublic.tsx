@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SearchableSelect } from '@/shared/components';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertSvg, CheckSvg, TrashSvg } from '@/assets/icons';
 import PublicLayout from '../../../layouts/PublicLayout';
@@ -382,22 +383,13 @@ export default function TopicRegisterPublic() {
 							<label className={styles.label}>
 								{cfg.label('department_id', 'Khoa/phòng chủ trì')} <span className={styles.required}>*</span>
 							</label>
-							<select
-								className={styles.select}
+							<SearchableSelect
+								options={[{ id: '', name: '-- Chọn khoa/phòng --' }, ...departments]}
 								value={form.department_id}
-								onChange={set('department_id')}
-								required
-							>
-								<option value=''>-- Chọn khoa/phòng --</option>
-								{departments.map((d) => (
-									<option
-										key={d.id}
-										value={d.id}
-									>
-										{d.name}
-									</option>
-								))}
-							</select>
+								onChange={(id) => setForm((f) => ({ ...f, department_id: id }))}
+								placeholder='-- Chọn khoa/phòng --'
+								searchPlaceholder='Tìm khoa/phòng...'
+							/>
 						</div>
 						{form.round_id && levelName && (
 							<div className={styles.formGroup}>

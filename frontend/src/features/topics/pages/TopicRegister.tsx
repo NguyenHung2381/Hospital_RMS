@@ -8,6 +8,7 @@ import {
 	LockSvg,
 	RefreshSvg,
 } from '@/assets/icons';
+import { SearchableSelect } from '@/shared/components';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { PendingTopicsCard } from '../components/PendingTopicsCard';
@@ -447,23 +448,15 @@ export default function TopicRegister() {
 											<LockSvg className={styles.lockedFieldLock} />
 										</div>
 									) : (
-										<select
+										<SearchableSelect
 											id='reg-dept'
-											className={`${styles.formSelect} ${errors.department_id ? styles.hasError : ''}`}
-											aria-invalid={errors.department_id ? true : undefined}
+											options={[{ id: '', name: '-- Chọn khoa/phòng ban --' }, ...depts]}
 											value={form.department_id}
-											onChange={(e) => handleDeptChange(e.target.value)}
-										>
-											<option value=''>-- Chọn khoa/phòng ban --</option>
-											{depts.map((d) => (
-												<option
-													key={d.id}
-													value={d.id}
-												>
-													{d.name}
-												</option>
-											))}
-										</select>
+											onChange={handleDeptChange}
+											placeholder='-- Chọn khoa/phòng ban --'
+											searchPlaceholder='Tìm khoa/phòng...'
+											hasError={!!errors.department_id}
+										/>
 									)}
 									{errors.department_id && (
 										<div className={styles.formError}>
