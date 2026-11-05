@@ -1,5 +1,6 @@
 // Hồi quy cho các lỗi của đợt rà soát bảo mật (run-3), chạy trên CSDL giả:
 //   M3 ghế thay thế hội đồng hết hiệu lực khi đề tài rời hội đồng;
+//   M4 báo cáo hội thảo không lộ câu hỏi + đáp án bài test, public_token;
 //   M6 đăng ký hội nghị nội viện không trả vé cho người gọi ẩn danh;
 //   M7 sửa / xóa thành viên đề tài ràng buộc đúng đề tài trên URL;
 //   M8 API /users/:id không thao tác tài khoản học viên;
@@ -226,4 +227,36 @@ test('L2: chấm tay chỉ câu tự luận của lượt đã nộp, điểm tr
 	const n = log.length;
 	await grading.gradeEssayAnswer('AT1', 'essay', 1.5, 'G1').catch(() => {});
 	assert.ok(since(n).some((t) => /UPDATE exam_answers SET score_awarded = @score/.test(t)));
+});
+
+test('M4: báo cáo hội thảo không trả câu hỏi / đáp án bài test, public_token', async () => {
+	require('../../src/modules/seminars/seminarService').getAll = async () => ({
+		data: [
+			{
+				id: 'HN1',
+				title: 'Hội thảo',
+				participant_count: 3,
+				test_questions: '[{"q":"?","correct":1}]',
+				public_token: 'a'.repeat(32),
+			},
+		],
+	});
+	require('../../src/modules/cme/cmeReportService').getData = async () => ({ people: [] });
+	const router = require('../../src/modules/dashboard/dashboard.routes');
+	const layer = router.stack.find((l) => l.route?.path === '/seminar-report');
+	const handle = layer.route.stack.at(-1).handle;
+	const body = await new Promise((resolve, reject) => {
+		const res = {
+			status() {
+				return this;
+			},
+			json: resolve,
+		};
+		handle({ query: { year: '2026' } }, res, reject);
+	});
+	const [s] = body.data.seminars;
+	assert.equal(s.title, 'Hội thảo');
+	assert.equal(s.participant_count, 3);
+	assert.equal(s.test_questions, undefined);
+	assert.equal(s.public_token, undefined);
 });
