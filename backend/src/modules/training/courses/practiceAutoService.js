@@ -265,10 +265,11 @@ const arrangeOne = async (
 			.input('actor_id', sql.VarChar(20), actorId);
 		for (const [field, type] of Object.entries(rotationService.SNAPSHOT_TYPES))
 			req.input(field, type, snap[field] ?? null);
+		// CAST: @department_id dùng cả ở cột lẫn subquery — không CAST thì PG suy text ≠ varchar (42P08)
 		await req.query(`
       UPDATE enrollment_rotations
       SET seq = @seq, start_date = @start_date, end_date = @end_date,
-          department_id = @department_id, department_name = (SELECT name FROM departments WHERE id = @department_id),
+          department_id = CAST(@department_id AS VARCHAR(20)), department_name = (SELECT name FROM departments WHERE id = @department_id),
           mentor_user_id = @mentor_user_id,
           ${Object.keys(rotationService.SNAPSHOT_TYPES)
 						.map((f) => `${f} = @${f}`)

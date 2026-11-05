@@ -171,8 +171,9 @@ const generate = async (enrollmentId, { replace = false } = {}, actorId) => {
 					round.allow_split ? null : formatDuration(round.duration_value, round.duration_unit),
 				)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
+          -- CAST: @department_id dùng cả ở cột lẫn subquery — không CAST thì PG suy text ≠ varchar (42P08)
           INSERT INTO enrollment_rotations (id, enrollment_id, lesson_id, round_title, seq, attempt_no, department_id, department_name, duration_text, created_by)
-          VALUES (${newId}, @enrollment_id, @lesson_id, @round_title, @seq, @attempt_no, @department_id,
+          VALUES (${newId}, @enrollment_id, @lesson_id, @round_title, @seq, @attempt_no, CAST(@department_id AS VARCHAR(20)),
                   (SELECT name FROM departments WHERE id = @department_id), @duration_text, @actor_id);
         `);
 		}
@@ -295,8 +296,9 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 	// Kết quả đổi ⇒ ghi lại ai nhập, lúc nào, nguồn; về "chưa đánh giá" thì xóa. Cột ở vế
 	// phải là giá trị TRƯỚC khi UPDATE nên so được kết quả cũ / mới.
 	if (data.result !== undefined) {
+		// CAST: @result còn được gán thẳng vào cột result ở trên — không CAST thì PG suy text ≠ varchar (42P08)
 		const changed = (col, val) =>
-			`${col} = CASE WHEN @result = 'pending' THEN NULL WHEN result = @result THEN ${col} ELSE ${val} END`;
+			`${col} = CASE WHEN CAST(@result AS VARCHAR(10)) = 'pending' THEN NULL WHEN result = CAST(@result AS VARCHAR(10)) THEN ${col} ELSE ${val} END`;
 		sets.push(changed('result_at', nowSql));
 		sets.push(changed('result_by', '@actor_id'));
 		sets.push(changed('result_source', '@result_source'));
@@ -308,7 +310,8 @@ const update = async (rotationId, data, actorId, { source = 'staff' } = {}) => {
 		req.input('auto_duration', sql.NVarChar(50), describeSpan(data.start_date, data.end_date));
 	}
 	if (data.department_id !== undefined) {
-		sets.push('department_id = @department_id');
+		// CAST: @department_id dùng cả ở cột lẫn subquery — không CAST thì PG suy text ≠ varchar (42P08)
+		sets.push('department_id = CAST(@department_id AS VARCHAR(20))');
 		sets.push('department_name = (SELECT name FROM departments WHERE id = @department_id)');
 		req.input('department_id', sql.VarChar(20), data.department_id || null);
 	}

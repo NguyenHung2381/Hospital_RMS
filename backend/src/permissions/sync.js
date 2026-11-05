@@ -125,7 +125,7 @@ const syncPermissions = async ({ dryRun = false } = {}) => {
 					: null;
 				const result = await req.query(`
           INSERT INTO role_permissions (role_id, permission_id${withScope ? ', scope' : ''})
-          SELECT rp.role_id, @perm_id${withScope ? `, ${scopeExpr}` : ''}
+          SELECT rp.role_id, CAST(@perm_id AS VARCHAR(20))${withScope ? `, ${scopeExpr}` : ''}
           FROM role_permissions rp
           WHERE rp.permission_id IN (${params.join(',')})
             AND NOT EXISTS (
