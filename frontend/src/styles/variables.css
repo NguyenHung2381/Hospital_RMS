@@ -83,17 +83,17 @@
 	--status-neutral-fg: var(--tone-gray-fg);
 
 	/* === TYPOGRAPHY === */
-	/* Plus Jakarta Sans: nét hình học gọn, x-height cao, có bộ dấu tiếng Việt
+	/* Inter: trung tính, x-height cao, có bộ dấu tiếng Việt
 	   (ệ, ượ, ấ...) — rõ ở cỡ 13–14px trong bảng dày.
-	   --font-display = Newsreader (serif kiểu tạp chí khoa học) CHỈ cho tiêu đề
-	   nội dung: tên trang, tên đề tài/khoá học ở trang chi tiết. Nút, nhãn,
-	   menu, bảng luôn dùng --font-body.
+	   --font-display = Literata (serif đọc sách) CHỈ cho tiêu đề nội dung:
+	   tên trang, tên đề tài/khoá học ở trang chi tiết. Nút, nhãn, menu, bảng
+	   luôn dùng --font-body.
 	   Dự phòng Cambria/Times New Roman, KHÔNG dùng Georgia: Georgia thiếu chữ
 	   Việt dấu chồng (ấ, ầ) → dấu bị tách rời khi font web chưa tải xong hoặc
 	   máy trạm không ra được Internet. */
-	--font-display: 'Newsreader', Cambria, 'Times New Roman', serif;
-	--font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
-	--font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+	--font-display: 'Literata', Cambria, 'Times New Roman', serif;
+	--font-heading: 'Inter', system-ui, sans-serif;
+	--font-body: 'Inter', system-ui, sans-serif;
 	--font-mono: Consolas, ui-monospace, 'Cascadia Mono', 'Courier New', monospace; /* font hệ thống, không tải từ web */
 
 	--font-size-2xs: 0.6875rem; /* 11px */

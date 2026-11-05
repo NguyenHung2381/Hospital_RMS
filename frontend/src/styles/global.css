@@ -8,7 +8,7 @@
 @import './mixins.css';
 @import './select.css';
 
-/* Font Plus Jakarta Sans / Newsreader nạp không chặn hiển thị ở main.tsx — KHÔNG
+/* Font Inter / Literata nạp không chặn hiển thị ở main.tsx — KHÔNG
    @import ở đây: @import trong CSS chặn vẽ trang tới khi Google Fonts trả về,
    máy trạm không ra được Internet thì treo trắng tới khi hết thời gian chờ. */
 
@@ -55,7 +55,7 @@ h6 {
 	color: var(--color-gray-800);
 }
 
-/* h1 = tên trang / tên nội dung → serif. Chỉ nạp Newsreader ở 600 nên
+/* h1 = tên trang / tên nội dung → serif. Chỉ nạp Literata ở 600 nên
    luôn đặt 600 để trình duyệt không tự làm đậm giả. */
 h1 {
 	font-family: var(--font-display);

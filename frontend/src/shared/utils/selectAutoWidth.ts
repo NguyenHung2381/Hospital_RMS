@@ -64,7 +64,7 @@ export function initSelectAutoWidth() {
 		attributeFilter: ['data-active'],
 	});
 	MQ.addEventListener('change', schedule);
-	// Font Plus Jakarta Sans nạp sau (swap) → đo lại
+	// Font Inter nạp sau (swap) → đo lại
 	document.fonts?.ready.then(() => {
 		document.querySelectorAll('select').forEach((s) => signatures.delete(s));
 		schedule();

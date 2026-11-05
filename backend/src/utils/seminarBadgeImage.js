@@ -1,8 +1,8 @@
 /**
  * Ảnh PNG thẻ đại biểu hội nghị (đính kèm email đăng ký) — cùng bố cục với
  * mailService.renderSeminarBadgeEmail để người tham dự lưu/in được.
- * Font Be Vietnam Pro đóng kèm (assets/fonts, OFL) vì image alpine không có
- * font hỗ trợ tiếng Việt.
+ * Font Inter đóng kèm (assets/fonts, OFL) — cùng font giao diện web — vì
+ * image alpine không có font hỗ trợ tiếng Việt.
  */
 const path = require('path');
 const { lazyRequire } = require('./lazyRequire');
@@ -19,11 +19,8 @@ let skia;
 const loadSkia = () => {
 	if (!skia) {
 		skia = require('@napi-rs/canvas');
-		skia.GlobalFonts.registerFromPath(
-			path.join(ASSETS, 'fonts/BeVietnamPro_400Regular.ttf'),
-			'BVP',
-		);
-		skia.GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/BeVietnamPro_700Bold.ttf'), 'BVP');
+		skia.GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/Inter-Regular.ttf'), 'Inter');
+		skia.GlobalFonts.registerFromPath(path.join(ASSETS, 'fonts/Inter-Bold.ttf'), 'Inter');
 	}
 	return skia;
 };
@@ -43,7 +40,7 @@ const PAD = 40;
 const HEADER = 200;
 const QR = 300;
 
-const font = (size, bold) => `${bold ? 700 : 400} ${size}px BVP`;
+const font = (size, bold) => `${bold ? 700 : 400} ${size}px Inter`;
 
 // Ngắt dòng theo từ, tối đa maxLines (dòng cuối thêm "…" nếu bị cắt)
 const wrap = (ctx, text, f, maxW, maxLines) => {

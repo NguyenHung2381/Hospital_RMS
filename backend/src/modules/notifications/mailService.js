@@ -97,7 +97,7 @@ const sendTest = async (to) => {
 };
 
 const renderNotificationEmail = ({ fullName, title, message }) => `
-	<div style="font-family: Arial, Helvetica, sans-serif; max-width: 560px; margin: 0 auto; color:#1f2937;">
+	<div style="font-family: Inter, 'Segoe UI', Arial, Helvetica, sans-serif; max-width: 560px; margin: 0 auto; color:#1f2937;">
 		<h2 style="color:#1a6abd; margin-bottom: 4px;">${escapeHtml(title)}</h2>
 		<p>Xin chào ${escapeHtml(fullName || 'bạn')},</p>
 		${message ? `<p style="white-space: pre-line;">${escapeHtml(message)}</p>` : ''}
@@ -119,7 +119,7 @@ const LOGO_ATTACHMENT = {
 const renderOtpEmail = ({ fullName, code, ttlMin, resetUrl }) => `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px;">
 	<tr><td align="center">
-		<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+		<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;color:#1f2937;">
 			<tr><td align="center" style="background:#0a9b4a;padding:24px 16px;">
 				<img src="cid:rms-logo" width="64" height="64" alt="Logo" style="display:block;border:0;margin:0 auto 10px;background:#ffffff;border-radius:50%;">
 				<div style="color:#ffffff;font-size:18px;font-weight:bold;">Hệ thống Quản lý NCKH &amp; Đào tạo</div>
@@ -162,8 +162,8 @@ const renderSeminarBadgeEmail = ({
 }) => `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px;">
 	<tr><td align="center">
-		<p style="margin:0 0 16px;max-width:420px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2937;">Xin chào ${escapeHtml(holder)}, bạn đã đăng ký tham dự thành công. Dưới đây là thẻ đại biểu của bạn — khi đến hội nghị, đưa mã QR cho ban tổ chức quét để điểm danh.</p>
-		<table role="presentation" width="380" cellpadding="0" cellspacing="0" style="max-width:380px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1f2937;border:1px solid #d1e7da;">
+		<p style="margin:0 0 16px;max-width:420px;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1f2937;">Xin chào ${escapeHtml(holder)}, bạn đã đăng ký tham dự thành công. Dưới đây là thẻ đại biểu của bạn — khi đến hội nghị, đưa mã QR cho ban tổ chức quét để điểm danh.</p>
+		<table role="presentation" width="380" cellpadding="0" cellspacing="0" style="max-width:380px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;color:#1f2937;border:1px solid #d1e7da;">
 			<tr><td align="center" style="background:#0a9b4a;padding:20px 16px 18px;">
 				<img src="cid:rms-logo" width="56" height="56" alt="Logo" style="display:block;border:0;margin:0 auto 8px;background:#ffffff;border-radius:50%;">
 				<div style="color:#ffffff;font-size:13px;opacity:.9;">Bệnh viện Hữu nghị Đa khoa Nghệ An</div>
@@ -183,8 +183,8 @@ const renderSeminarBadgeEmail = ({
 				<div style="display:inline-block;background:#e7f5ed;color:#087c3b;font-size:12px;font-weight:bold;padding:4px 12px;border-radius:999px;margin-top:10px;">ĐẠI BIỂU</div>
 			</td></tr>
 		</table>
-		<p style="margin:16px 0 0;max-width:420px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#4b5563;">Cuối buổi, quét lại mã QR hoặc mở <a href="${escapeHtml(ticketUrl)}" style="color:#087c3b;">trang vé của bạn</a> để làm bài kiểm tra và theo dõi chứng nhận CME.</p>
-		<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;">Đây là email tự động từ Hệ thống Quản lý NCKH &amp; Đào tạo. Vui lòng không trả lời email này.</p>
+		<p style="margin:16px 0 0;max-width:420px;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#4b5563;">Cuối buổi, quét lại mã QR hoặc mở <a href="${escapeHtml(ticketUrl)}" style="color:#087c3b;">trang vé của bạn</a> để làm bài kiểm tra và theo dõi chứng nhận CME.</p>
+		<p style="margin:12px 0 0;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;font-size:12px;color:#9ca3af;">Đây là email tự động từ Hệ thống Quản lý NCKH &amp; Đào tạo. Vui lòng không trả lời email này.</p>
 	</td></tr>
 </table>
 `;

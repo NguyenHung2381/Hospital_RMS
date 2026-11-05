@@ -88,7 +88,7 @@ const countRecent = async (eventType, windowMin) => {
 };
 
 const render = (title, rows) => `
-	<div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; color:#1f2937;">
+	<div style="font-family: Inter, 'Segoe UI', Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; color:#1f2937;">
 		<h2 style="color:#b91c1c; margin-bottom: 4px;">⚠️ ${escapeHtml(title)}</h2>
 		<table style="border-collapse: collapse; font-size: 14px; margin-top: 12px;">
 			${rows

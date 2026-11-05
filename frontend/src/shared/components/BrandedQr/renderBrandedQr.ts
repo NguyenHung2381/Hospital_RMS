@@ -21,7 +21,7 @@ export const QR_COLORS = {
 	muted: '#6b7280',
 };
 
-const FONT = '"Plus Jakarta Sans", Arial, sans-serif';
+const FONT = '"Inter", Arial, sans-serif';
 const W = 800; // đơn vị logic; ảnh xuất ra nhân SCALE
 const SCALE = 2;
 const PAD = 48;

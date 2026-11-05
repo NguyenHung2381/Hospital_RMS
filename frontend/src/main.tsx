@@ -11,7 +11,7 @@ import './styles/global.css';
 const fontLink = document.createElement('link');
 fontLink.rel = 'stylesheet';
 fontLink.href =
-	'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:opsz,wght@6..72,600&display=swap';
+	'https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Literata:opsz,wght@7..72,600&display=swap';
 document.head.append(fontLink);
 
 const rootElement = document.getElementById('root');
