@@ -31,6 +31,10 @@
 	border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
+/* Hồng chỉ cho "đang chờ bạn xử lý" (cùng quy ước với dashboard) */
+.statCard.attention::before {
+	background: var(--color-accent);
+}
 .statCard.amber::before {
 	background: var(--color-warning);
 }
@@ -50,6 +54,10 @@
 	border-color: var(--color-gray-300);
 }
 
+.statCard.attention.statActive {
+	box-shadow: 0 0 0 2px var(--color-accent);
+	border-color: var(--color-accent);
+}
 .statCard.amber.statActive {
 	box-shadow: 0 0 0 2px var(--color-warning);
 	border-color: var(--color-warning);
@@ -82,6 +90,10 @@
 	height: 20px;
 }
 
+.iconAttention {
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+}
 .iconAmber {
 	background: var(--tone-amber-bg);
 	color: var(--tone-amber-fg);
@@ -125,6 +137,9 @@
 	margin-top: 3px;
 }
 
+.hintAttention {
+	color: var(--tone-pink-fg);
+}
 .hintAmber {
 	color: var(--tone-amber-fg);
 }

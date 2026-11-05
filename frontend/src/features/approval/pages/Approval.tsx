@@ -128,9 +128,9 @@ export default function Approval() {
 						key: 'pending' as const,
 						value: stats.pending,
 						label: 'Chờ phê duyệt',
-						iconCls: 'iconAmber',
-						cardCls: 'amber',
-						hintCls: 'hintAmber',
+						iconCls: 'iconAttention',
+						cardCls: 'attention',
+						hintCls: 'hintAttention',
 						hint: 'Cần xử lý sớm',
 					},
 					{
@@ -164,7 +164,16 @@ export default function Approval() {
 					<div
 						key={s.key}
 						className={`${styles.statCard} ${styles[s.cardCls as keyof typeof styles]} ${activeTab === s.key ? styles.statActive : ''}`}
+						role='button'
+						tabIndex={0}
+						aria-pressed={activeTab === s.key}
 						onClick={() => setActiveTab(s.key)}
+						onKeyDown={(e) => {
+							if (e.key === 'Enter' || e.key === ' ') {
+								e.preventDefault();
+								setActiveTab(s.key);
+							}
+						}}
 					>
 						<div
 							className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}

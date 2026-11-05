@@ -93,7 +93,7 @@
 	--font-display: 'Source Serif 4', Cambria, 'Times New Roman', serif;
 	--font-heading: 'Be Vietnam Pro', system-ui, sans-serif;
 	--font-body: 'Be Vietnam Pro', system-ui, sans-serif;
-	--font-mono: 'JetBrains Mono', 'Courier New', monospace;
+	--font-mono: Consolas, ui-monospace, 'Cascadia Mono', 'Courier New', monospace; /* font hệ thống, không tải từ web */
 
 	--font-size-2xs: 0.6875rem; /* 11px */
 	--font-size-xs: 0.75rem; /* 12px */
