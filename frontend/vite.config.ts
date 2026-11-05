@@ -25,7 +25,7 @@ function getApiPort(): string {
 		const match = content.match(/^PORT=(\d+)/m);
 		if (match) return match[1];
 	}
-	return '3000';
+	return '3001';
 }
 
 // Làm rối bundle JS trước khi ghi ra dist/ — chỉ áp dụng cho `vite build`

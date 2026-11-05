@@ -6,24 +6,24 @@
 #
 # Chỉ request đi tới TỪ các địa chỉ này mới được tin header X-Forwarded-For
 # (IP thật của người dùng) và X-Forwarded-Proto (https). Request từ nơi khác
-# (vd ai đó gọi thẳng cổng 8084 trong LAN) thì header tự khai bị bỏ qua — không
+# (vd ai đó gọi thẳng cổng 8081 trong LAN) thì header tự khai bị bỏ qua — không
 # giả được IP để vượt rate-limit đăng nhập, không giả được "đang dùng HTTPS".
 #
 # Mặc định (biến trống) = loopback + dải mạng Docker 172.16.0.0/12: đúng khi
 # proxy HTTPS chạy CÙNG máy (kết nối tới container đi qua gateway Docker).
 # Trước đây mặc định tin cả 10.0.0.0/8 và 192.168.0.0/16 — mọi máy trong LAN
-# bệnh viện gọi thẳng cổng 8084 đều tự khai được X-Forwarded-For để lách
+# bệnh viện gọi thẳng cổng 8081 đều tự khai được X-Forwarded-For để lách
 # rate-limit đăng nhập. Proxy đặt ở MÁY KHÁC thì BẮT BUỘC khai IP của nó, nếu
 # không mọi người dùng sẽ bị coi là cùng 1 IP (IP của proxy).
 #
 # Chỉ cho proxy vào (ONLY_TRUSTED_PROXIES): container nhận HTTP thuần, nên máy
-# trong LAN gọi thẳng http://<server>:8084 là bỏ qua HTTPS của proxy — mật khẩu
+# trong LAN gọi thẳng http://<server>:8081 là bỏ qua HTTPS của proxy — mật khẩu
 # đi dạng chữ thường trên mạng. Khi bật, request KHÔNG đến từ proxy tin cậy nhận
 # 403. Luôn cho qua 127.0.0.1 và gateway mạng Docker (= chính máy chạy Docker:
-# health check của deploy gọi http://127.0.0.1:8084 đi vào qua địa chỉ này).
+# health check của deploy gọi http://127.0.0.1:8081 đi vào qua địa chỉ này).
 #   auto (mặc định) — bật khi đã khai TRUSTED_PROXIES (proxy ở máy khác);
 #                     TRUSTED_PROXIES trống thì không chặn (chưa biết proxy ở đâu).
-#   true / false    — luôn bật / luôn tắt (false: cho phép truy cập thẳng 8084).
+#   true / false    — luôn bật / luôn tắt (false: cho phép truy cập thẳng 8081).
 set -eu
 
 ONLY_TRUSTED_PROXIES="${ONLY_TRUSTED_PROXIES:-auto}"

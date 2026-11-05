@@ -93,7 +93,7 @@ const startStandalone = async () => {
 			process.exit(1);
 		}
 
-		const PREFERRED_PORT = parseInt(process.env.PORT) || 3000;
+		const PREFERRED_PORT = parseInt(process.env.PORT) || 3001;
 		const PORT = await findAvailablePort(PREFERRED_PORT);
 
 		const server = app.listen(PORT, '0.0.0.0', () => {

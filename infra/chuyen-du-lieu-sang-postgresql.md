@@ -211,7 +211,7 @@ Diễn tập xong thì để nguyên DB PG cũng được: bước C.4 sẽ xoá
 
 Khởi động backend trên máy Ubuntu với dữ liệu vừa nạp
 (`docker compose -f docker-compose.prod.yml up -d`), truy cập bằng
-`http://<IP-VM>:8084` (chưa trỏ domain), thử tay các luồng quan trọng: đăng nhập
+`http://<IP-VM>:8081` (chưa trỏ domain), thử tay các luồng quan trọng: đăng nhập
 (cả username viết **hoa**), 2FA, nộp và duyệt đề tài, hội đồng, điểm danh QR,
 đăng ký hội thảo, cấp CME, import Excel, xuất Word/Excel.
 
@@ -330,7 +330,7 @@ khoảng 1 phút `docker compose -f docker-compose.prod.yml ps`: backend `health
 
 ### C.8. Kiểm tra tay (15–20 phút, chỉ xem, không sửa dữ liệu)
 
-Truy cập thẳng máy mới (`http://<IP-VM>:8084` hoặc qua `/etc/hosts`), dùng tài
+Truy cập thẳng máy mới (`http://<IP-VM>:8081` hoặc qua `/etc/hosts`), dùng tài
 khoản thật của nhóm vận hành:
 
 - [ ] Đăng nhập, gõ username **viết hoa**; 2FA (nếu tài khoản có bật).

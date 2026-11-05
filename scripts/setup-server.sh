@@ -28,12 +28,12 @@
 #   DATA_DISK       tên ổ thứ 2 (sdb, vdb, nvme1n1) — sẽ bị XOÁ SẠCH. Script chỉ
 #                   format ổ không có phân vùng và không có dữ liệu.
 #                   none = để /data trên ổ hệ điều hành (máy 1 ổ)
-#   ACCESS_MODE     ip          thử bằng http://<IP>:8084, chưa có HTTPS
+#   ACCESS_MODE     ip          thử bằng http://<IP>:8081, chưa có HTTPS
 #                   proxy       reverse proxy HTTPS của bệnh viện (máy khác) trỏ về máy này
 #                   letsencrypt nginx + chứng chỉ Let's Encrypt ngay trên máy này
 #   DOMAIN          tên miền (proxy / letsencrypt), vd nckh.bvnghean.vn
 #   LE_EMAIL        email nhận thông báo hết hạn chứng chỉ (letsencrypt)
-#   TRUSTED_PROXIES IP reverse proxy (proxy) — nginx chặn máy khác gọi thẳng 8084
+#   TRUSTED_PROXIES IP reverse proxy (proxy) — nginx chặn máy khác gọi thẳng 8081
 #   WEB_CONCURRENCY số worker backend (mặc định số vCPU − 2, tối thiểu 1)
 #   ENABLE_CLAMAV   yes | no — quét virus file upload (mặc định no khi RAM < 8 GB)
 #   DB_MODE         new (DB trống) | transfer (chuyển dữ liệu từ file .bak SQL Server)
@@ -249,7 +249,7 @@ collect_answers() {
 
 	# Truy cập web
 	info "Cách truy cập web:"
-	info "  ip          — thử bằng http://$(server_ip):8084, chưa có HTTPS"
+	info "  ip          — thử bằng http://$(server_ip):8081, chưa có HTTPS"
 	info "  proxy       — reverse proxy HTTPS của bệnh viện (máy khác) trỏ về máy này"
 	info "  letsencrypt — dựng HTTPS ngay trên máy này (domain đã trỏ về, mở 80/443 từ Internet)"
 	ask_choice ACCESS_MODE "Chọn" ip ip proxy letsencrypt
@@ -300,7 +300,7 @@ collect_answers() {
 
 derive_settings() {
 	case "$ACCESS_MODE" in
-	ip) PUBLIC_URL="http://$(server_ip):8084" ;;
+	ip) PUBLIC_URL="http://$(server_ip):8081" ;;
 	proxy | letsencrypt)
 		[ -n "$DOMAIN" ] || die "ACCESS_MODE=$ACCESS_MODE cần DOMAIN"
 		PUBLIC_URL="https://$DOMAIN"
@@ -311,8 +311,8 @@ derive_settings() {
 	case "$DB_MODE" in new | transfer) ;; *) die "DB_MODE không hợp lệ: $DB_MODE (new | transfer)" ;; esac
 	[ "$DB_MODE" != transfer ] || [ -n "$BAK_FILE" ] || die "DB_MODE=transfer cần BAK_FILE"
 	[[ "$WEB_CONCURRENCY" =~ ^[1-9][0-9]?$ ]] || die "WEB_CONCURRENCY phải là số ≥ 1"
-	FRONTEND_BIND=8084
-	[ "$ACCESS_MODE" = letsencrypt ] && FRONTEND_BIND=127.0.0.1:8084
+	FRONTEND_BIND=8081
+	[ "$ACCESS_MODE" = letsencrypt ] && FRONTEND_BIND=127.0.0.1:8081
 	return 0
 }
 
@@ -370,7 +370,7 @@ step_firewall() {
 	sudo ufw deny 5432/tcp >/dev/null
 	sudo ufw --force enable >/dev/null
 	ok "Mở SSH, chỉ cho mạng Docker vào 5432"
-	info "Lưu ý: cổng web 8084 do Docker mở, không qua UFW (mục 13.2 tài liệu)"
+	info "Lưu ý: cổng web 8081 do Docker mở, không qua UFW (mục 13.2 tài liệu)"
 }
 
 # ─── 3. Ổ dữ liệu /data ──────────────────────────────────────────────────────
@@ -758,7 +758,7 @@ step_start() {
 	local i
 	for i in $(seq 1 60); do
 		if curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:3001/health/db 2>/dev/null &&
-			curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:8084 2>/dev/null; then
+			curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:8081 2>/dev/null; then
 			compose ps
 			ok "Backend nối được PostgreSQL, frontend trả 200"
 			return 0
@@ -783,7 +783,7 @@ server {
     client_max_body_size 300m;
 
     location / {
-        proxy_pass http://127.0.0.1:8084;
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host              \$host;
         proxy_set_header X-Forwarded-For   \$remote_addr;
@@ -889,7 +889,7 @@ summary() {
 	echo
 	info "Còn làm tay:"
 	[ "$ACCESS_MODE" = proxy ] &&
-		info "• Trỏ reverse proxy HTTPS về http://$(server_ip):8084 (kèm X-Forwarded-For, X-Forwarded-Proto: https)"
+		info "• Trỏ reverse proxy HTTPS về http://$(server_ip):8081 (kèm X-Forwarded-For, X-Forwarded-Proto: https)"
 	[ "$ACCESS_MODE" = ip ] &&
 		info "• Có HTTPS rồi: xoá COOKIE_SECURE=false trong backend/.env.production, sửa CORS_ORIGIN trong .env, up -d"
 	info "• IP tĩnh (nếu DHCP chưa giữ cố định IP): mục 4.2"

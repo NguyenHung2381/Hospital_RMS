@@ -63,7 +63,7 @@ jobs:
           DEPLOY_DIR: ${{ vars.DEPLOY_DIR || github.workspace }}
           COMPOSE_PROJECT: ${{ vars.COMPOSE_PROJECT || 'hospital_rms' }}
           BACKEND_URL: ${{ vars.BACKEND_URL || 'http://127.0.0.1:3001' }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'http://127.0.0.1:8084' }}
+          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'http://127.0.0.1:8081' }}
           MIGRATION_BACKUP_DIR: ${{ vars.MIGRATION_BACKUP_DIR }}
           MIGRATION_DB_USER: ${{ secrets.MIGRATION_DB_USER }}
           MIGRATION_DB_PASSWORD: ${{ secrets.MIGRATION_DB_PASSWORD }}

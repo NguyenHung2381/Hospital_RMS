@@ -106,13 +106,13 @@ npm install --prefix frontend
 cp backend/.env.example backend/.env   # rồi điền thông tin DB và secret thật
 
 npm run dev
-#   SERVER → nodemon src/server.js           http://localhost:3000
+#   SERVER → nodemon src/server.js           http://localhost:3001
 #   CLIENT → vite (đợi server sẵn sàng)      http://localhost:5173
 ```
 
 Chạy riêng từng phần: `npm run server` (backend) hoặc `npm run client` (frontend).
 
-Nếu port `3000` đang bận, backend tự chuyển sang port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env` để Vite proxy đúng port.
+Nếu port `3001` đang bận, backend tự chuyển sang port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env` để Vite proxy đúng port.
 
 ### Build production (không Docker)
 
@@ -148,7 +148,7 @@ Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](back
 Khi dev, client gọi đường dẫn tương đối qua proxy của Vite nên thường không cần tự tạo file này.
 
 ```env
-VITE_API_PORT=3000        # backend tự ghi mỗi lần khởi động
+VITE_API_PORT=3001        # backend tự ghi mỗi lần khởi động
 # VITE_API_BASE_URL=      # chỉ đặt khi deploy client ở domain khác với API
 ```
 
@@ -164,8 +164,8 @@ Dự án có hai file compose:
 | Project Compose | `hospital_rms_dev` | `hospital_rms` |
 | Build target | `dev` (Node, mount source code) | `prod` (backend `npm ci --omit=dev`, frontend build tĩnh + Nginx) |
 | Service | `server`, `client`, `redis` (+ `loki`, `promtail`) | `backend`, `frontend`, `redis` |
-| Truy cập web | `http://localhost:5173` (Vite) | `http://<host>:8084` (Nginx) |
-| API | `http://localhost:3000` | `127.0.0.1:3001` (chỉ loopback trên máy server) |
+| Truy cập web | `http://localhost:5173` (Vite) | `http://<host>:8081` (Nginx) |
+| API | `http://localhost:3001` | `127.0.0.1:3001` (chỉ loopback trên máy server) |
 | Hot reload | Có (nodemon + Vite, polling) | Không |
 | Biến môi trường | `backend/.env` được mount vào container | `backend/.env` + `backend/.env.production` qua `env_file` |
 | Upload | `backend/uploads/` trên máy host | Volume `server_uploads` |
@@ -191,8 +191,8 @@ Source code được bind mount vào container. Sửa code trên máy là contai
 
 | Service | Port | Ghi chú |
 |---|---|---|
-| `server` | `3000` | Express + nodemon (`-L`, polling). `mem_limit: 640m`, heap V8 384 MB |
-| `client` | `5173` | Vite dev server, proxy `/api` và `/uploads` sang `server:3000`. `mem_limit: 768m` |
+| `server` | `3001` | Express + nodemon (`-L`, polling). `mem_limit: 640m`, heap V8 384 MB |
+| `client` | `5173` | Vite dev server, proxy `/api` và `/uploads` sang `server:3001`. `mem_limit: 768m` |
 | `redis` | `6379` | Redis 7, `maxmemory 128mb`, `allkeys-lru`, tắt RDB/AOF (chỉ làm cache) |
 | `loki` | `3100` | Profile `logs`, **không chạy mặc định** |
 | `promtail` | – | Profile `logs`, đọc `backend/logs` rồi đẩy vào Loki |
@@ -216,7 +216,7 @@ Source code được bind mount vào container. Sửa code trên máy là contai
    | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | Tên service trong mạng Docker |
    | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước (Vite), để `req.ip` là IP thật của máy khách chứ không phải IP container `frontend` |
    | `LOG_RETENTION_FILES` | `100` | Giữ ít nhất khoảng 3 tháng log |
-   | `VITE_API_HOST` / `VITE_API_PORT` | `server` / `3000` | Đích proxy của Vite |
+   | `VITE_API_HOST` / `VITE_API_PORT` | `server` / `3001` | Đích proxy của Vite |
    | `CHOKIDAR_USEPOLLING` | `true` | Bind mount qua Docker Desktop không phát fs-events, phải polling (chu kỳ 1 giây) |
 
    Biến môi trường do compose đặt được ưu tiên hơn giá trị trong `backend/.env`.
@@ -234,8 +234,8 @@ docker compose down                  # dừng và xoá container (giữ volume)
 | Địa chỉ | Nội dung |
 |---|---|
 | `http://localhost:5173` | Giao diện web |
-| `http://localhost:3000/api-docs` | Swagger UI (Basic Auth `SWAGGER_USER` / `SWAGGER_PASS`) |
-| `http://localhost:3000/health` | Health check |
+| `http://localhost:3001/api-docs` | Swagger UI (Basic Auth `SWAGGER_USER` / `SWAGGER_PASS`) |
+| `http://localhost:3001/health` | Health check |
 | `http://localhost:3100` | Loki (khi bật profile `logs`) |
 
 #### Thêm hoặc cập nhật package
@@ -254,7 +254,7 @@ docker compose restart backend frontend
 Trình duyệt ──https──► Reverse proxy HTTPS (nginx trên host…, giữ chứng chỉ)
                               │ http + X-Forwarded-For / X-Forwarded-Proto
                               ▼
-                        :8084 frontend (Nginx, file tĩnh + header bảo mật)
+                        :8081 frontend (Nginx, file tĩnh + header bảo mật)
                               │  /api/, /uploads/, /api/v1/events (SSE)
                               ▼
                           backend:3001 ──► redis:6379 (có mật khẩu)
@@ -267,7 +267,7 @@ Trình duyệt ──https──► Reverse proxy HTTPS (nginx trên host…, gi
 
 | Service | Port trên máy host | Ghi chú |
 |---|---|---|
-| `frontend` | `${FRONTEND_BIND:-8084}` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
+| `frontend` | `${FRONTEND_BIND:-8081}` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
 | `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để reverse proxy cùng máy gọi được. Không lộ ra mạng. Chạy bằng user `node` (không phải root). `mem_limit: 512m` |
 | `redis` | – | Không publish port, chỉ dùng trong mạng Docker. Bắt buộc mật khẩu, tự sinh lần đầu vào volume `redis_secret` |
 
@@ -356,20 +356,20 @@ Chứng chỉ hết hạn sau 5 năm (`-days 1825`) — tạo lại và chép l�
 
 #### Bước 3b: Nối với reverse proxy HTTPS
 
-HTTPS kết thúc ở reverse proxy đứng trước cổng `8084` (nginx trên host, proxy chung của bệnh viện…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
+HTTPS kết thúc ở reverse proxy đứng trước cổng `8081` (nginx trên host, proxy chung của bệnh viện…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `TRUSTED_PROXIES` | `127.0.0.1/32 172.16.0.0/12` (loopback + mạng Docker) | IP/CIDR của reverse proxy. Chỉ request đến từ các địa chỉ này mới được tin `X-Forwarded-For` (IP thật) và `X-Forwarded-Proto` (https). Proxy ở máy khác thì **bắt buộc** khai |
-| `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker (gateway mạng Docker — health check của deploy) được kết nối tới `8084`, nơi khác nhận **403**. `false`: cho phép truy cập thẳng. `true`: luôn chặn |
+| `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker (gateway mạng Docker — health check của deploy) được kết nối tới `8081`, nơi khác nhận **403**. `false`: cho phép truy cập thẳng. `true`: luôn chặn |
 | `CSP_REPORT_ONLY` | `false` | `true` = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm (xem mục Nginx) |
-| `FRONTEND_BIND` | `8084` | Địa chỉ publish cổng frontend |
+| `FRONTEND_BIND` | `8081` | Địa chỉ publish cổng frontend |
 | `CORS_ORIGIN` | `https://nckh.bvnghean.vn` | |
 
-Container nhận HTTP thuần: máy trong LAN gọi thẳng `http://<server>:8084` là bỏ qua HTTPS của proxy (mật khẩu đi dạng chữ thường trên mạng) và tự khai được IP giả. Thu hẹp lại:
+Container nhận HTTP thuần: máy trong LAN gọi thẳng `http://<server>:8081` là bỏ qua HTTPS của proxy (mật khẩu đi dạng chữ thường trên mạng) và tự khai được IP giả. Thu hẹp lại:
 
-- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8084` (chỉ proxy trên máy đó gọi được).
-- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>`. Nginx tự trả 403 cho mọi máy khác (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ mở `8084` cho IP proxy. Sau khi đặt, thử từ 1 máy trong LAN: `curl -I http://<server>:8084` phải trả `403`; qua `https://nckh.bvnghean.vn` vẫn vào bình thường.
+- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8081` (chỉ proxy trên máy đó gọi được).
+- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>`. Nginx tự trả 403 cho mọi máy khác (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ mở `8081` cho IP proxy. Sau khi đặt, thử từ 1 máy trong LAN: `curl -I http://<server>:8081` phải trả `403`; qua `https://nckh.bvnghean.vn` vẫn vào bình thường.
 
 Reverse proxy phải gửi `X-Forwarded-Proto: https`. IIS ARR mặc định **không** gửi header này: thêm server variable `HTTP_X_FORWARDED_PROTO` = `https` trong rule URL Rewrite. Nếu thiếu, backend in cảnh báo `Request ... tới qua http, không phải https` trong log, và trình duyệt không nhận HSTS.
 
@@ -392,7 +392,7 @@ Kiểm tra trên máy server:
 
 ```bash
 curl http://127.0.0.1:3001/health     # backend
-curl -I http://localhost:8084         # frontend
+curl -I http://localhost:8081         # frontend
 ```
 
 Swagger UI **tắt ở production**. Cần tạm thời thì đặt `SWAGGER_ENABLED=true` (kèm `SWAGGER_USER` / `SWAGGER_PASS`) trong `backend/.env.production`, rồi truy cập từ chính máy server: `http://127.0.0.1:3001/api-docs`. Xong việc nhớ tắt lại.
@@ -552,7 +552,7 @@ Hospital_RMS/
 
 ## API
 
-- **Swagger UI:** `http://localhost:3000/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`). Tắt ở production trừ khi đặt `SWAGGER_ENABLED=true`.
+- **Swagger UI:** `http://localhost:3001/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`). Tắt ở production trừ khi đặt `SWAGGER_ENABLED=true`.
 - **Base URL:** `/api/v1` · **Health check:** `GET /health`
 - **Response:** `{ "success": true, "message": "...", "data": {} }`
 - **Xác thực:** header `Authorization: Bearer <access_token>`, trừ `/auth/login`, `/auth/refresh` và `/public/*`.

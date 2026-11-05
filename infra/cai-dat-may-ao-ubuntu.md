@@ -8,7 +8,7 @@ Hướng dẫn từng bước dựng bản **production** trên một máy ảo,
 | Ổ 2 | 50 GB | Mount tại `/data`: source code, dữ liệu Docker (image, file upload, log), dữ liệu + backup PostgreSQL |
 
 ```
-Trình duyệt ──► :8084 frontend (Nginx, container) ──► backend:3001 (container) ──► redis, clamav (container)
+Trình duyệt ──► :8081 frontend (Nginx, container) ──► backend:3001 (container) ──► redis, clamav (container)
                                                           │
                                                           └──► PostgreSQL 18 (cài thẳng trên Ubuntu, cổng 5432)
 ```
@@ -45,7 +45,7 @@ Script hỏi vài câu ở đầu rồi tự chạy hết (lần đầu 20–40 
 | Câu hỏi | Ý nghĩa |
 |---|---|
 | Ổ dùng làm `/data` | Script liệt kê các ổ **chưa phân vùng, chưa có dữ liệu** và bắt gõ lại tên ổ trước khi format. Ổ đã có phân vùng/dữ liệu thì không bao giờ bị format. `none` = để `/data` trên ổ hệ điều hành |
-| Cách truy cập web | `ip` (thử bằng `http://<IP-VM>:8084`), `proxy` (reverse proxy HTTPS của bệnh viện ở máy khác), `letsencrypt` (dựng HTTPS ngay trên máy ảo) |
+| Cách truy cập web | `ip` (thử bằng `http://<IP-VM>:8081`), `proxy` (reverse proxy HTTPS của bệnh viện ở máy khác), `letsencrypt` (dựng HTTPS ngay trên máy ảo) |
 | Số worker, ClamAV | Mặc định theo số vCPU và RAM của máy |
 | Database | `new` (hệ thống mới, DB trống) hoặc `transfer` (chuyển từ file `.bak` SQL Server, bước 7). Chưa chép file `.bak` lên thì script chờ bạn chép |
 | Khoá SSH bằng mật khẩu | Chỉ hỏi khi `~/.ssh/authorized_keys` đã có khoá (bước 3.5) |
@@ -694,7 +694,7 @@ chmod 600 backend/.env backend/.env.production
 
 > Mật khẩu chứa ký tự `$`, `` ` `` hoặc `\` sẽ bị shell diễn giải trong lệnh `cat` trên. Mở `nano` sửa lại cho đúng nguyên văn.
 
-**Chưa có HTTPS, đang thử bằng `http://<IP-VM>:8084`?** Thêm dòng `COOKIE_SECURE=false` vào file này. Ở production cookie đăng nhập mặc định có cờ `Secure`, trình duyệt không lưu cookie đó qua HTTP nên bạn bị đăng xuất sau ~15 phút. Có HTTPS rồi thì **xoá dòng này**.
+**Chưa có HTTPS, đang thử bằng `http://<IP-VM>:8081`?** Thêm dòng `COOKIE_SECURE=false` vào file này. Ở production cookie đăng nhập mặc định có cờ `Secure`, trình duyệt không lưu cookie đó qua HTTP nên bạn bị đăng xuất sau ~15 phút. Có HTTPS rồi thì **xoá dòng này**.
 
 ### 11.3. `.env` cạnh `docker-compose.prod.yml`
 
@@ -703,13 +703,13 @@ cat > .env <<'EOF'
 # Địa chỉ CHÍNH XÁC trình duyệt dùng để vào web (http/https + domain + cổng nếu có)
 CORS_ORIGIN=https://nckh.bvnghean.vn
 # Đang thử bằng IP, chưa có domain:
-# CORS_ORIGIN=http://<IP-VM>:8084
+# CORS_ORIGIN=http://<IP-VM>:8081
 
 # Số worker backend = số vCPU trừ 2 (máy 4 vCPU → 2), tối thiểu 1
 WEB_CONCURRENCY=2
 
-# Cổng web. Có reverse proxy HTTPS ngay trên máy này (bước 13.3) thì đổi thành 127.0.0.1:8084
-FRONTEND_BIND=8084
+# Cổng web. Có reverse proxy HTTPS ngay trên máy này (bước 13.3) thì đổi thành 127.0.0.1:8081
+FRONTEND_BIND=8081
 
 # Tắt quét virus khi RAM < 8 GB: bỏ dấu # dòng dưới, rồi up với --scale clamav=0
 # CLAMAV_HOST=
@@ -801,10 +801,10 @@ Trên máy ảo:
 ```bash
 curl -s http://127.0.0.1:3001/health ; echo        # backend sống
 curl -s http://127.0.0.1:3001/health/db ; echo     # backend nối được PostgreSQL
-curl -sI http://localhost:8084 | head -1           # HTTP/1.1 200 OK
+curl -sI http://localhost:8081 | head -1           # HTTP/1.1 200 OK
 ```
 
-Trên máy bạn, mở trình duyệt: `http://<IP-VM>:8084` (hoặc domain sau bước 13.3).
+Trên máy bạn, mở trình duyệt: `http://<IP-VM>:8081` (hoặc domain sau bước 13.3).
 
 ClamAV cần ~1 phút nạp CSDL virus sau khi khởi động. Trong lúc đó upload file bị từ chối (503), đợi rồi thử lại.
 
@@ -846,16 +846,16 @@ sudo ufw status verbose
 
 ### 13.2. Lưu ý: Docker mở cổng không qua UFW
 
-Docker tự mở các cổng publish bằng iptables riêng, **bỏ qua UFW**. Cổng `8084` vẫn vào được từ mạng dù UFW không có rule. Muốn hạn chế:
+Docker tự mở các cổng publish bằng iptables riêng, **bỏ qua UFW**. Cổng `8081` vẫn vào được từ mạng dù UFW không có rule. Muốn hạn chế:
 
-- Có reverse proxy HTTPS ngay trên máy ảo (13.3): đặt `FRONTEND_BIND=127.0.0.1:8084`. Khi đó chỉ proxy trên máy gọi được `8084`.
-- Proxy ở máy khác: đặt `TRUSTED_PROXIES=<IP proxy>` trong `.env` — nginx tự trả 403 cho máy khác gọi thẳng `8084` (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ cho IP proxy vào `8084`.
+- Có reverse proxy HTTPS ngay trên máy ảo (13.3): đặt `FRONTEND_BIND=127.0.0.1:8081`. Khi đó chỉ proxy trên máy gọi được `8081`.
+- Proxy ở máy khác: đặt `TRUSTED_PROXIES=<IP proxy>` trong `.env` — nginx tự trả 403 cho máy khác gọi thẳng `8081` (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ cho IP proxy vào `8081`.
 
 Backend (`127.0.0.1:3001`) chỉ mở trên loopback, không lộ ra mạng.
 
 ### 13.3. HTTPS ngay trên máy ảo (tuỳ chọn)
 
-Nếu bệnh viện đã có reverse proxy HTTPS chung (IIS ARR, nginx, F5…) thì trỏ nó về `http://<IP-VM>:8084`, gửi kèm `X-Forwarded-For` và `X-Forwarded-Proto: https`. Xem README mục *Bước 3b: Nối với reverse proxy HTTPS*.
+Nếu bệnh viện đã có reverse proxy HTTPS chung (IIS ARR, nginx, F5…) thì trỏ nó về `http://<IP-VM>:8081`, gửi kèm `X-Forwarded-For` và `X-Forwarded-Proto: https`. Xem README mục *Bước 3b: Nối với reverse proxy HTTPS*.
 
 Tự dựng HTTPS trên máy ảo (domain đã trỏ về máy, nhận được kết nối 80/443 từ Internet để Let's Encrypt xác thực):
 
@@ -868,7 +868,7 @@ server {
     client_max_body_size 300m;
 
     location / {
-        proxy_pass http://127.0.0.1:8084;
+        proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
         proxy_set_header Host              $host;
         proxy_set_header X-Forwarded-For   $remote_addr;
@@ -887,7 +887,7 @@ sudo ufw allow 'Nginx Full'
 sudo certbot --nginx -d nckh.bvnghean.vn
 ```
 
-Rồi sửa `.env`: `FRONTEND_BIND=127.0.0.1:8084`, `CORS_ORIGIN=https://nckh.bvnghean.vn`. Xoá `COOKIE_SECURE=false` khỏi `backend/.env.production` nếu đã thêm. Áp dụng:
+Rồi sửa `.env`: `FRONTEND_BIND=127.0.0.1:8081`, `CORS_ORIGIN=https://nckh.bvnghean.vn`. Xoá `COOKIE_SECURE=false` khỏi `backend/.env.production` nếu đã thêm. Áp dụng:
 
 ```bash
 cd /data/code/Hospital_RMS

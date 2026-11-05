@@ -1,6 +1,6 @@
 const http = require('http');
 
-const PORTS = [3000, 3001, 3002, 3003];
+const PORTS = [3001, 3002, 3003, 3004];
 const TIMEOUT_MS = 30000;
 const POLL_MS = 500;
 

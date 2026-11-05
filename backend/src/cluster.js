@@ -45,7 +45,7 @@ const main = async () => {
 		process.exit(1);
 	}
 
-	const PORT = parseInt(process.env.PORT) || 3000;
+	const PORT = parseInt(process.env.PORT) || 3001;
 	const jobsDisabled = process.env.JOBS_ENABLED === 'false';
 	let fastExits = 0;
 	let shuttingDown = false;

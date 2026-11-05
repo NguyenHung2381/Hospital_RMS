@@ -26,7 +26,7 @@
 #                       compose trên server (mặc định: thư mục gốc repo này)
 #   COMPOSE_PROJECT     GIỮ "hospital_rms" cho production — volume dữ liệu mang tiền tố này
 #   BACKEND_URL         mặc định http://127.0.0.1:3001
-#   FRONTEND_URL        mặc định http://127.0.0.1:8084
+#   FRONTEND_URL        mặc định http://127.0.0.1:8081
 #   SOAK_SECONDS        mặc định 60
 #   MIGRATION_DB_USER / MIGRATION_DB_PASSWORD
 #                       role có quyền ALTER (rms_migrate), chỉ dùng cho bước migration
@@ -51,7 +51,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_DIR="${DEPLOY_DIR:-$REPO_DIR}"
 PROJECT="${COMPOSE_PROJECT:-hospital_rms}"
 BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:3001}"
-FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1:8084}"
+FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1:8081}"
 SOAK_SECONDS="${SOAK_SECONDS:-60}"
 COMPOSE_FILE="$REPO_DIR/docker-compose.prod.yml"
 

@@ -30,6 +30,7 @@ services:
       target: dev
     environment:
       NODE_ENV: development
+      PORT: "3000"
       # Tin đúng 1 hop proxy liền trước (Vite, xfwd: true) để req.ip = IP máy khách
       # (địa chỉ cuối trong X-Forwarded-For), thay vì IP container frontend (172.x).
       TRUST_PROXY: "1"
@@ -54,7 +55,7 @@ services:
     command: ["sh", "-c", *ensure-deps, "sh", "node", "node_modules/nodemon/bin/nodemon.js", "-L", "--trace-deprecation", "src/server.js"]
     mem_limit: 640m
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./backend:/app
       - /app/node_modules

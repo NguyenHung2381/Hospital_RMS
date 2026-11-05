@@ -26,7 +26,7 @@ test('đủ biến bắt buộc: không lỗi, mặc định đúng như hành v
 	const { config, errors, warnings } = loadConfig(BASE);
 	assert.deepEqual(errors, []);
 	assert.deepEqual(warnings, []);
-	assert.equal(config.PORT, 3000);
+	assert.equal(config.PORT, 3001);
 	assert.equal(config.DB_SERVER, 'localhost');
 	assert.equal(config.DB_PORT, 5432);
 	assert.equal(config.DB_DATABASE, 'rms_hospital');

@@ -51,7 +51,7 @@ const required = () =>
 
 const SPEC = {
 	NODE_ENV: str('development'),
-	PORT: int(3000),
+	PORT: int(3001),
 
 	// PostgreSQL. DB_ENCRYPT = dùng SSL, DB_CA_CERT_FILE = kiểm tra chứng chỉ (verify-full).
 	DB_SERVER: str('localhost'),

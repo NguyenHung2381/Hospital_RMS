@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund --fetch-timeout=600000 --fetch-retries=5 --fetch-retry-maxtimeout=120000 \
     && cat package.json package-lock.json | md5sum | cut -d' ' -f1 > node_modules/.deps-hash
 COPY . .
-EXPOSE 3000
+EXPOSE 3001
 CMD ["npm", "run", "dev"]
 
 # Cài deps production ở stage riêng: stage prod bên dưới không cần npm, chỉ lấy
