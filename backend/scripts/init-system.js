@@ -1,18 +1,25 @@
 #!/usr/bin/env node
 // Khởi tạo hệ thống MỚI (DB vừa `migrate init`, chưa có ai đăng nhập được):
 //   1. Đồng bộ danh mục quyền (permissions/catalog.js → bảng permissions).
-//   2. Tạo 8 vai trò hệ thống theo database/seed/system-roles.json, kèm quyền mặc định.
-//   3. Tạo tài khoản quản trị đầu tiên (vai trò superuser) với mật khẩu tạm ngẫu
-//      nhiên, in ra 1 lần. Bắt đổi mật khẩu ở lần đăng nhập đầu; mật khẩu tạm hết
-//      hạn sau TEMP_PASSWORD_TTL_DAYS ngày (mặc định 7).
-// Chạy lại an toàn: vai trò đã có (cùng mã) thì không đụng tới quyền của nó; đã có
-// tài khoản quản trị đang hoạt động thì không tạo thêm.
+//   2. Tạo các vai trò hệ thống theo database/seed/system-roles.json, kèm quyền mặc định.
+//   3. Tạo 2 tài khoản quản trị, mỗi tài khoản 1 mật khẩu tạm ngẫu nhiên in ra 1 lần:
+//        superadmin (vai trò superadmin) — toàn quyền
+//        admin      (vai trò admin)      — chỉ NCKH, đào tạo / CME, người dùng
+//      Bắt đổi mật khẩu ở lần đăng nhập đầu; mật khẩu tạm hết hạn sau
+//      TEMP_PASSWORD_TTL_DAYS ngày (mặc định 7).
+// Chạy lại an toàn: vai trò đã có (cùng mã) thì không đụng tới quyền của nó; vai trò
+// đã có tài khoản đang hoạt động (superadmin: bất kỳ vai trò toàn quyền nào) thì
+// không tạo thêm; tên đăng nhập đã bị dùng thì bỏ qua tài khoản đó kèm cảnh báo.
 //
 //   npm run init:system
-//   npm run init:system -- --username=admin --full-name="Nguyễn Văn A" --email=it@bvnghean.vn
+//   npm run init:system -- --username=superadmin --full-name="Nguyễn Văn A" --email=it@bvnghean.vn
+//   npm run init:system -- --admin-username=admin --admin-full-name="..." --admin-email=...
+//   npm run init:system -- --no-admin-account
+//       chỉ tạo tài khoản superadmin (DB chuyển dữ liệu: vai trò Admin vẫn được tạo,
+//       ai cần thì superadmin tự gán ở màn Người dùng)
 //   npm run init:system -- --reset-admin --username=admin
-//       quản trị mất mật khẩu / mật khẩu tạm hết hạn / bị khoá: cấp mật khẩu tạm mới,
-//       mở khoá, đăng xuất mọi phiên. KHÔNG tắt 2FA.
+//       tài khoản superadmin / admin mất mật khẩu / mật khẩu tạm hết hạn / bị khoá: cấp
+//       mật khẩu tạm mới, mở khoá, đăng xuất mọi phiên. KHÔNG tắt 2FA.
 //
 // Trên server (image production không có npm), chạy trong image backend bằng role
 // rms_migrate — scripts/setup-server.sh tự làm việc này khi DB_MODE=new:
@@ -31,29 +38,46 @@ const arg = (name, def) => {
 	const hit = process.argv.slice(2).find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3).trim() : def;
 };
-const username = arg('username', 'admin');
-const fullName = arg('full-name', 'Quản trị hệ thống');
-const email = arg('email', '') || null;
+// --username / --full-name / --email: tài khoản superadmin (giữ tên cờ cũ cho
+// scripts/setup-server.sh); --admin-*: tài khoản admin.
+const ACCOUNTS = [
+	{
+		roleCode: 'superadmin',
+		label: 'Super Admin',
+		username: arg('username', 'superadmin'),
+		fullName: arg('full-name', 'Super Admin'),
+		email: arg('email', '') || null,
+	},
+	{
+		roleCode: 'admin',
+		label: 'Admin',
+		username: arg('admin-username', 'admin'),
+		fullName: arg('admin-full-name', 'Quản trị nghiệp vụ'),
+		email: arg('admin-email', '') || null,
+	},
+];
+if (process.argv.includes('--no-admin-account')) ACCOUNTS.pop();
+const username = ACCOUNTS[0].username; // --reset-admin
 const resetAdmin = process.argv.includes('--reset-admin');
 
-const printCredentials = (title, password) => {
+const printCredentials = (title, password, login = username) => {
 	const ttl = process.env.TEMP_PASSWORD_TTL_DAYS || '7';
 	console.log(`
 ✓ ${title}
   ┌──────────────────────────────────────────────
-  │ Tên đăng nhập : ${username}
+  │ Tên đăng nhập : ${login}
   │ Mật khẩu tạm  : ${password}
   └──────────────────────────────────────────────
   Mật khẩu này CHỈ IN 1 LẦN. Đăng nhập và đổi mật khẩu trong ${ttl} ngày.
-  Quá hạn / quên: chạy lại lệnh này với --reset-admin --username=${username}`);
+  Quá hạn / quên: chạy lại lệnh này với --reset-admin --username=${login}`);
 };
 
 // 16 ký tự chữ + số, đạt passwordPolicy (người dùng đổi ngay ở lần đăng nhập đầu)
-const tempPassword = () => {
+const tempPassword = (login) => {
 	const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
 	for (;;) {
 		const pw = Array.from(crypto.randomBytes(16), (b) => abc[b % abc.length]).join('');
-		if (!checkPassword(pw, { username })) return pw;
+		if (!checkPassword(pw, { username: login })) return pw;
 	}
 };
 
@@ -120,39 +144,43 @@ const seedRoles = async (pool) => {
 	return byCode;
 };
 
-const ensureAdmin = async (pool, adminRoleId) => {
-	const admins = (
-		await pool.request().query(`
+// Tạo tài khoản cho 1 vai trò quản trị nếu vai trò đó chưa có ai đang hoạt động.
+// Superadmin: coi như đã có khi có BẤT KỲ tài khoản toàn quyền nào (DB cũ dùng vai trò khác).
+const ensureAccount = async (pool, account, roleId) => {
+	const { username: login, fullName, email, label } = account;
+	const holders = (
+		await pool.request().input('role_id', sql.VarChar(10), roleId).query(`
 			SELECT u.username FROM users u JOIN roles r ON r.id = u.role_id
-			WHERE r.is_superuser AND u.is_active
+			WHERE u.is_active AND ${account.roleCode === 'superadmin' ? 'r.is_superuser' : 'r.id = @role_id'}
 		`)
 	).recordset;
-	if (admins.length) {
+	if (holders.length) {
 		console.log(
-			`• Đã có tài khoản quản trị: ${admins.map((a) => a.username).join(', ')} — không tạo thêm`,
+			`• Đã có tài khoản ${label}: ${holders.map((a) => a.username).join(', ')} — không tạo thêm`,
 		);
 		return;
 	}
 	const taken = (
 		await pool
 			.request()
-			.input('username', sql.VarChar(100), username)
+			.input('username', sql.VarChar(100), login)
 			.query('SELECT id FROM users WHERE username = @username')
 	).recordset[0];
 	if (taken) {
-		throw new Error(
-			`Tên đăng nhập "${username}" đã có (${taken.id}) nhưng không phải quản trị — chạy lại với --username=<tên khác>`,
+		console.warn(
+			`⚠️  Tên đăng nhập "${login}" đã có (${taken.id}) — bỏ qua tài khoản ${label}. Chạy lại với tên khác (--${account.roleCode === 'superadmin' ? '' : 'admin-'}username=...)`,
 		);
+		return;
 	}
 
 	// require muộn: userService nạp event bus / redis, không cần khi chỉ tạo vai trò
 	const userService = require('../src/modules/users/userService');
-	const password = tempPassword();
+	const password = tempPassword(login);
 	const user = await userService.create(
-		{ username, password, full_name: fullName, email, role_id: adminRoleId },
+		{ username: login, password, full_name: fullName, email, role_id: roleId },
 		null,
 	);
-	printCredentials(`Tạo tài khoản quản trị ${user.id}`, password);
+	printCredentials(`Tạo tài khoản ${label} ${user.id}`, password, login);
 	console.log(
 		`  Tài khoản quản trị phải bật 2FA trong ${process.env.TWOFA_GRACE_DAYS || '14'} ngày.`,
 	);
@@ -161,15 +189,16 @@ const ensureAdmin = async (pool, adminRoleId) => {
 const resetAdminPassword = async (pool) => {
 	const user = (
 		await pool.request().input('username', sql.VarChar(100), username).query(`
-			SELECT u.id, r.is_superuser FROM users u LEFT JOIN roles r ON r.id = u.role_id
+			SELECT u.id, r.is_superuser, r.code FROM users u LEFT JOIN roles r ON r.id = u.role_id
 			WHERE u.username = @username
 		`)
 	).recordset[0];
 	if (!user) throw new Error(`Không có tài khoản "${username}"`);
-	if (!user.is_superuser) throw new Error(`"${username}" không phải tài khoản quản trị`);
+	if (!user.is_superuser && user.code !== 'admin')
+		throw new Error(`"${username}" không phải tài khoản quản trị (superadmin / admin)`);
 
 	const userService = require('../src/modules/users/userService');
-	const password = tempPassword();
+	const password = tempPassword(username);
 	await userService.resetPassword(user.id, password, null);
 	await withActorTransaction(null, (tx) =>
 		tx
@@ -202,9 +231,16 @@ const resetAdminPassword = async (pool) => {
 
 	const pool = await getPool();
 	const byCode = await seedRoles(pool);
-	const adminRoleId = byCode.get('admin');
-	if (!adminRoleId) throw new Error('Không có vai trò admin — không tạo được tài khoản quản trị');
-	await ensureAdmin(pool, adminRoleId);
+	for (const account of ACCOUNTS) {
+		const roleId = byCode.get(account.roleCode);
+		if (!roleId) {
+			console.warn(
+				`⚠️  Không có vai trò ${account.roleCode} — không tạo được tài khoản ${account.label}`,
+			);
+			continue;
+		}
+		await ensureAccount(pool, account, roleId);
+	}
 	process.exit(0);
 })().catch((err) => {
 	console.error(`❌ ${err.message}`);

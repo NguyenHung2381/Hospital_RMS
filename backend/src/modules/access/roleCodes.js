@@ -6,7 +6,8 @@ const { httpError } = require('../../utils/httpError');
 // vai trò qua mã này thay vì id ('VT05', 'VT08'...) — id là dữ liệu, có thể
 // khác giữa các môi trường; mã thì không đổi.
 const ROLE = {
-	ADMIN: 'admin', // Quản trị hệ thống (superuser)
+	SUPERADMIN: 'superadmin', // Super Admin — toàn quyền (superuser)
+	ADMIN: 'admin', // Admin — chỉ NCKH, đào tạo / CME, người dùng (không phải superuser)
 	DIRECTOR: 'director', // Giám đốc / lãnh đạo
 	RESEARCH_MANAGER: 'research_manager', // Quản lý NCKH
 	REVIEW_COUNCIL: 'review_council', // Hội đồng xét duyệt

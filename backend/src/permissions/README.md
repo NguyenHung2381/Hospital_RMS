@@ -7,7 +7,7 @@ Mô hình: mỗi tài khoản có **một vai trò**; vai trò có tập **lư�
 | Danh mục quyền   | `catalog.js`                                            | Nguồn duy nhất. Server đồng bộ vào bảng `permissions` lúc khởi động (`sync.js`).                                                                                                                                         |
 | Phạm vi dữ liệu  | `scopes.js`, cột `role_permissions.scope`               | `topics`: own / department / all · `users`: department / all · `courses`: assigned / all · `staff_attendance`: department / all (lượt cấp có trước khi thêm phạm vi giữ `all` — `nullScopeFill`). Resource khác: `NULL`. |
 | Superuser        | cột `roles.is_superuser`                                | Không phải quyền trong danh mục, không cấp được qua giao diện. Trong code hiện dưới dạng key `system:manage`.                                                                                                            |
-| Vai trò hệ thống | `roles.is_system`, `roles.code`                         | 8 vai trò gốc, không xóa được. Code tham chiếu qua mã (`modules/access/roleCodes.js`), không dùng id `VT0x`.                                                                                                             |
+| Vai trò hệ thống | `roles.is_system`, `roles.code`                         | 9 vai trò gốc, không xóa được. Code tham chiếu qua mã (`modules/access/roleCodes.js`), không dùng id `VT0x`.                                                                                                             |
 | Chống leo thang  | `modules/access/privilegeGuard.js`                      | Chỉ cấp / gán / sửa được thứ không vượt quyền (và phạm vi) của chính mình.                                                                                                                                               |
 | Phiên đăng nhập  | `users.token_version`, `modules/auth/sessionVersion.js` | Tăng version ⇒ mọi access token cũ bị từ chối ngay.                                                                                                                                                                      |
 
@@ -39,7 +39,9 @@ npm run check:routes -- --list            # bảng mọi route và quyền của
 npm run sync:permissions -- --dry-run     # xem trước đồng bộ catalog → bảng permissions
 ```
 
-Quyền mặc định của 8 vai trò hệ thống nằm ở `database/seed/system-roles.json`. File này dùng cho 2 việc: `npm run init:system` tạo các vai trò này trên DB mới, và test ma trận vai trò × route đọc nó (không đọc DB). Khi đổi quyền của vai trò hệ thống có chủ đích, sửa file này và bảng `EXPECT` trong cùng commit. DB đang chạy không tự đổi theo: sửa ở màn Phân quyền.
+Quyền mặc định của 9 vai trò hệ thống nằm ở `database/seed/system-roles.json`. File này dùng cho 2 việc: `npm run init:system` tạo các vai trò này trên DB mới, và test ma trận vai trò × route đọc nó (không đọc DB). Khi đổi quyền của vai trò hệ thống có chủ đích, sửa file này và bảng `EXPECT` trong cùng commit. DB đang chạy không tự đổi theo: sửa ở màn Phân quyền.
+
+Hai vai trò quản trị: `superadmin` (VT01, Super Admin) là superuser — toàn quyền; `admin` (VT09, Admin) **không** phải superuser — toàn bộ quyền của module NCKH, hội thảo / CME, đào tạo, cộng quản lý người dùng và các quyền chỉ xem cần cho việc đó (vào khu quản trị, xem vai trò / khoa / địa điểm / báo cáo / thông báo). Admin không phân quyền, không sửa cấu hình hệ thống, không xem nhật ký; `privilegeGuard` chặn Admin gán vai trò toàn quyền hoặc vai trò có quyền vượt quyền của Admin. Test `routeMatrix.test.js` giữ ranh giới này. Vai trò toàn quyền trên DB cũ mang mã `admin` được migration `2026-12-17_doi_ma_vai_tro_admin_thanh_superadmin.sql` đổi sang `superadmin`; vai trò Admin mới tạo bằng `npm run init:system`.
 
 ## Nâng cấp CSDL
 

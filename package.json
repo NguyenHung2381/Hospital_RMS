@@ -1,5 +1,6 @@
 {
 	"scripts": {
+		"setup:dev": "node scripts/setup-dev.js",
 		"server": "cd backend && npm run dev",
 		"client": "cd frontend && npm run dev",
 		"client:wait": "node scripts/wait-server.js && npm run client",

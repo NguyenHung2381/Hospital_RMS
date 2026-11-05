@@ -39,8 +39,11 @@
 #   DB_MODE         new (DB trống) | transfer (chuyển dữ liệu từ file .bak SQL Server)
 #   BAK_FILE        đường dẫn file .bak trên máy này (DB_MODE=transfer)
 #   HARDEN_SSH      yes | no — tắt đăng nhập SSH bằng mật khẩu, chặn root
-#   ADMIN_USERNAME  tên đăng nhập quản trị đầu tiên (mặc định admin). Mật khẩu tạm
-#                   in ra 1 lần ở bước database, bắt đổi khi đăng nhập lần đầu
+#   ADMIN_USERNAME  tên đăng nhập tài khoản Super Admin — toàn quyền (mặc định superadmin)
+#   LIMITED_ADMIN_USERNAME
+#                   tài khoản Admin — chỉ NCKH, đào tạo / CME, người dùng (mặc định admin).
+#                   Chỉ tạo khi DB_MODE=new. Mật khẩu tạm của cả 2 in ra 1 lần ở bước
+#                   database, bắt đổi khi đăng nhập lần đầu
 #   REPO_URL        mặc định git@github.com:NguyenHung2381/Hospital_RMS.git
 #   APP_DIR         mặc định /data/code/Hospital_RMS
 #   ASSUME_YES=1    không hỏi xác nhận "Tiếp tục?"
@@ -146,7 +149,8 @@ save_conf() {
 	{
 		echo "# Câu trả lời của scripts/setup-server.sh — sửa tay được, xoá dòng để được hỏi lại"
 		for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
-			ENABLE_CLAMAV DB_MODE BAK_FILE HARDEN_SSH REPO_URL APP_DIR ADMIN_USERNAME; do
+			ENABLE_CLAMAV DB_MODE BAK_FILE HARDEN_SSH REPO_URL APP_DIR ADMIN_USERNAME \
+			LIMITED_ADMIN_USERNAME; do
 			[ -n "${!k:-}" ] && printf '%s=%q\n' "$k" "${!k}"
 		done
 	} >"$CONF_FILE"
@@ -208,7 +212,8 @@ collect_answers() {
 		printf -v "$k" '%s' "${!k:-}"
 	done
 	APP_DIR="${APP_DIR:-/data/code/Hospital_RMS}"
-	ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
+	ADMIN_USERNAME="${ADMIN_USERNAME:-superadmin}"
+	LIMITED_ADMIN_USERNAME="${LIMITED_ADMIN_USERNAME:-admin}"
 
 	# Đã có đủ câu trả lời (chạy lại / đặt sẵn bằng biến môi trường) thì không hỏi
 	if [ -n "$ACCESS_MODE" ] && [ -n "$DB_MODE" ] && [ -n "$DATA_DISK" ] &&
@@ -739,10 +744,18 @@ step_database() {
 	run_migrate up
 	run_migrate status
 
-	# Vai trò hệ thống + tài khoản quản trị đầu tiên. Chạy lại an toàn: đã có thì bỏ qua
-	# (DB chuyển từ .bak đã có sẵn cả hai).
-	log "Vai trò hệ thống và tài khoản quản trị đầu tiên"
-	run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME"
+	# Vai trò hệ thống + tài khoản Super Admin (+ Admin khi DB mới). Chạy lại an toàn: đã
+	# có thì bỏ qua. DB chuyển từ .bak đã có quản trị → không sinh thêm tài khoản Admin.
+	log "Vai trò hệ thống và tài khoản quản trị"
+	if [ "$DB_MODE" = new ]; then
+		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" \
+			--admin-username="$LIMITED_ADMIN_USERNAME"
+		# Danh mục NCKH, đào tạo / CME, nhân sự — chỉ nạp bảng còn trống
+		log "Danh mục cơ bản"
+		run_backend_script scripts/seed-catalogs.js
+	else
+		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" --no-admin-account
+	fi
 }
 
 # ─── 10. Khởi động ───────────────────────────────────────────────────────────
@@ -877,7 +890,10 @@ EOF
 summary() {
 	log "XONG"
 	info "Web          : $PUBLIC_URL"
-	info "Quản trị     : $ADMIN_USERNAME — mật khẩu tạm in ở bước 'Vai trò hệ thống' phía trên (lần tạo đầu)."
+	local admins="$ADMIN_USERNAME (Super Admin)"
+	[ "$DB_MODE" = new ] && admins+=", $LIMITED_ADMIN_USERNAME (Admin)"
+	info "Quản trị     : $admins"
+	info "               mật khẩu tạm in ở bước 'Vai trò hệ thống' phía trên (lần tạo đầu)."
 	info "               Quên/hết hạn: cd $APP_DIR && DB_PASSWORD=\$(awk -F: '\$4==\"rms_migrate\"{print \$5}' ~/.pgpass) \\"
 	info "               docker compose -f docker-compose.prod.yml run --rm --no-deps -T -e DB_USER=rms_migrate -e DB_PASSWORD \\"
 	info "               backend node scripts/init-system.js --reset-admin --username=$ADMIN_USERNAME"

@@ -34,7 +34,9 @@ services:
       # Tin đúng 1 hop proxy liền trước (Vite, xfwd: true) để req.ip = IP máy khách
       # (địa chỉ cuối trong X-Forwarded-For), thay vì IP container frontend (172.x).
       TRUST_PROXY: "1"
-      DB_SERVER: host.docker.internal
+      # PostgreSQL trên chính máy chạy Docker. Ở máy khác: DEV_DB_SERVER=<địa chỉ> trong
+      # .env cạnh file này (npm run setup:dev tự ghi khi nhập máy chủ khác localhost).
+      DB_SERVER: "${DEV_DB_SERVER:-host.docker.internal}"
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       # Quét virus upload bằng service clamav bên dưới (ghi đè backend/.env).

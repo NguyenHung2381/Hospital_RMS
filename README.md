@@ -90,10 +90,38 @@ Nhóm người dùng chính:
 ### Yêu cầu
 
 - **Node.js** ≥ 20 LTS, **npm** ≥ 9
-- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init`, rồi tạo vai trò hệ thống + tài khoản quản trị đầu tiên bằng `npm run init:system` (in mật khẩu tạm 1 lần; thư mục `backend`).
+- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init`, tạo vai trò hệ thống + 2 tài khoản quản trị bằng `npm run init:system` (in mật khẩu tạm 1 lần), rồi nạp danh mục cơ bản bằng `npm run seed:catalogs` (thư mục `backend`).
 - **Redis** (tuỳ chọn): không có Redis thì server vẫn chạy, chỉ bỏ qua cache.
 
-### Cài đặt và chạy
+### Setup tự động (khuyến nghị)
+
+Cài sẵn PostgreSQL 18 và Docker Desktop, rồi ở thư mục gốc:
+
+```bash
+npm run setup:dev              # backend + frontend trong Docker
+npm run setup:dev -- --native  # không Docker (sau đó chạy npm run dev)
+npm run setup:dev -- --db      # nhập lại tài khoản PostgreSQL
+```
+
+Script [scripts/setup-dev.js](scripts/setup-dev.js) làm lần lượt:
+
+1. Tạo `backend/.env`, hỏi **tài khoản PostgreSQL** (máy chủ, cổng, database, role, mật khẩu — Enter để giữ giá trị gợi ý), tự sinh JWT secret / `SWAGGER_PASS`. PostgreSQL ở máy khác thì script ghi `DEV_DB_SERVER` vào `.env` cạnh `docker-compose.yml` để container kết nối tới đó.
+2. Build image (hoặc `npm install` với `--native`).
+3. Kiểm tra kết nối. Chưa có DB / role thì tạo bằng `psql` theo `infra/postgresql/01_tao_db_va_role.sql` (hỏi mật khẩu `postgres`); sai mật khẩu / không tới được máy chủ thì cho nhập lại.
+4. `migrate init`.
+5. `init:system`: các vai trò hệ thống và **2 tài khoản quản trị**, in mật khẩu tạm 1 lần:
+
+   | Tài khoản | Vai trò | Quyền |
+   |---|---|---|
+   | `superadmin` | Super Admin (`superadmin`) | Toàn quyền hệ thống |
+   | `admin` | Admin (`admin`) | NCKH, hội thảo / CME, đào tạo, quản lý người dùng. Không có: phân quyền, cấu hình hệ thống, nhật ký, quy trình duyệt, cấu hình form, khảo sát |
+
+6. `seed:catalogs`: danh mục NCKH (loại / cấp đề tài, loại đợt), đào tạo / CME (loại hình, đối tượng, hồ sơ học viên, tín chỉ CME), nhân sự (chức vụ, chức danh, học hàm / học vị) — từ `backend/database/seed/catalogs.json`.
+7. `docker compose up -d` và chờ app lên.
+
+Chạy lại an toàn: không ghi đè giá trị đã có trong `.env`, không đổi mật khẩu role đã có; vai trò đã có thì giữ nguyên quyền, vai trò đã có người dùng thì không tạo thêm tài khoản; danh mục chỉ nạp vào bảng còn trống. Đổi tên tài khoản: `--superadmin=<tên> --admin=<tên>`. Xem mọi tuỳ chọn: `npm run setup:dev -- --help`.
+
+### Cài đặt và chạy (thủ công)
 
 ```bash
 git clone <repo-url>

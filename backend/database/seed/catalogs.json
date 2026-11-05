@@ -1,0 +1,972 @@
+{
+	"research": {
+		"categories": [
+			{
+				"id": "LDT01",
+				"name": "Đề tài NCKH",
+				"description": null,
+				"abbr": "NCKH"
+			},
+			{
+				"id": "LDT02",
+				"name": "Sáng kiến",
+				"description": null,
+				"abbr": "SK"
+			},
+			{
+				"id": "LDT03",
+				"name": "Sáng tạo",
+				"description": null,
+				"abbr": "ST"
+			},
+			{
+				"id": "LDT04",
+				"name": "Báo cáo Hội nghị",
+				"description": null,
+				"abbr": "BCHH"
+			},
+			{
+				"id": "LDT05",
+				"name": "Bài báo",
+				"description": null,
+				"abbr": "BB"
+			}
+		],
+		"levels": [
+			{
+				"id": "CD01",
+				"name": "Cấp cơ sở",
+				"description": null
+			},
+			{
+				"id": "CD02",
+				"name": "Cấp tỉnh",
+				"description": null
+			},
+			{
+				"id": "CD03",
+				"name": "Cấp bộ",
+				"description": null
+			}
+		],
+		"round_types": [
+			{
+				"id": "RT01",
+				"name": "Nghiên cứu khoa học",
+				"description": "Đề tài nghiên cứu khoa học các cấp"
+			},
+			{
+				"id": "RT02",
+				"name": "Bài báo",
+				"description": "Đợt đăng ký viết / công bố bài báo"
+			},
+			{
+				"id": "RT03",
+				"name": "Sáng kiến",
+				"description": "Sáng kiến, cải tiến kỹ thuật"
+			}
+		]
+	},
+	"training": {
+		"training_types": [
+			{
+				"id": "TRNTP-CTCV",
+				"name": "Cầm tay chỉ việc (CTCV)",
+				"description": null
+			},
+			{
+				"id": "TRNTP-DTLT",
+				"name": "Đào tạo liên tục (ĐTLT)",
+				"description": "Khóa mở theo đợt: ĐTLT Đợt X"
+			},
+			{
+				"id": "TRNTP-GPHN",
+				"name": "Thực hành giấy phép hành nghề (GPHN)",
+				"description": "Thực hành khám chữa bệnh trước khi cấp GPHN — khóa mở liên tục, mỗi học viên có lịch vòng riêng"
+			},
+			{
+				"id": "TRNTP-THBV",
+				"name": "Tập huấn bệnh viện (THBV)",
+				"description": null
+			}
+		],
+		"trainee_types": [
+			{
+				"id": "TRNTYPE-BS",
+				"name": "Bác sĩ",
+				"description": "Bác sĩ điều trị"
+			},
+			{
+				"id": "TRNTYPE-CN",
+				"name": "Cử nhân",
+				"description": "Cử nhân xét nghiệm, sinh học, y tế công cộng..."
+			},
+			{
+				"id": "TRNTYPE-DD",
+				"name": "Điều dưỡng",
+				"description": "Điều dưỡng các khoa lâm sàng"
+			},
+			{
+				"id": "TRNTYPE-DSI",
+				"name": "Dược sĩ",
+				"description": "Dược sĩ lâm sàng / nhà thuốc"
+			},
+			{
+				"id": "TRNTYPE-KTV",
+				"name": "Kỹ thuật viên",
+				"description": "KTV xét nghiệm, CĐHA, vật lý trị liệu..."
+			},
+			{
+				"id": "TRNTYPE-NHS",
+				"name": "Nữ hộ sinh",
+				"description": "Nữ hộ sinh sản phụ khoa"
+			},
+			{
+				"id": "TRNTYPE-QL",
+				"name": "Cán bộ quản lý y tế",
+				"description": "Lãnh đạo bệnh viện, trưởng khoa/phòng"
+			},
+			{
+				"id": "TRNTYPE-SV",
+				"name": "Sinh viên y khoa",
+				"description": "Sinh viên các trường ĐH Y"
+			},
+			{
+				"id": "TRNTYPE-YS",
+				"name": "Y sĩ",
+				"description": "Y sĩ đa khoa / Y sĩ YHCT"
+			}
+		],
+		"trainee_document_types": [
+			{
+				"id": "application",
+				"name": "Đơn đề nghị",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN",
+				"display_order": 7
+			},
+			{
+				"id": "contract",
+				"name": "Hợp đồng",
+				"description": null,
+				"required_for_types": null,
+				"display_order": 8
+			},
+			{
+				"id": "decision",
+				"name": "Quyết định cử đi học",
+				"description": null,
+				"required_for_types": "TRNTP-DTLT",
+				"display_order": 9
+			},
+			{
+				"id": "degree",
+				"name": "Bằng tốt nghiệp",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN,TRNTP-DTLT,TRNTP-CTCV",
+				"display_order": 3
+			},
+			{
+				"id": "evaluation",
+				"name": "Phiếu nhận xét",
+				"description": null,
+				"required_for_types": null,
+				"display_order": 10
+			},
+			{
+				"id": "health_check",
+				"name": "Giấy khám sức khỏe",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN",
+				"display_order": 6
+			},
+			{
+				"id": "license",
+				"name": "Chứng chỉ hành nghề",
+				"description": null,
+				"required_for_types": null,
+				"display_order": 5
+			},
+			{
+				"id": "national_id",
+				"name": "CCCD / CMND",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN,TRNTP-DTLT,TRNTP-CTCV",
+				"display_order": 1
+			},
+			{
+				"id": "other",
+				"name": "Khác",
+				"description": null,
+				"required_for_types": null,
+				"display_order": 99
+			},
+			{
+				"id": "photo",
+				"name": "Ảnh thẻ",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN,TRNTP-DTLT",
+				"display_order": 2
+			},
+			{
+				"id": "transcript",
+				"name": "Bảng điểm",
+				"description": null,
+				"required_for_types": "TRNTP-GPHN",
+				"display_order": 4
+			}
+		],
+		"cme_credit_groups": [
+			{
+				"id": "CME_DAOTAO",
+				"name": "Khóa đào tạo, bồi dưỡng ngắn hạn, hội nghị, hội thảo về y khoa",
+				"description": null,
+				"sort_order": 1
+			},
+			{
+				"id": "CME_KHAC",
+				"name": "Tự cập nhật kiến thức y khoa và các hình thức khác",
+				"description": null,
+				"sort_order": 5
+			},
+			{
+				"id": "CME_NCKH",
+				"name": "Nghiên cứu khoa học, giảng dạy về y khoa",
+				"description": null,
+				"sort_order": 4
+			},
+			{
+				"id": "CME_QUYTRINH",
+				"name": "Tham gia soạn thảo quy trình chuyên môn",
+				"description": null,
+				"sort_order": 2
+			},
+			{
+				"id": "CME_VBPL",
+				"name": "Tham gia soạn thảo văn bản quy phạm pháp luật ban hành quy trình chuyên môn",
+				"description": null,
+				"sort_order": 3
+			}
+		],
+		"cme_credit_categories": [
+			{
+				"id": "BB_QT_C1",
+				"name": "Bài báo khoa học quốc tế — Tác giả chính/chịu trách nhiệm",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 8,
+				"unit_label": "bài"
+			},
+			{
+				"id": "BB_QT_C2",
+				"name": "Bài báo khoa học quốc tế — Tác giả thứ hai trở đi",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 2,
+				"unit_label": "bài"
+			},
+			{
+				"id": "BB_TN_C1",
+				"name": "Bài báo khoa học trong nước — Tác giả chính/chịu trách nhiệm",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 4,
+				"unit_label": "bài"
+			},
+			{
+				"id": "BB_TN_C2",
+				"name": "Bài báo khoa học trong nước — Tác giả thứ hai trở đi",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 1,
+				"unit_label": "bài"
+			},
+			{
+				"id": "DT_KHOAHOC",
+				"name": "Khóa đào tạo, bồi dưỡng ngắn hạn (học viên/giảng viên)",
+				"description": null,
+				"group_id": "CME_DAOTAO",
+				"conversion_method": "per_session",
+				"conversion_value": 1,
+				"unit_label": "tiết"
+			},
+			{
+				"id": "GIANGDAY",
+				"name": "Giảng dạy về y khoa (kể cả chuẩn bị bài giảng)",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "per_session",
+				"conversion_value": 1,
+				"unit_label": "tiết"
+			},
+			{
+				"id": "HDONG_CHUTICH",
+				"name": "Tham gia hội đồng — Chủ tịch",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 3,
+				"unit_label": "hội đồng"
+			},
+			{
+				"id": "HDONG_THANHVIEN",
+				"name": "Tham gia hội đồng — Thành viên",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 1,
+				"unit_label": "hội đồng"
+			},
+			{
+				"id": "HDONG_THUKY",
+				"name": "Tham gia hội đồng — Thư ký/phản biện",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 2,
+				"unit_label": "hội đồng"
+			},
+			{
+				"id": "HD_LUANAN",
+				"name": "Hướng dẫn luận án",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "per_year",
+				"conversion_value": 4,
+				"unit_label": "năm"
+			},
+			{
+				"id": "HD_LUANVAN",
+				"name": "Hướng dẫn luận văn",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 4,
+				"unit_label": "luận văn"
+			},
+			{
+				"id": "HOC_CHUNGCHI",
+				"name": "Đang học khóa đào tạo cấp chứng chỉ chuyên khoa/kỹ thuật",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "per_session",
+				"conversion_value": 1,
+				"unit_label": "tiết"
+			},
+			{
+				"id": "HOC_VANBANG",
+				"name": "Đang học khóa đào tạo cấp văn bằng (trong/ngoài nước)",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "per_year",
+				"conversion_value": 24,
+				"unit_label": "năm"
+			},
+			{
+				"id": "HT_BAOCAOVIEN",
+				"name": "Hội nghị, hội thảo — Báo cáo viên (kể cả chuẩn bị báo cáo)",
+				"description": null,
+				"group_id": "CME_DAOTAO",
+				"conversion_method": "fixed",
+				"conversion_value": 2,
+				"unit_label": "báo cáo"
+			},
+			{
+				"id": "HT_CHUTRI",
+				"name": "Hội nghị, hội thảo — Chủ trì",
+				"description": null,
+				"group_id": "CME_DAOTAO",
+				"conversion_method": "fixed",
+				"conversion_value": 2,
+				"unit_label": "buổi"
+			},
+			{
+				"id": "HT_DAIBIEU",
+				"name": "Hội nghị, hội thảo — Đại biểu",
+				"description": null,
+				"group_id": "CME_DAOTAO",
+				"conversion_method": "fixed",
+				"conversion_value": 1.5,
+				"unit_label": "buổi"
+			},
+			{
+				"id": "KHAC_CME_DAOTAO",
+				"name": "Khác (nhập số tín chỉ trực tiếp)",
+				"description": null,
+				"group_id": "CME_DAOTAO",
+				"conversion_method": "fixed",
+				"conversion_value": 0,
+				"unit_label": "lần"
+			},
+			{
+				"id": "KHAC_CME_KHAC",
+				"name": "Khác (nhập số tín chỉ trực tiếp)",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 0,
+				"unit_label": "lần"
+			},
+			{
+				"id": "KHAC_CME_NCKH",
+				"name": "Khác (nhập số tín chỉ trực tiếp)",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 0,
+				"unit_label": "lần"
+			},
+			{
+				"id": "KHAC_CME_QUYTRINH",
+				"name": "Khác (nhập số tín chỉ trực tiếp)",
+				"description": null,
+				"group_id": "CME_QUYTRINH",
+				"conversion_method": "fixed",
+				"conversion_value": 0,
+				"unit_label": "lần"
+			},
+			{
+				"id": "KHAC_CME_VBPL",
+				"name": "Khác (nhập số tín chỉ trực tiếp)",
+				"description": null,
+				"group_id": "CME_VBPL",
+				"conversion_method": "fixed",
+				"conversion_value": 0,
+				"unit_label": "lần"
+			},
+			{
+				"id": "NCKH_CHUTRI_CAOCAP",
+				"name": "Nhiệm vụ KH&CN/sáng kiến cấp Nhà nước/Bộ/Tỉnh — Chủ trì/thư ký",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 12,
+				"unit_label": "nhiệm vụ"
+			},
+			{
+				"id": "NCKH_CHUTRI_COSO",
+				"name": "Nhiệm vụ KH&CN/sáng kiến cấp cơ sở — Chủ trì/thư ký",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 8,
+				"unit_label": "nhiệm vụ"
+			},
+			{
+				"id": "NCKH_THANHVIEN",
+				"name": "Nhiệm vụ KH&CN/sáng kiến các cấp — Thành viên",
+				"description": null,
+				"group_id": "CME_NCKH",
+				"conversion_method": "fixed",
+				"conversion_value": 4,
+				"unit_label": "nhiệm vụ"
+			},
+			{
+				"id": "QT_THANHVIEN",
+				"name": "Soạn thảo quy trình — Thành viên ban soạn thảo/biên tập",
+				"description": null,
+				"group_id": "CME_QUYTRINH",
+				"conversion_method": "fixed",
+				"conversion_value": 2,
+				"unit_label": "tài liệu"
+			},
+			{
+				"id": "QT_TRUONGPHO",
+				"name": "Soạn thảo quy trình — Trưởng/Phó ban hoặc tổ soạn thảo",
+				"description": null,
+				"group_id": "CME_QUYTRINH",
+				"conversion_method": "fixed",
+				"conversion_value": 5,
+				"unit_label": "tài liệu"
+			},
+			{
+				"id": "SHCM_CABENH",
+				"name": "Sinh hoạt chuyên môn — Hội chẩn/phân tích ca bệnh",
+				"description": null,
+				"group_id": "CME_KHAC",
+				"conversion_method": "fixed",
+				"conversion_value": 1,
+				"unit_label": "ca bệnh"
+			},
+			{
+				"id": "VBPL_THANHVIEN",
+				"name": "Soạn thảo VBQPPL — Thành viên ban soạn thảo/biên tập",
+				"description": null,
+				"group_id": "CME_VBPL",
+				"conversion_method": "fixed",
+				"conversion_value": 3,
+				"unit_label": "văn bản"
+			},
+			{
+				"id": "VBPL_TRUONGPHO",
+				"name": "Soạn thảo VBQPPL — Trưởng/Phó ban hoặc tổ soạn thảo",
+				"description": null,
+				"group_id": "CME_VBPL",
+				"conversion_method": "fixed",
+				"conversion_value": 5,
+				"unit_label": "văn bản"
+			}
+		]
+	},
+	"staff": {
+		"positions": [
+			{
+				"id": "CV001",
+				"name": "Giám đốc Bệnh viện",
+				"sort_order": 1
+			},
+			{
+				"id": "CV002",
+				"name": "Phó Giám đốc Bệnh viện",
+				"sort_order": 2
+			},
+			{
+				"id": "CV003",
+				"name": "Giám đốc trung tâm",
+				"sort_order": 3
+			},
+			{
+				"id": "CV004",
+				"name": "Phó Giám đốc trung tâm",
+				"sort_order": 4
+			},
+			{
+				"id": "CV005",
+				"name": "Trưởng khoa",
+				"sort_order": 5
+			},
+			{
+				"id": "CV006",
+				"name": "Phó khoa",
+				"sort_order": 6
+			},
+			{
+				"id": "CV007",
+				"name": "Trưởng phòng",
+				"sort_order": 7
+			},
+			{
+				"id": "CV008",
+				"name": "Phó phòng",
+				"sort_order": 8
+			},
+			{
+				"id": "CV009",
+				"name": "Phụ trách điều hành khoa",
+				"sort_order": 9
+			},
+			{
+				"id": "CV010",
+				"name": "Điều dưỡng trưởng",
+				"sort_order": 10
+			},
+			{
+				"id": "CV011",
+				"name": "Phụ trách công tác điều dưỡng",
+				"sort_order": 11
+			},
+			{
+				"id": "CV012",
+				"name": "Kỹ thuật viên trưởng",
+				"sort_order": 12
+			},
+			{
+				"id": "CV013",
+				"name": "Nữ hộ sinh trưởng",
+				"sort_order": 13
+			},
+			{
+				"id": "CV014",
+				"name": "VP trưởng",
+				"sort_order": 14
+			}
+		],
+		"job_titles": [
+			{
+				"id": "CD001",
+				"name": "Bác sĩ (hạng III)",
+				"sort_order": 1
+			},
+			{
+				"id": "CD002",
+				"name": "bác sĩ cao cấp hạng I",
+				"sort_order": 2
+			},
+			{
+				"id": "CD003",
+				"name": "Bác sĩ chính (hạng II)",
+				"sort_order": 3
+			},
+			{
+				"id": "CD004",
+				"name": "Bác sĩ chính hạng II",
+				"sort_order": 4
+			},
+			{
+				"id": "CD005",
+				"name": "Bác sĩ y học dự phòng (hạng III)",
+				"sort_order": 5
+			},
+			{
+				"id": "CD006",
+				"name": "Bảo vệ",
+				"sort_order": 6
+			},
+			{
+				"id": "CD007",
+				"name": "Cán sự",
+				"sort_order": 7
+			},
+			{
+				"id": "CD008",
+				"name": "chuyên viên",
+				"sort_order": 8
+			},
+			{
+				"id": "CD009",
+				"name": "Chuyên viên chính hạng II",
+				"sort_order": 9
+			},
+			{
+				"id": "CD010",
+				"name": "Công nghệ thông tin hạng III",
+				"sort_order": 10
+			},
+			{
+				"id": "CD011",
+				"name": "Điều dưỡng hạng III",
+				"sort_order": 11
+			},
+			{
+				"id": "CD012",
+				"name": "Điều dưỡng hạng IV",
+				"sort_order": 12
+			},
+			{
+				"id": "CD013",
+				"name": "Dinh dưỡng hạng III",
+				"sort_order": 13
+			},
+			{
+				"id": "CD014",
+				"name": "dinh dưỡng viên hạng III",
+				"sort_order": 14
+			},
+			{
+				"id": "CD015",
+				"name": "Dược hạng IV",
+				"sort_order": 15
+			},
+			{
+				"id": "CD016",
+				"name": "Dược sĩ (hạng III)",
+				"sort_order": 16
+			},
+			{
+				"id": "CD017",
+				"name": "Dược sĩ cao cấp hạng I",
+				"sort_order": 17
+			},
+			{
+				"id": "CD018",
+				"name": "Dược sĩ hạng III",
+				"sort_order": 18
+			},
+			{
+				"id": "CD019",
+				"name": "Dược tá",
+				"sort_order": 19
+			},
+			{
+				"id": "CD020",
+				"name": "Hộ sinh hạng III",
+				"sort_order": 20
+			},
+			{
+				"id": "CD021",
+				"name": "Hộ sinh hạng IV",
+				"sort_order": 21
+			},
+			{
+				"id": "CD022",
+				"name": "kế toán viên",
+				"sort_order": 22
+			},
+			{
+				"id": "CD023",
+				"name": "Kế toán viên chính hạng II",
+				"sort_order": 23
+			},
+			{
+				"id": "CD024",
+				"name": "Kế toán viên đại học",
+				"sort_order": 24
+			},
+			{
+				"id": "CD025",
+				"name": "Kế toán viên hạng III",
+				"sort_order": 25
+			},
+			{
+				"id": "CD026",
+				"name": "kế toán viên trung cấp",
+				"sort_order": 26
+			},
+			{
+				"id": "CD027",
+				"name": "Kế toán viên trung cấp hạng IV",
+				"sort_order": 27
+			},
+			{
+				"id": "CD028",
+				"name": "Kĩ thuật viên",
+				"sort_order": 28
+			},
+			{
+				"id": "CD029",
+				"name": "Kĩ thuật viên hạng IV",
+				"sort_order": 29
+			},
+			{
+				"id": "CD030",
+				"name": "Kỹ sư Công nghệ thông tin hạng III",
+				"sort_order": 30
+			},
+			{
+				"id": "CD031",
+				"name": "Kỹ sư hạng III",
+				"sort_order": 31
+			},
+			{
+				"id": "CD032",
+				"name": "Kỹ thuật viên hạng III",
+				"sort_order": 32
+			},
+			{
+				"id": "CD033",
+				"name": "Kỹ thuật y hạng III",
+				"sort_order": 33
+			},
+			{
+				"id": "CD034",
+				"name": "Kỹ thuật y hạng IV",
+				"sort_order": 34
+			},
+			{
+				"id": "CD035",
+				"name": "Lái xe",
+				"sort_order": 35
+			},
+			{
+				"id": "CD036",
+				"name": "Nhân viên phục vụ",
+				"sort_order": 36
+			},
+			{
+				"id": "CD037",
+				"name": "thư viện viên",
+				"sort_order": 37
+			},
+			{
+				"id": "CD038",
+				"name": "trung cấp dược",
+				"sort_order": 38
+			},
+			{
+				"id": "CD039",
+				"name": "Y sĩ hạng IV",
+				"sort_order": 39
+			},
+			{
+				"id": "CD040",
+				"name": "Y tá",
+				"sort_order": 40
+			},
+			{
+				"id": "CD041",
+				"name": "y tế công cộng hạng III",
+				"sort_order": 41
+			}
+		],
+		"qualifications": [
+			{
+				"id": "TD001",
+				"name": "Bác sĩ",
+				"code": "BS",
+				"sort_order": 1
+			},
+			{
+				"id": "TD002",
+				"name": "Bác sĩ NT",
+				"code": "BSNT",
+				"sort_order": 2
+			},
+			{
+				"id": "TD003",
+				"name": "BSCK I",
+				"code": "BSCK1",
+				"sort_order": 3
+			},
+			{
+				"id": "TD004",
+				"name": "BSCK II",
+				"code": "BSCK2",
+				"sort_order": 4
+			},
+			{
+				"id": "TD005",
+				"name": "CĐ dược",
+				"code": "CĐ Dược",
+				"sort_order": 5
+			},
+			{
+				"id": "TD006",
+				"name": "CĐ khác",
+				"code": "CĐ khác",
+				"sort_order": 6
+			},
+			{
+				"id": "TD007",
+				"name": "CĐĐD",
+				"code": "CĐĐD",
+				"sort_order": 7
+			},
+			{
+				"id": "TD008",
+				"name": "CĐKTV",
+				"code": "CĐKTV",
+				"sort_order": 8
+			},
+			{
+				"id": "TD009",
+				"name": "CĐPS",
+				"code": "CĐPS",
+				"sort_order": 9
+			},
+			{
+				"id": "TD010",
+				"name": "CN ĐD",
+				"code": "CN ĐD",
+				"sort_order": 10
+			},
+			{
+				"id": "TD011",
+				"name": "CN Dinh dưỡng",
+				"code": "CN Dinh dưỡng",
+				"sort_order": 11
+			},
+			{
+				"id": "TD012",
+				"name": "CN KTV",
+				"code": "CN KTV",
+				"sort_order": 12
+			},
+			{
+				"id": "TD013",
+				"name": "CN SH",
+				"code": "CN SH",
+				"sort_order": 13
+			},
+			{
+				"id": "TD014",
+				"name": "ĐD CKI",
+				"code": "ĐDCKI",
+				"sort_order": 14
+			},
+			{
+				"id": "TD015",
+				"name": "ĐDTH",
+				"code": "ĐDTH",
+				"sort_order": 15
+			},
+			{
+				"id": "TD016",
+				"name": "ĐH khác",
+				"code": "ĐH khác",
+				"sort_order": 16
+			},
+			{
+				"id": "TD017",
+				"name": "DSCK I",
+				"code": "DSCK1",
+				"sort_order": 17
+			},
+			{
+				"id": "TD018",
+				"name": "DSCK II",
+				"code": "DSCK2",
+				"sort_order": 18
+			},
+			{
+				"id": "TD019",
+				"name": "DSĐH",
+				"code": "DSĐH",
+				"sort_order": 19
+			},
+			{
+				"id": "TD020",
+				"name": "Hộ sinh CK1",
+				"code": "Hộ sinh CK1",
+				"sort_order": 20
+			},
+			{
+				"id": "TD021",
+				"name": "Phó giáo sư-Tiến sĩ",
+				"code": "PGS.TS",
+				"sort_order": 21
+			},
+			{
+				"id": "TD022",
+				"name": "SĐH khác",
+				"code": "SĐH khác",
+				"sort_order": 22
+			},
+			{
+				"id": "TD023",
+				"name": "SH khác",
+				"code": "SH khác",
+				"sort_order": 23
+			},
+			{
+				"id": "TD024",
+				"name": "TC Khác",
+				"code": "TC khác",
+				"sort_order": 24
+			},
+			{
+				"id": "TD025",
+				"name": "Thạc sĩ",
+				"code": "ThS",
+				"sort_order": 25
+			},
+			{
+				"id": "TD026",
+				"name": "Thạc sĩ ĐD",
+				"code": "ThS ĐD",
+				"sort_order": 26
+			},
+			{
+				"id": "TD027",
+				"name": "Thạc sĩ dược",
+				"code": "ThS Dược",
+				"sort_order": 27
+			},
+			{
+				"id": "TD028",
+				"name": "Thạc sĩ SH",
+				"code": "ThS SH",
+				"sort_order": 28
+			},
+			{
+				"id": "TD029",
+				"name": "Tiến sĩ",
+				"code": "TS",
+				"sort_order": 29
+			}
+		]
+	}
+}

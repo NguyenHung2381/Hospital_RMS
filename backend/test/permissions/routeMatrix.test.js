@@ -1,7 +1,7 @@
 // Ma trận phân quyền: vai trò mẫu × route. Nạp app thật, chạy đúng các guard
 // authorizePermission của từng route (không gọi handler, không cần DB).
 //
-// Vai trò mẫu = database/seed/system-roles.json (quyền của 8 vai trò hệ
+// Vai trò mẫu = database/seed/system-roles.json (quyền của các vai trò hệ
 // thống). Đổi quyền của vai trò mẫu có chủ đích → cập nhật file đó + bảng
 // EXPECT bên dưới trong cùng commit — bảng này chính là đặc tả chính sách.
 const test = require('node:test');
@@ -47,88 +47,103 @@ const EXPECT = [
 	[
 		'GET',
 		`${API}/users/`,
-		['admin', 'director', 'research_manager', 'dept_head'],
+		['superadmin', 'admin', 'director', 'research_manager', 'dept_head'],
 		['member', 'topic_leader', 'trainee', 'review_council'],
 	],
 	[
 		'POST',
 		`${API}/users/`,
-		['admin', 'research_manager'],
+		['superadmin', 'admin', 'research_manager'],
 		['director', 'dept_head', 'member', 'trainee'],
 	],
-	['PUT', `${API}/users/:id`, ['admin', 'research_manager'], ['director', 'dept_head', 'member']],
+	[
+		'PUT',
+		`${API}/users/:id`,
+		['superadmin', 'admin', 'research_manager'],
+		['director', 'dept_head', 'member'],
+	],
 	[
 		'POST',
 		`${API}/users/:id/reset-password`,
-		['admin', 'research_manager'],
+		['superadmin', 'admin', 'research_manager'],
 		['director', 'dept_head', 'member', 'trainee'],
 	],
 	[
 		'DELETE',
 		`${API}/users/:id`,
-		['admin'],
+		['superadmin', 'admin'],
 		['research_manager', 'director', 'dept_head', 'member'],
 	],
 	// Vai trò & phân quyền — chỉ quản trị hệ thống
 	[
 		'GET',
 		`${API}/roles`,
-		['admin', 'director', 'research_manager'],
+		['superadmin', 'admin', 'director', 'research_manager'],
 		['member', 'dept_head', 'trainee'],
 	],
 	[
 		'GET',
 		`${API}/permissions/catalog`,
-		['admin', 'director', 'research_manager'],
+		['superadmin', 'admin', 'director', 'research_manager'],
 		['member', 'dept_head'],
 	],
 	[
 		'PUT',
 		`${API}/roles/:id/permissions`,
-		['admin'],
-		['research_manager', 'director', 'dept_head', 'member'],
+		['superadmin'],
+		['admin', 'research_manager', 'director', 'dept_head', 'member'],
 	],
-	['POST', `${API}/roles/:id/clone`, ['admin'], ['research_manager', 'director']],
-	['DELETE', `${API}/roles/:id`, ['admin'], ['research_manager', 'director']],
+	['POST', `${API}/roles/:id/clone`, ['superadmin'], ['admin', 'research_manager', 'director']],
+	['DELETE', `${API}/roles/:id`, ['superadmin'], ['admin', 'research_manager', 'director']],
 	// Đề tài
 	[
 		'POST',
 		`${API}/topics/`,
-		['admin', 'research_manager', 'topic_leader'],
+		['superadmin', 'admin', 'research_manager', 'topic_leader'],
 		['member', 'dept_head', 'review_council', 'trainee'],
 	],
 	[
 		'POST',
 		`${API}/topics/:id/approve`,
-		['admin', 'director', 'review_council'],
+		['superadmin', 'admin', 'director', 'review_council'],
 		['research_manager', 'topic_leader', 'member', 'dept_head'],
 	],
 	// Đào tạo — quyền tách riêng ở giai đoạn 1
 	[
 		'GET',
 		`${API}/exams/questions`,
-		['admin', 'research_manager'],
+		['superadmin', 'admin', 'research_manager'],
 		['member', 'trainee', 'dept_head'],
 	],
-	['GET', `${API}/cme-records/`, ['admin', 'research_manager'], ['director', 'member']],
+	[
+		'GET',
+		`${API}/cme-records/`,
+		['superadmin', 'admin', 'research_manager'],
+		['director', 'member'],
+	],
 	[
 		'POST',
 		`${API}/trainees/grant-accounts`,
-		['admin', 'research_manager'],
+		['superadmin', 'admin', 'research_manager'],
 		['dept_head', 'director', 'member'],
 	],
 	// Hệ thống
 	[
 		'GET',
 		`${API}/activity-logs/`,
-		['admin', 'director', 'research_manager'],
-		['member', 'dept_head', 'trainee'],
+		['superadmin', 'director', 'research_manager'],
+		['admin', 'member', 'dept_head', 'trainee'],
 	],
-	['GET', `${API}/security-events/`, ['admin'], ['research_manager', 'director']],
-	['GET', `${API}/system-settings/`, ['admin'], ['research_manager', 'director']],
-	['POST', `${API}/persons/merge-candidates/:id/merge`, ['admin'], ['research_manager', 'member']],
+	['GET', `${API}/security-events/`, ['superadmin'], ['admin', 'research_manager', 'director']],
+	['GET', `${API}/system-settings/`, ['superadmin'], ['admin', 'research_manager', 'director']],
+	[
+		'POST',
+		`${API}/persons/merge-candidates/:id/merge`,
+		['superadmin'],
+		['admin', 'research_manager', 'member'],
+	],
 	// Chỉ cần đăng nhập — ai cũng được (kiểm tra theo bản ghi ở service)
-	['GET', `${API}/users/me`, ['admin', 'member', 'trainee', 'dept_head'], []],
+	['GET', `${API}/users/me`, ['superadmin', 'admin', 'member', 'trainee', 'dept_head'], []],
 	['GET', `${API}/exams/available`, ['trainee', 'member'], []],
 ];
 
@@ -177,4 +192,24 @@ test('vai trò học viên không vào được route quản trị nào', () => 
 		.filter((r) => r.guards.length && passesGuards(r, u))
 		.map((r) => `${r.method} ${r.path}`);
 	assert.deepEqual(leaked, []);
+});
+
+test('vai trò admin: không toàn quyền, không chạm vào phân quyền / cấu hình / nhật ký hệ thống', () => {
+	const t = TEMPLATES.admin;
+	assert.equal(t.superuser, false);
+	const forbidden = Object.keys(t.grants).filter((key) => {
+		const [resource, action] = key.split(':');
+		if (resource === 'roles') return action !== 'read';
+		return [
+			'system_settings',
+			'security_events',
+			'activity_logs',
+			'workflows',
+			'form_configs',
+			'surveys',
+			'persons',
+			'staff_attendance',
+		].includes(resource);
+	});
+	assert.deepEqual(forbidden, []);
 });
