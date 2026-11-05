@@ -609,7 +609,7 @@ Hospital_RMS/
 
 **Engine:** PostgreSQL 18 · **Database:** `rms_hospital` · **Pool:** tối đa `DB_POOL_MAX` (10) kết nối mỗi worker.
 
-> **Trong git:** `backend/database/`: schema ban đầu (`baseline/00–04`) và migration (`migrations/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (dump dữ liệu, script có mật khẩu). Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Quy ước viết file: `backend/database/README.md`.
+> **Trong git:** `backend/database/`: schema ban đầu (`baseline/00–04`) và migration (`migrations/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (dump dữ liệu, script có mật khẩu). Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Dev chạy Docker thì gõ `npm run migrate` ngay ở thư mục gốc — lệnh tự chạy migration trong container `backend` đang chạy, không cần restart (thêm lệnh con sau `--`, ví dụ `npm run migrate -- status`). Quy ước viết file: `backend/database/README.md`.
 >
 > **Không viết stored procedure.** Logic nghiệp vụ nằm trong JS (sinh mã ở `backend/src/utils/idGenerator.js`, duyệt đề tài ở `topicApprovalService`…). Trigger chỉ dùng cho audit / ràng buộc dữ liệu (`baseline/04_trigger.sql`).
 
