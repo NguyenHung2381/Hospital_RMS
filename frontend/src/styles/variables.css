@@ -86,8 +86,11 @@
 	/* Be Vietnam Pro: thiết kế cho dấu tiếng Việt (ệ, ượ...) — rõ ở cỡ 13–14px.
 	   --font-display (serif kiểu tạp chí khoa học) CHỈ cho tiêu đề nội dung:
 	   tên trang, tên đề tài/khoá học ở trang chi tiết. Nút, nhãn, menu, bảng
-	   luôn dùng --font-body. */
-	--font-display: 'Source Serif 4', 'Noto Serif', Georgia, serif;
+	   luôn dùng --font-body.
+	   Dự phòng Cambria/Times New Roman, KHÔNG dùng Georgia: Georgia thiếu chữ
+	   Việt dấu chồng (ấ, ầ) → dấu bị tách rời khi font web chưa tải xong hoặc
+	   máy trạm không ra được Internet. */
+	--font-display: 'Source Serif 4', Cambria, 'Times New Roman', serif;
 	--font-heading: 'Be Vietnam Pro', system-ui, sans-serif;
 	--font-body: 'Be Vietnam Pro', system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', 'Courier New', monospace;
