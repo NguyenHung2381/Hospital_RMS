@@ -46,65 +46,35 @@
 	height: 10px;
 }
 
-/* ── STATS ROW ───────────────────────────── */
+/* ── STATS ROW — kiểu chung: shared/components/Card/StatCard.module.css ── */
 .statsRow {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: var(--space-4);
+	composes: statsRow from '../../../shared/components/Card/StatCard.module.css';
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	margin-bottom: var(--space-4);
 }
-
 .statCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-100);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5);
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
+	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statIcon {
-	width: 44px;
-	height: 44px;
-	border-radius: var(--radius-lg);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
+	composes: statIcon from '../../../shared/components/Card/StatCard.module.css';
 }
-.statIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
 .iconGreen {
-	background: var(--tone-green-bg);
-	color: var(--tone-green-fg);
+	composes: iconGreen from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconBlue {
-	background: var(--tone-blue-bg);
-	color: var(--tone-blue-fg);
+	composes: iconBlue from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconAmber {
-	background: var(--tone-amber-bg);
-	color: var(--tone-amber-fg);
+	composes: iconAmber from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statBody {
-	flex: 1;
-	min-width: 0;
+	composes: statBody from '../../../shared/components/Card/StatCard.module.css';
 }
 .statValue {
-	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	line-height: 1;
-	margin-bottom: 4px;
+	composes: statValue from '../../../shared/components/Card/StatCard.module.css';
 }
 .statLabel {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
+	composes: statLabel from '../../../shared/components/Card/StatCard.module.css';
 }
 
 /* ── TABLE ───────────────────────────────── */

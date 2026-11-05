@@ -1,0 +1,194 @@
+/* =============================================
+   STAT CARD — thẻ số liệu dùng chung
+   Mỗi trang giữ class riêng (.statCard, .statIcon...) và `composes` vào đây,
+   nên markup/logic không đổi. Một kiểu duy nhất cho toàn hệ thống:
+   - nền trắng, viền 1px, không bóng, không dải màu trên/trái, không gradient;
+   - màu chỉ nằm ở ô icon (tông nhạt) — con số luôn màu mực;
+   - thẻ tĩnh KHÔNG nhấc lên khi hover (không bấm được thì không giả vờ bấm được);
+     thẻ là <button>/<a> (lọc theo trạng thái) mới có hover/press;
+   - hồng (.statAttention) chỉ cho "đang chờ bạn xử lý".
+   Trang tự đặt số cột trong @media của mình nếu cần khác mặc định.
+============================================= */
+
+.statsRow {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--space-4);
+}
+
+.statCard {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	min-width: 0;
+	padding: var(--space-4) var(--space-5);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	box-shadow: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	transition:
+		border-color var(--transition-fast),
+		box-shadow var(--transition-fast),
+		transform var(--transition-fast);
+}
+
+/* Thẻ bấm được (lọc danh sách theo trạng thái) */
+.statCard:where(button, a, [role='button']) {
+	cursor: pointer;
+	width: 100%;
+}
+.statCard:where(button, a, [role='button']):hover {
+	border-color: var(--color-gray-300);
+	box-shadow: var(--shadow-sm);
+	transform: translateY(-2px);
+}
+.statCard:where(button, a, [role='button']):active {
+	transform: translateY(0);
+	box-shadow: none;
+}
+
+/* Thẻ đang được chọn làm bộ lọc */
+.statActive {
+	border-color: var(--color-primary);
+	box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+.statActive:hover {
+	border-color: var(--color-primary);
+	box-shadow: inset 0 0 0 1px var(--color-primary), var(--shadow-sm);
+}
+
+/* Việc đang chờ bạn xử lý */
+.statAttention {
+	border-color: var(--tone-pink-border);
+}
+.statAttention.statActive,
+.statAttention.statActive:hover {
+	border-color: var(--color-accent);
+	box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+.statIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+}
+.statIcon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.iconGreen {
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+.iconBlue {
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
+}
+.iconAmber {
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+}
+.iconRed {
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+.iconGray {
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+}
+.iconAttention {
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+}
+
+.statBody {
+	flex: 1;
+	min-width: 0;
+}
+
+.statValue {
+	font-family: var(--font-body);
+	font-size: 1.75rem;
+	font-weight: var(--font-weight-semibold);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	color: var(--color-gray-900);
+}
+
+.statLabel {
+	margin-top: 2px;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-medium);
+	line-height: 1.35;
+	color: var(--color-gray-600);
+}
+
+.statSub {
+	margin-top: 2px;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	line-height: 1.35;
+	color: var(--color-gray-500);
+}
+.subGood {
+	color: var(--tone-green-fg);
+}
+.subWarn {
+	color: var(--tone-amber-fg);
+}
+.subBad {
+	color: var(--tone-red-fg);
+}
+.subMuted {
+	color: var(--color-gray-500);
+}
+
+@media (max-width: 1280px) {
+	.statsRow {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.statsRow {
+		gap: var(--space-2);
+	}
+	.statCard {
+		gap: var(--space-3);
+		padding: var(--space-3);
+	}
+	.statIcon {
+		width: 32px;
+		height: 32px;
+	}
+	.statIcon svg {
+		width: 16px;
+		height: 16px;
+	}
+	.statValue {
+		font-size: var(--font-size-2xl);
+	}
+	.statLabel {
+		font-size: var(--font-size-xs);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.statCard,
+	.statCard:hover {
+		transform: none !important;
+		transition: none;
+	}
+}

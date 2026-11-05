@@ -1,94 +1,37 @@
-/* ── STATS ROW & CARDS ───────────────────── */
+/* ── STATS ROW & CARDS — kiểu chung: shared/components/Card/StatCard.module.css ── */
 .statsRow {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: var(--space-5);
+	composes: statsRow from '../../../shared/components/Card/StatCard.module.css';
 	margin-bottom: var(--space-6);
 }
-
 .statCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-100);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5);
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	box-shadow: var(--shadow-sm);
-	transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
-	            box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-	            border-color 0.25s ease;
+	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard:hover {
-	transform: translateY(-5px);
-	box-shadow: var(--shadow-lg);
-	border-color: rgba(10, 155, 74, 0.2);
+.green,
+.blue,
+.amber,
+.gray {
+	--stat-tone: initial;
 }
-
-/* Custom modern pastel gradients for stat cards */
-.statCard.green {
-	background: linear-gradient(135deg, var(--tone-green-bg) 0%, var(--tone-green-bg) 100%);
-	border-color: var(--tone-green-border);
-}
-.statCard.blue {
-	background: linear-gradient(135deg, var(--tone-blue-bg) 0%, var(--tone-blue-bg) 100%);
-	border-color: var(--tone-blue-border);
-}
-.statCard.amber {
-	background: linear-gradient(135deg, var(--tone-amber-bg) 0%, var(--tone-amber-border) 100%);
-	border-color: var(--tone-amber-border);
-}
-.statCard.gray {
-	background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
-	border-color: var(--color-gray-200);
-}
-
 .statIcon {
-	width: 48px;
-	height: 48px;
-	border-radius: var(--radius-lg);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	transition: transform 0.25s ease;
+	composes: statIcon from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard:hover .statIcon {
-	transform: scale(1.08);
-}
-
 .iconGreen {
-	background: var(--color-primary);
-	color: var(--color-white);
+	composes: iconGreen from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconBlue {
-	background: var(--tone-blue-solid);
-	color: var(--color-white);
+	composes: iconBlue from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconAmber {
-	background: var(--color-warning);
-	color: var(--color-white);
+	composes: iconAmber from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconGray {
-	background: var(--color-gray-500);
-	color: var(--color-white);
+	composes: iconGray from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statValue {
-	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	line-height: 1.1;
-	font-family: var(--font-heading);
+	composes: statValue from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statLabel {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	margin-top: 4px;
+	composes: statLabel from '../../../shared/components/Card/StatCard.module.css';
 }
 
 /* ── CARD + HEADER (chuẩn tham chiếu: trang Đề tài) ─────────────────────── */

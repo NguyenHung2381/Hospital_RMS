@@ -589,7 +589,6 @@
 	height: 6px;
 	border-radius: 50%;
 	background: var(--color-primary);
-	animation: blink-green 2s ease-in-out infinite;
 }
 
 @keyframes blink-green {
@@ -810,7 +809,7 @@
 
 .mobileBrandTitle {
 	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-extrabold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-800);
 	white-space: nowrap;
 	overflow: hidden;
@@ -907,9 +906,8 @@
 		padding: 16px var(--space-5) 6px !important;
 		font-size: var(--font-size-xs) !important;
 		font-weight: var(--font-weight-semibold) !important;
-		color: rgba(255, 255, 255, 0.6) !important;
-		text-transform: uppercase !important;
-		letter-spacing: 0.09em !important;
+		color: rgba(255, 255, 255, 0.72) !important;
+		letter-spacing: 0 !important;
 		white-space: nowrap !important;
 		overflow: visible !important;
 		line-height: 1.4 !important;
@@ -977,4 +975,35 @@
 		gap: var(--space-2);
 	}
 
+}
+
+/* Điện thoại: thanh trên cùng chỉ còn menu + tên hệ thống + chuông (bỏ ô ngày để
+   tên không bị cắt "Hospi…"). Nút hành động của trang: nút chính (nút cuối —
+   quy ước mọi trang đặt nút chính ở cuối) lên đầu, rộng hết hàng; các nút phụ
+   chia đều hàng dưới. */
+@media (max-width: 640px) {
+	.roundIndicator,
+	.topbarDivider {
+		display: none;
+	}
+
+	.pageHeaderRight,
+	.pageHeaderRight > div:only-child {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+		width: 100%;
+	}
+
+	.pageHeaderRight > *,
+	.pageHeaderRight > div:only-child > * {
+		flex: 1 1 auto;
+		justify-content: center;
+	}
+
+	.pageHeaderRight > :last-child:not(:only-child),
+	.pageHeaderRight > div:only-child > :last-child:not(:only-child) {
+		order: -1;
+		flex-basis: 100%;
+	}
 }

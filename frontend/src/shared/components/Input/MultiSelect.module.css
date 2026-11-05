@@ -19,6 +19,8 @@
 		box-shadow var(--transition-fast);
 	outline: none;
 	font-family: inherit;
+	/* <button> mặc định căn giữa — khi kéo rộng hết cột (điện thoại) chữ bị trôi ra giữa */
+	text-align: left;
 }
 
 .trigger:hover {

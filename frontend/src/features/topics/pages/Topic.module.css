@@ -1,128 +1,61 @@
 /* =============================================
-   STATS
+   STATS — kiểu chung: shared/components/Card/StatCard.module.css
 ============================================= */
 .statsRow {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	gap: var(--space-4);
+	composes: statsRow from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5);
-	display: flex;
-	align-items: center;
-	gap: var(--space-4);
-	transition: all var(--transition-base);
-	position: relative;
-	overflow: hidden;
+	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 3px;
-	border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-}
-
-.statCard.green::before {
-	background: var(--color-primary);
-}
-.statCard.blue::before {
-	background: var(--tone-blue-solid);
-}
-.statCard.amber::before {
-	background: var(--color-warning);
-}
-.statCard.purple::before {
-	background: var(--tone-purple-solid);
+/* Tông thẻ chỉ còn là nhãn ngữ nghĩa; màu nằm ở ô icon */
+.green,
+.blue,
+.purple {
+	--stat-tone: initial;
 }
 /* Hồng chỉ cho chỉ số "đang chờ bạn xử lý" */
-.statCard.attention::before {
-	background: var(--color-accent);
+.attention {
+	composes: statAttention from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard:hover {
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-md);
-	border-color: var(--color-gray-300);
-}
-
 .statIcon {
-	width: 44px;
-	height: 44px;
-	border-radius: var(--radius-xl);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
+	composes: statIcon from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
 .iconGreen {
-	background: var(--tone-green-bg);
-	color: var(--tone-green-fg);
+	composes: iconGreen from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconBlue {
-	background: var(--tone-blue-bg);
-	color: var(--tone-blue-fg);
+	composes: iconBlue from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconAmber {
-	background: var(--tone-amber-bg);
-	color: var(--tone-amber-fg);
+	composes: iconAmber from '../../../shared/components/Card/StatCard.module.css';
 }
+/* "Bị từ chối" — đỏ theo nghĩa, không dùng tím */
 .iconPurple {
-	background: var(--tone-purple-bg);
-	color: var(--tone-purple-fg);
+	composes: iconRed from '../../../shared/components/Card/StatCard.module.css';
 }
 .iconAttention {
-	background: var(--tone-pink-bg);
-	color: var(--tone-pink-fg);
+	composes: iconAttention from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statBody {
-	flex: 1;
-	min-width: 0;
+	composes: statBody from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statValue {
-	font-size: var(--font-size-3xl);
-	font-weight: var(--font-weight-extrabold);
-	color: var(--color-gray-800);
-	line-height: 1;
-	letter-spacing: -0.02em;
+	composes: statValue from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statLabel {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
-	font-weight: var(--font-weight-medium);
-	margin-top: var(--space-1);
+	composes: statLabel from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .statDelta {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	margin-top: 3px;
+	composes: statSub from '../../../shared/components/Card/StatCard.module.css';
 }
-
 .deltaUp {
-	color: var(--color-primary-dark);
+	composes: subGood from '../../../shared/components/Card/StatCard.module.css';
 }
 .deltaDown {
-	color: var(--tone-red-fg);
+	composes: subBad from '../../../shared/components/Card/StatCard.module.css';
 }
 .deltaNeutral {
-	color: var(--color-gray-500);
+	composes: subMuted from '../../../shared/components/Card/StatCard.module.css';
 }
 
 /* =============================================

@@ -1,78 +1,57 @@
 /* =============================================
    METRIC CARDS (KPI)
+   Cùng hệ với shared/components/Card/StatCard.module.css: nền trắng, viền 1px,
+   không dải màu, không bóng, không nhấc khi hover (thẻ không bấm được). Màu chỉ ở
+   ô icon. Hồng (accentAttention) CHỈ cho chỉ số "đang chờ bạn xử lý" (chờ
+   duyệt, chờ cấp, chưa đạt) — viền hồng nhạt. Cỡ số lớn hơn StatCard vì đây là
+   chỉ số chính của trang tổng quan.
 ============================================= */
 .metricsGrid {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	gap: var(--space-4);
 }
 
 .metricCard {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	padding: var(--space-5) var(--space-6);
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-3);
-	transition: all var(--transition-base);
-	position: relative;
-	overflow: hidden;
+	min-width: 0;
+	padding: var(--space-5);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
 }
 
-.metricCard:hover {
-	border-color: var(--color-gray-300);
-	box-shadow: var(--shadow-md);
-	transform: translateY(-3px);
+.accentGreen,
+.accentBlue,
+.accentAmber,
+.accentPurple {
+	--metric-tone: initial;
 }
-
-/* Accent top bar */
-.metricCard::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 4px;
-	border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-}
-
-/* Thanh màu trên đầu thẻ = tông của chỉ số. Hồng (accentAttention) CHỈ cho
-   chỉ số "đang chờ bạn xử lý" (chờ duyệt, chờ cấp, chưa đạt) — các thẻ còn lại
-   dùng xanh lá / xanh dương / vàng / tím. Nền thẻ trắng phẳng. */
-.metricCard.accentGreen::before {
-	background: var(--color-primary);
-}
-.metricCard.accentBlue::before {
-	background: var(--tone-blue-solid);
-}
-.metricCard.accentAmber::before {
-	background: var(--color-warning);
-}
-.metricCard.accentPurple::before {
-	background: var(--tone-purple-solid);
-}
-.metricCard.accentAttention::before {
-	background: var(--color-accent);
+.metricCard.accentAttention {
+	border-color: var(--tone-pink-border);
 }
 
 .metricHeader {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--space-3);
 }
 
 .metricLabel {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
-	font-weight: var(--font-weight-semibold);
-	line-height: 1.3;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-600);
+	font-weight: var(--font-weight-medium);
+	line-height: 1.35;
 }
 
 .metricIconWrap {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-lg);
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-md);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -96,9 +75,10 @@
 	background: var(--tone-amber-bg);
 	color: var(--tone-amber-fg);
 }
+/* Không dùng tím trong giao diện — tông "purple" cũ hiển thị trung tính */
 .iconPurple {
-	background: var(--tone-purple-bg);
-	color: var(--tone-purple-fg);
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
 }
 .iconAttention {
 	background: var(--tone-pink-bg);
@@ -106,19 +86,21 @@
 }
 
 .metricValue {
-	font-size: var(--font-size-4xl);
-	font-weight: var(--font-weight-extrabold);
-	color: var(--color-gray-800);
-	line-height: 1;
-	letter-spacing: -0.04em;
+	font-size: 2rem;
+	font-weight: var(--font-weight-semibold);
+	font-variant-numeric: tabular-nums;
+	color: var(--color-gray-900);
+	line-height: 1.05;
+	letter-spacing: -0.025em;
 }
 
 .metricFooter {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--space-2);
-	padding-top: var(--space-2);
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-2);
+	padding-top: var(--space-3);
 	border-top: 1px solid var(--color-gray-100);
 }
 
@@ -127,14 +109,14 @@
 	align-items: center;
 	gap: 4px;
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
+	font-weight: var(--font-weight-medium);
 }
 
 .deltaUp {
-	color: var(--color-primary-dark);
+	color: var(--tone-green-fg);
 }
 .deltaDown {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 .deltaNeutral {
 	color: var(--color-gray-500);
@@ -142,7 +124,7 @@
 
 .metricCompare {
 	font-size: var(--font-size-xs);
-	color: var(--color-gray-400);
+	color: var(--color-gray-500);
 }
 
 /* =============================================
@@ -1003,8 +985,33 @@
 }
 
 @media (max-width: 640px) {
+	/* 2 cột gọn: 4 chỉ số nằm trong màn hình đầu thay vì chiếm 4 màn */
 	.metricsGrid {
-		grid-template-columns: 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--space-2);
+	}
+
+	.metricCard {
+		gap: var(--space-2);
+		padding: var(--space-3);
+	}
+
+	.metricIconWrap {
+		width: 28px;
+		height: 28px;
+	}
+
+	.metricIconWrap svg {
+		width: 15px;
+		height: 15px;
+	}
+
+	.metricLabel {
+		font-size: var(--font-size-xs);
+	}
+
+	.metricFooter {
+		padding-top: var(--space-2);
 	}
 
 	.quickAccessGrid {
@@ -1012,7 +1019,7 @@
 	}
 
 	.metricValue {
-		font-size: var(--font-size-3xl);
+		font-size: var(--font-size-2xl);
 	}
 
 	.approvalItem {
@@ -1058,8 +1065,26 @@
 .dashTabActive:hover {
 	color: var(--color-primary-dark);
 	background: var(--color-white);
-	box-shadow: var(--shadow-md);
+	box-shadow: var(--shadow-sm);
 	font-weight: var(--font-weight-semibold);
+}
+
+/* Điện thoại: 1 hàng cuộn ngang thay vì xuống 2 dòng lệch nhau */
+@media (max-width: 640px) {
+	.dashTabs {
+		flex-wrap: nowrap;
+		width: 100%;
+		overflow-x: auto;
+		scrollbar-width: none;
+		-webkit-overflow-scrolling: touch;
+	}
+	.dashTabs::-webkit-scrollbar {
+		display: none;
+	}
+	.dashTab {
+		flex: none;
+		padding: var(--space-2) var(--space-3);
+	}
 }
 
 /* Dải chỉ số theo phân hệ ở dashboard chung */
