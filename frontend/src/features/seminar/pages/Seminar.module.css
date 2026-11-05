@@ -107,7 +107,7 @@
 .actionBtn {
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }
-.actionBtn.danger:hover { color: #b42318; border-color: #f2b8b5; background: #fef3f2; }
+.actionBtn.danger:hover { color: var(--tone-red-fg); border-color: var(--tone-red-border); background: var(--tone-red-bg); }
 
 .emptyState {
 	composes: emptyState from '../../../shared/components/Table/Table.module.css';
@@ -142,8 +142,6 @@
 }
 .infoLabel {
 	font-size: var(--font-size-xs);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-semibold);
 }
@@ -192,7 +190,7 @@
 	max-height: 90vh;
 	max-height: 90dvh;
 	overflow: auto;
-	box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+	box-shadow: var(--shadow-xl);
 }
 .modalSm { max-width: 460px; }
 .modalSub { font-size: var(--font-size-sm); color: var(--color-gray-500); }
@@ -251,7 +249,7 @@
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-600);
 }
-.required { color: #d92d20; }
+.required { color: var(--tone-red-fg); }
 .formInput,
 .formTextarea {
 	padding: var(--space-2) var(--space-3);
@@ -266,8 +264,8 @@
 }
 .formInput:focus,
 .formTextarea:focus { border-color: var(--color-primary); }
-.inputError { border-color: #f2b8b5; }
-.fieldError { color: #b42318; font-size: var(--font-size-xs); }
+.inputError { border-color: var(--tone-red-border); }
+.fieldError { color: var(--tone-red-fg); font-size: var(--font-size-xs); }
 .hint { color: var(--color-gray-400); font-size: var(--font-size-xs); }
 
 .btnCancel {
@@ -297,7 +295,6 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
 	max-height: 220px;
 	overflow: auto;
 	z-index: 20;
@@ -350,14 +347,14 @@
 	margin-bottom: var(--space-3);
 }
 .noticeBox svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
-.noticeOk { background: #e1f5ea; border-color: #b6e3ca; color: #085028; }
-.noticeWarn { background: #faeeda; border-color: #f0d9b5; color: #633806; }
+.noticeOk { background: var(--tone-green-bg); border-color: var(--tone-green-border); color: var(--tone-green-fg); }
+.noticeWarn { background: var(--tone-amber-bg); border-color: var(--tone-amber-border); color: var(--tone-amber-fg); }
 
 .warnList {
 	margin: 0 0 var(--space-3);
 	padding-left: var(--space-4);
 	font-size: var(--font-size-xs);
-	color: #633806;
+	color: var(--tone-amber-fg);
 	max-height: 140px;
 	overflow: auto;
 }
@@ -371,7 +368,7 @@
 	border-radius: var(--radius-lg);
 }
 .importPreview .table thead th { position: sticky; top: 0; z-index: 1; }
-.rowWarn { color: #b42318; font-size: var(--font-size-2xs); margin-top: 2px; }
+.rowWarn { color: var(--tone-red-fg); font-size: var(--font-size-2xs); margin-top: 2px; }
 
 /* ── Danh sách ghi nhận CME độc lập ─────────────────────────────────────── */
 .thCenter {
@@ -410,8 +407,8 @@
 	min-width: 36px;
 	padding: 2px 8px;
 	border-radius: 999px;
-	background: #ecfdf3;
-	color: #067647;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-weight: var(--font-weight-semibold);
 	text-align: center;
 }
@@ -426,7 +423,7 @@
 	background: var(--color-gray-50);
 	border: 1px solid var(--color-gray-200);
 }
-.cmeEvidence:hover { background: #ecfdf3; border-color: var(--color-primary); }
+.cmeEvidence:hover { background: var(--tone-green-bg); border-color: var(--color-primary); }
 .cmeEvidence svg { width: 14px; height: 14px; }
 
 /* Chọn năm dạng ‹ Năm 2026 › */
@@ -509,7 +506,7 @@
 	background: var(--color-white);
 	color: var(--color-primary);
 	font-weight: var(--font-weight-semibold);
-	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+	box-shadow: var(--shadow-sm);
 }
 
 /* ── Nhập người tham dự: số tín chỉ mặc định theo vai trò ── */
@@ -679,9 +676,9 @@
 }
 .tabsRow .tabs { border-bottom: 0; margin-bottom: 0; overflow-x: auto; }
 .cellSub { font-size: var(--font-size-xs); color: var(--color-gray-500); margin-top: 2px; }
-.okText { display: inline-flex; align-items: center; gap: 4px; color: #087c3b; font-size: var(--font-size-sm); }
+.okText { display: inline-flex; align-items: center; gap: 4px; color: var(--color-primary-dark); font-size: var(--font-size-sm); }
 .okText svg { width: 12px; height: 12px; }
-.badText { color: #b42318; font-size: var(--font-size-sm); }
+.badText { color: var(--tone-red-fg); font-size: var(--font-size-sm); }
 
 /* ── Hộp soạn bài test ────────────────────────────────────────────────────── */
 .testSwitch {
@@ -716,7 +713,6 @@
 	height: 16px;
 	border-radius: 50%;
 	background: #fff;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 	transition: transform 0.15s;
 }
 .testSwitchOn .testSwitchTrack { background: var(--color-primary); }
@@ -805,7 +801,7 @@
 	border-radius: var(--radius-md);
 	border: 1px solid transparent;
 }
-.testOptionCorrect { background: var(--color-primary-pale); border-color: #b6e3ca; }
+.testOptionCorrect { background: var(--color-primary-pale); border-color: var(--tone-green-border); }
 .testOption input[type='radio'] { accent-color: var(--color-primary); }
 .testOptionKey { width: 14px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--color-gray-500); }
 .testOptionCorrect .testOptionKey { color: var(--color-primary-dark); }
@@ -840,7 +836,7 @@
 	cursor: pointer;
 }
 .testAddQ:hover { border-color: var(--color-primary); color: var(--color-primary-dark); }
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	.testSettingRow { grid-template-columns: 1fr; gap: 4px; }
 	.testSettingLabel { padding-top: 0; }
 	.testQBody { padding-left: 0; }

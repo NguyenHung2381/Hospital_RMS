@@ -76,7 +76,7 @@
 }
 
 /* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.table {
 		display: block;
 		overflow-x: auto;
@@ -103,8 +103,8 @@
 	color: var(--color-gray-600);
 }
 .statusActive {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 .itemsSection {
@@ -133,9 +133,9 @@
 	flex-shrink: 0;
 }
 .itemRemoveBtn:hover {
-	background: #fcebeb;
-	color: #791f1f;
-	border-color: #fcebeb;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+	border-color: var(--tone-red-bg);
 }
 .addItemBtn {
 	display: inline-flex;

@@ -108,8 +108,8 @@ export default function TrainingDashboard() {
 					value={kpi.total_lecturers}
 					loading={loading}
 					icon={<UserCheckSvg />}
-					iconClass='iconPink'
-					accent='accentPink'
+					iconClass='iconPurple'
+					accent='accentPurple'
 				/>
 				<MetricCard
 					label='Đăng ký chờ duyệt'
@@ -117,8 +117,8 @@ export default function TrainingDashboard() {
 					loading={loading}
 					deltaType={kpi.pending_enrollments > 0 ? 'down' : 'neutral'}
 					icon={<ClockSvg />}
-					iconClass='iconAmber'
-					accent='accentAmber'
+					iconClass='iconAttention'
+					accent='accentAttention'
 				/>
 				<MetricCard
 					label='Chứng chỉ còn hiệu lực'

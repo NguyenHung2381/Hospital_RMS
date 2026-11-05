@@ -4,9 +4,9 @@
 	flex-wrap: wrap;
 	gap: 2px 12px;
 	font-size: 12px;
-	color: var(--color-gray-600, #475569);
+	color: var(--color-gray-600, var(--color-gray-700));
 }
 .inline b {
 	font-weight: 600;
-	color: var(--color-gray-700, #334155);
+	color: var(--color-gray-700, var(--color-gray-700));
 }

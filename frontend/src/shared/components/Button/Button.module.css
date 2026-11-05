@@ -81,22 +81,22 @@
 }
 
 .warning {
-	background: #faeeda;
-	color: #633806;
-	border-color: #ef9f27;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	border-color: var(--color-warning);
 }
 .warning:hover:not(:disabled) {
-	background: #f7dfb5;
+	background: var(--tone-amber-border);
 }
 
 .danger {
-	background: #fcebeb;
-	color: #791f1f;
-	border-color: #f09595;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+	border-color: var(--tone-red-border);
 }
 .danger:hover:not(:disabled) {
-	background: #f7c1c1;
-	border-color: #e24b4a;
+	background: var(--tone-red-border);
+	border-color: var(--color-error);
 }
 
 .primary {

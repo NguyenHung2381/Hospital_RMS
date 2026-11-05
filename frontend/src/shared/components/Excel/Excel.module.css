@@ -52,14 +52,14 @@
 	margin-top: 2px;
 }
 .ok {
-	background: #e1f5ea;
-	border-color: #b6e3ca;
-	color: #085028;
+	background: var(--tone-green-bg);
+	border-color: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 .bad {
-	background: #fdecec;
-	border-color: #f5c2c0;
-	color: #8a1c1a;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 .error {
@@ -70,7 +70,7 @@
 	margin: 0;
 	padding-left: var(--space-5);
 	font-size: var(--font-size-xs);
-	color: #8a1c1a;
+	color: var(--tone-red-fg);
 	max-height: 180px;
 	overflow: auto;
 }
@@ -91,6 +91,6 @@
 	white-space: nowrap;
 }
 .rowErr {
-	color: #b42318;
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-2xs);
 }

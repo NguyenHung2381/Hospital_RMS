@@ -26,21 +26,21 @@
 	background: linear-gradient(135deg, rgba(10, 155, 74, 0.04) 0%, var(--color-white) 100%);
 }
 .statCard.blue {
-	border-left-color: #3b82f6;
+	border-left-color: var(--tone-blue-solid);
 	background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, var(--color-white) 100%);
 }
 .statCard.amber {
-	border-left-color: #f59e0b;
+	border-left-color: var(--color-warning);
 	background: linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, var(--color-white) 100%);
 }
 .statCard.gray {
-	border-left-color: #6b7280;
+	border-left-color: var(--color-gray-500);
 	background: linear-gradient(135deg, rgba(107, 114, 128, 0.04) 0%, var(--color-white) 100%);
 }
 
 .statCard:hover {
 	transform: translateY(-4px);
-	box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.08), 0 4px 12px -5px rgba(0, 0, 0, 0.03);
+	box-shadow: var(--shadow-md);
 	border-color: var(--color-gray-300);
 }
 
@@ -82,12 +82,12 @@
 	color: var(--color-primary-dark);
 }
 .iconBlue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .iconAmber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .iconGray {
 	background: var(--color-gray-100);
@@ -155,14 +155,14 @@
 
 .roundCard:hover {
 	border-color: var(--color-primary-light);
-	box-shadow: 0 6px 24px rgba(10, 155, 74, 0.12);
+	box-shadow: var(--shadow-md);
 	transform: translateY(-2px);
 }
 
 /* Active round highlight */
 .roundCard.isActive {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
+	box-shadow: var(--focus-ring-input);
 }
 
 /* Color bar top */
@@ -176,7 +176,7 @@
 	background: var(--color-primary);
 }
 .barUpcoming {
-	background: #378add;
+	background: var(--tone-blue-solid);
 }
 .barClosed {
 	background: var(--color-gray-300);
@@ -301,12 +301,10 @@
 }
 
 .cardStatLbl {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-medium);
 	margin-top: 3px;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 
 /* Card footer */
@@ -441,9 +439,9 @@
 }
 
 .actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 .actionBtn svg {
@@ -489,7 +487,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 720px;
 	max-height: 90vh;
@@ -585,10 +583,8 @@
 ============================================= */
 .formSection {
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
 	padding-bottom: var(--space-2);
 	border-bottom: 1px solid var(--color-gray-100);
 }
@@ -621,7 +617,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 .formInput.hasError {
 	border-color: var(--color-error);
@@ -645,7 +641,7 @@
 .formSelect:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .formHint {
@@ -734,7 +730,7 @@
 .statusOptionSelected {
 	border-color: var(--color-primary);
 	background: var(--color-primary-pale);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
+	box-shadow: var(--focus-ring-input);
 }
 
 .statusOptionDesc {
@@ -751,8 +747,8 @@
 	align-items: center;
 	gap: 6px;
 	font-size: var(--font-size-xs);
-	color: #0c447c;
-	background: #e6f1fb;
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 	border: 1px solid rgba(55, 138, 221, 0.25);
 	border-radius: var(--radius-md);
 	padding: 6px var(--space-3);
@@ -763,14 +759,14 @@
 	width: 13px;
 	height: 13px;
 	flex-shrink: 0;
-	color: #378add;
+	color: var(--tone-blue-fg);
 }
 
 /* =============================================
    TOKEN ACCESS CARD & COPY OPTIONS
 ============================================= */
 .tokenAccessCard {
-	background: linear-gradient(135deg, var(--color-gray-50) 0%, #f4f4f5 100%);
+	background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
 	border: 1.5px dashed var(--color-gray-300);
 	border-radius: var(--radius-xl);
 	padding: var(--space-5);
@@ -782,7 +778,7 @@
 
 .tokenAccessCard:hover {
 	border-color: var(--color-primary-light);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+	box-shadow: var(--shadow-md);
 }
 
 .tokenHeader {
@@ -833,9 +829,9 @@
 }
 
 .btnCopySuccess {
-	background: #e1f5ea !important;
+	background: var(--tone-green-bg) !important;
 	border-color: var(--color-primary) !important;
-	color: #085028 !important;
+	color: var(--tone-green-fg) !important;
 }
 
 .tokenWarningText {
@@ -867,21 +863,21 @@
 
 .modalStatCard:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+	box-shadow: var(--shadow-md);
 }
 
 .modalStatCard.total {
-	border-left-color: #6366f1;
+	border-left-color: var(--tone-blue-solid);
 	background: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, var(--color-white) 100%);
 }
 
 .modalStatCard.active {
-	border-left-color: #3b82f6;
+	border-left-color: var(--tone-blue-solid);
 	background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, var(--color-white) 100%);
 }
 
 .modalStatCard.completed {
-	border-left-color: #10b981;
+	border-left-color: var(--color-primary);
 	background: linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, var(--color-white) 100%);
 }
 
@@ -896,18 +892,18 @@
 }
 
 .modalStatCard.total .modalStatIcon {
-	background: #e0e7ff;
-	color: #4f46e5;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 .modalStatCard.active .modalStatIcon {
-	background: #e0f2fe;
-	color: #0284c7;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 .modalStatCard.completed .modalStatIcon {
-	background: #d1fae5;
-	color: #059669;
+	background: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 
 .modalStatIcon svg {
@@ -975,11 +971,11 @@
 }
 
 .segmentCompleted {
-	background: #10b981;
+	background: var(--color-primary);
 }
 
 .segmentActive {
-	background: #3b82f6;
+	background: var(--tone-blue-solid);
 }
 
 .segmentOther {
@@ -1039,7 +1035,7 @@
 	}
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.roundsGrid {
 		grid-template-columns: 1fr;
 	}

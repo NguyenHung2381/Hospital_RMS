@@ -205,3 +205,15 @@
 		background-position: -200% 0;
 	}
 }
+
+/* Giảm chuyển động: global.css dừng mọi animation, nhưng vòng xoay báo đang
+   tải vẫn cần thiết — giữ lại, quay chậm (logo nhấp nháy vẫn dừng như cũ). */
+@media (prefers-reduced-motion: reduce) {
+	.ringOuter,
+	.ringInner,
+	.inlineSpinner::before,
+	.inlineSpinner::after {
+		animation-duration: 2.4s !important;
+		animation-iteration-count: infinite !important;
+	}
+}

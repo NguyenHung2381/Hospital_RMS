@@ -59,7 +59,7 @@ export function initSelectAutoWidth() {
 		attributeFilter: ['data-active'],
 	});
 	MQ.addEventListener('change', schedule);
-	// Font Mulish nạp sau (swap) → đo lại
+	// Font Be Vietnam Pro nạp sau (swap) → đo lại
 	document.fonts?.ready.then(() => {
 		document.querySelectorAll('select').forEach((s) => signatures.delete(s));
 		schedule();

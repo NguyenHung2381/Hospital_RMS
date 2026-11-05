@@ -11,7 +11,6 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .formCardHeader {
@@ -27,8 +26,8 @@
 	width: 40px;
 	height: 40px;
 	border-radius: var(--radius-lg);
-	background: #dbeafe;
-	color: #1a6abd;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -57,11 +56,9 @@
 }
 
 .formSection {
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
 	padding-bottom: var(--space-2);
 	border-bottom: 1px solid var(--color-gray-100);
 	margin-top: var(--space-1);
@@ -80,7 +77,7 @@
 }
 
 .formRequired {
-	color: #ef4444;
+	color: var(--tone-red-fg);
 	margin-left: 3px;
 }
 
@@ -100,10 +97,10 @@
 }
 
 .formInput:focus {
-	border-color: #1a6abd;
+	border-color: var(--tone-blue-solid);
 }
 .hasError {
-	border-color: #ef4444 !important;
+	border-color: var(--color-error) !important;
 }
 
 .formSelect {
@@ -125,7 +122,7 @@
 }
 
 .formSelect:focus {
-	border-color: #1a6abd;
+	border-color: var(--tone-blue-solid);
 }
 
 .formRow {
@@ -144,7 +141,7 @@
 
 .formError {
 	font-size: var(--font-size-2xs);
-	color: #ef4444;
+	color: var(--tone-red-fg);
 	display: flex;
 	align-items: center;
 	gap: 4px;
@@ -179,8 +176,8 @@
 }
 
 .statusPillActive {
-	border-color: #1a6abd;
-	background: #1a6abd;
+	border-color: var(--tone-blue-solid);
+	background: var(--tone-blue-solid);
 	color: #fff;
 }
 
@@ -202,7 +199,7 @@
 }
 
 .memberSearchInput:focus {
-	border-color: #1a6abd;
+	border-color: var(--tone-blue-solid);
 }
 .memberSearchIcon {
 	position: absolute;
@@ -231,7 +228,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+	box-shadow: var(--shadow-md);
 	max-height: 240px;
 	overflow-y: auto;
 }
@@ -250,7 +247,7 @@
 	border-bottom: none;
 }
 .suggestionItem:hover {
-	background: #f0f7ff;
+	background: var(--tone-blue-bg);
 }
 .suggestionDisabled {
 	background: var(--color-gray-50);
@@ -264,8 +261,8 @@
 	width: 32px;
 	height: 32px;
 	border-radius: 50%;
-	background: #dbeafe;
-	color: #1e40af;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -285,18 +282,18 @@
 }
 .suggAdded {
 	font-size: var(--font-size-2xs);
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 	font-weight: 600;
 }
 .suggAdd {
 	font-size: var(--font-size-xs);
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 	font-weight: 600;
 }
 
 .manualAddForm {
-	background: #f0f7ff;
-	border: 1.5px solid #bfdbfe;
+	background: var(--tone-blue-bg);
+	border: 1.5px solid var(--tone-blue-border);
 	border-radius: var(--radius-lg);
 	padding: var(--space-4);
 	display: flex;
@@ -307,7 +304,7 @@
 .manualAddTitle {
 	font-size: var(--font-size-xs);
 	font-weight: 700;
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 }
 
 .manualBox {
@@ -342,8 +339,8 @@
 }
 
 .removeBtn:hover {
-	background: #fee2e2;
-	color: #ef4444;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .removeBtn svg {
 	width: 14px;
@@ -369,7 +366,7 @@
 	width: 15px;
 	height: 15px;
 	flex-shrink: 0;
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 }
 
 .lockedFieldText {
@@ -396,8 +393,8 @@
 	border-radius: 999px;
 	font-size: var(--font-size-2xs);
 	font-weight: 600;
-	color: #1a6abd;
-	background: #e8f1fb;
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 }
 
 /* ─── ROUND PICKER (bước 1: chọn đợt) ── */
@@ -405,7 +402,7 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+	box-shadow: var(--shadow-md);
 }
 
 .roundPickerHead {
@@ -438,8 +435,8 @@
 }
 
 .roundPickerItem:hover {
-	border-color: #1a6abd;
-	background: #f0f7ff;
+	border-color: var(--tone-blue-solid);
+	background: var(--tone-blue-bg);
 }
 
 .roundPickerItemMain {
@@ -489,7 +486,7 @@
 	gap: 4px;
 	font-size: var(--font-size-xs);
 	font-weight: 700;
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 	flex-shrink: 0;
 }
 
@@ -503,9 +500,9 @@
 	align-items: center;
 	gap: 12px;
 	padding: 12px 14px;
-	border: 1.5px solid #cfe0f3;
+	border: 1.5px solid var(--tone-blue-border);
 	border-radius: var(--radius-lg);
-	background: linear-gradient(135deg, #f5f9ff 0%, #ffffff 100%);
+	background: linear-gradient(135deg, var(--color-gray-50) 0%, #ffffff 100%);
 }
 
 .roundCardIcon {
@@ -515,8 +512,8 @@
 	height: 38px;
 	flex-shrink: 0;
 	border-radius: 10px;
-	color: #1a6abd;
-	background: #e3eefa;
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 }
 
 .roundCardIcon svg {
@@ -584,9 +581,9 @@
 	align-self: flex-start;
 }
 .manualAddTrigger:hover {
-	border-color: #1a6abd;
-	color: #1a6abd;
-	background: #f0f7ff;
+	border-color: var(--tone-blue-solid);
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 }
 .manualAddTrigger svg {
 	width: 15px;
@@ -606,7 +603,6 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .pendingHeader {
@@ -629,7 +625,7 @@
 	height: 22px;
 	padding: 0 6px;
 	border-radius: 999px;
-	background: #1a6abd;
+	background: var(--tone-blue-solid);
 	color: #fff;
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
@@ -656,8 +652,8 @@
 	width: 24px;
 	height: 24px;
 	border-radius: 50%;
-	background: #dbeafe;
-	color: #1a6abd;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 	font-size: var(--font-size-xs);
 	font-weight: 700;
 	display: flex;
@@ -698,7 +694,6 @@
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 	padding: 60px 40px;
 	text-align: center;
 	display: flex;
@@ -712,8 +707,8 @@
 	width: 56px;
 	height: 56px;
 	border-radius: 50%;
-	background: #dbeafe;
-	color: #1a6abd;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -764,7 +759,7 @@
 
 .saveError {
 	font-size: var(--font-size-xs);
-	color: #ef4444;
+	color: var(--tone-red-fg);
 	flex: 1;
 	display: flex;
 	align-items: center;
@@ -783,7 +778,6 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
 	overflow: hidden;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .sideCardHeader {
@@ -854,10 +848,10 @@
 	width: 22px;
 	height: 22px;
 	border-radius: 50%;
-	background: #dbeafe;
-	color: #1a6abd;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 	font-size: var(--font-size-2xs);
-	font-weight: 800;
+	font-weight: var(--font-weight-bold);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -891,13 +885,13 @@
 }
 
 .dropZone:hover {
-	border-color: #1a6abd;
-	background: #f0f7ff;
+	border-color: var(--tone-blue-solid);
+	background: var(--tone-blue-bg);
 }
 
 .dropZoneActive {
-	border-color: #1a6abd;
-	background: #dbeafe;
+	border-color: var(--tone-blue-solid);
+	background: var(--tone-blue-bg);
 }
 
 .dropZoneIcon {
@@ -916,7 +910,7 @@
 
 .dropZone:hover .dropZoneIcon,
 .dropZoneActive .dropZoneIcon {
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 }
 
 .dropZoneText {
@@ -926,7 +920,7 @@
 }
 
 .dropZoneLink {
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 	font-weight: 700;
 	text-decoration: underline;
 }
@@ -956,7 +950,7 @@
 .fileItemIcon {
 	width: 16px;
 	height: 16px;
-	color: #1a6abd;
+	color: var(--tone-blue-fg);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;

@@ -202,8 +202,8 @@ export function ResearchReports({ year }: { year: number }) {
 						loading={!stats}
 						compare={`${s?.supplement ?? 0} đang chờ bổ sung`}
 						icon={<ClockSvg />}
-						iconClass='iconAmber'
-						accent='accentAmber'
+						iconClass='iconAttention'
+						accent='accentAttention'
 					/>
 					<MetricCard
 						label='Từ chối / hủy'
@@ -211,8 +211,8 @@ export function ResearchReports({ year }: { year: number }) {
 						loading={!stats}
 						compare={`${s?.cancelled ?? 0} đề tài đã hủy`}
 						icon={<XCircleSvg />}
-						iconClass='iconPink'
-						accent='accentPink'
+						iconClass='iconPurple'
+						accent='accentPurple'
 					/>
 				</div>
 			)}

@@ -248,7 +248,7 @@
 	margin: 0 -6px;
 	padding: 6px;
 	border-radius: var(--radius-md);
-	background: #fffaf0;
+	background: var(--tone-amber-bg);
 }
 
 .sessBody {
@@ -457,7 +457,7 @@
 }
 /* Bài đã học xong: nền nhạt để mắt lướt qua, tập trung vào bài chưa học */
 .rowDone > td {
-	background: #f7fbf8;
+	background: var(--color-gray-50);
 }
 .statusTabs {
 	display: inline-flex;
@@ -485,7 +485,7 @@
 	background: var(--color-white);
 	color: var(--color-gray-900);
 	font-weight: var(--font-weight-semibold);
-	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+	box-shadow: var(--shadow-sm);
 }
 .statusCount {
 	color: var(--color-gray-400);
@@ -497,13 +497,13 @@
 	border-radius: var(--radius-full);
 }
 .dot_done {
-	background: #0a9b4a;
+	background: var(--color-primary);
 }
 .dot_ongoing {
-	background: #2f6fd1;
+	background: var(--tone-blue-solid);
 }
 .dot_upcoming {
-	background: #ef9f27;
+	background: var(--color-warning);
 }
 .dot_none {
 	background: var(--color-gray-400);
@@ -528,12 +528,12 @@
 	height: 14px;
 	padding: 2px;
 	border-radius: var(--radius-full);
-	background: #0a9b4a;
+	background: var(--color-primary);
 	color: var(--color-white);
 }
 .dayToday {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 2px rgba(10, 155, 74, 0.12);
+	box-shadow: var(--focus-ring-input);
 }
 .dayToday .dayDate {
 	background: var(--color-primary);

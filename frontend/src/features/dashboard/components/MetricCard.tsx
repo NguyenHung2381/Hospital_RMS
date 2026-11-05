@@ -10,7 +10,8 @@ export interface MetricCardProps {
 	compare?: string;
 	icon: React.ReactNode;
 	iconClass: string;
-	accent: 'accentGreen' | 'accentBlue' | 'accentAmber' | 'accentPink';
+	/** accentAttention (hồng) chỉ cho chỉ số "đang chờ xử lý" — xem Dashboard.module.css */
+	accent: 'accentGreen' | 'accentBlue' | 'accentAmber' | 'accentPurple' | 'accentAttention';
 	loading?: boolean;
 }
 

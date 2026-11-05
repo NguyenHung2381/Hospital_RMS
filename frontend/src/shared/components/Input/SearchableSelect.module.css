@@ -27,10 +27,11 @@
 	background: var(--color-white);
 }
 
+.trigger:focus-visible,
 .triggerOpen {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .trigger.hasError {

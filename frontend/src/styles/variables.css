@@ -38,9 +38,58 @@
 	--color-error: #e84545;
 	--color-info: #34b8d8;
 
+	/* === TÔNG NHÃN (nền nhạt + chữ đậm) — dùng cho badge, tag, ô trạng thái ===
+	   Giá trị giữ nguyên bộ đang dùng ở Badge; đừng viết hex trực tiếp nữa. */
+	--tone-green-bg: #e1f5ea;
+	--tone-green-fg: #085028;
+	--tone-teal-bg: var(--tone-green-bg);
+	--tone-teal-fg: #0f6e3a;
+	--tone-blue-bg: #e6f1fb;
+	--tone-blue-fg: #0c447c;
+	--tone-amber-bg: #faeeda;
+	--tone-amber-fg: #633806;
+	--tone-red-bg: #fcebeb;
+	--tone-red-fg: #791f1f;
+	--tone-gray-bg: #f1efe8;
+	--tone-gray-fg: #444441;
+	--tone-purple-bg: #eeedfe;
+	--tone-purple-fg: #3c3489;
+	--tone-pink-bg: rgba(223, 9, 132, 0.1);
+	--tone-pink-fg: var(--color-accent-dark);
+
+	/* Viền của ô/khung mang tông (nằm giữa -bg và màu đặc) */
+	--tone-green-border: #b6e3ca;
+	--tone-blue-border: #bfd7f2;
+	--tone-amber-border: #f3d6a4;
+	--tone-red-border: #f2bcbc;
+	--tone-purple-border: #cfcbf6;
+	--tone-pink-border: #f6bfdf;
+
+	/* Màu đặc (icon, thanh tiến độ, nền nút) cho tông chưa có màu chính.
+	   Xanh lá / đỏ / vàng / hồng dùng --color-primary/-error/-warning/-accent. */
+	--tone-blue-solid: #1a6abd;
+	--tone-purple-solid: #5b4fc4;
+
+	/* === TRẠNG THÁI THEO NGHĨA — code mới dùng nhóm này thay vì tên màu === */
+	--status-success-bg: var(--tone-green-bg);
+	--status-success-fg: var(--tone-green-fg);
+	--status-info-bg: var(--tone-blue-bg);
+	--status-info-fg: var(--tone-blue-fg);
+	--status-warning-bg: var(--tone-amber-bg);
+	--status-warning-fg: var(--tone-amber-fg);
+	--status-danger-bg: var(--tone-red-bg);
+	--status-danger-fg: var(--tone-red-fg);
+	--status-neutral-bg: var(--tone-gray-bg);
+	--status-neutral-fg: var(--tone-gray-fg);
+
 	/* === TYPOGRAPHY === */
-	--font-heading: 'Mulish', 'Be Vietnam Pro', sans-serif;
-	--font-body: 'Mulish', 'Be Vietnam Pro', sans-serif;
+	/* Be Vietnam Pro: thiết kế cho dấu tiếng Việt (ệ, ượ...) — rõ ở cỡ 13–14px.
+	   --font-display (serif kiểu tạp chí khoa học) CHỈ cho tiêu đề nội dung:
+	   tên trang, tên đề tài/khoá học ở trang chi tiết. Nút, nhãn, menu, bảng
+	   luôn dùng --font-body. */
+	--font-display: 'Source Serif 4', 'Noto Serif', Georgia, serif;
+	--font-heading: 'Be Vietnam Pro', system-ui, sans-serif;
+	--font-body: 'Be Vietnam Pro', system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
 	--font-size-2xs: 0.6875rem; /* 11px */
@@ -58,7 +107,7 @@
 	--font-weight-medium: 500;
 	--font-weight-semibold: 600;
 	--font-weight-bold: 700;
-	--font-weight-extrabold: 800;
+	--font-weight-extrabold: 700; /* giao diện không dùng 800/900 — giữ tên để code cũ vẫn chạy */
 
 	--line-height-tight: 1.25;
 	--line-height-base: 1.6;
@@ -79,6 +128,7 @@
 	--space-24: 6rem; /* 96px */
 
 	/* === BORDER RADIUS === */
+	--radius-xs: 2px; /* thanh tiến độ, chấm nhỏ */
 	--radius-sm: 4px;
 	--radius-md: 8px;
 	--radius-lg: 12px;
@@ -87,15 +137,26 @@
 	--radius-full: 9999px;
 
 	/* === SHADOW === */
-	--shadow-sm:
-		0 1px 3px rgba(10, 155, 74, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+	/* Bóng màu mực trung tính (gray-900), không pha xanh. Thẻ/bảng nằm trên
+	   trang dùng viền 1px, không bóng; bóng chỉ cho lớp NỔI lên trên trang:
+	   sm = nút/thẻ khi hover · md = dropdown, popover · lg = drawer, toast ·
+	   xl = modal. */
+	--shadow-sm: 0 1px 2px rgba(13, 24, 32, 0.06);
 	--shadow-md:
-		0 4px 16px rgba(10, 155, 74, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+		0 4px 12px rgba(13, 24, 32, 0.08), 0 1px 3px rgba(13, 24, 32, 0.06);
 	--shadow-lg:
-		0 10px 40px rgba(10, 155, 74, 0.16), 0 4px 12px rgba(0, 0, 0, 0.1);
+		0 12px 32px rgba(13, 24, 32, 0.12), 0 2px 6px rgba(13, 24, 32, 0.06);
 	--shadow-xl:
-		0 20px 60px rgba(10, 155, 74, 0.2), 0 8px 24px rgba(0, 0, 0, 0.12);
-	--shadow-glow: 0 0 30px rgba(10, 155, 74, 0.25);
+		0 24px 56px rgba(13, 24, 32, 0.16), 0 4px 12px rgba(13, 24, 32, 0.08);
+
+	/* === FOCUS ===
+	   Viền khi dùng bàn phím. Trên nền tối (sidebar xanh) đặt lại
+	   --focus-ring-color: var(--color-white) ở khối cha. */
+	--focus-ring-color: var(--color-primary);
+	--focus-ring-width: 2px;
+	--focus-ring-offset: 2px;
+	/* Vòng sáng quanh ô nhập khi focus (kèm border-color: var(--color-primary)) */
+	--focus-ring-input: 0 0 0 3px rgba(10, 155, 74, 0.15);
 
 	/* === TRANSITION === */
 	--transition-fast: 150ms ease;
@@ -103,12 +164,17 @@
 	--transition-slow: 400ms ease;
 	--transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
 
-	/* === BREAKPOINTS === */
-	--bp-sm: 576px;
+	/* === BREAKPOINTS ===
+	   var() không dùng được trong @media — các biến dưới đây chỉ để tra cứu.
+	   Viết @media (max-width: <giá trị>) đúng một trong các mốc này (hoặc
+	   <giá trị - 1> khi ghép cặp với min-width); phía JS
+	   dùng BREAKPOINTS trong shared/utils/breakpoints.ts (cùng giá trị). */
+	--bp-xs: 480px;
+	--bp-sm: 640px;
 	--bp-md: 768px;
-	--bp-lg: 992px;
-	--bp-xl: 1200px;
-	--bp-2xl: 1440px;
+	--bp-lg: 1024px;
+	--bp-xl: 1280px;
+	--bp-2xl: 1600px; /* màn rất rộng (lịch) */
 
 	/* === Z-INDEX === */
 	--z-base: 0;

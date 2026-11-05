@@ -79,16 +79,16 @@
 }
 
 .iconGreen {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .iconBlue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .iconAmber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 
 .statBody {
@@ -144,8 +144,8 @@
 	width: 36px;
 	height: 36px;
 	border-radius: var(--radius-md);
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -200,9 +200,9 @@
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }
 .actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 /* ── EMPTY STATE ─────────────────────────── */
@@ -255,7 +255,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 560px;
 	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -273,8 +273,8 @@
 	width: 42px;
 	height: 42px;
 	border-radius: var(--radius-lg);
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -362,8 +362,8 @@
 	align-items: center;
 	padding: 2px 10px;
 	border-radius: var(--radius-full);
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	margin-left: auto;
@@ -407,8 +407,6 @@
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 /* Quyền nhạy cảm (quản lý tài khoản / phân quyền): viền cảnh báo quanh ô */
 .permResourceCell {
@@ -445,16 +443,16 @@
 
 /* Action btn "Phân quyền" */
 .actionPerm {
-	color: #3c3489;
+	color: var(--tone-purple-fg);
 }
 .actionPerm:hover {
-	background: #eeedfe;
-	border-color: #c4c1f5;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	border-color: var(--tone-blue-border);
+	color: var(--tone-purple-fg);
 }
 
 /* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.table {
 		display: block;
 		overflow-x: auto;
@@ -545,7 +543,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-md);
 	background: var(--color-white);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	box-shadow: var(--shadow-md);
 }
 .viewResults button {
 	display: flex;
@@ -586,8 +584,8 @@
 	gap: 4px;
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
-	background: #e1f5ea;
-	color: #086532;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	white-space: nowrap;
@@ -637,8 +635,8 @@
 .permConfirmWarn {
 	padding: 4px 8px;
 	border-radius: var(--radius-sm);
-	background: #fdf2e0;
-	color: #8a5a12;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-weight: 600;
 }
 
@@ -653,7 +651,7 @@
 }
 .permMatrix thead th:first-child {
 	z-index: 3;
-	background: #f1f5f9;
+	background: var(--color-gray-100);
 }
 /* Ô gộp colSpan không "dính" được — cho nhãn bên trong dính trái khi cuộn ngang */
 .permScopeSelect {
@@ -677,8 +675,8 @@
 	margin: var(--space-3) var(--space-5);
 	padding: var(--space-3);
 	border-radius: var(--radius-md);
-	background: #fdecec;
-	color: #8a2b2b;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-xs);
 	line-height: 1.5;
 }
@@ -702,8 +700,6 @@
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 .permRow {
 	padding: var(--space-3) var(--space-5);
@@ -775,7 +771,7 @@
 }
 .permCustomOn {
 	border-color: var(--color-primary);
-	background: #e1f5ea;
+	background: var(--tone-green-bg);
 	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
 }
@@ -830,7 +826,7 @@
 .permOptOn,
 .permOptOn:hover {
 	border-color: var(--color-primary);
-	background: #f2fbf6;
+	background: var(--color-gray-50);
 }
 .permOptBox {
 	flex-shrink: 0;
@@ -882,8 +878,8 @@
 .permOptTag {
 	padding: 0 6px;
 	border-radius: var(--radius-full);
-	background: #fdf1e0;
-	color: #a0620f;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-size: 10px;
 	font-weight: var(--font-weight-semibold);
 }

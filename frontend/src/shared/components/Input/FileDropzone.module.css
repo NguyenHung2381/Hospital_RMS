@@ -159,8 +159,8 @@
 	cursor: pointer;
 }
 .removeBtn:hover {
-	background: #fef3f2;
-	color: var(--color-error, #d92d20);
+	background: var(--tone-red-bg);
+	color: var(--color-error, var(--tone-red-fg));
 }
 .removeBtn svg {
 	width: 14px;
@@ -222,5 +222,5 @@
 
 .error {
 	font-size: var(--font-size-xs);
-	color: var(--color-error, #d92d20);
+	color: var(--color-error, var(--tone-red-fg));
 }

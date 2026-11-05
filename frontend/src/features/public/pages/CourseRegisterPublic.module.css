@@ -34,7 +34,7 @@
 }
 .courseItem:hover {
 	border-color: var(--color-primary);
-	box-shadow: 0 2px 10px rgba(10, 155, 74, 0.08);
+	box-shadow: var(--shadow-md);
 }
 .courseItem:focus-visible {
 	outline: 2px solid var(--color-primary);
@@ -89,8 +89,8 @@
 	font-weight: var(--font-weight-medium);
 }
 .tagWarn {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 .courseArrow {
 	flex: none;
@@ -108,11 +108,11 @@
 /* ── Lỗi tại từng ô ──────────────────────────────── */
 .fieldError {
 	font-size: var(--font-size-xs);
-	color: var(--color-danger, #d92d20);
+	color: var(--tone-red-fg);
 }
 .inputError,
 .inputError:focus {
-	border-color: var(--color-danger, #d92d20);
+	border-color: var(--color-error);
 }
 .hint {
 	font-size: var(--font-size-xs);
@@ -176,10 +176,10 @@
 	align-items: flex-start;
 	gap: var(--space-2);
 	padding: var(--space-3) var(--space-4);
-	border: 1px solid #fecaca;
+	border: 1px solid var(--tone-red-border);
 	border-radius: var(--radius-lg);
-	background: #fef2f2;
-	color: #b91c1c;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-sm);
 }
 .serverError svg {
@@ -214,9 +214,7 @@
 	margin: 0;
 }
 .summaryList dt {
-	font-size: var(--font-size-2xs);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
 .summaryList dd {
@@ -252,7 +250,7 @@
 	place-items: center;
 	width: 18px;
 	height: 18px;
-	border: 1.5px solid var(--color-gray-300, #d1d5db);
+	border: 1.5px solid var(--color-gray-300, var(--color-gray-300));
 	border-radius: 50%;
 }
 .checkDot svg {
@@ -359,7 +357,7 @@
 	text-decoration: none;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
 	.layout {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -391,10 +389,10 @@
 	gap: var(--space-2);
 	margin-bottom: var(--space-4);
 	padding: var(--space-3) var(--space-4);
-	border: 1px solid #f0d9b5;
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-lg);
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-size: var(--font-size-sm);
 	line-height: 1.5;
 }

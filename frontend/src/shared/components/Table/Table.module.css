@@ -15,11 +15,9 @@
 /* ── Khung bảng (dạng card) ──────────────────────────────────────────────── */
 .tableWrap {
 	background: var(--color-white);
-	border: 1px solid #cbd5e1;
-	border-radius: var(--radius-xl);
-	box-shadow:
-		0 4px 16px -2px rgba(15, 23, 42, 0.07),
-		0 2px 6px -1px rgba(15, 23, 42, 0.04);
+	/* Bảng nằm trên trang → chỉ viền, không bóng (bóng dành cho lớp nổi) */
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
 	overflow: hidden;
 	margin-bottom: var(--space-4);
 }
@@ -35,17 +33,15 @@
 .table thead th {
 	padding: 13px 18px;
 	text-align: left;
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
-	color: var(--color-gray-800);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	background: #f1f5f9;
-	border-bottom: 2px solid #cbd5e1;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	background: var(--color-gray-50);
+	border-bottom: 1px solid var(--color-gray-200);
 	white-space: nowrap;
 }
 .table tbody tr {
-	border-bottom: 1px solid #e2e8f0;
+	border-bottom: 1px solid var(--color-gray-100);
 	transition:
 		background var(--transition-fast),
 		box-shadow var(--transition-fast);
@@ -54,7 +50,7 @@
 	border-bottom: none;
 }
 .table tbody tr:hover {
-	background: #f0fdf4;
+	background: var(--tone-green-bg);
 	box-shadow: inset 3px 0 0 var(--color-primary);
 }
 .table tbody td {
@@ -68,13 +64,11 @@
 .th {
 	padding: 13px 18px;
 	text-align: left;
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
-	color: var(--color-gray-800);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	background: #f1f5f9;
-	border-bottom: 2px solid #cbd5e1;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+	background: var(--color-gray-50);
+	border-bottom: 1px solid var(--color-gray-200);
 	white-space: nowrap;
 }
 
@@ -92,7 +86,7 @@
 
 /* ── Hàng ───────────────────────────────────────────────────────────────── */
 .tr {
-	border-bottom: 1px solid #e2e8f0;
+	border-bottom: 1px solid var(--color-gray-100);
 	transition:
 		background var(--transition-fast),
 		box-shadow var(--transition-fast);
@@ -101,7 +95,7 @@
 	border-bottom: none;
 }
 .tr:hover {
-	background: #f0fdf4;
+	background: var(--tone-green-bg);
 	box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
@@ -182,11 +176,9 @@
 /* ── Card bao ngoài toàn bộ khối bảng ─────────────────────────────────────── */
 .tableCard {
 	background: var(--color-white);
-	border: 1px solid #cbd5e1;
-	border-radius: var(--radius-xl);
-	box-shadow:
-		0 4px 16px -2px rgba(15, 23, 42, 0.07),
-		0 2px 6px -1px rgba(15, 23, 42, 0.04);
+	/* Bảng nằm trên trang → chỉ viền, không bóng (bóng dành cho lớp nổi) */
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
 	overflow: hidden;
 }
 /* .tableWrap nằm trong .tableCard: card ngoài đã có viền/bóng — bỏ lớp card
@@ -287,7 +279,7 @@
 .searchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 	width: 260px;
 }
 
@@ -317,8 +309,8 @@
 
 .filterActive {
 	border-color: var(--color-primary);
-	background: #f0f7ff;
-	color: var(--color-primary-dark, #0c447c);
+	background: var(--tone-blue-bg);
+	color: var(--color-primary-dark, var(--tone-blue-fg));
 	font-weight: 600;
 }
 
@@ -364,15 +356,15 @@
 }
 
 .tabActive {
-	color: var(--color-primary-dark, #047857);
-	border-bottom: 2.5px solid var(--color-primary, #10b981);
+	color: var(--color-primary-dark, var(--tone-green-fg));
+	border-bottom: 2.5px solid var(--color-primary, var(--color-primary));
 	font-weight: var(--font-weight-semibold);
 }
 
 .tabBadge {
 	font-size: var(--font-size-2xs);
-	background: var(--color-gray-100, #f1f5f9);
-	color: var(--color-gray-600, #475569);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-600, var(--color-gray-700));
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
 	font-weight: var(--font-weight-bold);
@@ -380,9 +372,9 @@
 }
 
 .tabActive .tabBadge {
-	background: #ecfdf5;
-	color: #047857;
-	border: 1px solid #a7f3d0;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+	border: 1px solid var(--tone-green-border);
 }
 
 /* ── Nút icon thao tác trong hàng ─────────────────────────────────────────── */

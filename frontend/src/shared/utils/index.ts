@@ -2,6 +2,7 @@
  *   import { cx, formatDateOr, getInitials } from '@/shared/utils'; */
 
 export { cx } from './cx';
+export * from './breakpoints';
 export * from './constants';
 export * from './formatDate';
 export * from './helper';

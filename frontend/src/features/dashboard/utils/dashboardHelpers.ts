@@ -31,7 +31,7 @@ export const STATUS_CONFIG: Record<string, { label: string; tone: BadgeTone }> =
 	approved: { label: 'Đã phê duyệt', tone: 'green' },
 	rejected: { label: 'Không thông qua', tone: 'red' },
 	supplement: { label: 'Yêu cầu bổ sung', tone: 'blue' },
-	completed: { label: 'Đã nghiệm thu', tone: 'pink' },
+	completed: { label: 'Đã nghiệm thu', tone: 'purple' },
 	cancelled: { label: 'Đã hủy', tone: 'gray' },
 };
 
@@ -41,7 +41,7 @@ export const STATUS_COLORS: Record<string, string> = {
 	approved: '#0A9B4A',
 	rejected: '#E24B4A',
 	supplement: '#378ADD',
-	completed: '#DF0984',
+	completed: '#5B4FC4', // --tone-purple-solid (hồng dành cho "đang chờ bạn")
 	cancelled: '#9CA3AF',
 };
 

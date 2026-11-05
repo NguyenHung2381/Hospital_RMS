@@ -12,7 +12,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+	box-shadow: var(--shadow-xl);
 	width: 480px;
 	max-width: 100%;
 	display: flex;
@@ -55,8 +55,6 @@
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
 }
 .fieldStatic {
 	font-size: var(--font-size-sm);
@@ -83,7 +81,7 @@
 .input:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.15);
+	box-shadow: var(--focus-ring-input);
 }
 .formErr {
 	font-size: var(--font-size-xs);

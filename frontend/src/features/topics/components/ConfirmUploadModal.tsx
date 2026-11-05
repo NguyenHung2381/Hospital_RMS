@@ -120,7 +120,7 @@ export function ConfirmUploadModal({
 				<div className={styles.modalFooter}>
 					{error && (
 						<span
-							style={{ fontSize: 12, color: 'var(--color-red-600)', flex: 1 }}
+							style={{ fontSize: 12, color: 'var(--tone-red-fg)', flex: 1 }}
 						>
 							<IcAlert /> {error}
 						</span>

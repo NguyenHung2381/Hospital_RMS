@@ -180,7 +180,7 @@
 	font-size: var(--font-size-xs);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	.formRow {
 		grid-template-columns: 1fr;
 	}

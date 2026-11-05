@@ -162,9 +162,9 @@
 	composes: actionBtn from './Table.module.css';
 }
 .actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 /* ── EMPTY STATE ─────────────────────────── */
@@ -252,11 +252,11 @@
 }
 .pageSizeSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 /* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.table {
 		display: block;
 		overflow-x: auto;

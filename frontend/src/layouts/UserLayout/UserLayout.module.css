@@ -32,6 +32,8 @@
    SIDEBAR
 ============================================= */
 .sidebar {
+	/* Nền xanh đậm: viền focus chuyển sang trắng cho thấy rõ */
+	--focus-ring-color: var(--color-white);
 	position: fixed;
 	top: 0;
 	bottom: 0;
@@ -40,8 +42,8 @@
 	width: var(--sb-w);
 	display: flex;
 	flex-direction: column;
-	background: linear-gradient(180deg, #0a783b 0%, #086b34 55%, #075c2d 100%);
-	box-shadow: 2px 0 16px rgba(10, 120, 59, 0.18);
+	background: var(--color-primary-dark);
+	box-shadow: var(--shadow-sm);
 	transition:
 		width 220ms ease,
 		transform 260ms ease;
@@ -79,7 +81,6 @@
 	object-fit: contain;
 	background: #fff;
 	padding: 2px;
-	box-shadow: 0 2px 8px rgba(13, 24, 32, 0.12);
 }
 
 .brandText {
@@ -99,11 +100,9 @@
 }
 
 .brandSub {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: rgba(255, 255, 255, 0.7);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
 	white-space: nowrap;
 }
 
@@ -148,10 +147,8 @@
 
 .navGroupTitle {
 	padding: 0 var(--space-3) var(--space-2);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: rgba(255, 255, 255, 0.55);
 	white-space: nowrap;
 	overflow: hidden;
@@ -188,7 +185,7 @@
 .navItem.active {
 	color: var(--color-primary-dark);
 	background: #fff;
-	box-shadow: 0 2px 8px rgba(13, 24, 32, 0.12);
+	box-shadow: var(--shadow-sm);
 }
 
 .navIcon {
@@ -532,8 +529,7 @@ button.trailItem:hover {
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	box-shadow:
-		0 12px 40px rgba(13, 24, 32, 0.14),
-		0 4px 12px rgba(13, 24, 32, 0.08);
+		var(--shadow-md);
 	padding: var(--space-2);
 	z-index: 201;
 	animation: panel-drop 180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -610,12 +606,12 @@ button.trailItem:hover {
 }
 
 .userDropdownDanger {
-	color: var(--color-accent-dark);
+	color: var(--tone-red-fg);
 }
 
 .userDropdownDanger:hover {
-	background: #fce6f3;
-	color: var(--color-accent-dark);
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 
 @keyframes panel-drop {
@@ -696,11 +692,12 @@ button.trailItem:hover {
 }
 
 .pageTitle {
+	font-family: var(--font-display);
 	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-extrabold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-800);
 	line-height: 1.2;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.01em;
 }
 
 .pageSubtitle {
@@ -781,7 +778,7 @@ button.trailItem:hover {
 
 	.sidebarOpen {
 		transform: translateX(0);
-		box-shadow: 8px 0 32px rgba(13, 24, 32, 0.28);
+		box-shadow: var(--shadow-md);
 	}
 
 	.sidebarClose {
@@ -820,7 +817,7 @@ button.trailItem:hover {
 
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	/* Đường dẫn: chỉ còn trang hiện tại */
 	.trail > :not(:last-child) {
 		display: none;

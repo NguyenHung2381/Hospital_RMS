@@ -4,8 +4,8 @@
 	z-index: 3000;
 	display: flex;
 	flex-direction: column;
-	background: linear-gradient(180deg, var(--color-primary-pale, #e7f5ed) 0%, #fff 60%);
-	color: var(--color-gray-900, #111827);
+	background: linear-gradient(180deg, var(--color-primary-pale, var(--color-primary-pale)) 0%, #fff 60%);
+	color: var(--color-gray-900, var(--color-gray-900));
 	overflow: auto;
 }
 
@@ -14,7 +14,7 @@
 	align-items: center;
 	gap: 16px;
 	padding: 16px 32px;
-	background: linear-gradient(90deg, var(--color-primary, #0a9b4a), var(--color-primary-dark, #087c3b));
+	background: linear-gradient(90deg, var(--color-primary, var(--color-primary)), var(--color-primary-dark, var(--color-primary-dark)));
 	color: #fff;
 	flex-shrink: 0;
 }
@@ -88,13 +88,13 @@
 	font-family: var(--font-heading);
 	font-size: clamp(20px, 3.2vw, 44px);
 	line-height: 1.25;
-	font-weight: 800;
-	color: var(--color-primary-dark, #087c3b);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-primary-dark, var(--color-primary-dark));
 }
 
 .meta {
 	font-size: clamp(14px, 1.6vw, 22px);
-	color: var(--color-gray-600, #4b5563);
+	color: var(--color-gray-600, var(--color-gray-700));
 }
 
 .qrCard {
@@ -108,13 +108,13 @@
 .cta {
 	font-size: clamp(18px, 2.4vw, 34px);
 	font-weight: 700;
-	color: var(--color-gray-900, #111827);
+	color: var(--color-gray-900, var(--color-gray-900));
 }
 
 .url {
 	font-family: var(--font-mono);
 	font-size: clamp(12px, 1.2vw, 16px);
-	color: var(--color-gray-500, #6b7280);
+	color: var(--color-gray-500, var(--color-gray-600));
 	word-break: break-all;
 }
 

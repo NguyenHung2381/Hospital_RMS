@@ -198,7 +198,7 @@
 	padding: 12px;
 	background: var(--color-white);
 	border-radius: 10px;
-	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
+	box-shadow: var(--shadow-md);
 	box-sizing: border-box;
 }
 
@@ -398,7 +398,7 @@
 	right: 0;
 	z-index: 3;
 	height: 2px;
-	background: var(--color-danger, #ea4335);
+	background: var(--color-error);
 	pointer-events: none;
 }
 .nowLine::before {

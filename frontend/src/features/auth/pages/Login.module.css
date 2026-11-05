@@ -12,9 +12,7 @@
 	padding: var(--space-1) var(--space-3);
 	border-radius: var(--radius-full);
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	font-weight: var(--font-weight-semibold);
 	margin-bottom: var(--space-4);
 }
 
@@ -82,7 +80,7 @@
 	border-radius: var(--radius-2xl);
 	padding: var(--space-8);
 	box-shadow:
-		0 2px 8px rgba(10, 155, 74, 0.06),
+		0 2px 8px rgba(13, 24, 32, 0.06),
 		0 8px 32px rgba(0, 0, 0, 0.08);
 	border: 1px solid rgba(10, 155, 74, 0.08);
 	margin-bottom: var(--space-6);
@@ -112,7 +110,7 @@
 }
 
 .inputRequired {
-	color: var(--color-accent);
+	color: var(--color-error);
 	font-size: var(--font-size-base);
 	line-height: 1;
 }
@@ -355,7 +353,7 @@
 .alertError {
 	background: rgba(232, 69, 69, 0.07);
 	border-left-color: var(--color-error);
-	color: #b91c1c;
+	color: var(--tone-red-fg);
 }
 
 /* Máy chủ không phản hồi — thông báo trạng thái, không phải lỗi nhập liệu */
@@ -370,7 +368,7 @@
 	background: rgba(245, 166, 35, 0.08);
 	font-size: var(--font-size-sm);
 	line-height: var(--line-height-base);
-	color: #7a4b00;
+	color: var(--tone-amber-fg);
 	animation: fadeIn 0.3s ease;
 }
 
@@ -396,7 +394,7 @@
 
 .serviceNoticeTitle {
 	font-weight: var(--font-weight-semibold);
-	color: #5c3900;
+	color: var(--tone-amber-fg);
 }
 
 .serviceNoticeRetry {
@@ -408,7 +406,7 @@
 	border: 1px solid rgba(245, 166, 35, 0.5);
 	border-radius: var(--radius-md);
 	background: #fff;
-	color: #7a4b00;
+	color: var(--tone-amber-fg);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
@@ -627,7 +625,7 @@
 }
 
 .destOptionSecondary:hover {
-	background: var(--color-gray-50, #f8fafc);
+	background: var(--color-gray-50, var(--color-gray-50));
 }
 
 @media (max-width: 640px) {

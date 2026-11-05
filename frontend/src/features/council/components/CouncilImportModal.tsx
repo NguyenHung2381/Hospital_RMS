@@ -188,7 +188,7 @@ export function CouncilImportModal({
 															) : (
 																<span
 																	className={styles.createdMemberName}
-																	style={{ color: 'var(--color-red-600, #dc2626)' }}
+																	style={{ color: 'var(--tone-red-fg)' }}
 																	title={s.error}
 																>
 																	{s.raw_name} — {s.error}

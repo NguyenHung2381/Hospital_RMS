@@ -21,30 +21,29 @@
 	font-family: inherit;
 	font-size: var(--font-size-compact);
 	font-weight: 500;
-	color: var(--color-gray-800, #1f2937);
+	color: var(--color-gray-800, var(--color-gray-800));
 	background: var(--color-white, #ffffff);
-	border: 1.5px solid var(--color-gray-200, #e5e7eb);
+	border: 1.5px solid var(--color-gray-200, var(--color-gray-200));
 	border-radius: var(--radius-lg, 10px);
 	cursor: pointer;
 	outline: none;
 	transition: all 0.2s ease;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .input:hover:not(:disabled) {
-	border-color: var(--color-gray-300, #cbd5e1);
-	background: var(--color-gray-50, #f8fafc);
+	border-color: var(--color-gray-300, var(--color-gray-300));
+	background: var(--color-gray-50, var(--color-gray-50));
 }
 
 .input:focus,
 .isOpen {
-	border-color: var(--color-primary, #10b981) !important;
+	border-color: var(--color-primary, var(--color-primary)) !important;
 	background: var(--color-white, #ffffff) !important;
 	box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.12) !important;
 }
 
 .hasError {
-	border-color: #ef4444 !important;
+	border-color: var(--color-error) !important;
 }
 
 .hasError:focus {
@@ -52,8 +51,8 @@
 }
 
 .input:disabled {
-	background: var(--color-gray-100, #f3f4f6);
-	color: var(--color-gray-400, #9ca3af);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-400, var(--color-gray-500));
 	cursor: not-allowed;
 	opacity: 0.7;
 }
@@ -65,13 +64,13 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-gray-400, #9ca3af);
+	color: var(--color-gray-400, var(--color-gray-500));
 	transition: color 0.15s ease;
 }
 
 .input:focus + .calendarIcon,
 .isOpen ~ .calendarIcon {
-	color: var(--color-primary, #10b981);
+	color: var(--color-primary, var(--tone-green-fg));
 }
 
 .clearBtn {
@@ -85,13 +84,13 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-gray-400, #9ca3af);
+	color: var(--color-gray-400, var(--color-gray-500));
 	transition: all 0.15s ease;
 }
 
 .clearBtn:hover {
-	background: var(--color-gray-100, #f3f4f6);
-	color: var(--color-gray-700, #374151);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-700, var(--color-gray-700));
 }
 
 /* =============================================
@@ -106,12 +105,11 @@
 	width: 310px;
 	max-width: calc(100vw - 24px);
 	background: #ffffff;
-	border: 1px solid var(--color-gray-200, #e5e7eb);
+	border: 1px solid var(--color-gray-200, var(--color-gray-200));
 	border-radius: 16px;
 	padding: 16px;
 	box-shadow:
-		0 12px 32px rgba(0, 0, 0, 0.14),
-		0 4px 12px rgba(0, 0, 0, 0.06);
+		var(--shadow-md);
 	animation: popoverFadeInBottom 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 	user-select: none;
 	overflow: hidden;
@@ -160,26 +158,26 @@
 .select {
 	appearance: none;
 	-webkit-appearance: none;
-	background: var(--color-gray-50, #f8fafc);
-	border: 1px solid var(--color-gray-200, #e5e7eb);
+	background: var(--color-gray-50, var(--color-gray-50));
+	border: 1px solid var(--color-gray-200, var(--color-gray-200));
 	border-radius: 8px;
 	padding: 4px 10px;
 	font-family: inherit;
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: var(--color-gray-800, #1f2937);
+	color: var(--color-gray-800, var(--color-gray-800));
 	cursor: pointer;
 	outline: none;
 	transition: all 0.15s ease;
 }
 
 .select:hover {
-	background: var(--color-gray-100, #f1f5f9);
-	border-color: var(--color-gray-300, #cbd5e1);
+	background: var(--color-gray-100, var(--color-gray-100));
+	border-color: var(--color-gray-300, var(--color-gray-300));
 }
 
 .select:focus {
-	border-color: var(--color-primary, #10b981);
+	border-color: var(--color-primary, var(--color-primary));
 }
 
 .navGroup {
@@ -192,9 +190,9 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 8px;
-	border: 1px solid var(--color-gray-200, #e5e7eb);
+	border: 1px solid var(--color-gray-200, var(--color-gray-200));
 	background: var(--color-white, #ffffff);
-	color: var(--color-gray-600, #4b5563);
+	color: var(--color-gray-600, var(--color-gray-700));
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -203,9 +201,9 @@
 }
 
 .navBtn:hover {
-	background: var(--color-gray-100, #f1f5f9);
-	color: var(--color-gray-900, #111827);
-	border-color: var(--color-gray-300, #cbd5e1);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-900, var(--color-gray-900));
+	border-color: var(--color-gray-300, var(--color-gray-300));
 }
 
 /* Weekday header */
@@ -220,14 +218,14 @@
 .weekday {
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
-	color: var(--color-gray-400, #9ca3af);
+	color: var(--color-gray-400, var(--color-gray-500));
 	padding: 4px 0;
 	text-transform: uppercase;
 	letter-spacing: 0.03em;
 }
 
 .weekdayIsWeekend {
-	color: #ef4444;
+	color: var(--tone-red-fg);
 	opacity: 0.8;
 }
 
@@ -246,7 +244,7 @@
 	justify-content: center;
 	font-size: var(--font-size-compact);
 	font-weight: 500;
-	color: var(--color-gray-700, #374151);
+	color: var(--color-gray-700, var(--color-gray-700));
 	background: transparent;
 	border: none;
 	border-radius: 10px;
@@ -255,21 +253,21 @@
 }
 
 .dayCell:hover:not(.isDisabled):not(.isSelected) {
-	background: var(--color-gray-100, #f1f5f9);
-	color: var(--color-gray-900, #111827);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-900, var(--color-gray-900));
 }
 
 .otherMonth {
-	color: var(--color-gray-400, #9ca3af);
+	color: var(--color-gray-400, var(--color-gray-500));
 }
 
 .otherMonth:hover:not(.isDisabled):not(.isSelected) {
-	color: var(--color-gray-600, #4b5563);
+	color: var(--color-gray-600, var(--color-gray-700));
 }
 
 .isToday {
 	font-weight: 700;
-	color: var(--color-primary-dark, #047857);
+	color: var(--color-primary-dark, var(--tone-green-fg));
 }
 
 .isToday::after {
@@ -279,14 +277,14 @@
 	width: 4px;
 	height: 4px;
 	border-radius: 50%;
-	background: var(--color-primary, #10b981);
+	background: var(--color-primary, var(--color-primary));
 }
 
 /* Context band — the parent round's whole period (blue, distinct from the
    green milestone band). Only rendered until both milestone dates are set. */
 .inRange {
-	background: #dbeafe !important;
-	color: #1e3a8a !important;
+	background: var(--tone-blue-bg) !important;
+	color: var(--tone-blue-fg) !important;
 	font-weight: 700 !important;
 	opacity: 1 !important;
 	border-radius: 0;
@@ -296,13 +294,13 @@
 }
 
 .otherMonth.inRange {
-	color: #1e3a8a !important;
+	color: var(--tone-blue-fg) !important;
 	font-weight: 700 !important;
 	opacity: 1 !important;
 }
 
 .inRange:hover:not(.isDisabled):not(.isSelected) {
-	background: #bfdbfe !important;
+	background: var(--tone-blue-border) !important;
 }
 
 .inRange:nth-child(7n+1) {
@@ -338,8 +336,8 @@
 /* Stronger inner band — this milestone's own start → deadline span.
    Declared after .inRange so it wins wherever the two overlap. */
 .inActiveRange {
-	background: var(--color-primary-light, #a7f3d0) !important;
-	color: #064e3b !important;
+	background: var(--color-primary-light, var(--tone-green-border)) !important;
+	color: var(--tone-green-fg) !important;
 	font-weight: 700 !important;
 	opacity: 1 !important;
 	border-radius: 0;
@@ -349,13 +347,13 @@
 }
 
 .otherMonth.inActiveRange {
-	color: #064e3b !important;
+	color: var(--tone-green-fg) !important;
 	font-weight: 700 !important;
 	opacity: 1 !important;
 }
 
 .inActiveRange:hover:not(.isDisabled):not(.isSelected) {
-	background: var(--color-primary, #10b981) !important;
+	background: var(--color-primary, var(--color-primary)) !important;
 	color: #ffffff !important;
 }
 
@@ -390,7 +388,7 @@
 }
 
 .isSelected {
-	background: var(--color-primary, #10b981) !important;
+	background: var(--color-primary, var(--color-primary)) !important;
 	color: #ffffff !important;
 	font-weight: 700 !important;
 	box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
@@ -410,7 +408,7 @@
 .activeRangeStart:not(.isSelected),
 .activeRangeEnd:not(.isSelected),
 .activeEndpoint:not(.isSelected) {
-	background: var(--color-primary, #10b981) !important;
+	background: var(--color-primary, var(--color-primary)) !important;
 	color: #ffffff !important;
 	font-weight: 700 !important;
 	z-index: 2;
@@ -440,7 +438,7 @@
 }
 
 .isDisabled {
-	color: var(--color-gray-200, #e5e7eb) !important;
+	color: var(--color-gray-200, var(--color-gray-300)) !important;
 	cursor: not-allowed !important;
 	background: transparent !important;
 }
@@ -452,7 +450,7 @@
 	justify-content: space-between;
 	margin-top: 12px;
 	padding-top: 10px;
-	border-top: 1px solid var(--color-gray-100, #f3f4f6);
+	border-top: 1px solid var(--color-gray-100, var(--color-gray-100));
 }
 
 .todayBtn,
@@ -468,18 +466,18 @@
 }
 
 .todayBtn {
-	color: var(--color-primary-dark, #047857);
+	color: var(--color-primary-dark, var(--tone-green-fg));
 }
 
 .todayBtn:hover {
-	background: var(--color-primary-pale, #ecfdf5);
+	background: var(--color-primary-pale, var(--tone-green-bg));
 }
 
 .clearTextBtn {
-	color: var(--color-gray-500, #6b7280);
+	color: var(--color-gray-500, var(--color-gray-600));
 }
 
 .clearTextBtn:hover {
-	background: var(--color-gray-100, #f3f4f6);
-	color: var(--color-red-600, #dc2626);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--tone-red-fg);
 }

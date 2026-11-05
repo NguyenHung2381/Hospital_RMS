@@ -48,12 +48,12 @@
 	composes: actionBtn from './Table.module.css';
 }
 .actionDanger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.searchBox {
 		width: 100%;
 	}

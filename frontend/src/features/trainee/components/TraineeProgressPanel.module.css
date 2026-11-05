@@ -79,10 +79,8 @@
 	padding-left: 24px;
 }
 .sectionTitle {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
 	margin-bottom: 6px;
 }
@@ -136,13 +134,13 @@
 }
 .extraNote {
 	font-size: var(--font-size-2xs);
-	color: #3c3489;
+	color: var(--tone-purple-fg);
 	margin-top: 2px;
 }
 .syncNote {
 	font-size: var(--font-size-2xs);
-	color: #3c3489;
-	background: #eeedfe;
+	color: var(--tone-purple-fg);
+	background: var(--tone-purple-bg);
 	border-radius: var(--radius-lg);
 	padding: 6px 10px;
 }
@@ -167,26 +165,26 @@
 	height: 12px;
 }
 .tone_green {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .tone_blue {
-	background: #e6f0fb;
-	color: #0b4a8b;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .tone_amber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .tone_red {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .tone_gray {
 	background: var(--color-gray-100);
 	color: var(--color-gray-600);
 }
 .tone_violet {
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }

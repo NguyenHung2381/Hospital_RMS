@@ -20,7 +20,6 @@
 	padding: var(--space-3) var(--space-4);
 	border-radius: var(--radius-xl);
 	border: 1px solid var(--color-gray-200);
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 	width: 100%;
 	max-width: 100%;
 	min-width: 0;
@@ -60,7 +59,7 @@
 .viewBtnActive {
 	background: var(--color-white);
 	color: var(--color-primary);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: var(--shadow-sm);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -94,7 +93,7 @@
 .calViewBtnActive {
 	background: var(--color-white);
 	color: var(--color-primary);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	box-shadow: var(--shadow-sm);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -209,7 +208,7 @@
 	padding: var(--space-1) var(--space-2);
 	background: var(--color-gray-50);
 	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-150, #eaecf0);
+	border: 1px solid var(--color-gray-200);
 }
 .legendItem {
 	display: flex;
@@ -222,7 +221,6 @@
 	width: 18px;
 	height: 10px;
 	border-radius: 3px;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 .legendPin {
 	display: inline-block;
@@ -263,7 +261,6 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	transition: all 0.15s ease;
 	opacity: 0.9;
 }
@@ -282,7 +279,6 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
 	overflow: auto;
-	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 	position: relative;
 	scrollbar-width: thin;
 	scrollbar-color: var(--color-gray-300) transparent;
@@ -296,7 +292,6 @@
 	display: flex;
 	background: linear-gradient(180deg, var(--color-white) 0%, var(--color-gray-50) 100%);
 	border-bottom: 2px solid var(--color-gray-200);
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 	position: sticky;
 	top: 0;
 	z-index: 25;
@@ -316,7 +311,6 @@
 	left: 0;
 	z-index: 30;
 	background: var(--color-white);
-	box-shadow: 3px 0 10px rgba(0,0,0,0.06);
 	will-change: transform;
 }
 .labelColHead {
@@ -324,14 +318,12 @@
 	position: sticky;
 	left: 0;
 	z-index: 35;
-	box-shadow: 3px 0 10px rgba(0,0,0,0.06);
+	box-shadow: var(--shadow-sm);
 }
 .labelColTitle {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
 }
 .headerWrap { position: relative; flex-shrink: 0; }
 
@@ -358,9 +350,9 @@
 	box-sizing: border-box;
 }
 .monthBandCurrent {
-	color: #15803d;
-	background: color-mix(in srgb, #0a9b4a 14%, transparent);
-	box-shadow: inset 0 -2px 0 color-mix(in srgb, #0a9b4a 45%, transparent);
+	color: var(--tone-green-fg);
+	background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+	box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-primary) 45%, transparent);
 	font-weight: var(--font-weight-bold);
 }
 
@@ -403,7 +395,7 @@
 	left: 0;
 	z-index: 30;
 	transition: background 0.15s ease;
-	box-shadow: 3px 0 10px rgba(0,0,0,0.06);
+	box-shadow: var(--shadow-sm);
 }
 
 .roundId {
@@ -476,7 +468,7 @@
 	align-self: stretch;
 }
 .gridLine { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--color-gray-200); pointer-events: none; }
-.weekLine  { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--color-gray-150, #f0f2f5); pointer-events: none; }
+.weekLine  { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--color-gray-100); pointer-events: none; }
 .dayLine   { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,0.02); pointer-events: none; }
 
 .todayLine {
@@ -513,13 +505,12 @@
 	transition: opacity 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
 	cursor: grab;
 	overflow: hidden;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 2px 5px rgba(0, 0, 0, 0.06);
 }
 .bar:hover {
 	opacity: 1;
 	z-index: 12;
 	transform: translateY(-1px);
-	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-md);
 }
 .barActive {
 	cursor: grabbing !important;
@@ -527,7 +518,7 @@
 	z-index: 18 !important;
 	transition: none !important;
 	transform: translateY(-1px) scale(1.01) !important;
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28) !important;
+	box-shadow: var(--shadow-sm);
 }
 .barTypeLabel {
 	position: absolute;
@@ -596,7 +587,6 @@
 	height: 14px;
 	border-radius: 50%;
 	border: 2.5px solid #fff;
-	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.04);
 	transition: transform 0.15s ease, top 0.15s ease;
 	z-index: 1;
 }
@@ -607,7 +597,7 @@
 	width: 24px;
 	text-align: center;
 	font-size: var(--font-size-2xs);
-	font-weight: 800;
+	font-weight: var(--font-weight-bold);
 	line-height: 1;
 	pointer-events: none;
 	transition: top 0.15s ease;
@@ -623,7 +613,6 @@
 	background: rgba(255, 255, 255, 0.94);
 	padding: 2px 6px;
 	border-radius: 4px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 	transition: top 0.15s ease;
 }
 
@@ -667,11 +656,11 @@
 	pointer-events: none;
 	white-space: nowrap;
 	transform: translateX(-50%);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+	box-shadow: var(--shadow-md);
 }
 
 /* ─── Responsive Media Queries ───────────────────────────────────────────── */
-@media (max-width: 1199px) {
+@media (max-width: 1279px) {
 	.toolbar {
 		width: 100% !important;
 		box-sizing: border-box !important;

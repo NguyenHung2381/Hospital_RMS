@@ -4,7 +4,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
-	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+	box-shadow: var(--shadow-md);
 	overflow: hidden;
 }
 .head {
@@ -63,8 +63,6 @@
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-600);
-	text-transform: uppercase;
-	letter-spacing: 0.02em;
 }
 .stepNo {
 	display: inline-grid;
@@ -229,16 +227,16 @@
 	color: var(--color-gray-600);
 }
 .badge_ready {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .badge_open {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .badge_full {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 
 /* Bước 2 (tìm + kết quả) bên trái, "Vừa ghi danh" bên phải */
@@ -281,7 +279,7 @@
 .searchInput:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 .searchClear {
 	position: absolute;
@@ -325,7 +323,7 @@
 	background: var(--color-white);
 	color: var(--color-gray-900);
 	font-weight: var(--font-weight-semibold);
-	box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+	box-shadow: var(--shadow-sm);
 }
 .originCount {
 	color: var(--color-gray-400);
@@ -333,10 +331,10 @@
 }
 .warn {
 	padding: 6px 10px;
-	border-left: 3px solid #ef9f27;
+	border-left: 3px solid var(--color-warning);
 	border-radius: var(--radius-sm);
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-size: var(--font-size-compact);
 }
 
@@ -360,7 +358,7 @@
 	background: var(--color-gray-50);
 }
 .resultDone {
-	background: #f6fbf8;
+	background: var(--color-gray-50);
 }
 .resultMain {
 	flex: 1;
@@ -384,7 +382,7 @@
 	white-space: nowrap;
 }
 .otherClass {
-	color: #1d4f91;
+	color: var(--tone-blue-fg);
 }
 .tag,
 .tagNew {
@@ -395,12 +393,12 @@
 	white-space: nowrap;
 }
 .tagIn {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .tagOut {
-	background: #e6f0fb;
-	color: #1d4f91;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .tagNew {
 	background: var(--color-gray-100);
@@ -421,7 +419,7 @@
 	border: none;
 	border-radius: var(--radius-md);
 	background: transparent;
-	color: #085028;
+	color: var(--tone-green-fg);
 	font-family: var(--font-body);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
@@ -429,7 +427,7 @@
 	cursor: pointer;
 }
 .inClass:hover {
-	background: #e1f5ea;
+	background: var(--tone-green-bg);
 }
 .inClass svg {
 	width: 13px;
@@ -493,17 +491,17 @@
 	gap: var(--space-2);
 	padding: var(--space-2) var(--space-3);
 	border-radius: var(--radius-md);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	animation: recentIn 0.25s ease-out;
 }
 .recentWait {
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }
 .recentErr {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .recentIcon {
 	flex: none;
@@ -553,7 +551,7 @@
 	}
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.body {
 		grid-template-columns: 1fr;
 	}

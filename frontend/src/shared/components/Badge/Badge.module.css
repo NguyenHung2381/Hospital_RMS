@@ -25,36 +25,36 @@
 	flex-shrink: 0;
 }
 
-/* ── Bảng màu (giữ nguyên giá trị đang dùng trên toàn hệ thống) ───────────── */
+/* ── Bảng màu: lấy từ --tone-* trong styles/variables.css ─────────────────── */
 .green {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .blue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .amber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .gray {
-	background: #f1efe8;
-	color: #444441;
+	background: var(--tone-gray-bg);
+	color: var(--tone-gray-fg);
 }
 .red {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .pink {
-	background: rgba(223, 9, 132, 0.1);
-	color: var(--color-accent-dark);
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
 }
 .purple {
-	background: #eeedfe;
-	color: #3c3489;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }
 .teal {
-	background: #e1f5ea;
-	color: #0f6e3a;
+	background: var(--tone-teal-bg);
+	color: var(--tone-teal-fg);
 }

@@ -31,7 +31,7 @@
 
 .clickable:hover {
 	border-color: var(--color-primary);
-	box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+	box-shadow: var(--shadow-md);
 }
 
 /* ── Chi tiết khóa học: thẻ tóm tắt + tab ── */
@@ -57,13 +57,13 @@
 	gap: 6px;
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: #334155;
+	color: var(--color-gray-700);
 }
 
 .summaryDates svg {
 	width: 15px;
 	height: 15px;
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 
 .stats {
@@ -81,7 +81,7 @@
 	padding: 10px 14px;
 	border: 1px solid var(--color-gray-200);
 	border-radius: 10px;
-	background: #f8fafc;
+	background: var(--color-gray-50);
 	font: inherit;
 	text-align: left;
 	cursor: pointer;
@@ -95,21 +95,21 @@
 .stat strong {
 	font-size: var(--font-size-2xl);
 	line-height: 1.1;
-	color: #0f172a;
+	color: var(--color-gray-900);
 }
 
 .stat span {
 	font-size: var(--font-size-xs);
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 
 .statAlert {
-	background: #fef2f2;
-	border-color: #fecaca;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
 }
 
 .statAlert strong {
-	color: #b91c1c;
+	color: var(--tone-red-fg);
 }
 
 .tabs {
@@ -133,7 +133,7 @@
 	font: inherit;
 	font-size: var(--font-size-sm);
 	font-weight: 600;
-	color: #64748b;
+	color: var(--color-gray-600);
 	white-space: nowrap;
 	cursor: pointer;
 }
@@ -144,7 +144,7 @@
 }
 
 .tab:hover {
-	color: #0f172a;
+	color: var(--color-gray-900);
 }
 
 .tabActive {
@@ -156,15 +156,15 @@
 	min-width: 20px;
 	padding: 1px 7px;
 	border-radius: 999px;
-	background: #f1f5f9;
-	color: #475569;
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
 	font-size: var(--font-size-xs);
 	text-align: center;
 }
 
 .tabCountAlert {
-	background: #fee2e2;
-	color: #b91c1c;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 
 .tabToolbar {
@@ -175,10 +175,10 @@
 	flex-wrap: wrap;
 	margin-bottom: 16px;
 	font-size: var(--font-size-sm);
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	.stats {
 		grid-template-columns: repeat(2, 1fr);
 		flex-basis: 100%;
@@ -194,11 +194,9 @@
 }
 
 .groupTitle {
-	font-weight: 700;
+	font-weight: var(--font-weight-semibold);
 	font-size: var(--font-size-compact);
-	color: #096b35;
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
+	color: var(--tone-green-fg);
 	margin-bottom: 8px;
 }
 
@@ -220,8 +218,8 @@
 	flex: 0 0 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: #f0fdf4;
-	color: #096b35;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-weight: 700;
 	font-size: var(--font-size-xs);
 	display: grid;
@@ -243,7 +241,7 @@
 	flex: 0 0 16px;
 	width: 16px;
 	height: 16px;
-	color: #94a3b8;
+	color: var(--color-gray-500);
 	transition: transform 0.15s;
 }
 
@@ -261,7 +259,7 @@
 .lessonDesc {
 	margin: 0 0 4px;
 	font-size: var(--font-size-compact);
-	color: #334155;
+	color: var(--color-gray-700);
 	white-space: pre-line;
 }
 
@@ -273,10 +271,10 @@
 	padding: 8px 10px;
 	border: 1px solid var(--color-gray-200);
 	border-radius: 8px;
-	background: #f8fafc;
+	background: var(--color-gray-50);
 	font: inherit;
 	font-size: var(--font-size-compact);
-	color: #0f172a;
+	color: var(--color-gray-900);
 	text-align: left;
 	cursor: pointer;
 }
@@ -288,11 +286,11 @@
 .docLink svg {
 	width: 15px;
 	height: 15px;
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 
 .docMeta {
-	color: #64748b;
+	color: var(--color-gray-600);
 	font-size: var(--font-size-xs);
 }
 
@@ -306,7 +304,7 @@
 
 .itemTitle {
 	font-weight: 600;
-	color: #0f172a;
+	color: var(--color-gray-900);
 }
 
 .badges {
@@ -321,11 +319,11 @@
 	gap: 4px 16px;
 	margin-top: 6px;
 	font-size: var(--font-size-compact);
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 
 .meta b {
-	color: #334155;
+	color: var(--color-gray-700);
 	font-weight: 600;
 }
 
@@ -340,8 +338,8 @@
 	flex: 0 0 56px;
 	text-align: center;
 	border-radius: 8px;
-	background: #f0fdf4;
-	color: #096b35;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	padding: 6px 0;
 	line-height: 1.2;
 }
@@ -378,13 +376,13 @@
 .bigNumber {
 	font-size: var(--font-size-3xl);
 	font-weight: 700;
-	color: #0f172a;
+	color: var(--color-gray-900);
 }
 
 .progressTrack {
 	height: 10px;
 	border-radius: 999px;
-	background: #e2e8f0;
+	background: var(--color-gray-200);
 	overflow: hidden;
 	margin-top: 10px;
 }
@@ -397,11 +395,11 @@
 }
 
 .progressDone {
-	background: #16a34a;
+	background: var(--color-primary);
 }
 
 .progressLow {
-	background: #d97706;
+	background: var(--color-warning);
 }
 
 .yearSelect {
@@ -430,7 +428,7 @@
 	width: 100%;
 	box-sizing: border-box;
 	padding: 8px 10px;
-	border: 1px solid #cbd5e1;
+	border: 1px solid var(--color-gray-300);
 	border-radius: 8px;
 	font: inherit;
 	font-weight: 400;
@@ -439,7 +437,7 @@
 	grid-column: 1 / -1;
 }
 .formError {
-	color: #b91c1c;
+	color: var(--tone-red-fg);
 	font-size: 13px;
 	margin-bottom: 8px;
 }
@@ -450,25 +448,25 @@
 	font-weight: 400;
 }
 .cfgHint {
-	color: #64748b;
+	color: var(--color-gray-600);
 }
 .cfgError {
-	color: #b91c1c;
+	color: var(--tone-red-fg);
 }
 .formGrid > label > .cfgInputError {
-	border-color: #ef4444;
+	border-color: var(--color-error);
 }
 /* Ô của trường tùy chỉnh (textarea không có sẵn style như input/select) */
 .cfgInput {
 	width: 100%;
 	box-sizing: border-box;
 	padding: 8px 10px;
-	border: 1px solid #cbd5e1;
+	border: 1px solid var(--color-gray-300);
 	border-radius: 8px;
 	font: inherit;
 	font-weight: 400;
 }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
 	.formGrid {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -500,7 +498,7 @@
 }
 .openCard:hover {
 	border-color: var(--color-primary);
-	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+	box-shadow: var(--shadow-md);
 	transform: translateY(-2px);
 }
 .openCard:focus-visible {
@@ -531,7 +529,7 @@
 .openName {
 	font-size: var(--font-size-base);
 	font-weight: 600;
-	color: #0f172a;
+	color: var(--color-gray-900);
 	line-height: 1.35;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
@@ -548,7 +546,7 @@
 	gap: 6px;
 	flex: 1;
 	font-size: var(--font-size-compact);
-	color: #475569;
+	color: var(--color-gray-700);
 }
 .openInfo li {
 	display: flex;
@@ -559,7 +557,7 @@
 	width: 15px;
 	height: 15px;
 	flex-shrink: 0;
-	color: #94a3b8;
+	color: var(--color-gray-500);
 }
 
 .openCta {

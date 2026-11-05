@@ -110,9 +110,9 @@
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }
 .actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 /* ── EMPTY STATE ─────────────────────────── */
@@ -134,7 +134,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 620px;
 	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -186,10 +186,11 @@
 	transition: all var(--transition-fast);
 	box-sizing: border-box;
 }
-.formInput:focus {
+.formInput:focus,
+.formTextarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 .toggleBox {
 	display: flex;
@@ -292,14 +293,14 @@
 	height: 13px;
 }
 .summaryOpen {
-	background: #e1f5ea;
-	border-color: #b9e3c9;
-	color: #085028;
+	background: var(--tone-green-bg);
+	border-color: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 .summaryClosed {
-	background: #fcebeb;
-	border-color: #f4c7c7;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 .summaryPrograms {
 	display: flex;
@@ -310,8 +311,6 @@
 .summaryLabel {
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
 }
 .infoDesc {
@@ -380,8 +379,8 @@
 .detailTabAlert {
 	padding: 1px 8px;
 	border-radius: var(--radius-full);
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-size: var(--font-size-xs);
 }
 
@@ -437,8 +436,8 @@
 	cursor: pointer;
 }
 .chipRemove:hover:not(:disabled) {
-	background: #fcebeb;
-	color: #d63b3b;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .chipRemove svg {
 	width: 12px;
@@ -473,7 +472,7 @@
 .segBtnActive {
 	background: var(--color-white);
 	color: var(--color-primary-dark);
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+	box-shadow: var(--shadow-sm);
 }
 
 /* Chọn chương trình trong form khóa học */
@@ -542,7 +541,7 @@
 }
 .pickRowOn,
 .pickRowOn:hover {
-	background: var(--color-primary-pale, #eff6ff);
+	background: var(--color-primary-pale, var(--tone-blue-bg));
 	color: var(--color-gray-800);
 }
 .pickCode {
@@ -640,7 +639,7 @@
 	background: var(--color-gray-50);
 }
 .rotWarn {
-	border-left: 3px solid #b42318;
+	border-left: 3px solid var(--color-error);
 }
 .rotHead {
 	display: flex;
@@ -673,11 +672,9 @@
 	min-width: 0;
 }
 .rotLabel {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
 }
 .rotField > .subSelect {
 	width: 100%;
@@ -761,7 +758,7 @@
 	text-decoration: underline;
 }
 .linkBtnDanger {
-	color: #a32d2d;
+	color: var(--tone-red-fg);
 }
 .linkBtn:disabled {
 	opacity: 0.6;
@@ -782,9 +779,9 @@
 	font-size: var(--font-size-compact);
 }
 .errorBanner {
-	background: #fcebeb;
-	border: 1px solid #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border: 1px solid var(--tone-red-border);
+	color: var(--tone-red-fg);
 	padding: 8px 12px;
 	border-radius: var(--radius-lg);
 	font-size: var(--font-size-compact);
@@ -805,32 +802,32 @@
 	border: 1px solid var(--color-gray-200);
 }
 .attRadioActivePresent {
-	background: #e1f5ea;
-	border-color: #9fd8b9;
-	color: #085028;
+	background: var(--tone-green-bg);
+	border-color: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 .attRadioActiveAbsent {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 .attRadioActiveLate {
-	background: #faeeda;
-	border-color: #ef9f27;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	border-color: var(--color-warning);
+	color: var(--tone-amber-fg);
 }
 .certBadge {
 	font-family: var(--font-mono);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
-	background: #e1f5ea;
+	background: var(--tone-green-bg);
 	padding: 3px 8px;
 	border-radius: var(--radius-full);
 }
 
 /* ── RESPONSIVE ──────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
 	.summaryCard {
 		padding: var(--space-3) var(--space-4);
 	}
@@ -860,12 +857,12 @@
 	flex: none;
 }
 .noticeBox svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
-.noticeOk { background: #e1f5ea; border-color: #b6e3ca; color: #085028; }
+.noticeOk { background: var(--tone-green-bg); border-color: var(--tone-green-border); color: var(--tone-green-fg); }
 .warnList {
 	margin: 0 0 var(--space-3);
 	padding-left: var(--space-4);
 	font-size: var(--font-size-xs);
-	color: #633806;
+	color: var(--tone-amber-fg);
 	max-height: 180px;
 	overflow: auto;
 	flex: none;
@@ -926,17 +923,17 @@
 /* Nhắc số đăng ký chờ duyệt cạnh tiêu đề bảng — bấm để mở nhóm chờ duyệt */
 .pendingAlert {
 	padding: 2px 10px;
-	border: 1px solid #f3d29f;
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-full);
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-family: var(--font-body);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 }
 .pendingAlert:hover {
-	border-color: #ef9f27;
+	border-color: var(--color-warning);
 }
 /* Nhãn nội viện / ngoại viện cạnh tên học viên */
 .originTag {
@@ -950,16 +947,16 @@
 	vertical-align: middle;
 }
 .originInternal {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .originExternal {
-	background: #e6f0fb;
-	color: #1d4f91;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 /* Hồ sơ GPHN đã duyệt nhưng chưa xếp lịch vòng (dòng phụ dưới tên học viên) */
 .unscheduled {
-	color: #b45309;
+	color: var(--tone-amber-fg);
 	font-weight: var(--font-weight-semibold);
 }
 /* Select nhóm học viên (Chờ duyệt / Đã phê duyệt / ...) ở hàng lọc */
@@ -1008,16 +1005,16 @@
 }
 .classNote {
 	padding: 6px 10px;
-	border-left: 3px solid #ef9f27;
+	border-left: 3px solid var(--color-warning);
 	border-radius: var(--radius-sm);
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 	font-size: var(--font-size-compact);
 }
 .classNoteOpen {
-	border-left-color: #1d9e75;
-	background: #e1f5ea;
-	color: #085028;
+	border-left-color: var(--color-primary);
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .inlineField {
 	display: inline-flex;
@@ -1034,7 +1031,7 @@
 }
 .hintWarn {
 	margin-top: var(--space-1);
-	color: #791f1f;
+	color: var(--tone-red-fg);
 }
 .classOpenBtn {
 	composes: btn sm primary from '../../../shared/components/Button/Button.module.css';
@@ -1146,7 +1143,7 @@
 @keyframes rowFlash {
 	0%,
 	60% {
-		background: #d6f2e1;
+		background: var(--tone-green-border);
 	}
 	100% {
 		background: transparent;

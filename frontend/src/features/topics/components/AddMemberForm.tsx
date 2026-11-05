@@ -62,7 +62,7 @@ export function AddMemberForm({
 							marginBottom: 4,
 						}}
 					>
-						Họ tên <span style={{ color: 'var(--color-red-500)' }}>*</span>
+						Họ tên <span style={{ color: 'var(--color-error)' }}>*</span>
 					</label>
 					<div style={{ position: 'relative' }}>
 						<input
@@ -182,7 +182,7 @@ export function AddMemberForm({
 						}}
 					>
 						Mã nhân viên{' '}
-						<span style={{ color: 'var(--color-red-500)' }}>*</span>
+						<span style={{ color: 'var(--color-error)' }}>*</span>
 					</label>
 					<input
 						className={styles.formInput}
@@ -350,7 +350,7 @@ export function AddMemberForm({
 				<div
 					style={{
 						fontSize: 12,
-						color: 'var(--color-red-600)',
+						color: 'var(--tone-red-fg)',
 						marginBottom: 8,
 						display: 'flex',
 						alignItems: 'center',

@@ -46,13 +46,13 @@
 	text-align: center;
 	padding: 12px;
 	border-radius: 12px;
-	background: #e7f5ed;
-	color: #064d26;
+	background: var(--color-primary-pale);
+	color: var(--tone-green-fg);
 }
 .count { font-size: 18px; }
 .count strong { font-size: 40px; line-height: 1.1; }
 .countLabel { font-size: 13px; margin-bottom: 8px; }
-.bar { height: 8px; border-radius: 999px; background: #c7e8d4; overflow: hidden; }
+.bar { height: 8px; border-radius: 999px; background: var(--tone-green-border); overflow: hidden; }
 .barFill { height: 100%; background: var(--color-primary); transition: width 0.3s; }
 
 .result {
@@ -66,8 +66,8 @@
 }
 .result svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; }
 .result strong { font-size: 16px; }
-.ok { background: #e1f5ea; border-color: #b6e3ca; color: #085028; }
-.warn { background: #faeeda; border-color: #f0d9b5; color: #633806; }
+.ok { background: var(--tone-green-bg); border-color: var(--tone-green-border); color: var(--tone-green-fg); }
+.warn { background: var(--tone-amber-bg); border-color: var(--tone-amber-border); color: var(--tone-amber-fg); }
 
 .history {
 	list-style: none;
@@ -77,7 +77,7 @@
 }
 .history li { padding: 8px 0 8px 12px; border-bottom: 1px solid var(--color-gray-200); border-left: 3px solid; }
 .histOk { border-left-color: var(--color-primary); }
-.histWarn { border-left-color: #e0a84f; }
+.histWarn { border-left-color: var(--color-warning); }
 
 .list { display: flex; flex-direction: column; gap: 8px; }
 .item {
@@ -85,9 +85,9 @@
 	padding: 12px 14px;
 	border: 1px solid var(--color-gray-200);
 	border-radius: 12px;
-	color: var(--color-gray-900, #111827);
+	color: var(--color-gray-900, var(--color-gray-900));
 	text-decoration: none;
 }
-.item .sub { opacity: 1; color: var(--color-gray-500, #6b7280); margin-top: 2px; }
+.item .sub { opacity: 1; color: var(--color-gray-500, var(--color-gray-600)); margin-top: 2px; }
 .itemTitle { font-weight: 600; font-size: 15px; }
-.empty { text-align: center; color: var(--color-gray-500, #6b7280); }
+.empty { text-align: center; color: var(--color-gray-500, var(--color-gray-600)); }

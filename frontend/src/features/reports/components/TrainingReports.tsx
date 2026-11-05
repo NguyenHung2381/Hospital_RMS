@@ -79,8 +79,8 @@ export function TrainingReports({ year }: { year: number }) {
 						loading={!data}
 						compare='Chứng chỉ còn hiệu lực của các khóa trong năm'
 						icon={<BadgeSvg />}
-						iconClass='iconPink'
-						accent='accentPink'
+						iconClass='iconPurple'
+						accent='accentPurple'
 					/>
 				</div>
 			)}

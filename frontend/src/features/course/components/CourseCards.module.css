@@ -21,7 +21,7 @@
 }
 
 .card:hover {
-	box-shadow: 0 8px 24px rgba(13, 24, 32, 0.08);
+	box-shadow: var(--shadow-md);
 }
 
 .open {
@@ -87,7 +87,7 @@
 }
 
 .tools .danger:hover {
-	background: #fcebeb;
+	background: var(--tone-red-bg);
 	color: var(--color-error);
 }
 
@@ -143,7 +143,7 @@
 
 .warn,
 .warn strong {
-	color: #b4690e;
+	color: var(--tone-amber-fg);
 }
 
 .foot {
@@ -156,7 +156,7 @@
 }
 
 .open1 {
-	color: #085028;
+	color: var(--tone-green-fg);
 	font-weight: var(--font-weight-semibold);
 }
 

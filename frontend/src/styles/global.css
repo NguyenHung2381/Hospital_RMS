@@ -8,7 +8,7 @@
 @import './mixins.css';
 @import './select.css';
 
-/* Font Mulish / Be Vietnam Pro nạp không chặn hiển thị ở main.tsx — KHÔNG
+/* Font Be Vietnam Pro / Source Serif 4 nạp không chặn hiển thị ở main.tsx — KHÔNG
    @import ở đây: @import trong CSS chặn vẽ trang tới khi Google Fonts trả về,
    máy trạm không ra được Internet thì treo trắng tới khi hết thời gian chờ. */
 
@@ -50,13 +50,18 @@ h4,
 h5,
 h6 {
 	font-family: var(--font-heading);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-semibold);
 	line-height: var(--line-height-tight);
 	color: var(--color-gray-800);
 }
 
+/* h1 = tên trang / tên nội dung → serif. Chỉ nạp Source Serif 4 ở 600 nên
+   luôn đặt 600 để trình duyệt không tự làm đậm giả. */
 h1 {
+	font-family: var(--font-display);
+	font-weight: var(--font-weight-semibold);
 	font-size: var(--font-size-4xl);
+	letter-spacing: -0.01em;
 }
 h2 {
 	font-size: var(--font-size-3xl);
@@ -174,11 +179,48 @@ div[class*='modal' i]::-webkit-scrollbar-track {
 	color: var(--color-primary-dark);
 }
 
-/* === FOCUS === */
+/* === FOCUS ===
+   Không đặt border-radius ở đây: outline đã tự bo theo phần tử, ép radius sẽ
+   làm nút/badge bo tròn bị vuông lại mỗi khi focus. */
 :focus-visible {
-	outline: 3px solid var(--color-primary-light);
-	outline-offset: 2px;
-	border-radius: var(--radius-sm);
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+/* Nhiều module viết `.x { outline: none }` (cùng độ ưu tiên, nạp sau) nên rule
+   trên bị đè. Với phần tử bấm được (không phải ô gõ chữ — ô gõ đã có
+   border-color/box-shadow riêng khi focus), ép lại viền focus.
+   Độ ưu tiên 0-1-1 (html + :focus-visible; :where() tính 0): thắng `.x`
+   nhưng vẫn thua `.x:focus` / `.x:focus-visible` mà module tự thiết kế. */
+html :where(a[href], button, summary, [role='button'], [role='tab'], [role='menuitem'], [role='option'], [role='checkbox'], [role='switch'], [tabindex]:not([tabindex='-1']), input[type='checkbox'], input[type='radio'], select):focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+/* === GIẢM CHUYỂN ĐỘNG ===
+   Người dùng bật "giảm chuyển động" trong hệ điều hành: tắt animation,
+   transition và cuộn mượt. Giữ 0.01ms (không phải 0) để sự kiện
+   animationend/transitionend vẫn bắn — vài component chờ sự kiện này. */
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+
+	/* Vòng xoay "đang tải" là chuyển động cần thiết (báo hệ thống còn chạy):
+	   giữ lại nhưng quay chậm. Spinner riêng của dự án: xem Loading.module.css */
+	.ant-spin-dot-spin {
+		animation-duration: 2.4s !important;
+		animation-iteration-count: infinite !important;
+	}
 }
 
 /* === LIST === */
@@ -188,7 +230,9 @@ ol {
 }
 
 /* === TABLE === */
+/* Số trong bảng cùng bề rộng để cột số thẳng hàng */
 table {
+	font-variant-numeric: tabular-nums;
 	border-collapse: collapse;
 	width: 100%;
 }

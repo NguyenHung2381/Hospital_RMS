@@ -205,8 +205,8 @@ export default function OverviewDashboard() {
 					compare={`${fmt(kpi.cme_issued_this_year)} chứng nhận CME đã cấp`}
 					deltaType='neutral'
 					icon={<CalendarSvg />}
-					iconClass='iconPink'
-					accent='accentPink'
+					iconClass='iconPurple'
+					accent='accentPurple'
 				/>
 			</div>
 

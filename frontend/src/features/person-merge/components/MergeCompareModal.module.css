@@ -23,14 +23,14 @@
 	line-height: var(--line-height-base);
 }
 .alertError {
-	background: #fef2f2;
-	border: 1px solid #fecaca;
-	color: #991b1b;
+	background: var(--tone-red-bg);
+	border: 1px solid var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 .alertWarn {
-	background: #fffbeb;
-	border: 1px solid #fde68a;
-	color: #92400e;
+	background: var(--tone-amber-bg);
+	border: 1px solid var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 
 /* ── Bảng so sánh: cột nhãn + 2 hồ sơ ─────────────────────────────────────── */
@@ -76,7 +76,7 @@
 	border-left: 1px solid var(--color-gray-100);
 }
 .sideHeadKeep {
-	background: var(--color-primary-pale, #ecfdf5);
+	background: var(--color-primary-pale, var(--tone-green-bg));
 }
 .sideTitle {
 	font-weight: var(--font-weight-bold);
@@ -140,7 +140,7 @@
 	background: var(--color-gray-50);
 }
 .cellChosen {
-	background: var(--color-primary-pale, #ecfdf5);
+	background: var(--color-primary-pale, var(--tone-green-bg));
 	box-shadow: inset 3px 0 0 var(--color-primary);
 }
 .empty {
@@ -202,7 +202,7 @@
 .noteBox textarea:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px var(--color-primary-pale, #d1fae5);
+	box-shadow: 0 0 0 3px var(--color-primary-pale, var(--tone-green-border));
 }
 
 .btnRow {
@@ -221,13 +221,13 @@
 	font-size: var(--font-size-sm);
 	line-height: var(--line-height-base);
 	color: var(--color-gray-700);
-	background: #fffbeb;
-	border: 1px solid #fde68a;
+	background: var(--tone-amber-bg);
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-md);
 	padding: var(--space-3) var(--space-4);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
 	.compare {
 		grid-template-columns: 96px minmax(0, 1fr) minmax(0, 1fr);
 	}

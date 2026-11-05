@@ -4,7 +4,7 @@
 .card {
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
+	border-radius: var(--radius-lg);
 	overflow: hidden;
 }
 
@@ -20,8 +20,8 @@
 	width: 40px;
 	height: 40px;
 	border-radius: var(--radius-lg);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -61,7 +61,7 @@
 }
 
 /* Điện thoại: thu padding, nút hành động header xuống dòng thay vì ép tiêu đề */
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	.header {
 		flex-wrap: wrap;
 		gap: var(--space-3);

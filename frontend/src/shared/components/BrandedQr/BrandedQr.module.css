@@ -26,7 +26,7 @@
 .hint {
 	font-size: var(--font-size-sm);
 	text-align: center;
-	color: #374151;
+	color: var(--color-gray-700);
 }
 
 .image {
@@ -42,7 +42,7 @@
 	border: 0;
 	border-radius: 8px;
 	padding: 10px 24px;
-	background: var(--color-primary, #0a9b4a);
+	background: var(--color-primary, var(--color-primary));
 	color: #fff;
 	font-weight: 600;
 	cursor: pointer;

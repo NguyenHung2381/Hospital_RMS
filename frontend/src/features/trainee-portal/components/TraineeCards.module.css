@@ -15,7 +15,7 @@
 
 .course:hover {
 	border-color: var(--color-primary-light);
-	box-shadow: 0 8px 24px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--shadow-md);
 	transform: translateY(-1px);
 }
 

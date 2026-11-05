@@ -55,8 +55,8 @@
 	font-weight: var(--font-weight-semibold);
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 /* ── Lưới ───────────────────────────────────── */
@@ -121,7 +121,7 @@
 .textarea:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .hasError {
@@ -209,7 +209,7 @@
 .segmentActive {
 	background: var(--color-white);
 	color: var(--color-primary);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	box-shadow: var(--shadow-sm);
 }
 
 /* ── Trạng thái ─────────────────────────────── */
@@ -220,7 +220,7 @@
 }
 
 .statusChip {
-	--tone: #9ca3af;
+	--tone: var(--color-gray-400);
 	--tone-bg: var(--color-gray-100);
 	--tone-fg: var(--color-gray-700);
 	display: inline-flex;
@@ -256,24 +256,24 @@
 }
 
 .tone_amber {
-	--tone: #ef9f27;
-	--tone-bg: #faeeda;
-	--tone-fg: #633806;
+	--tone: var(--color-warning);
+	--tone-bg: var(--tone-amber-bg);
+	--tone-fg: var(--tone-amber-fg);
 }
 .tone_green {
-	--tone: #0a9b4a;
-	--tone-bg: #e1f5ea;
-	--tone-fg: #085028;
+	--tone: var(--color-primary);
+	--tone-bg: var(--tone-green-bg);
+	--tone-fg: var(--tone-green-fg);
 }
 .tone_red {
-	--tone: #e24b4a;
-	--tone-bg: #fcebeb;
-	--tone-fg: #791f1f;
+	--tone: var(--color-error);
+	--tone-bg: var(--tone-red-bg);
+	--tone-fg: var(--tone-red-fg);
 }
 .tone_blue {
-	--tone: #378add;
-	--tone-bg: #e6f1fb;
-	--tone-fg: #0c447c;
+	--tone: var(--tone-blue-solid);
+	--tone-bg: var(--tone-blue-bg);
+	--tone-fg: var(--tone-blue-fg);
 }
 
 /* Đưa vào Thư viện đề tài */
@@ -308,7 +308,7 @@
 	align-items: center;
 	gap: 6px;
 	font-size: var(--font-size-xs);
-	color: var(--color-red-600, #a32d2d);
+	color: var(--tone-red-fg);
 }
 
 @media (max-width: 640px) {

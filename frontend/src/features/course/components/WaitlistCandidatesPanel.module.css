@@ -1,9 +1,9 @@
 /* Khối "Người chờ từ đợt trước" ở tab Học viên (khóa ĐTLT / CTCV). */
 .panel {
 	margin-bottom: var(--space-4);
-	border: 1px solid #fde68a;
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-xl);
-	background: #fffbeb;
+	background: var(--tone-amber-bg);
 	overflow: hidden;
 }
 
@@ -24,24 +24,24 @@
 .icon {
 	width: 18px;
 	height: 18px;
-	color: #b45309;
+	color: var(--tone-amber-fg);
 }
 
 .title {
 	font-weight: var(--font-weight-semibold);
-	color: #92400e;
+	color: var(--tone-amber-fg);
 }
 
 .sub {
 	flex: 1 1 260px;
 	font-size: var(--font-size-compact);
-	color: #a16207;
+	color: var(--tone-amber-fg);
 }
 
 .chev {
 	width: 16px;
 	height: 16px;
-	color: #b45309;
+	color: var(--tone-amber-fg);
 	transition: transform 0.15s;
 }
 
@@ -60,7 +60,7 @@
 	padding: 10px 12px;
 	border-radius: var(--radius-lg);
 	background: var(--color-white);
-	border: 1px solid #fde68a;
+	border: 1px solid var(--tone-amber-border);
 }
 
 .groupHead {
@@ -92,12 +92,12 @@
 }
 
 .row:hover {
-	background: #fefce8;
+	background: var(--tone-amber-bg);
 }
 
 .pos {
 	min-width: 28px;
-	color: #a16207;
+	color: var(--tone-amber-fg);
 	font-weight: var(--font-weight-semibold);
 }
 
@@ -111,7 +111,7 @@
 }
 
 .full {
-	color: #b91c1c;
+	color: var(--tone-red-fg);
 	font-weight: var(--font-weight-semibold);
 }
 

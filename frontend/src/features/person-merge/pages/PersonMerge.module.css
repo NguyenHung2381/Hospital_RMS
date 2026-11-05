@@ -131,7 +131,7 @@
 	color: var(--color-info);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
 	.searchInput {
 		width: 100%;
 	}

@@ -117,8 +117,8 @@ export default function TopicPage() {
 						</div>
 					</div>
 				</div>
-				<div className={`${styles.statCard} ${styles.amber}`}>
-					<div className={`${styles.statIcon} ${styles.iconAmber}`}>
+				<div className={`${styles.statCard} ${styles.attention}`}>
+					<div className={`${styles.statIcon} ${styles.iconAttention}`}>
 						<ApproveSvg />
 					</div>
 					<div className={styles.statBody}>
@@ -131,8 +131,8 @@ export default function TopicPage() {
 						</div>
 					</div>
 				</div>
-				<div className={`${styles.statCard} ${styles.pink}`}>
-					<div className={`${styles.statIcon} ${styles.iconPink}`}>
+				<div className={`${styles.statCard} ${styles.purple}`}>
+					<div className={`${styles.statIcon} ${styles.iconPurple}`}>
 						<CheckSvg />
 					</div>
 					<div className={styles.statBody}>
@@ -324,7 +324,7 @@ export default function TopicPage() {
 										style={{
 											textAlign: 'center',
 											padding: '40px',
-											color: 'var(--color-red-600)',
+											color: 'var(--tone-red-fg)',
 											fontSize: 13,
 										}}
 									>
@@ -568,7 +568,7 @@ export default function TopicPage() {
 						background:
 							d.bulkNotice.type === 'success'
 								? 'var(--color-primary)'
-								: 'var(--color-red-600, #dc2626)',
+								: 'var(--tone-red-fg)',
 					}}
 				>
 					{d.bulkNotice.msg}

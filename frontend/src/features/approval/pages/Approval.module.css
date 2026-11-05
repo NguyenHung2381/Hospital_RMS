@@ -32,39 +32,39 @@
 }
 
 .statCard.amber::before {
-	background: #ef9f27;
+	background: var(--color-warning);
 }
 .statCard.green::before {
 	background: var(--color-primary);
 }
 .statCard.red::before {
-	background: #e24b4a;
+	background: var(--color-error);
 }
 .statCard.blue::before {
-	background: #378add;
+	background: var(--tone-blue-solid);
 }
 
 .statCard:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 4px 16px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--shadow-md);
 	border-color: var(--color-gray-300);
 }
 
 .statCard.amber.statActive {
-	box-shadow: 0 0 0 2px #ef9f27;
-	border-color: #ef9f27;
+	box-shadow: 0 0 0 2px var(--color-warning);
+	border-color: var(--color-warning);
 }
 .statCard.green.statActive {
 	box-shadow: 0 0 0 2px var(--color-primary);
 	border-color: var(--color-primary);
 }
 .statCard.red.statActive {
-	box-shadow: 0 0 0 2px #e24b4a;
-	border-color: #e24b4a;
+	box-shadow: 0 0 0 2px var(--color-error);
+	border-color: var(--color-error);
 }
 .statCard.blue.statActive {
-	box-shadow: 0 0 0 2px #378add;
-	border-color: #378add;
+	box-shadow: 0 0 0 2px var(--tone-blue-solid);
+	border-color: var(--tone-blue-solid);
 }
 
 .statIcon {
@@ -83,20 +83,20 @@
 }
 
 .iconAmber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .iconGreen {
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
 }
 .iconRed {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .iconBlue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 .statBody {
@@ -126,16 +126,16 @@
 }
 
 .hintAmber {
-	color: #633806;
+	color: var(--tone-amber-fg);
 }
 .hintGreen {
 	color: var(--color-primary-dark);
 }
 .hintRed {
-	color: #791f1f;
+	color: var(--tone-red-fg);
 }
 .hintBlue {
-	color: #0c447c;
+	color: var(--tone-blue-fg);
 }
 
 /* =============================================
@@ -233,7 +233,7 @@
 .listSearchInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 /* Tabs */
@@ -349,7 +349,7 @@
 }
 
 .dotUrgent {
-	background: #e24b4a;
+	background: var(--color-error);
 	animation: pulse-red 2s ease-in-out infinite;
 }
 .dotNormal {
@@ -487,8 +487,8 @@
 /* Hover trên checkCol */
 .checkCol:hover .customCheck {
 	border-color: var(--color-primary);
-	background: #f0fbf5;
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.12);
+	background: var(--tone-green-bg);
+	box-shadow: var(--focus-ring-input);
 }
 
 /* Trạng thái đã chọn */
@@ -508,7 +508,7 @@
 	width: 5px;
 	height: 5px;
 	border-radius: 50%;
-	background: #e24b4a;
+	background: var(--color-error);
 	flex-shrink: 0;
 	animation: pulse-red 2s ease-in-out infinite;
 }
@@ -522,7 +522,7 @@
 	font-weight: var(--font-weight-bold);
 	color: var(--color-primary-dark);
 	background: var(--color-primary-pale);
-	border: 1px solid #b8e8ce;
+	border: 1px solid var(--tone-green-border);
 	padding: 2px 8px;
 	border-radius: var(--radius-full);
 	white-space: nowrap;
@@ -539,8 +539,8 @@
 	align-items: center;
 	gap: var(--space-2);
 	padding: var(--space-2) var(--space-3);
-	background: #f0fbf5;
-	border: 1px solid #c8ead7;
+	background: var(--tone-green-bg);
+	border: 1px solid var(--tone-green-border);
 	border-radius: var(--radius-lg);
 	animation: bulkSlideIn 150ms ease both;
 }
@@ -573,7 +573,7 @@
 
 /* Item được chọn: nền xanh nhạt, không thêm ::before (tránh conflict với listItemSelected) */
 .listItemChecked {
-	background: #f0fbf5 !important;
+	background: var(--tone-green-bg) !important;
 }
 
 /* Khi vừa checked vừa selected: selected thắng */
@@ -679,10 +679,8 @@
 
 .infoLabel {
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
 	margin-bottom: 3px;
 }
 
@@ -713,10 +711,8 @@
 /* Section label */
 .sectionLabel {
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
 	padding-bottom: var(--space-2);
 	border-bottom: 1px solid var(--color-gray-100);
 	margin-bottom: var(--space-3);
@@ -831,9 +827,9 @@
 }
 
 .processedRejected {
-	background: #fcebeb;
-	border: 1px solid #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border: 1px solid var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 .processedNotice svg {
@@ -863,7 +859,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 420px;
 	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -893,12 +889,12 @@
 	color: var(--color-primary-dark);
 }
 .modalIcon.iconReject {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .modalIcon.iconRequest {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .modalIcon svg {
 	width: 24px;
@@ -942,7 +938,7 @@
 .modalComment:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .modalFooter {
@@ -984,8 +980,7 @@
 	padding: 10px 14px;
 	background: #ffffff;
 	border-radius: var(--radius-xl, 12px);
-	border: 1px solid var(--color-gray-200, #e5e7eb);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+	border: 1px solid var(--color-gray-200, var(--color-gray-200));
 	transition: all 0.2s ease;
 }
 
@@ -1010,27 +1005,27 @@
 }
 
 .memberRoleLead {
-	background: #ecfdf5;
-	color: #047857;
-	border: 1.5px solid #a7f3d0;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+	border: 1.5px solid var(--tone-green-border);
 }
 
 .memberRoleSecretary {
-	background: #eff6ff;
-	color: #1d4ed8;
-	border: 1.5px solid #bfdbfe;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
+	border: 1.5px solid var(--tone-blue-border);
 }
 
 .memberRoleAdvisor {
-	background: #f5f3ff;
-	color: #6d28d9;
-	border: 1.5px solid #ddd6fe;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
+	border: 1.5px solid var(--tone-purple-bg);
 }
 
 .memberRoleMember {
-	background: #f1f5f9;
-	color: #475569;
-	border: 1.5px solid #cbd5e1;
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+	border: 1.5px solid var(--color-gray-300);
 }
 
 .memberInfo {
@@ -1041,7 +1036,7 @@
 .memberName {
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: var(--color-gray-800, #1f2937);
+	color: var(--color-gray-800, var(--color-gray-800));
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1060,9 +1055,9 @@
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
-	background: #ecfdf5;
-	color: #047857;
-	border: 1px solid #a7f3d0;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+	border: 1px solid var(--tone-green-border);
 	white-space: nowrap;
 }
 
@@ -1071,9 +1066,9 @@
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
-	background: #eff6ff;
-	color: #1d4ed8;
-	border: 1px solid #bfdbfe;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
+	border: 1px solid var(--tone-blue-border);
 	white-space: nowrap;
 }
 
@@ -1082,9 +1077,9 @@
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
-	background: #f5f3ff;
-	color: #6d28d9;
-	border: 1px solid #ddd6fe;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
+	border: 1px solid var(--tone-purple-bg);
 	white-space: nowrap;
 }
 
@@ -1093,15 +1088,15 @@
 	font-weight: 700;
 	padding: 2px 8px;
 	border-radius: var(--radius-full, 9999px);
-	background: #f8fafc;
-	color: #475569;
-	border: 1px solid #cbd5e1;
+	background: var(--color-gray-50);
+	color: var(--color-gray-700);
+	border: 1px solid var(--color-gray-300);
 	white-space: nowrap;
 }
 
 .memberDept {
 	font-size: var(--font-size-2xs);
-	color: var(--color-gray-500, #6b7280);
+	color: var(--color-gray-500, var(--color-gray-600));
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

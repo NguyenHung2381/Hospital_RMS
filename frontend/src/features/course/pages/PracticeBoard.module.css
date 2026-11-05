@@ -70,11 +70,11 @@
 	color: var(--color-gray-800);
 }
 .statDanger {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .statDanger b {
-	color: #791f1f;
+	color: var(--tone-red-fg);
 }
 
 .group + .group {
@@ -97,23 +97,23 @@
 }
 
 .overRow td {
-	background: #fdf3f3;
+	background: var(--color-gray-100);
 }
 .load {
 	display: inline-block;
 	min-width: 56px;
 	padding: 2px 10px;
 	border-radius: var(--radius-full);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	text-align: center;
 	white-space: nowrap;
 }
 .loadOver {
-	background: #f7c1c1;
-	color: #791f1f;
+	background: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 .traineeList {
 	display: flex;

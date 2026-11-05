@@ -15,8 +15,8 @@
 }
 .dirtyNote {
 	font-size: var(--font-size-xs);
-	color: #8a5a00;
-	background: #fff6e5;
+	color: var(--tone-amber-fg);
+	background: var(--tone-amber-bg);
 	padding: 4px 10px;
 	border-radius: var(--radius-full);
 }
@@ -69,12 +69,12 @@
 	border-color: var(--color-primary);
 }
 .cellDirty {
-	border-color: #ef9f27;
-	background: #fffaf0;
+	border-color: var(--color-warning);
+	background: var(--tone-amber-bg);
 }
 .cellInvalid {
 	border-color: var(--color-error);
-	background: #fdeeee;
+	background: var(--tone-red-bg);
 }
 .noteCell {
 	width: 140px;
@@ -86,8 +86,8 @@
 	text-align: center;
 }
 .bad {
-	color: #a32020;
-	background: #fcebeb;
+	color: var(--tone-red-fg);
+	background: var(--tone-red-bg);
 	border-radius: var(--radius-sm);
 	padding: 2px 6px;
 	cursor: help;
@@ -97,7 +97,7 @@
 	font-weight: var(--font-weight-semibold);
 }
 .fail {
-	color: #a32020;
+	color: var(--tone-red-fg);
 	font-weight: var(--font-weight-semibold);
 	cursor: help;
 }
@@ -107,8 +107,8 @@
 .lockBadge {
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	color: #5a3d00;
-	background: #faeeda;
+	color: var(--tone-amber-fg);
+	background: var(--tone-amber-bg);
 	padding: 3px 10px;
 	border-radius: var(--radius-full);
 }

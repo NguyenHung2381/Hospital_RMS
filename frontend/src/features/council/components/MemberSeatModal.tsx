@@ -227,7 +227,7 @@ export function MemberSeatModal({
 															.join(' · ')}
 											</div>
 											{conflictLabel(u) && (
-												<div style={{ fontSize: 11, color: 'var(--color-red-500, #dc2626)' }}>
+												<div style={{ fontSize: 11, color: 'var(--tone-red-fg)' }}>
 													⚠ {conflictLabel(u)}
 												</div>
 											)}

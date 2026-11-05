@@ -14,11 +14,13 @@
    SIDEBAR
 ============================================= */
 .sidebar {
+	/* Nền xanh đậm: viền focus chuyển sang trắng cho thấy rõ */
+	--focus-ring-color: var(--color-white);
 	width: 260px;
 	flex-shrink: 0;
 
-	/* Màu xanh lá chủ đạo */
-	background: linear-gradient(175deg, #0a783b 0%, #087c3b 40%, #0c8f47 100%);
+	/* Xanh sẫm phẳng — gradient cũ làm chữ menu ở cuối sidebar kém tương phản */
+	background: var(--color-primary-dark);
 
 	display: flex;
 	flex-direction: column;
@@ -31,7 +33,7 @@
 	overflow: hidden;
 	transition: width 280ms cubic-bezier(0.4, 0, 0.2, 1);
 	z-index: 100;
-	box-shadow: 2px 0 16px rgba(10, 120, 59, 0.25);
+	box-shadow: var(--shadow-sm);
 }
 
 /* Trạng thái thu gọn */
@@ -80,7 +82,6 @@
 	background: rgba(255, 255, 255, 0.95);
 	padding: 4px;
 	flex-shrink: 0;
-	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 	transition:
 		transform 280ms ease,
 		opacity 200ms ease;
@@ -204,11 +205,9 @@
 
 .navSection {
 	padding: var(--space-3) var(--space-5) var(--space-1);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: rgba(255, 255, 255, 0.45);
-	text-transform: uppercase;
-	letter-spacing: 0.09em;
 	white-space: nowrap;
 	overflow: hidden;
 	transition: opacity 200ms ease;
@@ -352,7 +351,6 @@
 	opacity: 0;
 	transition: opacity 150ms ease;
 	z-index: 200;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .sidebar.collapsed .navItem:hover::after {
@@ -373,8 +371,7 @@
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);
 	box-shadow:
-		0 -4px 20px rgba(0, 0, 0, 0.1),
-		0 2px 8px rgba(0, 0, 0, 0.06);
+		var(--shadow-md);
 	overflow: hidden;
 	animation: panel-drop 180ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 	z-index: 150;
@@ -407,7 +404,7 @@
 
 .userDropdownItem:hover {
 	background: var(--color-gray-50);
-	color: #c0392b;
+	color: var(--tone-red-fg);
 }
 
 .userDropdownItem svg {
@@ -712,11 +709,12 @@
 }
 
 .pageTitle {
+	font-family: var(--font-display);
 	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-extrabold);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-800);
 	line-height: 1.2;
-	letter-spacing: -0.02em;
+	letter-spacing: -0.01em;
 	margin-bottom: var(--space-1);
 }
 
@@ -808,7 +806,6 @@
 	object-fit: contain;
 	background: #fff;
 	padding: 2px;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .mobileBrandTitle {
@@ -856,7 +853,7 @@
 
 	.sidebar.mobileDrawerOpen {
 		transform: translateX(0);
-		box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+		box-shadow: var(--shadow-md);
 	}
 
 	.sidebarHeader {
@@ -908,8 +905,8 @@
 		display: block !important;
 		opacity: 1 !important;
 		padding: 16px var(--space-5) 6px !important;
-		font-size: var(--font-size-2xs) !important;
-		font-weight: var(--font-weight-bold) !important;
+		font-size: var(--font-size-xs) !important;
+		font-weight: var(--font-weight-semibold) !important;
 		color: rgba(255, 255, 255, 0.6) !important;
 		text-transform: uppercase !important;
 		letter-spacing: 0.09em !important;

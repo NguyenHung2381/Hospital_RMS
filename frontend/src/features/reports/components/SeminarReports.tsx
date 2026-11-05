@@ -68,8 +68,8 @@ export function SeminarReports({ year }: { year: number }) {
 						loading={!data}
 						compare={`${people.filter((p) => p.total > 0).length} nhân sự có tiết CME`}
 						icon={<BadgeSvg />}
-						iconClass='iconPink'
-						accent='accentPink'
+						iconClass='iconPurple'
+						accent='accentPurple'
 					/>
 					<MetricCard
 						label='Nhân sự chưa đạt CME'
@@ -82,8 +82,8 @@ export function SeminarReports({ year }: { year: number }) {
 						}
 						deltaType={failed.length ? 'down' : 'neutral'}
 						icon={failed.length ? <AlertSvg /> : <CheckCircleSvg />}
-						iconClass='iconAmber'
-						accent='accentAmber'
+						iconClass='iconAttention'
+						accent='accentAttention'
 					/>
 				</div>
 			)}

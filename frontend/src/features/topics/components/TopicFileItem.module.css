@@ -140,36 +140,36 @@
 }
 
 .pdf {
-	background: #fef2f2;
-	color: #dc2626;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .fileIcon.pdf {
 	border: 1px solid rgba(220, 38, 38, 0.15);
 }
 .word {
-	background: #eff6ff;
-	color: #1d4ed8;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .fileIcon.word {
 	border: 1px solid rgba(29, 78, 216, 0.15);
 }
 .excel {
-	background: #f0fdf4;
-	color: #16a34a;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .fileIcon.excel {
 	border: 1px solid rgba(22, 163, 74, 0.15);
 }
 .image {
-	background: #faf5ff;
-	color: #9333ea;
+	background: var(--color-gray-50);
+	color: var(--tone-purple-fg);
 }
 .fileIcon.image {
 	border: 1px solid rgba(147, 51, 234, 0.15);
 }
 .other {
-	background: #f3f4f6;
-	color: #4b5563;
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
 }
 .fileIcon.other {
 	border: 1px solid rgba(75, 85, 99, 0.15);

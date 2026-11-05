@@ -91,12 +91,12 @@
 	line-height: 1.5;
 }
 .notice {
-	background: #fdf6e3;
-	color: #7a5a00;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 .error {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .noticeIcon {
 	flex-shrink: 0;

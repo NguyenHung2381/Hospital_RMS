@@ -89,8 +89,6 @@
 }
 .factLabel {
 	font-size: var(--font-size-xs);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
 	color: var(--color-gray-400);
 	font-weight: var(--font-weight-semibold);
 }
@@ -180,23 +178,23 @@
 }
 .chipDone {
 	composes: chip;
-	color: #085028;
-	background: #e1f5ea;
+	color: var(--tone-green-fg);
+	background: var(--tone-green-bg);
 }
 .chipPending {
 	composes: chip;
-	color: #633806;
-	background: #faeeda;
+	color: var(--tone-amber-fg);
+	background: var(--tone-amber-bg);
 }
 .chipMissing {
 	composes: chip;
-	color: #791f1f;
-	background: #fcebeb;
+	color: var(--tone-red-fg);
+	background: var(--tone-red-bg);
 }
 .chipInfo {
 	composes: chip;
-	color: #0c447c;
-	background: #e6f1fb;
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 }
 .chipMuted {
 	composes: chip;
@@ -260,7 +258,7 @@
 	color: var(--color-gray-600);
 }
 .bad {
-	color: #a32020;
+	color: var(--tone-red-fg);
 	font-weight: var(--font-weight-semibold);
 }
 .toggle {

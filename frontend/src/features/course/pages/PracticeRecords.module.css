@@ -13,18 +13,18 @@
 	color: var(--color-gray-500);
 }
 .warn {
-	color: #b45309;
+	color: var(--tone-amber-fg);
 	font-weight: var(--font-weight-semibold);
 }
 .danger {
-	color: var(--color-danger, #b91c1c);
+	color: var(--tone-red-fg);
 	font-weight: var(--font-weight-semibold);
 }
 .nowrap {
 	white-space: nowrap;
 }
 .ok {
-	color: #15803d;
+	color: var(--tone-green-fg);
 	font-weight: var(--font-weight-semibold);
 }
 

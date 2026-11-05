@@ -106,7 +106,7 @@
 .input-field:focus {
 	outline: none;
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 4px rgba(10, 155, 74, 0.12);
+	box-shadow: var(--focus-ring-input);
 	background: var(--color-white);
 }
 
@@ -163,8 +163,6 @@
 	border-radius: var(--radius-full);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
 }
 
 .badge-primary {
@@ -268,7 +266,7 @@
 .alert-error {
 	background: rgba(232, 69, 69, 0.08);
 	border-left-color: var(--color-error);
-	color: #c0392b;
+	color: var(--tone-red-fg);
 }
 
 .alert-success {

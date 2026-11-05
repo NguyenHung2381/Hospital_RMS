@@ -125,8 +125,8 @@ export default function ResearchDashboard() {
 					}
 					deltaType={kpi.by_status.submitted > 5 ? 'down' : 'neutral'}
 					icon={<InfoSvg />}
-					iconClass='iconAmber'
-					accent='accentAmber'
+					iconClass='iconAttention'
+					accent='accentAttention'
 				/>
 				<MetricCard
 					label='Chưa thông qua / Bổ sung'
@@ -139,8 +139,8 @@ export default function ResearchDashboard() {
 					}
 					deltaType={kpi.by_status.rejected > 0 ? 'down' : 'neutral'}
 					icon={<ClipboardCheckSvg />}
-					iconClass='iconPink'
-					accent='accentPink'
+					iconClass='iconPurple'
+					accent='accentPurple'
 				/>
 			</div>
 

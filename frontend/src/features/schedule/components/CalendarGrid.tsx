@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import type { CalDay } from '../types/calendarView.type';
 import { DOW, DOW_SHORT, isSameDay } from '../utils/calendarViewHelpers';
+import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
+import { maxWidth } from '../../../shared/utils/breakpoints';
 import styles from './CalendarGrid.module.css';
 
 /**
@@ -88,14 +90,7 @@ function layoutWeek(days: CalDay[], items: CalItem[]): Placed[] {
 }
 
 function useCompact() {
-	const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
-	useEffect(() => {
-		const mq = window.matchMedia('(max-width: 1024px)');
-		const handler = (e: MediaQueryListEvent) => setCompact(e.matches);
-		mq.addEventListener('change', handler);
-		return () => mq.removeEventListener('change', handler);
-	}, []);
-	return compact;
+	return useMediaQuery(maxWidth('lg'));
 }
 
 /** Chiều cao để lưới vừa khít phần còn lại của màn hình (tính khi trang ở đầu). */

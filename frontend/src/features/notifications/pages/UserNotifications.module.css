@@ -40,7 +40,7 @@
 .tabActive {
 	background: var(--color-white);
 	color: var(--color-gray-800);
-	box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+	box-shadow: var(--shadow-sm);
 }
 
 .tabBadge {
@@ -87,6 +87,11 @@
 	transition: all var(--transition-fast);
 }
 
+.filterSelect:focus-visible {
+	border-color: var(--color-primary);
+	box-shadow: var(--focus-ring-input);
+}
+
 .btnMarkAll {
 	composes: btn secondary from '@/shared/components/Button/Button.module.css';
 }
@@ -125,9 +130,9 @@
 	transition: background var(--transition-fast);
 }
 .item:last-child { border-bottom: none; }
-.item:hover { background: #f8fdfa; }
-.item.unread { background: #f6fef9; }
-.item.unread:hover { background: #edfaf3; }
+.item:hover { background: var(--color-gray-50); }
+.item.unread { background: var(--color-gray-50); }
+.item.unread:hover { background: var(--tone-green-bg); }
 
 .unreadDot {
 	position: absolute;
@@ -152,10 +157,10 @@
 	margin-left: 14px;
 }
 .itemIcon svg { width: 18px; height: 18px; }
-.iconApproval { background: #e1f5ea; color: #065f46; }
-.iconTopic { background: #ede9fe; color: #5b21b6; }
-.iconSystem { background: #e0f2fe; color: #0369a1; }
-.iconWarning { background: #fef3c7; color: #92400e; }
+.iconApproval { background: var(--tone-green-bg); color: var(--tone-green-fg); }
+.iconTopic { background: var(--tone-purple-bg); color: var(--tone-purple-fg); }
+.iconSystem { background: var(--tone-blue-bg); color: var(--tone-blue-fg); }
+.iconWarning { background: var(--tone-amber-border); color: var(--tone-amber-fg); }
 
 .itemBody { flex: 1; min-width: 0; }
 
@@ -187,21 +192,21 @@
 	white-space: nowrap;
 	flex-shrink: 0;
 }
-.type_system { background: #e0f2fe; color: #0369a1; }
-.type_approval { background: #e1f5ea; color: #065f46; }
-.type_warning { background: #fef3c7; color: #92400e; }
-.type_topic { background: #ede9fe; color: #5b21b6; }
+.type_system { background: var(--tone-blue-bg); color: var(--tone-blue-fg); }
+.type_approval { background: var(--tone-green-bg); color: var(--tone-green-fg); }
+.type_warning { background: var(--tone-amber-border); color: var(--tone-amber-fg); }
+.type_topic { background: var(--tone-purple-bg); color: var(--tone-purple-fg); }
 /* Màu riêng theo từng loại thông báo; thiếu loại nào thì rơi về màu category ở trên */
-.type_topic_approved { background: #e1f5ea; color: #065f46; }
-.type_topic_rejected { background: #fee2e2; color: #b91c1c; }
-.type_topic_submitted { background: #e0f2fe; color: #0369a1; }
-.type_topic_supplement_requested { background: #fef3c7; color: #92400e; }
-.type_supplement_opened { background: #ccfbf1; color: #0f766e; }
-.type_supplement_closed { background: #e5e7eb; color: #374151; }
-.type_broadcast { background: #e0f2fe; color: #0369a1; }
-.type_deadline_reminder { background: #fef3c7; color: #92400e; }
-.type_member_added { background: #ede9fe; color: #5b21b6; }
-.type_account_granted { background: #e0e7ff; color: #4338ca; }
+.type_topic_approved { background: var(--tone-green-bg); color: var(--tone-green-fg); }
+.type_topic_rejected { background: var(--tone-red-bg); color: var(--tone-red-fg); }
+.type_topic_submitted { background: var(--tone-blue-bg); color: var(--tone-blue-fg); }
+.type_topic_supplement_requested { background: var(--tone-amber-border); color: var(--tone-amber-fg); }
+.type_supplement_opened { background: var(--tone-green-border); color: var(--tone-green-fg); }
+.type_supplement_closed { background: var(--color-gray-200); color: var(--color-gray-700); }
+.type_broadcast { background: var(--tone-blue-bg); color: var(--tone-blue-fg); }
+.type_deadline_reminder { background: var(--tone-amber-border); color: var(--tone-amber-fg); }
+.type_member_added { background: var(--tone-purple-bg); color: var(--tone-purple-fg); }
+.type_account_granted { background: var(--tone-blue-bg); color: var(--tone-blue-fg); }
 
 .itemMsg {
 	font-size: var(--font-size-sm);
@@ -237,7 +242,7 @@
 .spinner {
 	width: 13px; height: 13px;
 	border: 2px solid rgba(6,95,70,0.3);
-	border-top-color: #065f46;
+	border-top-color: var(--tone-green-fg);
 	border-radius: 50%;
 	animation: spin 0.65s linear infinite;
 }

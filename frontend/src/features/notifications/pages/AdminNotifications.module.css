@@ -30,8 +30,8 @@
 	width: 40px;
 	height: 40px;
 	border-radius: var(--radius-lg);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -87,7 +87,7 @@
 	composes: formLabel from '../../../shared/components/Modal/Modal.module.css';
 }
 .req {
-	color: #e24b4a;
+	color: var(--tone-red-fg);
 }
 
 .formInput {
@@ -107,7 +107,7 @@
 .formInput:focus {
 	border-color: var(--color-primary);
 	background: var(--color-white);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 .formInput::placeholder {
 	color: var(--color-gray-400);
@@ -133,7 +133,7 @@
 }
 .formSelect:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .deptHeader {
@@ -186,7 +186,7 @@
 
 .deptSearchInput:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 
 .deptGrid {
@@ -235,8 +235,8 @@
 }
 .deptCheckActive {
 	border-color: var(--color-primary);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-weight: var(--font-weight-semibold);
 }
 
@@ -244,7 +244,7 @@
 	width: 16px;
 	height: 16px;
 	border-radius: 4px;
-	border: 1.5px solid var(--color-gray-300, #d1d5db);
+	border: 1.5px solid var(--color-gray-300, var(--color-gray-300));
 	background: var(--color-white, #ffffff);
 	display: flex;
 	align-items: center;
@@ -387,10 +387,10 @@
 	background: var(--color-gray-50);
 }
 .userNodeOn {
-	background: #f0faf4;
+	background: var(--color-gray-50);
 }
 .userNodeOn:hover {
-	background: #e4f6ec;
+	background: var(--tone-green-bg);
 }
 
 .userNodeName {
@@ -483,61 +483,61 @@
 	white-space: nowrap;
 }
 .type_system {
-	background: #e0f2fe;
-	color: #0369a1;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .type_approval {
-	background: #e1f5ea;
-	color: #065f46;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .type_warning {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 .type_topic {
-	background: #ede9fe;
-	color: #5b21b6;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }
 /* Màu riêng theo từng loại thông báo; thiếu loại nào thì rơi về màu category ở trên */
 .type_topic_approved {
-	background: #e1f5ea;
-	color: #065f46;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .type_topic_rejected {
-	background: #fee2e2;
-	color: #b91c1c;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .type_topic_submitted {
-	background: #e0f2fe;
-	color: #0369a1;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .type_topic_supplement_requested {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 .type_supplement_opened {
-	background: #ccfbf1;
-	color: #0f766e;
+	background: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 .type_supplement_closed {
-	background: #e5e7eb;
-	color: #374151;
+	background: var(--color-gray-200);
+	color: var(--color-gray-700);
 }
 .type_broadcast {
-	background: #e0f2fe;
-	color: #0369a1;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .type_deadline_reminder {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 .type_member_added {
-	background: #ede9fe;
-	color: #5b21b6;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }
 .type_account_granted {
-	background: #e0e7ff;
-	color: #4338ca;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 
 .rowTitle {
@@ -568,12 +568,12 @@
 	font-weight: var(--font-weight-semibold);
 }
 .readBadge {
-	background: #e1f5ea;
-	color: #065f46;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 .unreadBadge {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 
 .timeText {
@@ -585,9 +585,9 @@
 	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
 }
 .actionBtn.danger:hover {
-	background: #fcebeb;
-	border-color: #f09595;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	border-color: var(--tone-red-border);
+	color: var(--tone-red-fg);
 }
 
 /* ── SPINNERS ───────────────────────────── */
@@ -627,7 +627,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 540px;
 	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;

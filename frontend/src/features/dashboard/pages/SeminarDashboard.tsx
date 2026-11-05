@@ -119,8 +119,8 @@ export default function SeminarDashboard() {
 					compare={`${kpi.cme_credits_this_year.toLocaleString('vi-VN')} tiết/tín chỉ CME`}
 					deltaType='neutral'
 					icon={<BadgeSvg />}
-					iconClass='iconPink'
-					accent='accentPink'
+					iconClass='iconPurple'
+					accent='accentPurple'
 				/>
 				<MetricCard
 					label='CME chờ cấp'
@@ -129,8 +129,8 @@ export default function SeminarDashboard() {
 					delta={kpi.cme_pending > 0 ? 'Cần hoàn tất hồ sơ cấp CME' : 'Không có hồ sơ tồn đọng'}
 					deltaType={kpi.cme_pending > 0 ? 'down' : 'neutral'}
 					icon={<ClockSvg />}
-					iconClass='iconAmber'
-					accent='accentAmber'
+					iconClass='iconAttention'
+					accent='accentAttention'
 				/>
 			</div>
 
@@ -227,7 +227,7 @@ export default function SeminarDashboard() {
 												<Badge tone={s.scope === 'hosted' ? 'green' : 'blue'}>
 													{s.scope === 'hosted' ? 'BV tổ chức' : 'Cử người dự'}
 												</Badge>
-												{s.grants_cme && <Badge tone='pink'>CME</Badge>}
+												{s.grants_cme && <Badge tone='purple'>CME</Badge>}
 											</div>
 										</div>
 									</div>

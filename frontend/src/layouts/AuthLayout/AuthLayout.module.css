@@ -212,11 +212,9 @@
 }
 
 .statLabel {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	color: rgba(255, 255, 255, 0.8);
 	font-weight: var(--font-weight-medium);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
 }
 
 /* === FEATURES LIST === */
@@ -252,7 +250,7 @@
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
-	color: #a8ffcf;
+	color: var(--tone-green-border);
 }
 
 .panelDivider {

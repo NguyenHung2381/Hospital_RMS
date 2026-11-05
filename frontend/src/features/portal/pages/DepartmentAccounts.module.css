@@ -38,10 +38,10 @@
 	background: var(--color-primary);
 }
 .statBlue::before {
-	background: #378add;
+	background: var(--tone-blue-solid);
 }
 .statAmber::before {
-	background: #ef9f27;
+	background: var(--color-warning);
 }
 
 .statIcon {
@@ -64,12 +64,12 @@
 	color: var(--color-primary-dark);
 }
 .iconBlue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .iconAmber {
-	background: #faeeda;
-	color: #633806;
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
 }
 
 .statBody {
@@ -329,12 +329,12 @@
 }
 
 .avatarPurple {
-	background: #ede9fe;
-	color: #5b21b6;
+	background: var(--tone-purple-bg);
+	color: var(--tone-purple-fg);
 }
 .avatarBlue {
-	background: #e6f1fb;
-	color: #0c447c;
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
 }
 .avatarGreen {
 	background: var(--color-primary-pale);
@@ -345,16 +345,16 @@
 	color: var(--color-gray-500);
 }
 .avatarRed {
-	background: #fee2e2;
-	color: #991b1b;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .avatarAmber {
-	background: #fef3c7;
-	color: #92400e;
+	background: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
 }
 .avatarTeal {
-	background: #d6f3ee;
-	color: #0f6d63;
+	background: var(--tone-green-border);
+	color: var(--tone-green-fg);
 }
 
 /* ── TOGGLE ─────────────────────────────── */
@@ -387,14 +387,14 @@
 }
 
 .actionEdit:hover {
-	border-color: #378add;
-	color: #378add;
-	background: #e6f1fb;
+	border-color: var(--tone-blue-solid);
+	color: var(--tone-blue-fg);
+	background: var(--tone-blue-bg);
 }
 .actionDelete:hover {
-	border-color: #e24b4a;
-	color: #e24b4a;
-	background: #fcebeb;
+	border-color: var(--color-error);
+	color: var(--tone-red-fg);
+	background: var(--tone-red-bg);
 }
 
 /* ── EMPTY STATE ────────────────────────── */
@@ -416,7 +416,7 @@
 .modal {
 	background: var(--color-white);
 	border-radius: var(--radius-2xl);
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 560px;
 	max-height: 90vh;
@@ -437,10 +437,8 @@
 
 /* ── FORM ───────────────────────────────── */
 .formSection {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-400);
 	padding-bottom: var(--space-2);
 	border-bottom: 1px solid var(--color-gray-100);
@@ -456,7 +454,7 @@
 }
 
 .required {
-	color: #e24b4a;
+	color: var(--tone-red-fg);
 	margin-left: 2px;
 }
 
@@ -492,7 +490,7 @@
 
 .fieldError {
 	font-size: var(--font-size-2xs);
-	color: #e24b4a;
+	color: var(--tone-red-fg);
 	font-weight: var(--font-weight-medium);
 }
 

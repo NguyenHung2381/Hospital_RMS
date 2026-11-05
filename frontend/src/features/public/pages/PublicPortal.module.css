@@ -20,7 +20,7 @@
 	color: var(--color-gray-700);
 }
 .required {
-	color: var(--color-danger, #d92d20);
+	color: var(--tone-red-fg);
 }
 
 .input,
@@ -46,7 +46,7 @@
 .select:focus,
 .textarea:focus {
 	border-color: var(--color-primary);
-	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.1);
+	box-shadow: var(--focus-ring-input);
 }
 .textarea {
 	resize: vertical;
@@ -67,7 +67,7 @@
 	align-items: flex-start;
 	gap: var(--space-3);
 	padding: var(--space-4) var(--space-6);
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 	border-bottom: 1px solid var(--color-gray-100);
 }
 .stepNo {
@@ -120,9 +120,7 @@
 .subTitle {
 	margin-bottom: var(--space-4);
 	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+	font-weight: var(--font-weight-semibold);
 	color: var(--color-primary);
 }
 
@@ -135,7 +133,7 @@
 	padding: var(--space-6) var(--space-4);
 	border: 2px dashed var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 	text-align: center;
 	cursor: pointer;
 	transition: border-color 0.15s, background 0.15s;
@@ -235,8 +233,8 @@
 	cursor: pointer;
 }
 .fileRemove:hover {
-	background: #fcebeb;
-	color: var(--color-danger, #d92d20);
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .fileRemove svg {
 	width: 18px;
@@ -314,12 +312,12 @@
 }
 
 .input:disabled {
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 	color: var(--color-gray-600);
 }
 .inputError,
 .inputError:focus {
-	border-color: var(--color-danger, #d92d20);
+	border-color: var(--color-error);
 }
 /* Ghi chú dưới ô nhập — đặt ở trang Cấu hình form */
 .fieldHint {
@@ -328,7 +326,7 @@
 }
 .fieldError {
 	font-size: var(--font-size-xs, 12px);
-	color: var(--color-danger, #d92d20);
+	color: var(--tone-red-fg);
 }
 
 /* Thành viên đề tài (ngoài chủ nhiệm) trên form đăng ký công khai */
@@ -345,7 +343,7 @@
 	justify-content: space-between;
 	gap: var(--space-3);
 	padding: var(--space-3) var(--space-5);
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 	border-bottom: 1px solid var(--color-gray-100);
 	font-size: var(--font-size-sm);
 }
@@ -369,7 +367,7 @@
 	padding: 1px var(--space-2);
 	border-radius: var(--radius-full, 999px);
 	background: rgba(10, 155, 74, 0.1);
-	color: var(--color-primary-dark, #087a3a);
+	color: var(--color-primary-dark, var(--tone-green-fg));
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 }
@@ -385,12 +383,12 @@
 	border: none;
 	border-radius: var(--radius-md, 8px);
 	background: none;
-	color: var(--color-danger, #d92d20);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-sm);
 	cursor: pointer;
 }
 .memberRemove:hover {
-	background: #fcebeb;
+	background: var(--tone-red-bg);
 }
 .memberRemove svg {
 	width: 16px;
@@ -405,7 +403,7 @@
 	width: 100%;
 	padding: var(--space-3);
 	background: none;
-	border: 1.5px dashed var(--color-gray-300, #d0d5dd);
+	border: 1.5px dashed var(--color-gray-300, var(--color-gray-300));
 	border-radius: var(--radius-lg);
 	color: var(--color-primary);
 	font-size: var(--font-size-sm);
@@ -435,7 +433,7 @@
 	padding: var(--space-5) var(--space-6);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl, 14px);
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 }
 .formFooter .formGroup {
 	flex: 1 1 320px;
@@ -461,12 +459,12 @@
 	margin-bottom: var(--space-4);
 }
 .alertError {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .alertSuccess {
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 }
 
 .searchRow {
@@ -601,13 +599,13 @@
 	padding: var(--space-2) var(--space-4);
 	margin-bottom: var(--space-4);
 	border-radius: var(--radius-lg);
-	background: #e1f5ea;
-	color: #085028;
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
 	font-size: var(--font-size-sm);
 }
 .testTimerUrgent {
-	background: #fcebeb;
-	color: #791f1f;
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
 }
 .testTimerClock {
 	font-size: var(--font-size-lg);
@@ -656,10 +654,10 @@
 .ticketStepIcon svg { width: 12px; height: 12px; }
 .ticketStepTitle { flex: 1; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-gray-800); }
 .ticketStepText { font-size: var(--font-size-sm); color: var(--color-gray-500); text-align: right; }
-.ticketStep_done .ticketStepIcon { background: #0a9b4a; border-color: #0a9b4a; color: #fff; }
-.ticketStep_done .ticketStepText { color: #085028; }
-.ticketStep_fail .ticketStepIcon { background: #d92d20; border-color: #d92d20; color: #fff; }
-.ticketStep_fail .ticketStepText { color: #791f1f; }
+.ticketStep_done .ticketStepIcon { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.ticketStep_done .ticketStepText { color: var(--tone-green-fg); }
+.ticketStep_fail .ticketStepIcon { background: var(--color-error); border-color: var(--color-error); color: #fff; }
+.ticketStep_fail .ticketStepText { color: var(--tone-red-fg); }
 .testIntro { display: flex; flex-direction: column; gap: var(--space-3); }
 .testIntro .submitBtn { margin-top: 0; }
 .testFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: var(--space-2); }
@@ -669,7 +667,7 @@
 	align-items: center;
 	padding: var(--space-2);
 	border-radius: var(--radius-lg);
-	background: var(--color-gray-50, #f9fafb);
+	background: var(--color-gray-50, var(--color-gray-50));
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }

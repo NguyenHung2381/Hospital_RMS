@@ -56,11 +56,9 @@
 .colHeads {
 	margin-bottom: 6px;
 	text-align: center;
-	font-size: var(--font-size-2xs);
-	font-weight: 700;
-	color: var(--color-gray-400, #9ca3af);
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-400, var(--color-gray-500));
 }
 
 /* Mỗi cột cuộn riêng, hiện ~6 ô */
@@ -73,7 +71,7 @@
 	overflow-y: auto;
 	padding: 2px;
 	border-radius: 10px;
-	background: var(--color-gray-50, #f8fafc);
+	background: var(--color-gray-50, var(--color-gray-50));
 	scrollbar-width: thin;
 }
 
@@ -89,18 +87,18 @@
 	font-size: var(--font-size-compact);
 	font-weight: 500;
 	font-variant-numeric: tabular-nums;
-	color: var(--color-gray-700, #374151);
+	color: var(--color-gray-700, var(--color-gray-700));
 	cursor: pointer;
 	transition: all 0.15s ease;
 }
 
 .cell:hover:not(.cellSelected) {
-	background: var(--color-gray-100, #f1f5f9);
-	color: var(--color-gray-900, #111827);
+	background: var(--color-gray-100, var(--color-gray-100));
+	color: var(--color-gray-900, var(--color-gray-900));
 }
 
 .cellSelected {
-	background: var(--color-primary, #10b981);
+	background: var(--color-primary, var(--color-primary));
 	color: #ffffff;
 	font-weight: 700;
 	box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);

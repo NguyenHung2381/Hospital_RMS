@@ -191,7 +191,7 @@
 }
 .badgeFull {
 	background: rgba(245, 166, 35, 0.15);
-	color: #9a5b00;
+	color: var(--tone-amber-fg);
 }
 .radio {
 	margin: 3px 0 0;
@@ -228,7 +228,7 @@
 	border-top: 1px solid var(--color-gray-200);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
 	.detail {
 		margin-left: var(--space-4);
 	}

@@ -24,6 +24,7 @@ import {
 	type ModalState,
 	type ZoomLevel,
 } from '../types/schedule.type';
+import { BREAKPOINTS } from '../../../shared/utils/breakpoints';
 import styles from './Schedule.module.css';
 
 const LEGEND = [
@@ -70,7 +71,7 @@ export default function Schedule() {
 		const el = ganttRef.current;
 		if (!el) return;
 		const updateWidth = () => {
-			const labelColW = window.innerWidth <= 640 ? 180 : 236;
+			const labelColW = window.innerWidth <= BREAKPOINTS.sm ? 180 : 236;
 			const availableW = Math.max(500, el.clientWidth - labelColW);
 			setContainerWidth(availableW);
 		};
@@ -98,7 +99,7 @@ export default function Schedule() {
 
 	const scrollToToday = useCallback(() => {
 		if (!ganttRef.current || todayPct === null) return;
-		const labelColW = window.innerWidth <= 640 ? 180 : 236;
+		const labelColW = window.innerWidth <= BREAKPOINTS.sm ? 180 : 236;
 		const timelineW = Math.max(containerWidth * zoom, 700 * zoom);
 		const todayPixel = (todayPct / 100) * timelineW;
 		const targetScrollLeft = todayPixel - (ganttRef.current.clientWidth - labelColW) / 2;

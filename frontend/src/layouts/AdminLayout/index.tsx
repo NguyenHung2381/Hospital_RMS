@@ -24,8 +24,10 @@ import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { getTopics } from '../../features/topics/api/topicApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import { useHiddenMenus } from '../../shared/hooks/useMenuConfig';
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { useModules } from '../../shared/hooks/useModules';
 import { usePermission } from '../../shared/hooks/usePermission';
+import { maxWidth } from '../../shared/utils/breakpoints';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser } from '../../shared/utils/storage';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
@@ -129,16 +131,7 @@ export default function AdminLayout({
 		return localStorage.getItem(SIDEBAR_KEY) === 'true';
 	});
 
-	const [isMobile, setIsMobile] = useState(() =>
-		typeof window !== 'undefined' ? window.innerWidth <= 1024 : false,
-	);
-
-	useEffect(() => {
-		const mq = window.matchMedia('(max-width: 1024px)');
-		const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-		mq.addEventListener('change', handler);
-		return () => mq.removeEventListener('change', handler);
-	}, []);
+	const isMobile = useMediaQuery(maxWidth('lg'));
 
 	const effectiveCollapsed = isMobile ? false : collapsed;
 
