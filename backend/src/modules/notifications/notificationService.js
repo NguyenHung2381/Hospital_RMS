@@ -259,13 +259,24 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
 	};
 };
 
+// Chỉ COALESCE(batch_id, id) = @batch_key thì PG quét toàn bảng notifications
+// (bảng lớn nhất hệ thống) vì cột bị bọc trong hàm. Vế OR đứng trước cho PG tra
+// ix_notifications_batch_id + khoá chính (BitmapOr, đã EXPLAIN); vế COALESCE
+// giữ đúng nghĩa cũ (dòng có batch_id khác mà id trùng khoá thì không lấy).
+// Không viết `batch_id IS NULL AND id = @k`: PG tra index theo `batch_id IS NULL`
+// ⇒ đọc mọi thông báo cũ chưa có batch_id.
+/** @param {string} alias */
+const batchKeyWhere = (alias) =>
+	`(${alias}.batch_id = @batch_key OR ${alias}.id = @batch_key)
+       AND COALESCE(${alias}.batch_id, ${alias}.id) = @batch_key`;
+
 const getBatchRecipients = async (batchKey) => {
 	const pool = await getPool();
 	const result = await pool.request().input('batch_key', sql.VarChar(30), batchKey).query(`
       SELECT u.id AS user_id, u.full_name, u.username, n.is_read
       FROM   notifications n
       JOIN   users u ON u.id = n.user_id
-      WHERE  COALESCE(n.batch_id, n.id) = @batch_key
+      WHERE  ${batchKeyWhere('n')}
       ORDER  BY u.full_name
     `);
 	return result.recordset;
@@ -276,7 +287,7 @@ const deleteBatch = async (batchKey) => {
 	const result = await pool
 		.request()
 		.input('batch_key', sql.VarChar(30), batchKey)
-		.query('DELETE FROM notifications WHERE COALESCE(batch_id, id) = @batch_key');
+		.query(`DELETE FROM notifications n WHERE ${batchKeyWhere('n')}`);
 	return result.rowsAffected[0] > 0;
 };
 

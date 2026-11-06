@@ -1,10 +1,11 @@
-import { FormField } from '@/shared/components/Input/FormField';
 import { useEffect, useState } from 'react';
-import { BadgeSvg, EditSvg, InfoSvg, LayersSvg, ListSvg, XSvg } from '@/assets/icons';
+import { Button, Modal } from '@/shared/components';
+import { BadgeSvg, EditSvg, InfoSvg, LayersSvg, ListSvg } from '@/assets/icons';
 import { getProgramResults } from '../api/trainingProgramApi';
 import { formatDuration, type ProgramResultRow, type TrainingProgram } from '../types/trainingProgram.type';
 import { ProgramLessonsPanel } from './ProgramLessonsPanel';
 import styles from '../pages/TrainingPrograms.module.css';
+import m from './TrainingProgramDetailModal.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
@@ -17,11 +18,151 @@ const TABS: { key: DetailTab; label: string; icon: React.ReactNode }[] = [
 	{ key: 'results', label: 'Kết quả học tập', icon: <BadgeSvg /> },
 ];
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+const isBlank = (v: React.ReactNode) => v == null || v === '';
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<FormField label={label}>
-			<div className={styles.subRowMeta}>{value ?? '—'}</div>
-		</FormField>
+		<div className={m.field}>
+			<dt>{label}</dt>
+			<dd>{isBlank(value) ? <span className={m.empty}>Chưa có</span> : value}</dd>
+		</div>
+	);
+}
+
+function Fact({ label, value, hint }: { label: string; value: React.ReactNode; hint?: React.ReactNode }) {
+	return (
+		<div className={m.fact}>
+			<div className={m.factLabel}>{label}</div>
+			<div className={m.factValue}>{isBlank(value) ? <span className={m.factEmpty}>—</span> : value}</div>
+			{hint && <div className={m.factHint}>{hint}</div>}
+		</div>
+	);
+}
+
+function capacityText(min: number | null, max: number | null) {
+	if (min != null && max != null) return `${min}–${max}`;
+	if (max != null) return `Tối đa ${max}`;
+	if (min != null) return `Tối thiểu ${min}`;
+	return null;
+}
+
+function InfoPanel({ program }: { program: TrainingProgram }) {
+	const hasHours = program.theory_hours != null || program.practice_hours != null;
+	const durationText = program.duration ?? formatDuration(program.duration_value, program.duration_unit);
+	const hasCapacity = program.min_capacity != null || program.max_capacity != null;
+
+	return (
+		<div className={m.info}>
+			<div className={m.facts}>
+				<Fact
+					label='Thời lượng'
+					value={durationText}
+				/>
+				<Fact
+					label='Tổng số tiết'
+					value={hasHours || program.total_hours ? program.total_hours : null}
+					hint={hasHours ? `LT ${program.theory_hours ?? 0} · TH ${program.practice_hours ?? 0}` : undefined}
+				/>
+				<Fact
+					label='Sĩ số'
+					value={capacityText(program.min_capacity, program.max_capacity)}
+					hint={hasCapacity ? 'học viên / khóa' : undefined}
+				/>
+				<Fact
+					label='Học phí'
+					value={program.tuition_fee != null ? `${Number(program.tuition_fee).toLocaleString('vi-VN')} đ` : null}
+				/>
+			</div>
+
+			<section className={m.section}>
+				<h3 className={m.sectionTitle}>Thông tin chung</h3>
+				<dl className={m.fields}>
+					<Field
+						label='Mã chương trình'
+						value={program.code}
+					/>
+					<Field
+						label='Loại hình'
+						value={program.training_type_name}
+					/>
+					<Field
+						label='Khoa / Phòng'
+						value={program.department_name ?? program.department_note}
+					/>
+					<Field
+						label='Số giờ tín chỉ'
+						value={program.credit_hours}
+					/>
+					{program.professional_field_name && (
+						<Field
+							label='Lĩnh vực chuyên môn'
+							value={program.professional_field_name}
+						/>
+					)}
+					{program.practice_form_name && (
+						<Field
+							label='Hình thức hành nghề'
+							value={program.practice_form_name}
+						/>
+					)}
+				</dl>
+			</section>
+
+			<section className={m.section}>
+				<h3 className={m.sectionTitle}>Đối tượng học viên</h3>
+				<dl className={m.fields}>
+					<Field
+						label='Đối tượng'
+						value={program.trainee_type_name}
+					/>
+					<Field
+						label='Ghi chú'
+						value={program.target_audience}
+					/>
+				</dl>
+			</section>
+
+			{!!program.rotations?.length && (
+				<section className={m.section}>
+					<h3 className={m.sectionTitle}>Vòng thực hành ({program.rotations.length} vòng)</h3>
+					<div className={m.tableWrap}>
+						<table className={tbl.table}>
+							<thead>
+								<tr>
+									<th className={tbl.thIdx}>Vòng</th>
+									<th>Tên vòng</th>
+									<th>Thời lượng</th>
+									<th>Khoa thực hành</th>
+								</tr>
+							</thead>
+							<tbody>
+								{program.rotations.map((r, i) => (
+									<tr key={r.link_id}>
+										<td className={tbl.tdIdx}>{i + 1}</td>
+										<td>
+											<span className={tbl.cellTitle}>{r.title}</span>
+										</td>
+										<td style={{ whiteSpace: 'nowrap' }}>
+											{formatDuration(r.duration_value, r.duration_unit) ?? '—'}
+										</td>
+										<td>{r.department_names ?? '—'}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</section>
+			)}
+
+			<section className={m.section}>
+				<h3 className={m.sectionTitle}>Mô tả</h3>
+				{program.description ? (
+					<p className={m.description}>{program.description}</p>
+				) : (
+					<p className={m.descriptionEmpty}>Chưa có mô tả cho chương trình này.</p>
+				)}
+			</section>
+		</div>
 	);
 }
 
@@ -110,147 +251,74 @@ export function TrainingProgramDetailModal({
 	onEdit: () => void;
 }) {
 	const [tab, setTab] = useState<DetailTab>(initialTab);
+	const counts: Partial<Record<DetailTab, number | undefined>> = { lessons: program.lesson_count };
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalWide}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<LayersSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>{program.name}</div>
-						<div className={styles.modalSub}>{program.code ?? 'Chương trình đào tạo'}</div>
-					</div>
-					<button
-						className={styles.modalClose}
+		<Modal
+			open
+			onClose={onClose}
+			size='xl'
+			className={m.dialog}
+			bodyClassName={m.body}
+			icon={<LayersSvg />}
+			title={program.name}
+			subtitle={
+				<span className={m.subtitle}>
+					{program.code && <span className={m.code}>{program.code}</span>}
+					{program.code && program.training_type_name && <span className={m.dot}>·</span>}
+					{program.training_type_name ?? (program.code ? null : 'Chương trình đào tạo')}
+				</span>
+			}
+			footer={
+				<>
+					<Button
+						variant='secondary'
 						onClick={onClose}
 					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.subToolbar}>
-					{TABS.map((t) => (
+						Đóng
+					</Button>
+					<Button
+						variant='primary'
+						icon={<EditSvg />}
+						onClick={onEdit}
+					>
+						Chỉnh sửa chương trình
+					</Button>
+				</>
+			}
+		>
+			<div
+				className={m.tabs}
+				role='tablist'
+			>
+				{TABS.map((t) => {
+					const active = tab === t.key;
+					const count = counts[t.key];
+					return (
 						<button
 							key={t.key}
 							type='button'
-							className={styles.btnGhost}
-							style={tab === t.key ? { background: 'var(--color-gray-100)' } : undefined}
+							role='tab'
+							aria-selected={active}
+							className={`${m.tabBtn} ${active ? m.tabBtnActive : ''}`}
 							onClick={() => setTab(t.key)}
 						>
-							{t.icon} {t.label}
+							{t.icon}
+							{t.label}
+							{count != null && <span className={m.tabCount}>{count}</span>}
 						</button>
-					))}
-				</div>
-
-				<div className={styles.modalBody}>
-					{tab === 'info' && (
-						<div>
-							<div className={styles.formGrid2}>
-								<InfoRow
-									label='Mã chương trình'
-									value={program.code}
-								/>
-								<InfoRow
-									label='Loại hình'
-									value={program.training_type_name}
-								/>
-								<InfoRow
-									label='Thời lượng'
-									value={program.duration}
-								/>
-								<InfoRow
-									label='Số tiết (LT / TH / tổng)'
-									value={
-										program.theory_hours != null || program.practice_hours != null
-											? `${program.theory_hours ?? 0} / ${program.practice_hours ?? 0} / ${program.total_hours}`
-											: null
-									}
-								/>
-								<InfoRow
-									label='Số giờ tín chỉ'
-									value={program.credit_hours}
-								/>
-								<InfoRow
-									label='Học phí'
-									value={program.tuition_fee != null ? `${Number(program.tuition_fee).toLocaleString('vi-VN')} đ` : null}
-								/>
-								<InfoRow
-									label='Khoa / Phòng'
-									value={program.department_name ?? program.department_note}
-								/>
-								<InfoRow
-									label='Đối tượng học viên'
-									value={program.trainee_type_name}
-								/>
-								<InfoRow
-									label='Đối tượng (ghi chú)'
-									value={program.target_audience}
-								/>
-								<InfoRow
-									label='Sĩ số tối thiểu'
-									value={program.min_capacity}
-								/>
-								<InfoRow
-									label='Sĩ số tối đa'
-									value={program.max_capacity}
-								/>
-							</div>
-							{!!program.rotations?.length && (
-								<FormField label={`Vòng thực hành (${program.rotations.length} vòng)`}>
-									<table className={tbl.table}>
-										<thead>
-											<tr>
-												<th className={tbl.thIdx}>Vòng</th>
-												<th>Tên vòng</th>
-												<th>Thời lượng</th>
-												<th>Khoa thực hành</th>
-											</tr>
-										</thead>
-										<tbody>
-											{program.rotations.map((r, i) => (
-												<tr key={r.link_id}>
-													<td className={tbl.tdIdx}>{i + 1}</td>
-													<td>
-														<span className={tbl.cellTitle}>{r.title}</span>
-													</td>
-													<td style={{ whiteSpace: 'nowrap' }}>
-														{formatDuration(r.duration_value, r.duration_unit) ?? '—'}
-													</td>
-													<td>{r.department_names ?? '—'}</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</FormField>
-							)}
-							<InfoRow
-								label='Mô tả'
-								value={program.description}
-							/>
-							<div className={styles.subToolbar}>
-								<button
-									className={styles.btnGhost}
-									onClick={onEdit}
-								>
-									<EditSvg /> Chỉnh sửa chương trình
-								</button>
-							</div>
-						</div>
-					)}
-					{tab === 'lessons' && (
-						<ProgramLessonsPanel
-							program={program}
-							programs={programs}
-						/>
-					)}
-					{tab === 'results' && <ResultsPanel programId={program.id} />}
-				</div>
+					);
+				})}
 			</div>
-		</div>
+
+			{tab === 'info' && <InfoPanel program={program} />}
+			{tab === 'lessons' && (
+				<ProgramLessonsPanel
+					program={program}
+					programs={programs}
+				/>
+			)}
+			{tab === 'results' && <ResultsPanel programId={program.id} />}
+		</Modal>
 	);
 }

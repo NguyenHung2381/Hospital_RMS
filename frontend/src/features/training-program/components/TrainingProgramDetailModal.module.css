@@ -1,0 +1,232 @@
+/* Hộp thoại chi tiết chương trình đào tạo */
+
+/* Nhân đôi lớp để thắng .xl / .body của Modal chung bất kể thứ tự nạp CSS */
+.dialog.dialog {
+	max-width: 760px;
+	/* Giữ chiều cao ổn định giữa các tab — thanh tab không nhảy khi đổi tab */
+	height: min(680px, 90dvh);
+}
+
+/* Thân không đệm trên — dải tab dính sát dưới header */
+.dialog .body {
+	padding-top: 0;
+}
+
+.tabs {
+	composes: tabs from '@/shared/components/Table/CrudPage.module.css';
+}
+/* .dialog .tabs: thắng flex-wrap/margin của lớp .tabs dùng chung bất kể thứ tự nạp CSS */
+.dialog .tabs {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--color-white);
+	margin: 0 calc(-1 * var(--space-6)) var(--space-5);
+	padding: var(--space-2) var(--space-6) 0;
+	flex-wrap: nowrap;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+	/* Viền dưới vẽ bằng inset shadow: overflow cắt mất phần vẽ trên vùng border,
+	   nên gạch chân tab đang chọn phải nằm trong khung nội dung */
+	border-bottom: none;
+	box-shadow: inset 0 -2px 0 var(--color-gray-100);
+}
+.tabBtn {
+	composes: tabBtn from '@/shared/components/Table/CrudPage.module.css';
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+.dialog .tabBtn {
+	margin-bottom: 0;
+}
+.tabBtnActive {
+	composes: tabBtnActive from '@/shared/components/Table/CrudPage.module.css';
+}
+.tabCount {
+	min-width: 20px;
+	padding: 0 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+	color: var(--color-gray-500);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	line-height: 18px;
+	text-align: center;
+}
+.tabBtnActive .tabCount {
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+
+/* Tiêu đề phụ: mã + loại hình */
+.subtitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+}
+.code {
+	font-family: var(--font-mono);
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-600);
+	background: var(--color-gray-100);
+	border-radius: var(--radius-sm);
+	padding: 1px 6px;
+}
+.dot {
+	color: var(--color-gray-300);
+}
+
+/* ── Tab Thông tin ─────────────────────────── */
+.info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-6);
+}
+
+/* Dải số liệu chính: 4 ô ngăn bằng đường kẻ */
+.facts {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	overflow: hidden;
+}
+.fact {
+	padding: var(--space-3) var(--space-4);
+	min-width: 0;
+}
+.fact + .fact {
+	border-left: 1px solid var(--color-gray-200);
+}
+.factLabel {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+.factValue {
+	margin-top: 2px;
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.factHint {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-400);
+	margin-top: 1px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.factEmpty {
+	color: var(--color-gray-300);
+	font-weight: var(--font-weight-normal);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.sectionTitle {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+/* Danh sách nhãn — giá trị: nhãn nhạt bên trái, giá trị đậm bên phải */
+.fields {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	column-gap: var(--space-6);
+	margin: 0;
+	border-top: 1px solid var(--color-gray-100);
+}
+.field {
+	display: grid;
+	grid-template-columns: 136px minmax(0, 1fr);
+	gap: var(--space-3);
+	padding: var(--space-3) 0;
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-sm);
+}
+.fieldFull {
+	grid-column: 1 / -1;
+}
+.field dt {
+	color: var(--color-gray-500);
+}
+.field dd {
+	margin: 0;
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-medium);
+	overflow-wrap: anywhere;
+}
+.empty {
+	color: var(--color-gray-300);
+	font-weight: var(--font-weight-normal);
+}
+
+.tableWrap {
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	overflow-x: auto;
+}
+
+.description {
+	margin: 0;
+	padding: var(--space-4);
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	line-height: 1.65;
+	color: var(--color-gray-700);
+	white-space: pre-wrap;
+}
+.descriptionEmpty {
+	composes: description;
+	color: var(--color-gray-400);
+	font-style: italic;
+}
+
+@media (max-width: 640px) {
+	.dialog.dialog {
+		height: auto;
+	}
+	.dialog .tabs {
+		margin: 0 calc(-1 * var(--space-4)) var(--space-4);
+		padding: var(--space-2) var(--space-4) 0;
+		gap: 0;
+	}
+	/* Màn hẹp: bỏ icon, thu đệm để 3 tab vừa một hàng */
+	.dialog .tabBtn {
+		padding: var(--space-2) var(--space-3);
+	}
+	.dialog .tabBtn > svg {
+		display: none;
+	}
+	.facts {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.fact + .fact {
+		border-left: none;
+	}
+	.fact:nth-child(even) {
+		border-left: 1px solid var(--color-gray-200);
+	}
+	.fact:nth-child(n + 3) {
+		border-top: 1px solid var(--color-gray-200);
+	}
+	.fields {
+		grid-template-columns: 1fr;
+	}
+	.field {
+		grid-template-columns: 120px minmax(0, 1fr);
+	}
+}
