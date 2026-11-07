@@ -603,7 +603,7 @@ step_postgres() {
 	if [ "$RAM_MB" -lt 7000 ]; then
 		printf '# Máy < 8 GB RAM (setup-server.sh)\nshared_buffers = 1GB\neffective_cache_size = 3GB\nmaintenance_work_mem = 256MB\n' >"$tmp"
 	elif [ "$RAM_MB" -lt 11000 ]; then
-		printf '# Máy 8 GB RAM (setup-server.sh)\nshared_buffers = 2GB\neffective_cache_size = 5GB\n' >"$tmp"
+		cp "$APP_DIR/infra/postgresql/rms-ram-8gb.conf" "$tmp"
 	fi
 	if [ -s "$tmp" ]; then
 		install_if_changed "$tmp" "$PG_CONF_DIR/conf.d/zz-rms-ram.conf" && changed=1

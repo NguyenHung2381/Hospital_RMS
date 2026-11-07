@@ -109,7 +109,7 @@ Quy ước trong tài liệu:
 | Ổ 2 | 50 GB, **chưa phân vùng** | |
 | Mạng | 1 card, IP tĩnh trong LAN, ra được Internet (để tải gói) | |
 
-RAM ước tính: PostgreSQL ~3–4 GB (`shared_buffers` + cache, bước 6), ClamAV (quét virus file upload) ~1,5 GB, backend ~300 MB mỗi worker, Redis + Nginx < 250 MB, hệ điều hành ~1 GB. Máy 8 GB thì để `WEB_CONCURRENCY=2` (bước 11.3), RAM ít hơn nữa thì tắt ClamAV.
+RAM ước tính: PostgreSQL ~3–4 GB (`shared_buffers` + cache, bước 6), ClamAV (quét virus file upload) ~1,5 GB, backend ~300 MB mỗi worker, Redis + Nginx < 250 MB, hệ điều hành ~1 GB. Máy 8 GB thì để `WEB_CONCURRENCY=2` (bước 11.3) và chép `infra/postgresql/rms-ram-8gb.conf` (PostgreSQL ~2,5–3 GB, xem [cai-dat-postgresql.md](cai-dat-postgresql.md) mục 3), RAM ít hơn nữa thì tắt ClamAV.
 
 Lúc chuyển dữ liệu cũ từ file `.bak` (bước 12.2), máy cần thêm ~2 GB RAM trống cho SQL Server tạm trong Docker: tạm dừng ClamAV trong lúc chuyển nếu máy chỉ có 8 GB.
 

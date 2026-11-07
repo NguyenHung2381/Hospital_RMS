@@ -13,7 +13,8 @@ Các file dùng ở đây đã được chạy thử trên PostgreSQL 18.6 (03/1
 
 | File | Dùng cho |
 |---|---|
-| `infra/postgresql/rms.conf` | Cấu hình bộ nhớ, WAL, múi giờ, theo dõi truy vấn |
+| `infra/postgresql/rms.conf` | Cấu hình bộ nhớ, WAL, múi giờ, theo dõi truy vấn (máy 12–16 GB) |
+| `infra/postgresql/rms-ram-8gb.conf` | Ghi đè phần bộ nhớ/CPU của `rms.conf` cho máy 8 GB RAM, 4 vCPU |
 | `infra/postgresql/pg_hba.rms.conf` | Ai được kết nối, từ đâu |
 | `infra/postgresql/01_tao_db_va_role.sql` | Tạo role `rms_migrate`, `rms_app` và DB `rms_hospital` |
 | `backend/database/baseline/00–04_*.sql` | Schema của ứng dụng (bảng, ràng buộc, index, trigger) |
@@ -53,7 +54,12 @@ sudo cp infra/postgresql/rms.conf /etc/postgresql/18/main/conf.d/rms.conf
 Mở `/etc/postgresql/18/main/pg_hba.conf`, chép nội dung `infra/postgresql/pg_hba.rms.conf`
 lên **đầu** phần quy tắc (dòng khớp đầu tiên được dùng).
 
-Máy 8 GB RAM: giảm `shared_buffers = 2GB`, `effective_cache_size = 5GB` trong `rms.conf`.
+Máy 8 GB RAM: chép thêm file ghi đè. Tên `zz-` để PostgreSQL đọc nó **sau**
+`rms.conf` (giá trị đọc sau thắng), không sửa `rms.conf`:
+
+```bash
+sudo cp infra/postgresql/rms-ram-8gb.conf /etc/postgresql/18/main/conf.d/zz-rms-ram.conf
+```
 
 ```bash
 sudo systemctl enable --now postgresql@18-main
@@ -61,7 +67,7 @@ sudo systemctl restart postgresql@18-main
 sudo -u postgres psql -c "SHOW shared_buffers; SHOW timezone; SHOW shared_preload_libraries;"
 ```
 
-Phải thấy `3GB`, `Asia/Ho_Chi_Minh`, `pg_stat_statements,auto_explain`.
+Phải thấy `3GB` (máy 8 GB: `2GB`), `Asia/Ho_Chi_Minh`, `pg_stat_statements,auto_explain`.
 
 Backend production luôn kết nối mã hoá (`DB_ENCRYPT: "true"` trong
 `docker-compose.prod.yml`), nên PostgreSQL phải bật SSL:
