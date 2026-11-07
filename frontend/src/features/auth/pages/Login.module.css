@@ -598,6 +598,13 @@
 	font-weight: var(--font-weight-semibold);
 }
 
+.versionText {
+	margin-top: 8px;
+	text-align: center;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
 /* === POPUP CHỌN NƠI VÀO — cho tài khoản có ghế trong hội đồng === */
 .destBackdrop {
 	position: fixed;
