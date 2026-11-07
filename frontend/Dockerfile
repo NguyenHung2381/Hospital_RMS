@@ -2,7 +2,7 @@
 # Stage cài deps dùng chung cho dev và build (cả 2 cần đủ devDependencies):
 # trước đây mỗi stage tự `npm ci` → build cả 2 target là cài 2 lần và giữ 2
 # layer node_modules (~vài trăm MB) trong build cache.
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 # Cache mount giữ ~/.npm giữa các lần build → build lỗi/retry không phải tải lại
