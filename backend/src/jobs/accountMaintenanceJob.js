@@ -3,9 +3,10 @@ const notificationService = require('../modules/notifications/notificationServic
 const { markOnce } = require('./dedupe');
 const { todayKeyVN, todayVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
+const { ROLE, roleIdOf } = require('../modules/access/roleCodes');
 
 // Job nền bảo trì tài khoản:
-//  1. Khoá tài khoản thành viên (VT06) đã quá hạn (trước là sp_deactivate_expired_accounts).
+//  1. Khoá tài khoản thành viên (mã member) đã quá hạn (trước là sp_deactivate_expired_accounts).
 //  2. Cảnh báo người dùng có mật khẩu quá hạn lâu ngày chưa đổi.
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, không phải mỗi ngày
@@ -13,11 +14,18 @@ const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, khôn
 // Khoá tài khoản thành viên quá hạn; trả số tài khoản đã khoá. Hạn là ngày
 // (account_expires_at < hôm nay theo giờ VN). Đếm trước rồi khoá trong cùng
 // transaction: rowsAffected của SQL Server tính cả câu trong trigger audit.
+// Vai trò tra theo mã (roles.code), không theo id: id vai trò là dữ liệu, có thể
+// được đánh số lại — ghi cứng 'VT06' từng có nguy cơ khoá nhầm vai trò khác.
 const deactivateExpired = async (tx) => {
+	const memberRole = await roleIdOf(ROLE.MEMBER);
+	if (!memberRole) {
+		logger.warn('[job:account_maintenance] Không có vai trò mã "member" — bỏ qua khoá tài khoản hết hạn');
+		return 0;
+	}
 	const req = () =>
 		tx
 			.request()
-			.input('role_id', sql.VarChar(10), 'VT06') // chỉ tài khoản thành viên (tạm thời)
+			.input('role_id', sql.VarChar(10), memberRole) // chỉ tài khoản thành viên (tạm thời)
 			.input('today', sql.Date, todayVN())
 			// Cột BIT so / gán qua tham số: PG là boolean, không nhận số 0/1
 			.input('on', sql.Bit, true)
