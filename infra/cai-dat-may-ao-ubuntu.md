@@ -844,14 +844,25 @@ sudo ufw status verbose
 - **Không** mở cổng `5432` ra LAN. Quản trị DB thì dùng SSH tunnel (cuối bước 6).
 - Chỉ cho SSH từ dải mạng quản trị (tuỳ chọn, chặt hơn): `sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp`, rồi `sudo ufw delete allow OpenSSH`.
 
-### 13.2. Lưu ý: Docker mở cổng không qua UFW
+### 13.2. Docker mở cổng không qua UFW — chặn bằng `scripts/firewall-ports.sh`
 
-Docker tự mở các cổng publish bằng iptables riêng, **bỏ qua UFW**. Cổng `8081` vẫn vào được từ mạng dù UFW không có rule. Muốn hạn chế:
+Docker tự mở các cổng publish bằng iptables riêng (chain FORWARD), **bỏ qua UFW**: `ufw deny 8081` không có tác dụng, máy nào trong LAN cũng gọi thẳng được `8081`. Script `scripts/firewall-ports.sh` chèn rule vào chain `DOCKER-USER` (Docker xét trước rule của nó): chỉ cặp `cổng@nguồn` được khai mới vào được container, **mọi cổng publish khác bị chặn** từ máy khác (kể cả cổng lỡ publish thêm sau này). Truy cập từ chính máy ảo (`127.0.0.1:8081`) không bị ảnh hưởng. `setup-server.sh` tự chạy bước này (bước `ports`).
 
-- Có reverse proxy HTTPS ngay trên máy ảo (13.3): đặt `FRONTEND_BIND=127.0.0.1:8081`. Khi đó chỉ proxy trên máy gọi được `8081`.
-- Proxy ở máy khác: đặt `TRUSTED_PROXIES=<IP proxy>` trong `.env` — nginx tự trả 403 cho máy khác gọi thẳng `8081` (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ cho IP proxy vào `8081`.
+```bash
+cd /data/code/Hospital_RMS
+sudo bash scripts/firewall-ports.sh                                   # xem cổng đang mở + cảnh báo, không đổi gì
+sudo bash scripts/firewall-ports.sh apply --allow "8081@10.0.0.5"     # proxy HTTPS ở máy khác: chỉ IP proxy
+sudo bash scripts/firewall-ports.sh apply --allow "8081@any"          # đang thử bằng http://<IP-VM>:8081
+sudo bash scripts/firewall-ports.sh apply --allow ""                  # proxy HTTPS ngay trên máy ảo (13.3)
+sudo bash scripts/firewall-ports.sh remove                            # gỡ, trả về như Docker mặc định
+```
 
-Backend (`127.0.0.1:3001`) chỉ mở trên loopback, không lộ ra mạng.
+- Cấu hình lưu ở `/etc/rms/docker-ports.conf`; service `rms-firewall-ports` nạp lại rule mỗi lần Docker khởi động (reboot không mất).
+- Lệnh xem (`status`) trả mã `2` khi có cảnh báo: cổng Docker mở cho mọi máy, UFW tắt, dịch vụ lạ lắng nghe trên mạng, LAN trùng dải `172.16.0.0/12` của Docker (khi đó máy trong LAN tới được `5432`).
+- Vẫn nên giữ `TRUSTED_PROXIES=<IP proxy>` trong `.env` (nginx tự trả 403 cho máy khác) và `FRONTEND_BIND=127.0.0.1:8081` khi proxy ở cùng máy — nhiều lớp chặn.
+- Kiểm tra lại từ **máy khác** trong LAN: `nmap -Pn -p 1-65535 <IP-VM>` — chỉ nên thấy `22` (và `80/443` nếu dựng 13.3, `8081` từ máy proxy).
+
+Backend (`127.0.0.1:3001`) chỉ mở trên loopback, Redis và ClamAV không publish cổng.
 
 ### 13.3. HTTPS ngay trên máy ảo (tuỳ chọn)
 

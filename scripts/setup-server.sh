@@ -3,7 +3,7 @@
 # Gộp các bước 4 → 15 của infra/cai-dat-may-ao-ubuntu.md:
 #   hệ thống (gói, múi giờ, swap, tự vá) → firewall → ổ dữ liệu /data → Docker
 #   → source code → file cấu hình → PostgreSQL 18 → build image → dựng DB
-#   → khởi động → HTTPS (tuỳ chọn) → sao lưu hằng đêm → lịch đổi JWT secret
+#   → khởi động → HTTPS (tuỳ chọn) → chặn cổng Docker → sao lưu hằng đêm → lịch đổi JWT secret
 #   → khoá SSH bằng mật khẩu (tuỳ chọn).
 #
 # Chạy bằng user thường có sudo (KHÔNG chạy bằng root), qua SSH:
@@ -67,7 +67,7 @@ DEFAULT_REPO_URL="git@github.com:NguyenHung2381/Hospital_RMS.git"
 HBA_MARK_BEGIN="# >>> Hospital RMS (scripts/setup-server.sh)"
 HBA_MARK_END="# <<< Hospital RMS"
 
-STEPS=(system firewall disk docker repo config postgres build database start https backup jwt ssh)
+STEPS=(system firewall disk docker repo config postgres build database start https ports backup jwt ssh)
 
 # ─── Tiện ích ────────────────────────────────────────────────────────────────
 log() { printf '\n\033[1;36m══ %s\033[0m\n' "$*"; }
@@ -376,7 +376,7 @@ step_firewall() {
 	sudo ufw deny 5432/tcp >/dev/null
 	sudo ufw --force enable >/dev/null
 	ok "Mở SSH, chỉ cho mạng Docker vào 5432"
-	info "Lưu ý: cổng web 8081 do Docker mở, không qua UFW (mục 13.2 tài liệu)"
+	info "Cổng web 8081 do Docker mở, không qua UFW — bước 'ports' giới hạn riêng"
 }
 
 # ─── 3. Ổ dữ liệu /data ──────────────────────────────────────────────────────
@@ -730,7 +730,7 @@ step_database() {
 			info "Chưa thấy $BAK_FILE. Trên máy của bạn chép file lên (mục 7 tài liệu):"
 			info "  scp <file>.bak $USER@$(server_ip):$BAK_FILE"
 			read -rp "   Chép xong nhấn Enter (q để dừng): " a </dev/tty
-			[ "$a" != q ] || die "Dừng. Chép file .bak lên rồi chạy lại: bash $SELF database start https backup jwt ssh"
+			[ "$a" != q ] || die "Dừng. Chép file .bak lên rồi chạy lại: bash $SELF database start https ports backup jwt ssh"
 		done
 		chmod 600 "$BAK_FILE" 2>/dev/null || true
 		info "Chuyển dữ liệu từ $BAK_FILE (dựng SQL Server tạm trong Docker, lâu tuỳ dung lượng)"
@@ -830,6 +830,29 @@ EOF
 		warn "Chưa lấy được chứng chỉ (domain chưa trỏ về máy này, hoặc 80/443 chưa mở từ Internet)."
 		warn "Sửa xong chạy lại: bash $SELF https"
 	fi
+}
+
+# ─── 11b. Cổng Docker publish ────────────────────────────────────────────────
+# Docker mở 8081 bằng iptables riêng, bỏ qua UFW → chặn ở DOCKER-USER, chỉ cho
+# nguồn cần thiết (scripts/firewall-ports.sh, mục 13.2 tài liệu).
+step_ports() {
+	log "Giới hạn nguồn vào cổng Docker publish (8081)"
+	local allow="" p
+	case "$ACCESS_MODE" in
+	ip) allow="8081@any" ;;
+	proxy)
+		for p in ${TRUSTED_PROXIES//,/ }; do allow+=" 8081@$p"; done
+		allow="${allow# }"
+		[ -n "$allow" ] || allow="8081@any"
+		;;
+	letsencrypt) allow="" ;; # FRONTEND_BIND=127.0.0.1:8081, nginx trên máy gọi qua loopback
+	esac
+	sudo bash "$APP_DIR/scripts/firewall-ports.sh" apply --allow "$allow" | sed 's/^/   /' || true
+	case "$ACCESS_MODE" in
+	ip) warn "8081 đang mở cho mọi máy (đang thử bằng http://IP:8081). Có reverse proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"8081@<IP proxy>\"" ;;
+	proxy) [ -n "${TRUSTED_PROXIES:-}" ] || warn "Chưa khai TRUSTED_PROXIES → 8081 mở cho mọi máy. Biết IP proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"8081@<IP proxy>\"" ;;
+	esac
+	return 0
 }
 
 # ─── 12. Sao lưu hằng đêm ────────────────────────────────────────────────────
