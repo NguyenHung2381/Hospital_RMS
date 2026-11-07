@@ -7,7 +7,8 @@
 		"dev": "concurrently -n SERVER,CLIENT -c cyan,yellow \"npm run server\" \"npm run client:wait\"",
 		"gen:jwt": "node backend/scripts/gen-jwt-secrets.js",
 		"rotate:jwt": "bash scripts/rotate-jwt-secrets.sh",
-		"migrate": "docker compose exec -T backend npm run migrate --"
+		"migrate": "docker compose exec -T backend npm run migrate --",
+		"check:versions": "node scripts/ci/check-stable-versions.mjs"
 	},
 	"devDependencies": {
 		"concurrently": "^10.0.6"

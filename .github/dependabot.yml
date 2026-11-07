@@ -1,26 +1,40 @@
 # PR cập nhật thư viện / GitHub Actions / base image hằng tuần. Bản minor + patch
-# gộp 1 PR mỗi nơi cho đỡ ồn; major tách riêng để review kỹ. PR vẫn phải qua CI.
+# gộp 1 PR mỗi nơi cho đỡ ồn; major tách riêng để review kỹ. PR vẫn phải qua CI
+# (check-dependencies.yml chặn bản beta/rc/next và nguồn gói lạ).
+# cooldown: chỉ đề xuất bản đã phát hành đủ lâu — gói bị chiếm tài khoản thường
+# bị phát hiện và gỡ trong vài ngày đầu.
 version: 2
 updates:
   - package-ecosystem: npm
     directories: ['/', '/backend', '/frontend']
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     groups:
       minor-patch:
         update-types: [minor, patch]
     ignore:
-      # Kiểu Node phải khớp bản Node đang chạy (CI 22, Docker 24), không theo bản mới nhất
+      # Kiểu Node phải khớp bản Node đang chạy (CI + Docker: 24), không theo bản mới nhất
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
       # typescript-eslint 8.x chỉ nhận typescript <6.1 → bỏ chặn khi typescript-eslint hỗ trợ TS 7
       - dependency-name: 'typescript'
         update-types: ['version-update:semver-major']
+  # Action ghim theo commit SHA (# vX.Y.Z) — Dependabot cập nhật cả SHA lẫn chú thích
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
   - package-ecosystem: docker
     directories: ['/backend', '/frontend']
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7

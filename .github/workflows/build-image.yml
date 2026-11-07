@@ -1,0 +1,80 @@
+# Build image 1 LẦN cho mọi môi trường (staging/production dùng chung image,
+# không build lại). Tag = commit SHA → truy vết production về commit + lần chạy CI.
+# Chỉ ci.yml gọi, sau khi "CI · kết quả" xanh trên main — không chạy tay để
+# không có image nào lên GHCR mà chưa qua kiểm tra.
+name: Build image
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: name
+        env:
+          APP: ${{ matrix.app }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hospital_rms-${APP}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.app }}
+          target: prod
+          build-args: GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          tags: ${{ steps.name.outputs.image }}
+          load: true
+          # Cache chỉ ghi từ main (workflow này chỉ chạy trên main) → PR không đầu độc được
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+      - name: Quét image (Trivy)
+        # In mọi lỗ hổng HIGH+, chỉ chặn CRITICAL đã có bản vá. Image Trivy ghim digest.
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          TRIVY: aquasec/trivy:0.57.1@sha256:5c59e08f980b5d4d503329773480fcea2c9bdad7e381d846fbf9f2ecb8050f6b
+        run: |
+          trivy() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache \
+            "$TRIVY" image --no-progress --ignore-unfixed "$@" "$IMAGE"; }
+          trivy --severity HIGH,CRITICAL --exit-code 0
+          trivy --severity CRITICAL --exit-code 1 --quiet
+      - name: Push (kèm SBOM + provenance)
+        # Cùng tham số với bước Build → dùng lại cache, không build khác đi
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: ${{ matrix.app }}
+          target: prod
+          build-args: GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          tags: ${{ steps.name.outputs.image }}
+          push: true
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=${{ matrix.app }}
+      - name: Tóm tắt
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+        run: echo "- Image $IMAGE" >> "$GITHUB_STEP_SUMMARY"

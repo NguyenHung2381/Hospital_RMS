@@ -1,0 +1,12 @@
+# Cấu hình hadolint (CI: .github/workflows/check-infra.yml). Chặn từ mức warning.
+# Mỗi quy tắc bỏ qua phải có lý do.
+failure-threshold: warning
+ignored:
+  # Ghim phiên bản apk: Alpine xoá bản cũ khỏi mirror khi có bản vá → build hỏng
+  # ngẫu nhiên. Thay vào đó `apk upgrade` lấy bản vá mới nhất + Trivy chặn CRITICAL.
+  - DL3018
+  # Pipe duy nhất là `cat … | md5sum` tạo dấu .deps-hash cho bản dev; hỏng thì chỉ
+  # làm x-ensure-deps cài lại deps, không ảnh hưởng image production.
+  - DL4006
+trustedRegistries:
+  - docker.io

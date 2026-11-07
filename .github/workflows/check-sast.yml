@@ -1,0 +1,35 @@
+# SAST: quét lỗ hổng trong mã nguồn (injection, XSS, path traversal...).
+# ci.yml gọi ở mọi PR / push / lịch tuần; chạy tay được ở Actions →
+# "Kiểm tra · SAST".
+name: Kiểm tra · SAST
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Chỉ chặn mức ERROR. Bỏ rule hardcoded_secrets của njsscan (báo nhầm mọi
+  # chuỗi có chữ "password") — secret đã do check-secrets.yml lo.
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Semgrep
+        # Image ghim theo digest — tag có thể bị đẩy đè
+        env:
+          IMAGE: semgrep/semgrep:1.95.0@sha256:30e6afa99ebd8e7b4115d4904898108eb4bf77025819e9263f09cf14e6f6e549
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src "$IMAGE" semgrep scan \
+            --config p/javascript --config p/typescript --config p/nodejsscan \
+            --metrics off --severity ERROR --error \
+            --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_password \
+            --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_secret \
+            --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_username \
+            --exclude-rule ajinabraham.njsscan.generic.hardcoded_secrets.node_api_key

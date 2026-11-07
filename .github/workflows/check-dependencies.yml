@@ -1,0 +1,71 @@
+# Phụ thuộc: chỉ dùng bản chính thức, từ nguồn tin cậy, không có lỗ hổng đã biết.
+# ci.yml gọi ở mọi PR / push / lịch tuần; chạy tay được ở Actions →
+# "Kiểm tra · Phụ thuộc".
+name: Kiểm tra · Phụ thuộc
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Cấm alpha/beta/rc/canary/next/dist-tag/git URL trong package.json, cấm gói
+  # tiền phát hành trong lockfile (trừ .github/prerelease-allowlist.json), gói
+  # phải tải từ registry.npmjs.org có integrity sha512, image Docker có tag cụ
+  # thể, action ghim theo SHA. Chạy local: npm run check:versions
+  stable:
+    name: Chỉ dùng bản chính thức
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/ci/check-stable-versions.mjs
+
+  # Mỗi thư mục có package-lock.json 1 check riêng.
+  audit:
+    name: npm audit · ${{ matrix.dir }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [backend, frontend, root]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Thư mục
+        id: dir
+        env:
+          DIR: ${{ matrix.dir }}
+        run: echo "path=$([ "$DIR" = root ] && echo . || echo "$DIR")" >> "$GITHUB_OUTPUT"
+      - name: Cài đặt (không chạy script cài đặt)
+        # --ignore-scripts: job này chỉ đọc metadata, không cho gói nào chạy mã lúc cài
+        working-directory: ${{ steps.dir.outputs.path }}
+        run: npm ci --ignore-scripts --no-fund --no-audit
+      - name: Chữ ký registry
+        # Xác minh gói tải về đúng là gói registry npm đã ký (chống giả mạo / mirror độc)
+        working-directory: ${{ steps.dir.outputs.path }}
+        run: npm audit signatures
+      - name: Lỗ hổng — thư viện chạy production (chặn từ high)
+        working-directory: ${{ steps.dir.outputs.path }}
+        run: npm audit --omit=dev --audit-level=high
+      - name: Lỗ hổng — công cụ dev/build (chặn critical)
+        # Công cụ build tạo ra bundle frontend → critical cũng phải chặn
+        working-directory: ${{ steps.dir.outputs.path }}
+        run: |
+          npm audit --audit-level=high || true
+          npm audit --audit-level=critical

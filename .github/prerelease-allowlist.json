@@ -1,0 +1,17 @@
+{
+  "$comment": "Gói GIÁN TIẾP là bản tiền phát hành mà thư viện cha khoá cứng, chưa thay được. Phụ thuộc trực tiếp không bao giờ được vào đây. Mỗi mục phải có lý do + cách gỡ; scripts/ci/check-stable-versions.mjs báo khi mục không còn dùng.",
+  "packages": [
+    {
+      "name": "yaml",
+      "version": "2.0.0-1",
+      "via": "backend: swagger-jsdoc@6.3.0",
+      "reason": "swagger-jsdoc 6.x khoá cứng yaml 2.0.0-1. Gỡ khi swagger-jsdoc ra bản dùng yaml chính thức, hoặc ép bằng overrides sau khi thử /api-docs vẫn chạy."
+    },
+    {
+      "name": "gensync",
+      "version": "1.0.0-beta.2",
+      "via": "frontend (dev): eslint-plugin-react-hooks → @babel/core",
+      "reason": "gensync chưa từng có bản 1.0.0 chính thức; @babel/core 7.x phụ thuộc bản này. Chỉ dùng lúc lint, không vào bundle."
+    }
+  ]
+}

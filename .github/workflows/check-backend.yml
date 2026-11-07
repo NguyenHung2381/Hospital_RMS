@@ -1,0 +1,209 @@
+# Backend: chất lượng mã + test. ci.yml gọi khi PR đổi backend/ (hoặc mọi push
+# vào main); chạy tay được ở Actions → "Kiểm tra · Backend".
+# Không cần DB thật hay Redis: test dùng CSDL giả (test/**/fakeDb.js) và tự rơi
+# về bộ nhớ khi không có Redis. Riêng job postgres chạy PostgreSQL thật.
+name: Kiểm tra · Backend
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Cùng major với image production (backend/Dockerfile: node:24-alpine)
+  NODE_VERSION: '24'
+  # Giống `npm test`: không dùng Redis thật (rate-limit tính trong bộ nhớ)
+  REDIS_HOST: 127.0.0.1
+  REDIS_PORT: 1
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    name: Lint · định dạng · kiểu
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Lint (ESLint)
+        # Chặn lỗi (biến thừa, ==, ...); cảnh báo max-lines không chặn
+        run: npm run lint
+      - name: Định dạng (Prettier)
+        # Sửa: npm run format (trong backend/)
+        run: npm run format:check
+      - name: Kiểu dữ liệu (tsc)
+        run: npm run typecheck
+
+  architecture:
+    name: Kiến trúc · phân quyền route
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Phân quyền route
+        # Mọi route mới phải khai báo quyền (authorizePermission) hoặc có lý do trong routePolicy
+        run: npm run check:routes
+      - name: Đường dẫn require
+        # Nạp mọi file trong src/ — bắt require sai đường dẫn, kể cả require trong thân hàm
+        run: npm run check:requires
+      - name: Hướng phụ thuộc giữa module
+        # Không vòng require; lõi không phụ thuộc nghiệp vụ; hạ tầng chỉ dùng module lõi
+        run: npm run check:deps
+
+  # Mỗi thư mục con của backend/test/ (auth, permissions, security, upload...)
+  # là một nhóm chức năng, chạy thành một check riêng. Thêm thư mục mới là tự có
+  # check mới, không phải sửa file này.
+  areas:
+    name: Liệt kê nhóm test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      areas: ${{ steps.list.outputs.areas }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - id: list
+        working-directory: backend/test
+        # Chỉ nhận tên thư mục an toàn (chữ, số, - _) — tên được đưa vào lệnh ở job sau
+        run: |
+          areas=$(find . -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | grep -E '^[A-Za-z0-9_-]+$' | sort | jq -R . | jq -sc .)
+          echo "$areas"
+          echo "areas=$areas" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test ${{ matrix.area }}
+    needs: areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false # nhóm này hỏng vẫn chạy hết nhóm khác để thấy toàn cảnh
+      matrix:
+        area: ${{ fromJson(needs.areas.outputs.areas) }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      # Kết quả từng test in ra log và ghi vào trang Summary của lần chạy
+      - name: Test
+        env:
+          AREA: ${{ matrix.area }}
+        run: |
+          set -o pipefail
+          node --test --test-force-exit --test-reporter=spec "test/$AREA/**/*.test.js" | tee result.txt
+      - name: Tóm tắt
+        if: always()
+        env:
+          AREA: ${{ matrix.area }}
+        run: |
+          {
+            echo "### Backend · $AREA"
+            echo '```'
+            cat result.txt 2>/dev/null || echo "không có kết quả"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Coverage (ngưỡng tối thiểu)
+        # Ngưỡng ≈ mức hiện tại (~49% dòng) — chỉ được nâng lên khi thêm test
+        run: |
+          set -o pipefail
+          node --test --test-force-exit --experimental-test-coverage \
+            --test-coverage-include='src/**' --test-coverage-lines=45 --test-coverage-functions=20 \
+            "test/**/*.test.js" | grep -E '^# (all files|tests|pass|fail)' | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # PostgreSQL: DB PG thật trong container, dựng schema đúng như production
+  # (01_tao_db_va_role.sql → migrate init = baseline 00–04 + migration PG) rồi
+  # chạy test-integration-pg/ (adapter, trigger, rms_ci...).
+  # Hỏng ở đây = baseline / adapter / migration PG không còn chạy được.
+  postgres:
+    name: PostgreSQL (baseline + adapter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          # Container dùng 1 lần, chỉ runner này kết nối được → không cần mật khẩu
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Tạo DB + role (infra/postgresql/01_tao_db_va_role.sql)
+        run: |
+          psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -v migrate_password="$(openssl rand -hex 16)" -v app_password="$(openssl rand -hex 16)" \
+            -f ../infra/postgresql/01_tao_db_va_role.sql
+      - name: Dựng schema (migrate init)
+        env:
+          DB_SERVER: 127.0.0.1
+          DB_USER: rms_migrate
+          JWT_SECRET: ci-only-access
+          JWT_REFRESH_SECRET: ci-only-refresh
+        run: npm run migrate -- init
+      - name: Test PostgreSQL
+        run: |
+          set -o pipefail
+          npm run test:pg -- --test-reporter=spec | tee result.txt
+      - name: Tóm tắt
+        if: always()
+        run: |
+          {
+            echo "### Backend · PostgreSQL"
+            echo '```'
+            cat result.txt 2>/dev/null || echo "không có kết quả"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

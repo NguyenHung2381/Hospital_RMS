@@ -3,3 +3,5 @@
 *                     @NguyenHung2381
 /.github/             @NguyenHung2381
 /scripts/deploy.sh    @NguyenHung2381
+/scripts/ci/          @NguyenHung2381
+/.hadolint.yaml       @NguyenHung2381
