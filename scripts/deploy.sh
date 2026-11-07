@@ -13,7 +13,7 @@
 #      máy này). Chạy migration bằng image MỚI (backend/scripts/migrate.js). Lỗi →
 #      dừng, bản cũ vẫn chạy.
 #   4. docker compose up -d --no-build.
-#   5. Smoke test: /health trả đúng version, /health/db, trang chủ; theo dõi thêm
+#   5. Smoke test: /health trả đúng version (GIT_SHA trong image), /health/db, trang chủ; theo dõi thêm
 #      SOAK_SECONDS giây xem container có bị restart không.
 #   6. Hỏng → quay lại image cũ. Migration KHÔNG tự hoàn tác: chỉ viết migration
 #      tương thích ngược (thêm cột/bảng, không xoá/đổi tên ngay); cần thì
@@ -186,6 +186,14 @@ for i in 1 2 3; do
 	sleep 15
 done
 
+# Version /health phải trả = GIT_SHA nhúng trong image backend. Thường bằng $TAG;
+# khác khi backend không đổi ở commit này và CI chỉ gắn thêm tag cho image của
+# commit trước (build-image.yml) — khi đó GIT_SHA là commit build gốc.
+expect_version="$(docker image inspect "$BACKEND_IMAGE" \
+	--format '{{range .Config.Env}}{{println .}}{{end}}' | sed -n 's/^GIT_SHA=//p')"
+expect_version="${expect_version:-$TAG}"
+[ "$expect_version" = "$TAG" ] || echo "Backend không đổi ở $TAG — image build từ commit $expect_version"
+
 echo "── Migration DB"
 if ! status="$(migrate status)"; then
 	printf '%s\n' "$status"
@@ -207,7 +215,7 @@ unset DB_USER DB_PASSWORD
 
 echo "── Khởi động bản mới"
 compose up -d --no-build backend frontend
-if err="$(wait_healthy "$TAG")"; then
+if err="$(wait_healthy "$expect_version")"; then
 	pin_default_tags
 	write_history OK "${prev_backend:-}"
 	echo "Triển khai thành công $TAG"

@@ -9,7 +9,7 @@ push / PR ──► CI (ci.yml, chỉ điều phối) ─┬─ Phụ thuộc   
                                           └─ Frontend    lint/kiểu · build                                                (PR: chỉ khi đổi frontend/)
                                                  ▼
                                           CI · kết quả  (check bắt buộc duy nhất)
-   (main, xanh) ──► Image: build 1 lần, tag = commit SHA, Trivy, SBOM + provenance → GHCR
+   (main, xanh) ──► Image: app đổi → build + Trivy + SBOM/provenance; app không đổi → gắn tag SHA mới cho image cũ → GHCR
                 ──► Deploy staging (nếu bật) ──► Deploy production (duyệt / chạy tay)
 Deploy (deploy.yml → scripts/deploy.sh, chạy trên runner đặt tại server Ubuntu):
    pull image SHA → backup DB + migration → up --no-build → smoke test + theo dõi → hỏng thì tự rollback
@@ -24,7 +24,7 @@ Deploy (deploy.yml → scripts/deploy.sh, chạy trên runner đặt tại serve
 | `.github/workflows/check-infra.yml` | actionlint, zizmor (bảo mật workflow), hadolint (`.hadolint.yaml`), shellcheck, `docker compose config` |
 | `.github/workflows/check-backend.yml` | Lint · Prettier · tsc / kiến trúc + phân quyền route / test theo nhóm / coverage / PostgreSQL thật |
 | `.github/workflows/check-frontend.yml` | Lint + tsc / build production (chặn source map) |
-| `.github/workflows/build-image.yml` | Build + Trivy + push image. Chỉ ci.yml gọi được, không chạy tay |
+| `.github/workflows/build-image.yml` | Chỉ build app có thay đổi (so với commit trước của lần push); app không đổi thì gắn tag SHA mới cho image cũ trên registry (vài giây). Vẫn build lại khi đổi workflow này, commit trước không có image, push đè lịch sử, hoặc image gốc quá 7 ngày (lấy bản vá base image). Chỉ ci.yml gọi được, không chạy tay |
 | `.github/workflows/deploy.yml` | Deploy 1 SHA lên 1 môi trường. Chạy tay = **rollback** |
 | `.github/prerelease-allowlist.json` | Gói **gián tiếp** là bản tiền phát hành tạm chấp nhận, kèm lý do. Phụ thuộc trực tiếp không bao giờ được vào đây |
 | `scripts/deploy.sh` | Logic deploy/backup/smoke test/rollback (bash). GitHub sự cố vẫn chạy tay được trên server |
@@ -64,7 +64,7 @@ Deploy (deploy.yml → scripts/deploy.sh, chạy trên runner đặt tại serve
   - Viết idempotent như các file hiện có.
   - Migration hỏng thì deploy dừng **trước** khi đổi container (bản cũ vẫn chạy). Cần khôi phục thì `pg_restore` file `.dump` mới nhất trong `MIGRATION_BACKUP_DIR` (tên có 8 ký tự đầu của SHA).
 - **Lịch sử deploy**: tab *Environments* trên GitHub (ai, SHA, lúc nào, link lần chạy) và `logs/deploy-history.log` trên server.
-- **Truy vết**: production → `GET /health` trả `version` = commit SHA → image `ghcr.io/…:<sha>` (label `org.opencontainers.image.url` trỏ về lần chạy CI có kết quả test, coverage, quét) → commit.
+- **Truy vết**: production → `GET /health` trả `version` = commit SHA đã build image backend (bằng SHA deploy, hoặc commit gần nhất đổi `backend/` nếu image được gắn lại tag) → image `ghcr.io/…:<sha>` (label `org.opencontainers.image.url` trỏ về lần chạy CI có kết quả test, coverage, quét) → commit.
 
 ## Quy tắc phiên bản (check-dependencies.yml)
 

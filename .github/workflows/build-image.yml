@@ -1,7 +1,16 @@
-# Build image 1 LẦN cho mọi môi trường (staging/production dùng chung image,
-# không build lại). Tag = commit SHA → truy vết production về commit + lần chạy CI.
-# Chỉ ci.yml gọi, sau khi "CI · kết quả" xanh trên main — không chạy tay để
-# không có image nào lên GHCR mà chưa qua kiểm tra.
+# Image cho mỗi commit trên main, tag = commit SHA (staging/production dùng chung,
+# không build lại lúc deploy). Chỉ ci.yml gọi, sau khi "CI · kết quả" xanh — không
+# chạy tay để không có image nào lên GHCR mà chưa qua kiểm tra.
+#
+# Phần nào đổi thì build phần đó. App KHÔNG đổi so với commit trước thì chỉ gắn
+# thêm tag SHA mới cho image của commit trước, ngay trên registry (vài giây, không
+# build, không tải layer). Vẫn build lại khi:
+#   - thư mục app (context build) hoặc file workflow này đổi;
+#   - commit trước không có image (pipeline của nó hỏng / đang chạy) hoặc push đè lịch sử;
+#   - image gốc build quá MAX_AGE_DAYS ngày → lấy bản vá base image (apk upgrade,
+#     node/nginx alpine) và quét Trivy lại.
+# Image gắn lại giữ nguyên SBOM + provenance + GIT_SHA của lần build gốc (cùng mã
+# nguồn app). scripts/deploy.sh so /health với GIT_SHA trong image nên vẫn đúng.
 name: Build image
 
 on:
@@ -11,14 +20,72 @@ permissions:
   contents: read
   packages: write
 
+env:
+  MAX_AGE_DAYS: 7
+
 jobs:
-  image:
-    name: ${{ matrix.app }}
+  plan:
+    name: Phần nào cần build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      build: ${{ steps.plan.outputs.build }}
+      retag: ${{ steps.plan.outputs.retag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0 # so sánh với commit trước của lần push
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: plan
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          registry="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          build=() retag=()
+          for app in backend frontend; do
+            reason=""
+            if ! [[ "$BEFORE" =~ ^[0-9a-f]{40}$ ]] || [[ "$BEFORE" =~ ^0+$ ]]; then
+              reason="không có commit trước"
+            elif ! git merge-base --is-ancestor "$BEFORE" "$GITHUB_SHA" 2>/dev/null; then
+              reason="push đè lịch sử"
+            elif ! git diff --quiet "$BEFORE" "$GITHUB_SHA" -- "$app/" .github/workflows/build-image.yml; then
+              reason="mã nguồn đổi"
+            elif ! info=$(docker buildx imagetools inspect "$registry/hospital_rms-$app:$BEFORE" --format '{{json .Image}}' 2>/dev/null); then
+              reason="commit trước không có image"
+            else
+              created=$(jq -r 'if has("created") then .created else ([.[]][0].created // empty) end' <<<"$info")
+              age_days=$(( ( $(date +%s) - $(date -d "${created:-1970-01-01}" +%s) ) / 86400 ))
+              if [ "$age_days" -ge "$MAX_AGE_DAYS" ]; then
+                reason="image gốc đã $age_days ngày — build lại lấy bản vá"
+              fi
+            fi
+            if [ -n "$reason" ]; then
+              build+=("$app"); echo "$app: BUILD ($reason)"
+            else
+              retag+=("$app"); echo "$app: gắn tag từ ${BEFORE::7} (không đổi)"
+            fi
+          done
+          to_json() { if [ "$#" -eq 0 ]; then echo '[]'; else printf '%s\n' "$@" | jq -R . | jq -sc .; fi; }
+          echo "build=$(to_json "${build[@]}")" >> "$GITHUB_OUTPUT"
+          echo "retag=$(to_json "${retag[@]}")" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.app }}
+    needs: plan
+    if: needs.plan.outputs.build != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       matrix:
-        app: [backend, frontend]
+        app: ${{ fromJson(needs.plan.outputs.build) }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -77,4 +144,32 @@ jobs:
       - name: Tóm tắt
         env:
           IMAGE: ${{ steps.name.outputs.image }}
-        run: echo "- Image $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "- Build mới: $IMAGE" >> "$GITHUB_STEP_SUMMARY"
+
+  retag:
+    name: Gắn tag ${{ matrix.app }} (không đổi)
+    needs: plan
+    if: needs.plan.outputs.retag != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.plan.outputs.retag) }}
+    steps:
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Gắn tag SHA mới cho image commit trước
+        # Sao chép manifest ngay trên registry (cùng digest, giữ SBOM + provenance)
+        env:
+          APP: ${{ matrix.app }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hospital_rms-$APP"
+          docker buildx imagetools create --tag "$repo:$GITHUB_SHA" "$repo:$BEFORE"
+          digest=$(docker buildx imagetools inspect "$repo:$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "- Gắn tag: $repo:$GITHUB_SHA ← ${BEFORE::7} ($digest)" >> "$GITHUB_STEP_SUMMARY"
