@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { APP_VERSION } from '../../../app/appVersion';
 import { FORCE_PASSWORD_PATH, TWO_FACTOR_SETUP_PATH } from '../../../app/router/authHelpers';
 import { ServiceUnavailableError, userMessage } from '../../../shared/api/http';
 import { canAccessAdminPanel } from '../../../shared/utils/permissions';
@@ -565,8 +564,6 @@ export default function Login() {
 				<Link to='/dang-ky-khoa-hoc'>Đăng ký khóa học đào tạo</Link> ·{' '}
 				<Link to='/tra-cuu-ket-qua'>Tra cứu kết quả</Link>
 			</p>
-
-			<p className={styles.versionText}>Phiên bản {APP_VERSION}</p>
 
 			{councilPrompt &&
 				createPortal(

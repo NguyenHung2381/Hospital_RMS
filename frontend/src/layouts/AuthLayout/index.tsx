@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { APP_VERSION } from '../../app/appVersion';
 import Logo from '../../assets/logo.png';
 import { LeftPanelIcons, RightPanelIcons } from './AuthBgIcons';
 import styles from './AuthLayout.module.css';
@@ -215,7 +216,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
 				<div className={styles.authFooter}>
 					© {new Date().getFullYear()} Bệnh viện Hữu nghị Đa khoa Nghệ An —
-					Phòng CNTT
+					Phòng CNTT · Phiên bản {APP_VERSION}
 				</div>
 			</div>
 		</div>
