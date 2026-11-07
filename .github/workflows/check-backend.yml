@@ -144,10 +144,12 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --no-fund --no-audit
       - name: Coverage (ngưỡng tối thiểu)
-        # Ngưỡng ≈ mức hiện tại (~49% dòng) — chỉ được nâng lên khi thêm test
+        # Ngưỡng ≈ mức hiện tại (~49% dòng) — chỉ được nâng lên khi thêm test.
+        # --test-reporter=tap BẮT BUỘC: từ Node 23 output pipe mặc định là spec
+        # ("ℹ tests ...") → grep '^# ' không khớp → pipefail làm hỏng bước.
         run: |
           set -o pipefail
-          node --test --test-force-exit --experimental-test-coverage \
+          node --test --test-force-exit --test-reporter=tap --experimental-test-coverage \
             --test-coverage-include='src/**' --test-coverage-lines=45 --test-coverage-functions=20 \
             "test/**/*.test.js" | grep -E '^# (all files|tests|pass|fail)' | tee -a "$GITHUB_STEP_SUMMARY"
 
