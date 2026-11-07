@@ -160,6 +160,16 @@ backup_db() {
 	)
 }
 
+# Gắn tên image mặc định của compose (hospital_rms-backend / -frontend, khi không đặt
+# BACKEND_IMAGE / FRONTEND_IMAGE) cho bản đang chạy. Lệnh compose chạy tay hoặc theo
+# lịch (rotate-jwt-secrets.sh: up -d --force-recreate, setup-server.sh start) không
+# biết tag CI — thiếu bước này chúng tạo lại container từ image build tay cũ trên máy.
+pin_default_tags() {
+	docker tag "$BACKEND_IMAGE" hospital_rms-backend:latest &&
+		docker tag "$FRONTEND_IMAGE" hospital_rms-frontend:latest ||
+		echo "::warning::Không gắn được tag mặc định — lệnh compose chạy tay có thể dùng image cũ" >&2
+}
+
 prev_backend="$(running_image backend)"
 prev_frontend="$(running_image frontend)"
 echo "Bản đang chạy: ${prev_backend:-không có} | ${prev_frontend:-không có}"
@@ -198,6 +208,7 @@ unset DB_USER DB_PASSWORD
 echo "── Khởi động bản mới"
 compose up -d --no-build backend frontend
 if err="$(wait_healthy "$TAG")"; then
+	pin_default_tags
 	write_history OK "${prev_backend:-}"
 	echo "Triển khai thành công $TAG"
 	exit 0
@@ -213,7 +224,11 @@ echo "── Quay lại bản cũ: $prev_backend"
 export BACKEND_IMAGE="$prev_backend" FRONTEND_IMAGE="$prev_frontend"
 compose up -d --no-build backend frontend
 note="$prev_backend"
-if ! rollback_err="$(wait_healthy "")"; then note+=" — bản cũ cũng lỗi: $rollback_err"; fi
+if ! rollback_err="$(wait_healthy "")"; then
+	note+=" — bản cũ cũng lỗi: $rollback_err"
+else
+	pin_default_tags
+fi
 write_history ROLLED-BACK "$note"
 echo "Bản $TAG hỏng, đã quay lại $prev_backend. Lỗi: $err" >&2
 exit 1
