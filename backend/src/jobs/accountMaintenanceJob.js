@@ -19,7 +19,9 @@ const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, khôn
 const deactivateExpired = async (tx) => {
 	const memberRole = await roleIdOf(ROLE.MEMBER);
 	if (!memberRole) {
-		logger.warn('[job:account_maintenance] Không có vai trò mã "member" — bỏ qua khoá tài khoản hết hạn');
+		logger.warn(
+			'[job:account_maintenance] Không có vai trò mã "member" — bỏ qua khoá tài khoản hết hạn',
+		);
 		return 0;
 	}
 	const req = () =>
