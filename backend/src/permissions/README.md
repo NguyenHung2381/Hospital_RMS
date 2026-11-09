@@ -25,7 +25,8 @@ Quy tắc kiểm tra: **có đúng quyền mới được** (`manage` không ph�
 
 **Thêm route**: gắn `authorizePermission(...)`. Route cố ý chỉ cần đăng nhập hoặc công khai thì khai báo kèm lý do trong `routePolicy.js`. Thiếu thì `npm run check:routes` và `npm test` đều báo lỗi.
 
-**Lọc dữ liệu theo phạm vi**: `scopeOf(req.user, 'topics')` trả `'own' | 'department' | 'all'` (null = không có quyền trên resource). Xem cách dùng ở `topicService.getAll`, `userController.isDeptScoped`, `courseService` (`'assigned'`).
+**Lọc dữ liệu theo phạm vi**: `scopeOf(req.user, 'topics')` trả `'own' | 'department' | 'all'` (null = không có quyền trên resource). Xem cách dùng ở `topicService.getAll`, `userController.isDeptScoped`, `courseService` (`'assigned'`)
+Kiểm tra GHI (sửa / xóa / tạo) và chốt chặn leo thang quyền dùng `permissions/actionScope.js`: `effectiveScope(user, resource, action)` = hẹp hơn trong phạm vi của lượt cấp `resource:action` và phạm vi xem; `departmentLimit(user, resource, action)` trả `null` (mọi khoa) | `department_id` | `false` (bị giới hạn theo khoa mà chưa có khoa ⇒ fail-closed). Ví dụ `userController.userDeptLimit`, `privilegeGuard.assertCanManageUser`.
 
 **Tham chiếu vai trò trong code**: `roleIdOf(ROLE.TRAINEE)` / `inputRoleId(request, 'trainee_role', ROLE.TRAINEE)` rồi dùng `@trainee_role` trong SQL.
 
