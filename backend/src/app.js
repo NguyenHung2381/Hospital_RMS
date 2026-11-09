@@ -205,7 +205,9 @@ app.use(
 	requireModule('RESEARCH'),
 	require('./modules/councils/councils.routes'),
 );
-app.use(`${API}/files`, require('./modules/topics/files.routes'));
+// /files chỉ xóa file đính kèm đề tài (bảng files theo topic_id); file đào tạo/hội thảo
+// đi qua route riêng của module đó ⇒ cả mount thuộc module RESEARCH.
+app.use(`${API}/files`, requireModule('RESEARCH'), require('./modules/topics/files.routes'));
 app.use(`${API}/excel`, require('./modules/system/excel.routes'));
 app.use(`${API}/dashboard`, require('./modules/dashboard/dashboard.routes'));
 app.use(`${API}/notifications`, require('./modules/notifications/notifications.routes'));

@@ -36,7 +36,9 @@ router.get('/', authorizePermission(['training_programs', 'read']), ctrl.getAll)
 router.get('/:id', authorizePermission(['training_programs', 'read']), ctrl.getById);
 
 // Nhập danh mục chương trình + vòng thực hành từ Excel (mẫu 1.xlsx: sheet "Mã CT"
-// và "Bài học"). Tạo mới + cập nhật theo mã ⇒ dùng quyền tạo chương trình.
+// và "Bài học"). Cần training_programs:create để vào route; ghi đè chương trình/bài học
+// ĐÃ CÓ theo mã thì cần thêm training_programs:update (controller truyền canUpdate vào
+// service, L-15) — thiếu quyền này chỉ được tạo mới, mã đã có bị bỏ qua.
 router.post(
 	'/import-catalog',
 	authorizePermission(['training_programs', 'create']),

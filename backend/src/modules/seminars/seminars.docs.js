@@ -284,7 +284,7 @@
  *             properties:
  *               file: { type: string, format: binary, description: File .xlsx }
  *               dry_run: { type: string, enum: ['0', '1'], description: '1 = chỉ xem trước' }
- *               issue_cme: { type: string, enum: ['0', '1'], description: '1 = cấp số CME ngay sau khi nhập' }
+ *               issue_cme: { type: string, enum: ['0', '1'], description: '1 = cấp số CME ngay sau khi nhập (chỉ có hiệu lực với người có seminars:cme_manage)' }
  *               credits_by_role: { type: string, description: 'JSON { attendee: 3, speaker: 6, ... } — số tín chỉ cho dòng để trống cột Số tín chỉ, theo vai trò' }
  *     responses:
  *       200:
