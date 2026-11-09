@@ -42,6 +42,9 @@ require('../../src/modules/training/trainees/traineeService').create = async () 
 	id: 'HV-NEW',
 });
 
+// giấy tờ đính kèm: không di chuyển file thật / không lưu file thật
+require('../../src/utils/uploadPaths').moveUploadedFiles = async (files) => files;
+require('../../src/modules/training/trainingFileService').saveUploadedFile = async () => ({ id: 'F1' });
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
 const portal = require('../../src/modules/public/publicPortalService');
 const attempts = require('../../src/utils/attemptLimiter');
@@ -115,37 +118,36 @@ test('giới hạn theo khóa: quá số lần thì bị chặn dù đổi IP', 
 	assert.equal(await attempts.hit('test-lookup', '999999999999', 5, 3600), true); // CCCD khác không ảnh hưởng
 });
 
-test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh thì bị từ chối', async () => {
-	await assert.rejects(
-		portal.register({
-			course_id: 'KH1',
-			full_name: 'X',
-			national_id: TRAINEE.national_id,
-			dob: '1999-01-01',
-		}),
-		(e) => e.statusCode === 409,
-	);
+test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh/họ tên thì không gắn vào hồ sơ đó (phản hồi như mọi nhánh khác)', async () => {
+	const before = log.length;
+	const bad = await portal.register({
+		course_id: 'KH1',
+		full_name: 'Nguyễn Văn An',
+		national_id: TRAINEE.national_id,
+		dob: '1999-01-01',
+	});
+	assert.deepEqual(bad, { submitted: true });
 	const ok = await portal.register({
 		course_id: 'KH1',
-		full_name: 'X',
+		full_name: 'nguyen van an',
 		national_id: TRAINEE.national_id,
 		dob: '2000-05-15',
 	});
-	assert.equal(ok.enrollment_id, 'GD1');
+	assert.deepEqual(ok, { submitted: true });
 	assert.equal(ok.trainee_id, undefined, 'không trả mã hồ sơ học viên cho người gọi ẩn danh');
-	assert.ok(log.length > 0);
+	assert.ok(log.length > before);
 });
 
-test('đăng ký: hồ sơ cũ không có ngày sinh — vẫn ghi danh nhưng không đính giấy tờ vào hồ sơ đó', async () => {
+test('đăng ký: hồ sơ cũ không có ngày sinh — không gắn và không đính giấy tờ vào hồ sơ đó', async () => {
 	const before = log.length;
 	const r = await portal.register(
 		{ course_id: 'KH1', full_name: 'X', national_id: NO_DOB.national_id, dob: '1990-01-01' },
 		[{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' }],
 		['national_id'],
 	);
-	assert.deepEqual(r, { enrollment_id: 'GD1', documents_skipped: true });
+	assert.deepEqual(r, { submitted: true });
 	assert.ok(
-		!log.slice(before).some((q) => /INSERT INTO trainee_documents/i.test(q.text)),
-		'không ghi giấy tờ',
+		!log.slice(before).some((q) => /INSERT INTO trainee_documents/i.test(q.text) && q.inputs.trainee_id === NO_DOB.id),
+		'không ghi giấy tờ vào hồ sơ cũ',
 	);
 });
