@@ -28,6 +28,8 @@ const logger = require('../../config/logger');
  *      R3 email + tên · R4 SĐT chuẩn hóa + tên · R5 tên + ngày sinh.
  *    Mỗi quy tắc chỉ dùng khi khớp ĐÚNG 1 person; không thì tạo person mới.
  *    Trùng TÊN đơn thuần không bao giờ tự gộp.
+ *  - Nguồn tạo ẩn danh (trainees.created_by IS NULL — đăng ký khóa học công khai) KHÔNG tự gắn vào person
+ *    đã xác thực / có tài khoản: tạo person riêng + xếp cặp vào person_merge_candidates để nhân viên duyệt.
  *  - Cờ tắt khẩn cấp: PERSON_DUAL_WRITE=false (không cần deploy lại code).
  *  - Trước khi chạy migration, mọi hàm ở đây tự động bỏ qua (kiểm tra lại mỗi 60s).
  */
@@ -53,6 +55,9 @@ const SOURCES = {
 		dob: 'dob',
 		gender: 'gender',
 		nationalId: 'national_id',
+		// Dòng không có created_by = tạo bởi luồng không đăng nhập (đăng ký khóa học công khai):
+		// dữ liệu do người ngoài tự khai ⇒ không được tự gắn vào person đã xác thực / có tài khoản.
+		anonymousWhenNoCreator: true,
 	},
 	lecturers: {
 		table: 'lecturers',
@@ -159,7 +164,8 @@ const selectSourceSql = (cfg) => `
 	       ${cfg.nationalId || 'CAST(NULL AS VARCHAR(20))'} AS national_id,
 	       ${cfg.staff || 'CAST(NULL AS INT)'} AS staff_number,
 	       ${cfg.linkedUser || 'CAST(NULL AS VARCHAR(20))'} AS linked_user_id,
-	       ${castBool(cfg.internal || 'NULL')} AS is_internal
+	       ${castBool(cfg.internal || 'NULL')} AS is_internal,
+	       ${cfg.anonymousWhenNoCreator ? 'CASE WHEN created_by IS NULL THEN 1 ELSE 0 END' : '0'} AS is_anonymous
 	FROM ${cfg.table}
 	WHERE id = @id`;
 
@@ -195,20 +201,37 @@ const notClaimedByOtherUser = (source) =>
 		? ` AND NOT EXISTS (SELECT 1 FROM users u2 WHERE u2.person_id = p.id AND u2.id <> @id)`
 		: '';
 
+// person "được bảo vệ" = đã xác thực (is_verified) hoặc đang gắn với 1 tài khoản users. Nguồn tạo ẩn danh
+// (đăng ký công khai) KHÔNG được tự gắn vào person loại này — chỉ đưa vào hàng đợi duyệt gộp.
+const PROTECTED_ONLY = ` AND (p.is_verified = 'true' OR EXISTS (SELECT 1 FROM users ua WHERE ua.person_id = p.id))`;
+const UNPROTECTED_ONLY = ` AND p.is_verified = 'false' AND NOT EXISTS (SELECT 1 FROM users ua WHERE ua.person_id = p.id)`;
+
+// Lý do trong person_merge_candidates (CHECK chk_pmc_reason) ứng với từng quy tắc so khớp
+const RULE_REASON = {
+	R1: 'SAME_NAME', // CCCD trùng — không có lý do riêng, ghi chú nêu rõ
+	R2: 'SAME_STAFF_NUMBER',
+	R3: 'SAME_EMAIL',
+	R4: 'SAME_PHONE',
+	R5: 'SAME_NAME_DOB',
+};
+
 // ─── So khớp R1..R5 ──────────────────────────────────────────────────────────
-const matchExisting = async (tx, source, id, row) => {
+// scope: 'any' = mọi person ACTIVE · 'unprotected' = chỉ person chưa xác thực và chưa có tài khoản ·
+// 'protected' = chỉ person đã xác thực / có tài khoản. Trả { pid, rule } hoặc null.
+const matchExisting = async (tx, source, id, row, scope = 'any') => {
 	const name = clean(row.full_name);
 	const email = cleanEmail(row.email);
 	const phone = cleanPhone(row.phone);
 	const nationalId = clean(row.national_id);
 	const excl = notClaimedByOtherUser(source);
-	const base = `SELECT p.id AS pid FROM persons p WHERE p.status = 'ACTIVE'${excl}`;
+	const scopeSql = scope === 'unprotected' ? UNPROTECTED_ONLY : scope === 'protected' ? PROTECTED_ONLY : '';
+	const base = `SELECT p.id AS pid FROM persons p WHERE p.status = 'ACTIVE'${excl}${scopeSql}`;
 	const bind = (req) => bindPerson(req.input('id', sql.VarChar(30), id), row);
 
 	// R1: CCCD
 	if (nationalId) {
 		const pid = await pickUnique(tx, `${base} AND p.national_id = @national_id`, bind);
-		if (pid) return pid;
+		if (pid) return { pid, rule: 'R1' };
 	}
 	// R2: staff_number + trùng tên
 	if (row.staff_number != null && name) {
@@ -223,7 +246,7 @@ const matchExisting = async (tx, source, id, row) => {
 					SELECT 1 FROM users u WHERE u.person_id = p.id AND u.staff_number = @staff)`;
 		}
 		const pid = await pickUnique(tx, q, bind);
-		if (pid) return pid;
+		if (pid) return { pid, rule: 'R2' };
 	}
 	// R3: email + tên
 	if (email && name) {
@@ -232,7 +255,7 @@ const matchExisting = async (tx, source, id, row) => {
 			`${base} AND p.name_key = ${NAME_KEY('@name')} AND p.email = @email`,
 			bind,
 		);
-		if (pid) return pid;
+		if (pid) return { pid, rule: 'R3' };
 	}
 	// R4: SĐT chuẩn hóa (≥ 8 số) + tên
 	if (phone && name) {
@@ -243,7 +266,7 @@ const matchExisting = async (tx, source, id, row) => {
 			   AND ${udf('fn_normalize_phone', 'p.phone')} = ${udf('fn_normalize_phone', '@phone')}`,
 			bind,
 		);
-		if (pid) return pid;
+		if (pid) return { pid, rule: 'R4' };
 	}
 	// R5: tên + ngày sinh
 	if (row.dob && name) {
@@ -252,7 +275,7 @@ const matchExisting = async (tx, source, id, row) => {
 			`${base} AND p.name_key = ${NAME_KEY('@name')} AND p.date_of_birth = @dob`,
 			bind,
 		);
-		if (pid) return pid;
+		if (pid) return { pid, rule: 'R5' };
 	}
 	return null;
 };
@@ -325,6 +348,27 @@ const deleteOrphanPerson = async (tx, personId) => {
 		  AND NOT EXISTS (SELECT 1 FROM persons c WHERE c.merged_into_id = persons.id)`);
 };
 
+// Nguồn ẩn danh khớp 1 person được bảo vệ ⇒ không gắn; xếp cặp (person mới, person được bảo vệ) vào
+// hàng đợi duyệt gộp để nhân viên quyết định. Bỏ qua nếu cặp + lý do đã có.
+const queueMergeCandidate = async (tx, personId, otherId, rule, source, actorId) => {
+	if (!personId || !otherId || personId === otherId) return;
+	const [a, b] = personId < otherId ? [personId, otherId] : [otherId, personId];
+	const note =
+		rule === 'R1'
+			? `Nguồn ${source} tạo ẩn danh trùng CCCD với hồ sơ đã xác thực/có tài khoản — chưa tự gắn`
+			: `Nguồn ${source} tạo ẩn danh trùng thông tin với hồ sơ đã xác thực/có tài khoản — chưa tự gắn`;
+	await new sql.Request(tx)
+		.input('a', sql.VarChar(20), a)
+		.input('b', sql.VarChar(20), b)
+		.input('reason', sql.VarChar(20), RULE_REASON[rule] || 'SAME_NAME')
+		.input('note', sql.NVarChar(500), note)
+		.input('actor', sql.VarChar(20), actorId || null).query(`
+			INSERT INTO person_merge_candidates (person_a_id, person_b_id, reason, note, created_by)
+			SELECT CAST(@a AS VARCHAR(20)), CAST(@b AS VARCHAR(20)), CAST(@reason AS VARCHAR(20)), CAST(@note AS VARCHAR(500)), CAST(@actor AS VARCHAR(20))
+			WHERE NOT EXISTS (SELECT 1 FROM person_merge_candidates x
+			                  WHERE x.person_a_id = @a AND x.person_b_id = @b AND x.reason = @reason)`);
+};
+
 const setSourcePerson = async (tx, source, id, personId) => {
 	const cfg = SOURCES[source];
 	await new sql.Request(tx)
@@ -376,9 +420,18 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 		return personId;
 	}
 
-	personId =
-		(await matchExisting(tx, source, id, row)) ||
-		(await createPerson(tx, source, id, row, actorId));
+	let heldBack = null; // person được bảo vệ mà nguồn ẩn danh khớp nhưng không được tự gắn
+	if (row.is_anonymous) {
+		const hit = await matchExisting(tx, source, id, row, 'unprotected');
+		personId = hit?.pid || null;
+		if (!personId) heldBack = await matchExisting(tx, source, id, row, 'protected');
+	} else {
+		personId = (await matchExisting(tx, source, id, row))?.pid || null;
+	}
+	if (!personId) {
+		personId = await createPerson(tx, source, id, row, actorId);
+		if (heldBack) await queueMergeCandidate(tx, personId, heldBack.pid, heldBack.rule, source, actorId);
+	}
 	await setSourcePerson(tx, source, id, personId);
 	// nếu match vào person có sẵn thì bổ sung thông tin còn thiếu
 	await updatePerson(tx, source, personId, row, actorId);

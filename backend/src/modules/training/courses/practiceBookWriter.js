@@ -4,6 +4,7 @@ const { sql, withTransaction, nowSql, queryBatch } = require('../../../config/db
 const { genCourseEnrollmentId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { invalidate } = require('../../../utils/cache');
+const { httpError } = require('../../../utils/httpError');
 
 const ymd = (v) => (v ? String(v).slice(0, 10) : null);
 
@@ -115,15 +116,20 @@ const writeRecord = async (pool, it, traineeId, courseId, actorId) => {
         ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
 			).recordset[0]?.id;
 		if (found) {
-			await bind(found).query(`
+			// Không đổi chủ ghi danh: chứng chỉ, điểm, kết quả luân khoa gắn theo ghi danh nên chuyển
+			// trainee_id là chuyển cả giấy chứng nhận sang người khác (việc của courses:approve, không
+			// qua import). Chỉ cập nhật khi CCCD của dòng khớp đúng chủ ghi danh.
+			const r = await bind(found).query(`
       UPDATE course_enrollments
-      SET trainee_id = @trainee_id, program_id = COALESCE(@program_id, program_id),
+      SET program_id = COALESCE(@program_id, program_id),
           ${Object.keys(ENROLLMENT_FIELDS)
 						// Dòng chưa có mã / chưa có ngày: giữ giá trị đã tự điền lần trước
 						.map((f) => (KEEP_IF_BLANK.has(f) ? `${f} = COALESCE(@${f}, ${f})` : `${f} = @${f}`))
 						.join(', ')},
           updated_at = ${nowSql}, updated_by = @actor_id
-      WHERE id = @id`);
+      WHERE id = @id AND course_id = @course_id AND trainee_id = @trainee_id`);
+			if (!r.rowsAffected?.[0])
+				throw httpError(409, 'Mã thực hành thuộc học viên khác (CCCD không khớp) — bỏ qua hồ sơ');
 			return found;
 		}
 		const newId = await genCourseEnrollmentId(tx);

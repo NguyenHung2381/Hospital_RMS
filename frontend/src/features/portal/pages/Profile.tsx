@@ -548,12 +548,12 @@ export default function Profile() {
 											<label className={styles.formLabel}>
 												Nhập mật khẩu để tạo bộ mã khôi phục mới (bộ cũ sẽ mất hiệu lực)
 											</label>
-											<input
-												type='password'
+											<PasswordInput
 												className={styles.formInput}
 												placeholder='Mật khẩu hiện tại...'
+												autoComplete='current-password'
 												value={d.regenPwd}
-												onChange={(e) => d.setRegenPwd(e.target.value)}
+												onChange={d.setRegenPwd}
 											/>
 										</div>
 										{d.twoFaError && (
@@ -618,12 +618,12 @@ export default function Profile() {
 									<>
 										<div className={styles.formGroup}>
 											<label className={styles.formLabel}>Nhập mật khẩu để xác nhận</label>
-											<input
-												type='password'
+											<PasswordInput
 												className={styles.formInput}
 												placeholder='Mật khẩu hiện tại...'
+												autoComplete='current-password'
 												value={d.disablePwd}
-												onChange={(e) => d.setDisablePwd(e.target.value)}
+												onChange={d.setDisablePwd}
 											/>
 										</div>
 										<div className={styles.formGroup}>

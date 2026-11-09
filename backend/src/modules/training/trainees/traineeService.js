@@ -347,7 +347,11 @@ const listDocuments = async (traineeId) => {
 	return r.recordset;
 };
 
-const addDocument = async (traineeId, docType, file, actorId) => {
+// status: 'approved' chỉ dành cho nhân viên đã đăng nhập tải lên (mặc định giữ nguyên hành vi cũ);
+// mọi nguồn không xác thực (đăng ký công khai...) phải truyền 'pending' để chờ phòng Đào tạo duyệt.
+const DOC_STATUSES = ['approved', 'pending'];
+const addDocument = async (traineeId, docType, file, actorId, { status = 'approved' } = {}) => {
+	if (!DOC_STATUSES.includes(status)) throw new Error(`Trạng thái giấy tờ không hợp lệ: ${status}`);
 	const pool = await getPool();
 	const savedFile = await trainingFileService.saveUploadedFile(
 		'trainee_document',
@@ -361,10 +365,11 @@ const addDocument = async (traineeId, docType, file, actorId) => {
 		.input('trainee_id', sql.VarChar(20), traineeId)
 		.input('doc_type', sql.VarChar(30), docType || 'other')
 		.input('file_id', sql.VarChar(20), savedFile.id)
+		.input('status', sql.VarChar(10), status)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('new_id', sql.VarChar(20), newId).query(`
-      INSERT INTO trainee_documents (id, trainee_id, doc_type, file_id, created_by)
-      VALUES (@new_id, @trainee_id, @doc_type, @file_id, @actor_id);
+      INSERT INTO trainee_documents (id, trainee_id, doc_type, file_id, status, created_by)
+      VALUES (@new_id, @trainee_id, @doc_type, @file_id, @status, @actor_id);
     `);
 	broadcast('update', { entity: 'trainee_document' });
 	return { id: newId };

@@ -5,6 +5,15 @@ const { httpError } = require('../../utils/httpError');
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
 const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
 
+// Phạm vi 'department': cùng khoa VÀ cả hai bên đều có khoa. NULL === NULL không
+// phải "cùng khoa" (tài khoản chưa gán khoa / đề tài mồ côi khoa sau khi xóa khoa)
+// — fail closed, khớp với vị từ SQL `t.department_id = @actor_dept` của danh sách
+// (không bao giờ khớp NULL) và với privilegeGuard / userController ở module users.
+const inDepartmentScope = (topicDepartmentId, actor) =>
+	topicDepartmentId != null &&
+	actor?.department_id != null &&
+	topicDepartmentId === actor.department_id;
+
 // ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
 // authorizePermission ở route chỉ biết actor CÓ quyền topics:xxx, không biết
 // đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
@@ -28,7 +37,7 @@ const assertTopicInScope = async (topicId, actor) => {
 	).recordset[0];
 	if (!row) throw httpError(404, 'Đề tài không tồn tại.');
 	const allowed =
-		scope === 'department' ? row.department_id === actor.department_id : row.is_member === 1;
+		scope === 'department' ? inDepartmentScope(row.department_id, actor) : row.is_member === 1;
 	if (!allowed) {
 		throw httpError(403, 'Không có quyền thao tác trên đề tài này');
 	}
@@ -78,5 +87,6 @@ module.exports = {
 	assertTopicInScope,
 	idsInScope,
 	topicScope,
+	inDepartmentScope,
 	computeAllowedActions,
 };

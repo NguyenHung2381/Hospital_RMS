@@ -247,6 +247,68 @@ const applyOutcomeToEntity = async (resource, entityId, outcome, actorId) => {
 	await topicService.update(entityId, { status: outcome }, actorId, true);
 };
 
+// Người gọi được quyết định bước đang chờ khi: giữ workflows:manage, bước không
+// gán vai trò nào, hoặc đúng vai trò được phân công.
+const assertAssigned = (assigneeRoleId, actor) => {
+	// require trong hàm để tránh vòng lặp require ở đầu file (giống applyOutcomeToEntity)
+	const { hasPermission } = require('../../permissions/authz');
+	const authorized =
+		hasPermission(actor, 'workflows', 'manage') ||
+		!assigneeRoleId ||
+		assigneeRoleId === actor.role_id;
+	if (!authorized) {
+		throw httpError(403, 'Bạn không thuộc vai trò được phân công duyệt bước này.');
+	}
+};
+
+// Kiểm tra quyền quyết định (chỉ đọc, không tạo instance) cho quyết định đi NGOÀI
+// engine — hiện là 'supplement' (workflow_tasks không có trạng thái này nên
+// topicController.approve chuyển sang topicApprovalService): vẫn phải đúng người được
+// phân công bước hiện tại, nếu không mọi người có topics:approve đều đẩy được đề tài
+// ra khỏi quy trình. Không có định nghĩa active ⇒ không kiểm (đường duyệt cũ).
+const assertActorMayDecide = async (resource, entityId, actor) => {
+	const definition = await getActiveDefinition(resource);
+	if (!definition || !definition.steps.length) return;
+	const pool = await getPool();
+	const instRes = await pool
+		.request()
+		.input('definition_id', sql.VarChar(20), definition.id)
+		.input('entity_id', sql.VarChar(20), entityId)
+		.query(
+			'SELECT * FROM workflow_instances WHERE definition_id = @definition_id AND entity_id = @entity_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		);
+	const instance = instRes.recordset[0];
+	if (!instance) {
+		// Chưa có instance: bước đầu sẽ được tạo khi có người quyết định lần đầu
+		assertAssigned(definition.steps[0].approver_role_id, actor);
+		return;
+	}
+	if (instance.status !== 'in_progress') {
+		const { hasPermission } = require('../../permissions/authz');
+		if (hasPermission(actor, 'workflows', 'manage')) return;
+		throw httpError(409, 'Quy trình duyệt của đề tài đã kết thúc.');
+	}
+	const task = await getCurrentTask(instance.id);
+	if (!task) throw httpError(409, 'Không tìm thấy nhiệm vụ duyệt đang chờ.');
+	assertAssigned(task.assignee_role_id, actor);
+};
+
+// Đổi status đề tài bằng PUT /topics/:id (topicService.update) khi đang có quy trình
+// duyệt active sẽ bỏ qua bước/người được phân công. Chỉ người có workflows:manage (sửa
+// dữ liệu) được đổi thẳng; engine tự gọi update(..., true) nên không qua đây.
+// Trả true nếu status gửi lên trùng status hiện tại (form sửa luôn gửi kèm ⇒ bỏ qua
+// trường này), false nếu không cần chặn; ném 409 nếu là thay đổi thật bị cấm.
+const guardDirectStatusWrite = async (actor, newStatus, currentStatus) => {
+	const { hasPermission } = require('../../permissions/authz');
+	if (newStatus === undefined || hasPermission(actor, 'workflows', 'manage')) return false;
+	if (!(await hasActiveDefinition('topics'))) return false;
+	if (newStatus === currentStatus) return true;
+	throw httpError(
+		409,
+		'Đề tài đang áp dụng quy trình duyệt nhiều bước — dùng chức năng Phê duyệt để đổi trạng thái.',
+	);
+};
+
 // decision: 'approved' | 'rejected'. Trả về trạng thái mới nhất của instance.
 const advance = async (resource, entityId, decision, actor, comment) => {
 	if (!['approved', 'rejected'].includes(decision)) {
@@ -273,14 +335,7 @@ const advance = async (resource, entityId, decision, actor, comment) => {
 		throw httpError(409, 'Không tìm thấy nhiệm vụ duyệt đang chờ.');
 	}
 
-	const { hasPermission } = require('../../permissions/authz');
-	const authorized =
-		hasPermission(actor, 'workflows', 'manage') ||
-		!task.assignee_role_id ||
-		task.assignee_role_id === actor.role_id;
-	if (!authorized) {
-		throw httpError(403, 'Bạn không thuộc vai trò được phân công duyệt bước này.');
-	}
+	assertAssigned(task.assignee_role_id, actor);
 
 	// Chỉ ghi quyết định khi bước vẫn đang chờ — 2 người bấm duyệt cùng lúc thì
 	// người sau nhận 409, không đẩy quy trình đi thêm 1 bước ngoài ý muốn.
@@ -406,5 +461,7 @@ module.exports = {
 	updateDefinition,
 	removeDefinition,
 	advance,
+	assertActorMayDecide,
+	guardDirectStatusWrite,
 	getStatusForEntity,
 };

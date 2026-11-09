@@ -355,7 +355,7 @@ const normalizeCreditsByRole = (raw) => {
 };
 
 const importExcel = async (
-	{ buffer, seminar_id, dry_run, issue_cme, credits_by_role },
+	{ buffer, seminar_id, dry_run, issue_cme, credits_by_role, canCme = false },
 	actorId,
 ) => {
 	const pool = await getPool();
@@ -390,8 +390,12 @@ const importExcel = async (
 		}
 	}
 
-	const wantCme = !!issue_cme && !!seminar.grants_cme;
-	if (issue_cme && !seminar.grants_cme) {
+	// Cấp số CME (cme_year/cme_seq) chỉ cho actor có seminars:cme_manage — người chỉ có
+	// seminars:import vẫn nhập được danh sách nhưng không tự cấp số được (M-04).
+	const wantCme = !!issue_cme && !!canCme && !!seminar.grants_cme;
+	if (issue_cme && !canCme) {
+		warnings.push('Bạn không có quyền cấp số CME — đã nhập người nhưng bỏ qua yêu cầu cấp số.');
+	} else if (issue_cme && !seminar.grants_cme) {
 		warnings.push('Hội thảo này không cấp CME — bỏ qua yêu cầu cấp số CME.');
 	}
 	if (wantCme && !seminar.event_year) {

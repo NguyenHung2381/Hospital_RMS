@@ -344,6 +344,13 @@ const update = async (id, data, actorId) => {
 	if (data.is_active !== undefined) {
 		sets.push('is_active = @is_active');
 		req.input('is_active', sql.Bit, data.is_active);
+		// L-08 (audit run-4): ghi lý do khóa để luồng cấp tài khoản thành viên đề tài
+		// (topicMemberService.grantAccounts) chỉ mở lại khóa do job hết hạn ('expired').
+		// Quản trị mở → NULL; quản trị khóa tay → 'admin' (không bao giờ được mở lại tự động).
+		// Cùng quy tắc truthy với tham số Bit trong config/pgParams.js.
+		const on = [true, 1, '1', 'true'].includes(data.is_active);
+		sets.push('deactivated_reason = @deactivated_reason');
+		req.input('deactivated_reason', sql.VarChar(20), on ? null : 'admin');
 	}
 	if (data.can_sit_council !== undefined) {
 		sets.push('can_sit_council = @can_sit_council');

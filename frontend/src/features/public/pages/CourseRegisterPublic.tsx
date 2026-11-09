@@ -102,8 +102,6 @@ interface Done {
 	program: string | null;
 	start: string | null;
 	hasLookup: boolean;
-	/** Có đính kèm nhưng hồ sơ cũ chưa đối chiếu được chủ hồ sơ — giấy tờ không được lưu */
-	documentsSkipped: boolean;
 }
 
 export default function CourseRegisterPublic() {
@@ -237,7 +235,8 @@ export default function CourseRegisterPublic() {
 
 		setSubmitting(true);
 		try {
-			const res = await registerCourse(
+			// Server trả cùng 1 phản hồi cố định cho mọi trường hợp (không lộ CCCD đã có hồ sơ hay chưa)
+			await registerCourse(
 				{
 					...form,
 					course_id: courseId,
@@ -254,7 +253,6 @@ export default function CourseRegisterPublic() {
 				program: program?.name ?? null,
 				start: course.start_date,
 				hasLookup: !!form.national_id.trim() && !!form.dob,
-				documentsSkipped: !!res?.documents_skipped,
 			});
 			setForm(EMPTY_FORM);
 			setCustomState({});
@@ -318,12 +316,6 @@ export default function CourseRegisterPublic() {
 							? 'Bạn có thể theo dõi kết quả duyệt bằng họ tên, số CCCD/CMND và ngày sinh vừa nhập.'
 							: 'Bạn chưa nhập CCCD/CMND nên không tra cứu trực tuyến được — vui lòng chờ Phòng Đào tạo liên hệ.'}
 					</p>
-					{done.documentsSkipped && (
-						<p className={s.doneText}>
-							Hồ sơ giấy tờ đính kèm chưa được lưu (cần đối chiếu với hồ sơ học viên đã có) — vui lòng nộp
-							trực tiếp tại Phòng Đào tạo.
-						</p>
-					)}
 					<div className={s.doneActions}>
 						<button
 							type='button'

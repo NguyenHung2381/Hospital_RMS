@@ -235,7 +235,7 @@ const lockAccountOf = async (traineeId, actorId) => {
 				.request()
 				.input('uid', sql.VarChar(20), uid)
 				.input('actor_id', sql.VarChar(20), actorId).query(`
-          UPDATE users SET is_active = 'false', updated_at = ${nowSql}, updated_by = @actor_id
+          UPDATE users SET is_active = 'false', deactivated_reason = 'admin', updated_at = ${nowSql}, updated_by = @actor_id
           WHERE id = @uid AND is_active = 'true'`);
 		}
 		return uid;
@@ -264,8 +264,10 @@ const setAccountActive = async (traineeId, isActive, actorId) => {
 			.request()
 			.input('id', sql.VarChar(20), userId)
 			.input('is_active', sql.Bit, !!isActive)
+			// L-08: khóa tay ⇒ 'admin', mở ⇒ NULL — chỉ 'expired' (job) được mở lại tự động
+			.input('deactivated_reason', sql.VarChar(20), isActive ? null : 'admin')
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-      UPDATE users SET is_active = @is_active, updated_at = ${nowSql}, updated_by = @actor_id
+      UPDATE users SET is_active = @is_active, deactivated_reason = @deactivated_reason, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE id = @id
     `),
 	);

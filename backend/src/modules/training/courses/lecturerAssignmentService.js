@@ -111,7 +111,9 @@ const resolveLecturerId = async (id, actorId) => {
 };
 
 // Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
-// người đang đăng ký học chính khóa này (khớp theo hồ sơ người / tài khoản).
+// người đang học chính khóa này (khớp theo hồ sơ người / tài khoản). Chỉ tính ghi
+// danh đã được duyệt / danh sách chờ — đăng ký 'pending' từ cổng công khai (ẩn danh)
+// chưa ai xác minh nên không được chặn việc phân công giảng viên.
 const assertAssignable = async (request, courseId, lecturerId) => {
 	const check = await request
 		.input('course_id', sql.VarChar(20), courseId)
@@ -119,7 +121,7 @@ const assertAssignable = async (request, courseId, lecturerId) => {
       SELECT l.full_name, l.is_active, u.role_id,
              (SELECT COUNT(*) FROM course_enrollments e
               JOIN trainees t ON t.id = e.trainee_id
-              WHERE e.course_id = @course_id AND e.status <> 'rejected'
+              WHERE e.course_id = @course_id AND e.status IN ('approved', 'waitlisted')
                 AND ((l.person_id IS NOT NULL AND t.person_id = l.person_id)
                   OR (l.user_id IS NOT NULL AND t.staff_user_id = l.user_id))) AS enrolled
       FROM lecturers l
@@ -163,17 +165,52 @@ const insertAssignment = async (
 		],
 	);
 
-const toHours = (v) => {
+// maxHours (nếu có): trần số tiết — giờ giảng là cơ sở tính tín chỉ CME tự động nên không được
+// vượt số tiết của bài / chương trình. clamp=true: cắt xuống trần thay vì báo lỗi (đồng bộ nền).
+const toHours = (v, maxHours = null, clamp = false) => {
 	if (v === undefined || v === null || v === '') return null;
 	const n = Number(v);
 	if (!Number.isInteger(n) || n < 0) throw httpError(400, 'Số tiết phải là số nguyên không âm.');
+	if (maxHours !== null && n > maxHours) {
+		if (clamp) return maxHours;
+		throw httpError(
+			400,
+			`Số tiết không được vượt quá ${maxHours} tiết (số tiết của bài học / chương trình).`,
+		);
+	}
 	return n;
+};
+
+const hasValue = (v) => v !== undefined && v !== null && v !== '';
+
+// Số tiết LT + TH của 1 bài học (chưa khai ⇒ 0) — khớp cách courseCmeService tính số tiết bài.
+const lessonHoursOf = async (req, lessonId) => {
+	const r = await req.input('lesson_id', sql.VarChar(20), lessonId).query(`
+    SELECT COALESCE(theory_hours, 0) + COALESCE(practice_hours, 0) AS max_hours
+    FROM program_lessons WHERE id = @lesson_id`);
+	return Number(r.recordset[0]?.max_hours ?? 0);
+};
+
+// Phân công cả khóa (không gắn bài): trần = tổng số tiết LT + TH các chương trình của khóa.
+const courseHoursOf = async (req, courseId) => {
+	const r = await req.input('course_id', sql.VarChar(20), courseId).query(`
+    SELECT COALESCE(SUM(COALESCE(tp.theory_hours, 0) + COALESCE(tp.practice_hours, 0)), 0) AS max_hours
+    FROM course_programs cp JOIN training_programs tp ON tp.id = cp.program_id
+    WHERE cp.course_id = @course_id`);
+	return Number(r.recordset[0]?.max_hours ?? 0);
 };
 
 const assignLecturer = async (courseId, data, actorId) => {
 	const lecturerId = await resolveLecturerId(data.lecturer_id, actorId);
 	const pool = await getPool();
 	await assertAssignable(pool.request(), courseId, lecturerId);
+	// Chỉ truy vấn trần khi có nhập số tiết
+	let maxHours = null;
+	if (hasValue(data.hours)) {
+		maxHours = data.subject_id
+			? await lessonHoursOf(pool.request(), data.subject_id)
+			: await courseHoursOf(pool.request(), courseId);
+	}
 	try {
 		const result = await withTransaction((tx) =>
 			insertAssignment(tx, {
@@ -181,7 +218,7 @@ const assignLecturer = async (courseId, data, actorId) => {
 				lecturerId,
 				subjectId: data.subject_id,
 				role: data.role,
-				hours: toHours(data.hours),
+				hours: toHours(data.hours, maxHours),
 				note: data.note,
 				actorId,
 			}),
@@ -201,13 +238,25 @@ const assignLecturer = async (courseId, data, actorId) => {
  * data = { main: { lecturer_id, hours } | null, assistants: [{ lecturer_id, hours }] }.
  * GV bị bỏ khỏi bài thì xóa phân công; GV giữ lại thì giữ nguyên mã phân công.
  */
-const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
+const setLessonLecturers = async (
+	courseId,
+	lessonId,
+	data,
+	actorId,
+	{ clampHours = false } = {},
+) => {
+	const pool = await getPool();
+	// Trần số tiết mỗi GV = số tiết LT + TH của bài (chỉ truy vấn khi có nhập số tiết)
+	const anyHours = [...(data.assistants || []), data.main].some(
+		(a) => a?.lecturer_id && hasValue(a.hours),
+	);
+	const maxHours = anyHours ? await lessonHoursOf(pool.request(), lessonId) : null;
 	const wanted = new Map();
 	for (const a of data.assistants || []) {
 		if (a?.lecturer_id) {
 			wanted.set(await resolveLecturerId(a.lecturer_id, actorId), {
 				role: 'assistant',
-				hours: toHours(a.hours),
+				hours: toHours(a.hours, maxHours, clampHours),
 			});
 		}
 	}
@@ -215,11 +264,10 @@ const setLessonLecturers = async (courseId, lessonId, data, actorId) => {
 	if (data.main?.lecturer_id) {
 		wanted.set(await resolveLecturerId(data.main.lecturer_id, actorId), {
 			role: 'main',
-			hours: toHours(data.main.hours),
+			hours: toHours(data.main.hours, maxHours, clampHours),
 		});
 	}
 
-	const pool = await getPool();
 	const inCourse = await pool
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
@@ -342,7 +390,9 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
 				rows,
 				new Map(existing.map((x) => [x.lecturer_id, x.hours])),
 			);
-			if (data && inCourse.length) await setLessonLecturers(courseId, lessonId, data, actorId);
+			// Số tiết đã lưu có thể vượt trần nếu bài vừa bị giảm số tiết ⇒ cắt xuống thay vì làm hỏng đồng bộ
+			if (data && inCourse.length)
+				await setLessonLecturers(courseId, lessonId, data, actorId, { clampHours: true });
 		} catch (err) {
 			logger.error(`[lecturer-assignment] đồng bộ GV bài ${lessonId}: ${err.message}`);
 		}

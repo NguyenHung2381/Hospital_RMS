@@ -214,6 +214,15 @@ const importExcel = async ({ buffer, dry_run, defaults }, actorId) => {
 	const created_staff = [];
 	const failedStaff = new Set();
 	for (const st of newStaff.values()) {
+		// Chốt chặn thứ hai cho phạm vi users:create trong khoa (preview đã ghim khoa):
+		// không tạo tài khoản ngoài khoa người nhập, kể cả khi thiếu khoa.
+		if (defaults.force_department_id && st.department_id !== defaults.force_department_id) {
+			failedStaff.add(st.staff_number);
+			warnings.push(
+				`Không tạo được nhân viên ${st.full_name} (Mã NV ${st.staff_number}): chỉ tạo được nhân viên trong khoa/phòng của bạn — bỏ qua các dòng của người này.`,
+			);
+			continue;
+		}
 		try {
 			const u = await userService.createStaffAccount(st, actorId);
 			st.user_id = u.id;

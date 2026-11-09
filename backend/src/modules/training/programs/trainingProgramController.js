@@ -1,5 +1,6 @@
 const trainingProgramService = require('./trainingProgramService');
 const programCatalogImportService = require('./programCatalogImportService');
+const { hasPermission } = require('../../../permissions/authz');
 const { success, created, notFound } = require('../../../utils/response');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { asyncHandler } = require('../../../utils/asyncHandler');
@@ -58,6 +59,8 @@ const importCatalog = asyncHandler(async (req, res) => {
 		{
 			buffer: req.file.buffer,
 			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			// Route chỉ yêu cầu quyền tạo; ghi đè chương trình/vòng đã có cần thêm quyền sửa.
+			canUpdate: hasPermission(req.user, 'training_programs', 'update'),
 		},
 		req.user.id,
 	);
@@ -187,7 +190,7 @@ const incrementLessonDocumentDownload = asyncHandler(async (req, res) => {
 });
 
 const listProgramResults = asyncHandler(async (req, res) => {
-	return success(res, await trainingProgramService.listProgramResults(req.params.id));
+	return success(res, await trainingProgramService.listProgramResults(req.params.id, req.user));
 });
 
 module.exports = {

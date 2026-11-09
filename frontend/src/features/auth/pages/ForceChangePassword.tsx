@@ -13,6 +13,7 @@ import {
 import { logout } from '../api/authApi';
 import { userMessage } from '../../../shared/api/http';
 import styles from './Login.module.css';
+import { AuthPasswordInput } from '../components/AuthPasswordInput';
 import { AlertSvg, LockSvg } from '@/assets/icons';
 
 type Field = 'oldPwd' | 'newPwd' | 'confirmPwd';
@@ -97,10 +98,8 @@ export default function ForceChangePassword() {
 								<span className={styles.inputIcon}>
 									<LockSvg width={16} height={16} />
 								</span>
-								<input
+								<AuthPasswordInput
 									id={key}
-									type='password'
-									className={styles.inputField}
 									value={form[key]}
 									onChange={set(key)}
 									autoComplete={autoComplete}

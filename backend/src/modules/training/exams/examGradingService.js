@@ -153,7 +153,8 @@ const pushExamScore = async (attemptId, actorId) => {
 };
 
 // ─── GV chấm bài được phân (cổng /me, không cần quyền exams:manage) ──────────
-const { PAPER_GRADER_SQL } = gradebookService;
+// Người chấm không chấm được bài của chính mình (SELF_ENROLLMENT_SQL).
+const { PAPER_GRADER_SQL, SELF_ENROLLMENT_SQL } = gradebookService;
 
 // Bài tự luận còn câu chưa chấm, thuộc đề mình là người chấm.
 const listPendingForGrader = async (userId) => {
@@ -169,6 +170,7 @@ const listPendingForGrader = async (userId) => {
     JOIN course_enrollments e ON e.id = a.enrollment_id
     JOIN trainees t ON t.id = e.trainee_id
     WHERE a.status = 'submitted' AND ${PAPER_GRADER_SQL('p')}
+      AND NOT ${SELF_ENROLLMENT_SQL('a.enrollment_id')}
     ORDER BY a.submitted_at
   `);
 	return r.recordset;
@@ -183,6 +185,7 @@ const assertGrader = async (attemptId, userId) => {
 			.input('uid', sql.VarChar(20), userId).query(`
       SELECT p.blind_grading FROM exam_attempts a JOIN exam_papers p ON p.id = a.paper_id
       WHERE a.id = @id AND ${PAPER_GRADER_SQL('p')}
+        AND NOT ${SELF_ENROLLMENT_SQL('a.enrollment_id')}
     `)
 	).recordset[0];
 	if (!ok) throw httpError(403, 'Bạn không phải người chấm của bài thi này.');

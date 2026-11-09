@@ -5,6 +5,7 @@ import { checkPassword, PASSWORD_HINT } from '../../../shared/utils/password';
 import { forgotPasswordApi, resetPasswordApi } from '../api/authApi';
 import { userMessage } from '../../../shared/api/http';
 import styles from './Login.module.css';
+import { AuthPasswordInput } from '../components/AuthPasswordInput';
 import { AlertSvg } from '@/assets/icons';
 
 // Bước 1: nhập tên đăng nhập hoặc email → server gửi OTP tới email của tài khoản.
@@ -55,21 +56,33 @@ export default function ForgotPassword() {
 		});
 	};
 
-	const input = (id: string, label: string, value: string, set: (v: string) => void, extra = {}) => (
-		<div className={styles.inputGroup}>
-			<label htmlFor={id} className={styles.inputLabel}>{label}</label>
-			<div className={styles.inputWrapper}>
-				<input
-					id={id}
-					className={styles.inputField}
-					value={value}
-					onChange={(e) => { set(e.target.value); setError(null); }}
-					disabled={busy}
-					{...extra}
-				/>
+	const input = (
+		id: string,
+		label: string,
+		value: string,
+		set: (v: string) => void,
+		{ password, ...extra }: React.InputHTMLAttributes<HTMLInputElement> & { password?: boolean } = {},
+	) => {
+		const common = {
+			id,
+			value,
+			onChange: (e: React.ChangeEvent<HTMLInputElement>) => { set(e.target.value); setError(null); },
+			disabled: busy,
+			...extra,
+		};
+		return (
+			<div className={styles.inputGroup}>
+				<label htmlFor={id} className={styles.inputLabel}>{label}</label>
+				<div className={styles.inputWrapper}>
+					{password ? (
+						<AuthPasswordInput {...common} />
+					) : (
+						<input className={styles.inputField} {...common} />
+					)}
+				</div>
 			</div>
-		</div>
-	);
+		);
+	};
 
 	return (
 		<AuthLayout>
@@ -95,8 +108,8 @@ export default function ForgotPassword() {
 					) : (
 						<>
 							{input('otp', 'Mã OTP (6 số)', code, setCode, { inputMode: 'numeric', maxLength: 6, autoComplete: 'one-time-code', autoFocus: true })}
-							{input('pwd', 'Mật khẩu mới', pwd, setPwd, { type: 'password', autoComplete: 'new-password' })}
-							{input('confirm', 'Nhập lại mật khẩu mới', confirm, setConfirm, { type: 'password', autoComplete: 'new-password' })}
+							{input('pwd', 'Mật khẩu mới', pwd, setPwd, { password: true, autoComplete: 'new-password' })}
+							{input('confirm', 'Nhập lại mật khẩu mới', confirm, setConfirm, { password: true, autoComplete: 'new-password' })}
 							<p className={styles.loginSubtitle} style={{ margin: 0 }}>{PASSWORD_HINT}; không chứa tên đăng nhập.</p>
 						</>
 					)}

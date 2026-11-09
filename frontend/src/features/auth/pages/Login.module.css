@@ -227,6 +227,11 @@
 }
 
 /* === PASSWORD TOGGLE === */
+/* Chừa chỗ bên phải cho nút ẩn/hiện để chữ không chui dưới nút */
+.inputField.withToggle {
+	padding-right: calc(var(--space-3) + 18px + var(--space-4));
+}
+
 .passwordToggle {
 	position: absolute;
 	right: var(--space-3);

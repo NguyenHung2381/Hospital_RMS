@@ -5,6 +5,7 @@ const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
 const cmeUserService = require('./cmeUserService');
 const { success, created, notFound } = require('../../utils/response');
 const { hasPermission } = require('../../permissions/authz');
+const { departmentLimit } = require('../../permissions/actionScope');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
 const getAll = asyncHandler(async (req, res) => {
@@ -50,17 +51,25 @@ const addEvidence = asyncHandler(async (req, res) => {
 	return success(res, await cmeRecordService.addEvidence(req.params.id, req.file, req.user.id));
 });
 
+const NO_DEPT_MSG = 'Tài khoản của bạn chưa thuộc khoa/phòng nào nên không tạo được nhân viên mới.';
+
 // POST /cme-records/staff — nút "Thêm NV" trong hộp thoại nhập: tạo tài khoản
-// người dùng ⇒ ngoài cme_records:manage (route) cần thêm users:create.
+// người dùng ⇒ ngoài cme_records:manage (route) cần thêm users:create, và theo
+// đúng phạm vi của users:create như POST /users: phạm vi trong khoa thì nhân
+// viên mới luôn vào khoa của người tạo (bỏ department_id gửi lên).
 const createStaff = asyncHandler(async (req, res) => {
 	if (!hasPermission(req.user, 'users', 'create')) {
 		return res
 			.status(403)
 			.json({ success: false, message: 'Cần quyền "Thêm người dùng" để thêm nhân viên mới.' });
 	}
+	const body = { ...(req.body || {}) };
+	const limit = departmentLimit(req.user, 'users', 'create');
+	if (limit === false) return res.status(403).json({ success: false, message: NO_DEPT_MSG });
+	if (limit) body.department_id = limit;
 	return created(
 		res,
-		await cmeRecordImportService.createMissingStaff(req.body || {}, req.user.id),
+		await cmeRecordImportService.createMissingStaff(body, req.user.id),
 		'Đã thêm nhân viên',
 	);
 });
@@ -94,6 +103,13 @@ const importExcel = asyncHandler(async (req, res) => {
 			message: 'Cần quyền "Thêm người dùng" để tạo nhân viên mới khi nhập.',
 		});
 	}
+	// Phạm vi users:create trong khoa ⇒ nhân viên mới tạo khi nhập luôn vào khoa
+	// người nhập — ghi đè mọi nguồn khoa khác (staff_departments, cột Khoa/Phòng
+	// trong file, dữ liệu đã biết, new_department_id).
+	const staffDeptLimit = canCreateStaff ? departmentLimit(req.user, 'users', 'create') : null;
+	if (createMissing && staffDeptLimit === false) {
+		return res.status(403).json({ success: false, message: NO_DEPT_MSG });
+	}
 	const out = await cmeRecordImportService.importExcel(
 		{
 			buffer: req.file.buffer,
@@ -114,6 +130,7 @@ const importExcel = asyncHandler(async (req, res) => {
 				staff_departments: parseStaffMap(req.body.staff_departments),
 				staff_names: parseStaffMap(req.body.staff_names),
 				can_create_staff: canCreateStaff,
+				force_department_id: staffDeptLimit || null,
 				// Người nhập đã xác nhận nhập cả dòng trùng ghi nhận đã có / dòng khác trong file
 				include_duplicates:
 					req.body.include_duplicates === '1' || req.body.include_duplicates === 'true',

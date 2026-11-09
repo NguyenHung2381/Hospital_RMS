@@ -3,7 +3,8 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const { success, created, notFound, forbidden, sendWorkbook } = require('../../utils/response');
 const { buildUserListWorkbook } = require('./exports/userListWorkbook');
 const { createCrudController } = require('../../shared/crudController');
-const { scopeOf, hasPermission } = require('../../permissions/authz');
+const { hasPermission } = require('../../permissions/authz');
+const { departmentLimit } = require('../../permissions/actionScope');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { httpError } = require('../../utils/httpError');
 const { ROLE, roleIdOf } = require('../access/roleCodes');
@@ -15,20 +16,20 @@ const {
 
 const base = createCrudController(userService);
 
-// Chỉ được xem/sửa tài khoản ngoài khoa khi quyền users có phạm vi 'all' (hoặc
-// superuser). Mọi vai trò khác bị giới hạn trong khoa của mình.
-const isDeptScoped = (actor) => scopeOf(actor, 'users') !== 'all';
+// Chỉ được xem/sửa tài khoản ngoài khoa khi quyền users CỦA ĐÚNG THAO TÁC có
+// phạm vi 'all' (hoặc superuser): xem / xuất theo users:read, tạo theo
+// users:create, sửa / reset mật khẩu theo users:update, xóa theo users:delete.
+// userDeptLimit: null = mọi khoa; 'K…' = chỉ khoa đó; false = bị giới hạn theo
+// khoa mà tài khoản chưa có khoa ⇒ không thấy / không làm được gì (fail-closed).
+const userDeptLimit = (actor, action = 'read') => departmentLimit(actor, 'users', action);
+
+const EMPTY_PAGE = { data: [], pagination: { page: 1, limit: 0, total: 0 } };
 
 const getAll = asyncHandler(async (req, res) => {
-	const actor = req.user;
+	const limit = userDeptLimit(req.user);
+	if (limit === false) return success(res, EMPTY_PAGE);
 	const query = { ...req.query };
-	if (isDeptScoped(actor)) {
-		// Bị giới hạn theo khoa mà tài khoản chưa có khoa ⇒ không thấy ai (không để
-		// department_id = NULL thành "không lọc" = mọi khoa).
-		if (!actor.department_id)
-			return success(res, { data: [], pagination: { page: 1, limit: 0, total: 0 } });
-		query.department_id = actor.department_id;
-	}
+	if (limit) query.department_id = limit;
 	const result = await userService.getAll(query);
 	return success(res, result);
 });
@@ -47,11 +48,8 @@ const getById = asyncHandler(async (req, res) => {
 	}
 	const item = await userService.getById(req.params.id);
 	if (!item) return notFound(res);
-	if (
-		!isSelf &&
-		isDeptScoped(actor) &&
-		(!actor.department_id || item.department_id !== actor.department_id)
-	) {
+	const limit = userDeptLimit(actor);
+	if (!isSelf && limit !== null && item.department_id !== limit) {
 		return forbidden(res, 'Bạn không có quyền xem tài khoản ngoài khoa của mình');
 	}
 	return success(res, item);
@@ -66,7 +64,10 @@ const createOne = asyncHandler(async (req, res) => {
 		delete data.can_sit_council;
 		delete data.can_chair_council;
 	}
-	if (isDeptScoped(actor)) data.department_id = actor.department_id;
+	// Theo phạm vi của users:create (không phải users:read)
+	const limit = userDeptLimit(actor, 'create');
+	if (limit === false) return forbidden(res, 'Tài khoản của bạn chưa thuộc khoa/phòng nào');
+	if (limit) data.department_id = limit;
 	if (data.role_id) await assertCanAssignRole(actor, data.role_id);
 	const item = await userService.create(data, actor.id);
 	return created(res, item);
@@ -78,18 +79,18 @@ const createOne = asyncHandler(async (req, res) => {
 const TRAINEE_ACCOUNT_MSG =
 	'Tài khoản học viên được quản lý tại hồ sơ học viên (Đào tạo → Học viên → Tài khoản).';
 
-// Nạp tài khoản đích + kiểm tra actor được phép thao tác trên nó.
-const loadManageableTarget = async (actor, id) => {
+// Nạp tài khoản đích + kiểm tra actor được phép làm `action` ('update' | 'delete') trên nó.
+const loadManageableTarget = async (actor, id, action) => {
 	const target = await userService.getById(id);
 	if (!target) return null;
 	if (target.role_code === ROLE.TRAINEE) throw httpError(403, TRAINEE_ACCOUNT_MSG);
-	await assertCanManageUser(actor, target);
+	await assertCanManageUser(actor, target, action);
 	return target;
 };
 
 const updateOne = asyncHandler(async (req, res) => {
 	const actor = req.user;
-	const target = await loadManageableTarget(actor, req.params.id);
+	const target = await loadManageableTarget(actor, req.params.id, 'update');
 	if (!target) return notFound(res);
 	const data = { ...req.body };
 	if (!isSuperuser(actor)) {
@@ -99,7 +100,7 @@ const updateOne = asyncHandler(async (req, res) => {
 	// phạm vi dữ liệu theo khoa sẽ nhìn thấy dữ liệu của khoa mới — tức là
 	// quản lý khoa A tự mở quyền xem khoa B cho người của mình.
 	if (
-		isDeptScoped(actor) &&
+		userDeptLimit(actor, 'update') !== null &&
 		data.department_id !== undefined &&
 		data.department_id !== actor.department_id
 	) {
@@ -115,14 +116,14 @@ const removeOne = asyncHandler(async (req, res) => {
 	if (req.params.id === actor.id) {
 		return forbidden(res, 'Không thể tự xóa tài khoản của chính mình');
 	}
-	const target = await loadManageableTarget(actor, req.params.id);
+	const target = await loadManageableTarget(actor, req.params.id, 'delete');
 	if (!target) return notFound(res);
 	await userService.remove(req.params.id, actor.id);
 	return success(res, null, 'Xóa thành công');
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-	const target = await loadManageableTarget(req.user, req.params.id);
+	const target = await loadManageableTarget(req.user, req.params.id, 'update');
 	if (!target) return notFound(res);
 	const data = await userService.resetPassword(
 		req.params.id,
@@ -186,13 +187,16 @@ const searchMembers = asyncHandler(async (req, res) => {
 	return success(res, result);
 });
 
-// Xuất Excel đúng tập đang lọc trên trang (mọi trang), cùng giới hạn khoa như getAll.
+// Xuất Excel đúng tập đang lọc trên trang (mọi trang), cùng giới hạn khoa như getAll
+// (kể cả bị giới hạn theo khoa mà chưa có khoa ⇒ file rỗng, không phải cả viện).
 const exportExcel = asyncHandler(async (req, res) => {
-	const actor = req.user;
+	const limit = userDeptLimit(req.user);
+	if (limit === false)
+		return sendWorkbook(res, buildUserListWorkbook([]), 'danh-sach-nguoi-dung.xlsx');
 	const { search, department_id, role_id } = req.body || {};
 	const { data } = await userService.getAll({
 		search,
-		department_id: isDeptScoped(actor) ? actor.department_id : department_id,
+		department_id: limit ?? department_id,
 		role_id,
 		page: 1,
 		limit: 0,

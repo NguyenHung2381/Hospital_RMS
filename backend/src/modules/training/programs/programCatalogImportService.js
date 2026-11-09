@@ -299,6 +299,33 @@ const PROGRAM_WRITE_FIELDS = [
 	'duration_unit',
 ];
 
+// Không có quyền sửa (training_programs:update): chỉ được TẠO MỚI. Mã đã có (chương trình
+// hoặc vòng) bị đánh dấu 'skipped' kèm cảnh báo; vòng gắn vào chương trình đã có cũng bỏ qua,
+// vì thêm liên kết là sửa cấu trúc chương trình đó. Đánh dấu ở đây để bản xem trước (dry-run)
+// và lúc ghi dùng chung một quyết định.
+const markCreateOnlySkips = (preview, lookups) => {
+	for (const p of preview.programItems) {
+		if (p.status !== 'update') continue;
+		p.status = 'skipped';
+		preview.warnings.push(
+			`Chương trình ${p.code} đã tồn tại — cần quyền sửa chương trình đào tạo để cập nhật, bỏ qua.`,
+		);
+	}
+	for (const l of preview.lessonItems) {
+		if (l.status === 'update') {
+			l.status = 'skipped';
+			preview.warnings.push(
+				`Vòng ${l.code} đã tồn tại — cần quyền sửa chương trình đào tạo để cập nhật, bỏ qua.`,
+			);
+		} else if (lookups.programByCode.has(l.program_code)) {
+			l.status = 'skipped';
+			preview.warnings.push(
+				`Vòng ${l.code} thuộc chương trình ${l.program_code} đã tồn tại — cần quyền sửa chương trình đào tạo để thêm vòng, bỏ qua.`,
+			);
+		}
+	}
+};
+
 const commit = async ({ programItems, lessonItems }, lookups, actorId) => {
 	const counts = {
 		programs_created: 0,
@@ -310,6 +337,7 @@ const commit = async ({ programItems, lessonItems }, lookups, actorId) => {
 	const programIdByCode = new Map(lookups.programByCode);
 
 	for (const [order, p] of programItems.entries()) {
+		if (p.status === 'skipped') continue;
 		const data = pickFilled(p, PROGRAM_WRITE_FIELDS);
 		const existingId = programIdByCode.get(p.code);
 		if (existingId) {
@@ -324,6 +352,7 @@ const commit = async ({ programItems, lessonItems }, lookups, actorId) => {
 
 	const orderByProgram = new Map();
 	for (const l of lessonItems) {
+		if (l.status === 'skipped') continue;
 		const programId = programIdByCode.get(l.program_code);
 		if (!programId) continue;
 		const data = {
@@ -355,7 +384,9 @@ const commit = async ({ programItems, lessonItems }, lookups, actorId) => {
 	return counts;
 };
 
-const importExcel = async ({ buffer, dry_run }, actorId) => {
+// canUpdate = actor có training_programs:update (controller truyền vào). Mặc định false:
+// thiếu cờ thì coi như chỉ được tạo mới — an toàn hơn là ghi đè.
+const importExcel = async ({ buffer, dry_run, canUpdate = false }, actorId) => {
 	const parsed = await parseWorkbook(buffer);
 	if (!parsed.programs.length) throw badRequest('File không có dòng chương trình nào.');
 	const lookups = await loadLookups();
@@ -364,12 +395,15 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 		preview.warnings.push(
 			'Không thấy sheet vòng thực hành (cột "Mã", "Nội dung", "Thời gian") — chỉ nhập chương trình.',
 		);
+	if (!canUpdate) markCreateOnlySkips(preview, lookups);
 
 	const summary = {
 		programs_total: preview.programItems.length,
 		programs_new: preview.programItems.filter((p) => p.status === 'new').length,
+		programs_skipped: preview.programItems.filter((p) => p.status === 'skipped').length,
 		lessons_total: preview.lessonItems.length,
 		lessons_new: preview.lessonItems.filter((l) => l.status === 'new').length,
+		lessons_skipped: preview.lessonItems.filter((l) => l.status === 'skipped').length,
 	};
 	if (dry_run) {
 		return {

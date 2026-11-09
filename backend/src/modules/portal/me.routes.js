@@ -2,6 +2,7 @@ const router = require('express').Router();
 const portalService = require('./portalService');
 const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate } = require('../../middlewares/auth');
+const { requireModule } = require('../../middlewares/moduleGuard');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { body, param, query } = require('express-validator');
@@ -12,6 +13,12 @@ const classSessionService = require('../training/courses/classSessionService');
 const traineeRecordService = require('../training/trainees/traineeRecordService');
 
 router.use(authenticate);
+
+// Tự phục vụ theo module: tắt module thì mọi route của module đó (kể cả đăng ký khóa học
+// và khai CME tự phục vụ) trả 403 MODULE_DISABLED. Gắn theo tiền tố đường dẫn để không
+// route nào sót — riêng điểm danh (ATTENDANCE) đã gắn công tắc ở từng route bên dưới.
+router.use(['/training', '/courses', '/documents', '/lesson-documents'], requireModule('TRAINING'));
+router.use(['/cme', '/cme-categories', '/cme-records'], requireModule('SEMINAR'));
 
 router.get(
 	'/training',
@@ -210,7 +217,6 @@ router.post('/cme/export-excel', cmePersonalExport.exportMine);
 // GET không chặn theo module và nhận mọi tài khoản (is_trainee = false): trang Cấu hình cần
 // nó để hiện IP hiện tại trước khi bật. POST chỉ nhận tài khoản học viên.
 const staffAttendanceService = require('../attendance/staffAttendanceService');
-const { requireModule } = require('../../middlewares/moduleGuard');
 router.get(
 	'/attendance',
 	handle(async (req, res) =>

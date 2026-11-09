@@ -103,7 +103,8 @@ const matchDept = (raw, lookups) =>
 //   2. dữ liệu đã có trong hệ thống: thành viên đề tài, người tham dự hội thảo nội viện
 //   3. khoa: khoa mặc định chọn ở hộp thoại
 // Họ tên / khoa nhập riêng cho từng Mã NV ở bước xem trước (defaults.staff_names /
-// staff_departments) đè lên tất cả.
+// staff_departments) đè lên tất cả — trừ khi defaults.force_department_id (người nhập
+// chỉ có users:create trong khoa): khi đó khoa luôn là khoa của người nhập.
 // Không có họ tên → missing_name, dòng không hợp lệ (không tạo tài khoản); không có khoa →
 // để trống (bổ sung sau).
 // Cùng 1 Mã NV nhiều dòng → dùng chung kế hoạch của dòng đầu.
@@ -154,16 +155,27 @@ const planNewStaff = (row, lookups, defaults, planned, fileNames) => {
 		);
 	}
 
-	// Khoa chọn riêng cho Mã NV này ở bước xem trước — ưu tiên hơn mọi nguồn khác
-	let dept = lookups.deptById.get(defaults.staff_departments?.[row.staff_number]) || null;
-	if (!dept) {
-		dept = matchDept(row.department_raw, lookups);
-		if (row.department_raw && !dept) notes.push(`Không khớp khoa/phòng "${row.department_raw}"`);
+	let dept;
+	if (defaults.force_department_id) {
+		// Người nhập chỉ được tạo tài khoản trong khoa mình (users:create phạm vi
+		// trong khoa) — khoa của họ thay mọi nguồn khác.
+		dept = lookups.deptById.get(defaults.force_department_id) || null;
+		const asked =
+			defaults.staff_departments?.[row.staff_number] || matchDept(row.department_raw, lookups)?.id;
+		if (dept && asked && asked !== dept.id)
+			notes.push(`Chỉ tạo được nhân viên trong khoa/phòng của bạn — xếp vào ${dept.name}`);
+	} else {
+		// Khoa chọn riêng cho Mã NV này ở bước xem trước — ưu tiên hơn mọi nguồn khác
+		dept = lookups.deptById.get(defaults.staff_departments?.[row.staff_number]) || null;
+		if (!dept) {
+			dept = matchDept(row.department_raw, lookups);
+			if (row.department_raw && !dept) notes.push(`Không khớp khoa/phòng "${row.department_raw}"`);
+		}
+		if (!dept && known)
+			dept = lookups.deptById.get(known.department_id) || matchDept(known.department_raw, lookups);
+		if (!dept && defaults.new_department_id)
+			dept = lookups.deptById.get(defaults.new_department_id) || null;
 	}
-	if (!dept && known)
-		dept = lookups.deptById.get(known.department_id) || matchDept(known.department_raw, lookups);
-	if (!dept && defaults.new_department_id)
-		dept = lookups.deptById.get(defaults.new_department_id) || null;
 	if (!dept) notes.push('Chưa có khoa/phòng — bổ sung ở màn Người dùng');
 
 	const staff = {

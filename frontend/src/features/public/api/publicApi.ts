@@ -121,7 +121,7 @@ export interface RegisterPayload {
 export type TraineeDocType = 'national_id' | 'degree' | 'other';
 
 export const registerCourse = (data: RegisterPayload, files?: File[]) =>
-	request<{ enrollment_id: string | null; documents_skipped?: boolean }>('/course-registration', {
+	request<{ submitted: boolean }>('/course-registration', {
 		method: 'POST',
 		body: buildBody(data, files),
 	});

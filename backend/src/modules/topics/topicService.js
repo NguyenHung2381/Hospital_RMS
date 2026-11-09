@@ -9,7 +9,7 @@ const { assertTopicActionWindow } = require('./deadlineGuard');
 const { hasPermission } = require('../../permissions/authz');
 const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
-const { computeAllowedActions, topicScope } = require('./topicPolicy');
+const { computeAllowedActions, topicScope, inDepartmentScope } = require('./topicPolicy');
 const formCustomValueService = require('../forms/formCustomValueService');
 
 const getAll = async (filters, actor = null) => {
@@ -178,7 +178,7 @@ const getById = async (id, actor = null) => {
 	const detailScope = topicScope(actor);
 	if (actor && detailScope !== 'all') {
 		if (detailScope === 'department') {
-			if (topic.department_id !== actor.department_id) {
+			if (!inDepartmentScope(topic.department_id, actor)) {
 				throw httpError(403, 'Không có quyền xem đề tài này');
 			}
 		} else {
@@ -309,7 +309,7 @@ const update = async (id, data, actorId, actor = null) => {
 	if (
 		scope === 'department' &&
 		data.department_id !== undefined &&
-		data.department_id !== actor.department_id
+		!inDepartmentScope(data.department_id, actor)
 	) {
 		throw httpError(403, 'Không thể chuyển đề tài sang khoa/phòng khác.');
 	}
@@ -335,6 +335,10 @@ const update = async (id, data, actorId, actor = null) => {
 				{ status: 403, statusCode: 403 },
 			);
 		}
+		// Có quy trình duyệt active: status chỉ đổi qua engine (xem workflowEngineService.guardDirectStatusWrite)
+		const wf = require('./workflowEngineService'); // trong hàm: engine cũng require topicService
+		if (!bypass && (await wf.guardDirectStatusWrite(actor, data.status, current.status)))
+			data = { ...data, status: undefined }; // gửi lại đúng status cũ — không phải thay đổi
 	}
 
 	if (!bypass && scope === 'own') {
