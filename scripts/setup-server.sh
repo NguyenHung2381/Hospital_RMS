@@ -21,6 +21,23 @@
 #   bash setup-server.sh --list          # xem tên các bước
 #   REBUILD=1 bash setup-server.sh build start   # build lại image dù đã có
 #
+# Cài từ đầu bằng dữ liệu cũ (DB_MODE=restore / transfer): chép bản backup PostgreSQL,
+# uploads.tar.gz, secrets.tar.gz vào IMPORT_DIR (mặc định /data/backup/import, bước disk
+# tạo) — trước hoặc trong lúc chạy. Bước database / files tự tìm ở đó, chọn theo số
+# (ASSUME_YES=1: mới nhất); chưa có bản backup thì script chờ. Không cần bước import.
+#
+# Cập nhật dữ liệu sau này (hệ thống đã chạy) — bước import, chỉ chạy khi gọi tên:
+#   scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz rms:/data/backup/import/
+#   bash setup-server.sh import
+# Liệt kê file trong IMPORT_DIR (mặc định /data/backup/import) để chọn theo số; bản
+# backup PostgreSQL THAY toàn bộ DB (DB đang dùng sao lưu vào /data/backup/db/truoc-import/,
+# lỗi thì tự trả lại), uploads.tar.gz ghép vào file đang có, secrets.tar.gz thay khoá.
+# Chọn sẵn, không hỏi: IMPORT_DUMP=... IMPORT_UPLOADS=... IMPORT_SECRETS=... (none = bỏ qua),
+# ASSUME_YES=1 lấy file mới nhất mỗi loại.
+#
+# File dump / .tar.gz nạp xong (bước database, files, import) bị XOÁ khỏi đĩa — chứa toàn
+# bộ dữ liệu và khoá 2FA. Giữ lại: KEEP_IMPORT_FILES=1
+#
 # Chạy không hỏi: đặt sẵn biến môi trường (cùng tên trong rms-setup.env), vd
 #   DATA_DISK=sdb ACCESS_MODE=ip DB_MODE=new HARDEN_SSH=no ASSUME_YES=1 bash setup-server.sh
 #
@@ -37,7 +54,21 @@
 #   WEB_CONCURRENCY số worker backend (mặc định số vCPU − 2, tối thiểu 1)
 #   ENABLE_CLAMAV   yes | no — quét virus file upload (mặc định no khi RAM < 8 GB)
 #   DB_MODE         new (DB trống) | transfer (chuyển dữ liệu từ file .bak SQL Server)
+#                   | restore (khôi phục từ bản backup PostgreSQL — file dump).
+#                   Không đặt thì hỏi "Có dữ liệu của hệ thống cũ không", có thì hỏi loại
 #   BAK_FILE        đường dẫn file .bak trên máy này (DB_MODE=transfer)
+#   DUMP_FILE       đường dẫn file backup PostgreSQL (DB_MODE=restore) — không đặt thì chọn
+#                   trong IMPORT_DIR:
+#                   .dump (pg_dump -Fc, như backup hằng đêm rms_hospital_<ngày>.dump),
+#                   .sql (pg_dump thường), có thể nén .gz — nhận dạng theo nội dung.
+#                   Khôi phục bằng superuser postgres, giữ nguyên chủ sở hữu + quyền
+#   UPLOADS_FILE    uploads.tar.gz — file người dùng đã upload lên hệ thống cũ (volume
+#                   server_uploads cũ, cách đóng gói: mục C.6 infra/chuyen-du-lieu-sang-postgresql.md).
+#                   Bước files giải nén vào volume server_uploads mới. none = bỏ qua
+#   SECRETS_FILE    secrets.tar.gz — khoá giải mã 2FA + JWT secret của hệ thống cũ (volume
+#                   server_secrets cũ). Thiếu thì người đã bật 2FA phải thiết lập lại. none = bỏ qua
+#                   Không đặt 2 biến này thì (DB_MODE=transfer | restore) chọn trong IMPORT_DIR,
+#                   không có thì bỏ qua. Mỗi loại chỉ giải nén 1 lần — nạp lại / gói khác: bước import
 #   HARDEN_SSH      yes | no — tắt đăng nhập SSH bằng mật khẩu, chặn root
 #   ADMIN_USERNAME  tên đăng nhập tài khoản Super Admin — toàn quyền (mặc định superadmin)
 #   LIMITED_ADMIN_USERNAME
@@ -67,7 +98,10 @@ DEFAULT_REPO_URL="git@github.com:NguyenHung2381/Hospital_RMS.git"
 HBA_MARK_BEGIN="# >>> Hospital RMS (scripts/setup-server.sh)"
 HBA_MARK_END="# <<< Hospital RMS"
 
-STEPS=(system firewall disk docker repo config postgres build database start https ports backup jwt ssh)
+STEPS=(system firewall disk docker repo config postgres build database files start https ports backup jwt ssh)
+# Bước chỉ chạy khi gọi tên (bash setup-server.sh import)
+EXTRA_STEPS=(import)
+IMPORT_DIR="${IMPORT_DIR:-/data/backup/import}"
 
 # ─── Tiện ích ────────────────────────────────────────────────────────────────
 log() { printf '\n\033[1;36m══ %s\033[0m\n' "$*"; }
@@ -150,8 +184,8 @@ save_conf() {
 	{
 		echo "# Câu trả lời của scripts/setup-server.sh — sửa tay được, xoá dòng để được hỏi lại"
 		for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
-			ENABLE_CLAMAV DB_MODE BAK_FILE HARDEN_SSH REPO_URL APP_DIR ADMIN_USERNAME \
-			LIMITED_ADMIN_USERNAME; do
+			ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH REPO_URL APP_DIR \
+			ADMIN_USERNAME LIMITED_ADMIN_USERNAME; do
 			[ -n "${!k:-}" ] && printf '%s=%q\n' "$k" "${!k}"
 		done
 	} >"$CONF_FILE"
@@ -209,7 +243,7 @@ collect_answers() {
 	if [ -f "$CONF_FILE" ]; then . "$CONF_FILE"; fi
 	local k
 	for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
-		ENABLE_CLAMAV DB_MODE BAK_FILE HARDEN_SSH REPO_URL; do
+		ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH REPO_URL; do
 		printf -v "$k" '%s' "${!k:-}"
 	done
 	APP_DIR="${APP_DIR:-/data/code/Hospital_RMS}"
@@ -277,11 +311,37 @@ collect_answers() {
 	ask_choice ENABLE_CLAMAV "Bật quét virus file upload (ClamAV, ~1,5 GB RAM)" \
 		"$([ "$RAM_MB" -ge 7500 ] && echo yes || echo no)" yes no
 
-	# Database
-	info "Database: new = hệ thống mới, DB trống; transfer = chuyển dữ liệu từ file .bak SQL Server"
-	ask_choice DB_MODE "Chọn" new new transfer
+	# Dữ liệu cũ → DB_MODE (đặt sẵn DB_MODE thì không hỏi)
+	if [ -z "${DB_MODE:-}" ]; then
+		local has_old="" old_kind=""
+		while :; do
+			ask has_old "Có dữ liệu của hệ thống cũ cần chuyển sang không (y/N)" n
+			case "${has_old,,}" in
+			y | yes | c | co | có | Có) has_old=yes && break ;;
+			n | no | k | khong | không | Không) has_old=no && break ;;
+			esac
+			warn "Trả lời y (có) hoặc n (không)"
+			has_old=""
+		done
+		if [ "$has_old" = no ]; then
+			DB_MODE=new
+			ok "Hệ thống mới, DB trống"
+		else
+			info "Dữ liệu cũ là:"
+			info "  1 — bản backup PostgreSQL của hệ thống mới (file .dump / .sql, có thể nén .gz)"
+			info "  2 — file .bak của SQL Server (hệ thống cũ trước khi chuyển sang PostgreSQL)"
+			ask_choice old_kind "Chọn" 1 1 2
+			if [ "$old_kind" = 1 ]; then DB_MODE=restore; else DB_MODE=transfer; fi
+		fi
+	fi
 	if [ "$DB_MODE" = transfer ]; then
 		ask BAK_FILE "Đường dẫn file .bak trên máy này" "/data/backup/db/RMS_HOSPITAL_chuyen_pg.bak"
+	fi
+	if [ "$DB_MODE" != new ]; then
+		# Không hỏi đường dẫn: tới bước database / files script tự tìm trong IMPORT_DIR, chọn theo số
+		info "Chép $([ "$DB_MODE" = restore ] && echo 'bản backup PostgreSQL, ')uploads.tar.gz, secrets.tar.gz (mục C.6 tài liệu"
+		info "chuyển dữ liệu) vào $IMPORT_DIR — lúc nào cũng được, tới bước cần file mà chưa có thì script chờ:"
+		info "  scp <các file> $USER@$(server_ip):$IMPORT_DIR/"
 	fi
 
 	# SSH
@@ -297,7 +357,12 @@ collect_answers() {
 	info "Ổ dữ liệu      : $DATA_DISK"
 	info "Truy cập       : $ACCESS_MODE → $PUBLIC_URL"
 	info "Worker backend : $WEB_CONCURRENCY    ClamAV: $ENABLE_CLAMAV"
-	info "Database       : $DB_MODE${BAK_FILE:+ ($BAK_FILE)}"
+	case "$DB_MODE" in
+	new) info "Dữ liệu cũ     : không — DB trống" ;;
+	restore) info "Dữ liệu cũ     : bản backup PostgreSQL${DUMP_FILE:+ ($DUMP_FILE)}" ;;
+	transfer) info "Dữ liệu cũ     : file .bak SQL Server ($BAK_FILE)" ;;
+	esac
+	[ "$DB_MODE" = new ] || info "File cần nạp   : chọn trong $IMPORT_DIR"
 	info "Khoá SSH m.khẩu: $HARDEN_SSH"
 	info "Source code    : $APP_DIR"
 	confirm "Tiếp tục?" Y || die "Đã huỷ. Không có gì bị thay đổi."
@@ -314,7 +379,7 @@ derive_settings() {
 	*) die "ACCESS_MODE không hợp lệ: $ACCESS_MODE (ip | proxy | letsencrypt)" ;;
 	esac
 	[ "$ACCESS_MODE" != letsencrypt ] || [ -n "$LE_EMAIL" ] || die "ACCESS_MODE=letsencrypt cần LE_EMAIL"
-	case "$DB_MODE" in new | transfer) ;; *) die "DB_MODE không hợp lệ: $DB_MODE (new | transfer)" ;; esac
+	case "$DB_MODE" in new | transfer | restore) ;; *) die "DB_MODE không hợp lệ: $DB_MODE (new | transfer | restore)" ;; esac
 	[ "$DB_MODE" != transfer ] || [ -n "$BAK_FILE" ] || die "DB_MODE=transfer cần BAK_FILE"
 	[[ "$WEB_CONCURRENCY" =~ ^[1-9][0-9]?$ ]] || die "WEB_CONCURRENCY phải là số ≥ 1"
 	FRONTEND_BIND=8081
@@ -416,9 +481,10 @@ step_disk() {
 		ok "Đã mount $part tại /data (UUID trong /etc/fstab, nofail)"
 	fi
 
-	sudo mkdir -p /data/code /data/docker /data/backup/db /data/backup/files
-	sudo chown "$USER:$USER" /data/code /data/backup /data/backup/db /data/backup/files
-	ok "Thư mục: /data/code /data/docker /data/backup/{db,files} — trống $(df -h --output=avail /data | tail -n 1 | tr -d ' ')"
+	sudo mkdir -p /data/code /data/docker /data/backup/db /data/backup/files "$IMPORT_DIR"
+	sudo chown "$USER:$USER" /data/code /data/backup /data/backup/db /data/backup/files "$IMPORT_DIR"
+	sudo chmod 700 "$IMPORT_DIR" # file backup chứa toàn bộ dữ liệu + khoá 2FA
+	ok "Thư mục: /data/code /data/docker /data/backup/{db,files,import} — trống $(df -h --output=avail /data | tail -n 1 | tr -d ' ')"
 }
 
 # ─── 4. Docker ───────────────────────────────────────────────────────────────
@@ -650,8 +716,13 @@ step_postgres() {
 		[ "$(pgsu psql -tAc 'SHOW ssl')" = on ] || die "Không bật được SSL cho PostgreSQL (mục 3 infra/cai-dat-postgresql.md)"
 	fi
 	ok "$(pgsu psql -tAc "SELECT 'shared_buffers=' || current_setting('shared_buffers') || ', timezone=' || current_setting('timezone') || ', ssl=' || current_setting('ssl')")"
+	ensure_db_and_roles
+}
 
-	# Role + DB. Mật khẩu: rms_migrate ở ~/.pgpass, rms_app ở backend/.env.production
+# Role + DB rms_hospital (infra/postgresql/01_tao_db_va_role.sql). Chạy lại an toàn: đã có
+# thì bỏ qua, không đổi mật khẩu. Bước import gọi lại sau khi xoá DB để có DB trống.
+# Mật khẩu: rms_migrate ở ~/.pgpass, rms_app ở backend/.env.production
+ensure_db_and_roles() {
 	local migrate_pw app_pw
 	migrate_pw="$(migrate_password)"
 	if [ -z "$migrate_pw" ]; then
@@ -716,10 +787,82 @@ run_backend_script() {
 }
 run_migrate() { run_backend_script scripts/migrate.js "$@"; }
 
+# BYTES byte đầu của FILE (GZ=1: sau khi giải nén). gunzip bị head cắt ngang
+# (SIGPIPE) không được làm hỏng pipefail.
+dump_head() { # dump_head FILE GZ BYTES
+	if [ "$2" = 1 ]; then { gunzip -c "$1" 2>/dev/null || true; } | head -c "$3"; else head -c "$3" "$1"; fi
+}
+
+is_gzip() { [ "$(head -c 2 "$1" | od -An -tx1 | tr -d ' \n')" = 1f8b ]; }
+
+# In loại bản backup PostgreSQL của FILE: custom (pg_dump -Fc, "PGDMP"), tar (-Ft:
+# tar có mục đầu "toc.dat" — khác gói uploads.tar.gz), sql (pg_dump thường); không
+# phải dump thì in rỗng. .gz được giải nén phần đầu để xem.
+dump_kind() {
+	local gz=0 text
+	is_gzip "$1" && gz=1
+	text="$(dump_head "$1" "$gz" 4096 | tr -d '\000')"
+	if [ "${text:0:5}" = PGDMP ]; then
+		echo custom
+	elif [ "$(dump_head "$1" "$gz" 262 | tail -c 5)" = ustar ] && [ "${text:0:7}" = toc.dat ]; then
+		echo tar
+	elif [[ "$text" == *"PostgreSQL database dump"* ]]; then
+		echo sql
+	fi
+}
+
+# Khôi phục file dump PostgreSQL vào DB (mặc định rms_hospital, đang trống) bằng superuser
+# postgres: rms_migrate không khôi phục được (COMMENT ON EXTENSION pg_stat_statements cần
+# chủ extension). Giữ nguyên chủ sở hữu + quyền như DB gốc (rms_migrate / rms_app).
+# Nhận dạng theo nội dung (dump_kind), .gz đều được. --single-transaction: lỗi giữa chừng
+# thì trả 1 (log ở trên) và DB đích không bị thay đổi.
+restore_dump() { # restore_dump FILE [DB]
+	local f="$1" db="${2:-rms_hospital}" gz=0 kind tmpd="" src note="" rc=0
+	if is_gzip "$f"; then
+		gz=1
+		note=", nén gzip"
+	fi
+	kind="$(dump_kind "$f")"
+	if [ -z "$kind" ]; then
+		warn "$f không phải bản backup PostgreSQL (pg_dump -Fc / -Ft / .sql, có thể nén .gz)"
+		return 1
+	fi
+	info "Định dạng: $kind$note"
+
+	if [ "$kind" = sql ]; then
+		if [ "$gz" = 1 ]; then
+			gunzip -c "$f" | pgsu psql -X -q -o /dev/null -v ON_ERROR_STOP=1 --single-transaction -d "$db" || rc=1
+		else
+			pgsu psql -X -q -o /dev/null -v ON_ERROR_STOP=1 --single-transaction -d "$db" <"$f" || rc=1
+		fi
+	else
+		# pg_restore cần đọc file có thể seek: postgres đọc thẳng được thì dùng luôn,
+		# không thì (file trong thư mục riêng của user, hoặc .gz) chép / giải nén vào
+		# /data/pgsql (của postgres, cùng ổ /data) rồi xoá
+		src="$f"
+		if [ "$gz" = 1 ] || ! pgsu test -r "$(readlink -f "$f")"; then
+			tmpd="$(pgsu mktemp -d /data/pgsql/.rms-restore.XXXXXX)" || return 1
+			src="$tmpd/rms_hospital.$kind"
+			if [ "$gz" = 1 ]; then
+				info "Giải nén tạm vào $tmpd"
+				gunzip -c "$f" | pgsu tee "$src" >/dev/null || rc=1
+			else
+				sudo install -o postgres -g postgres -m 600 "$f" "$src" || rc=1
+			fi
+		fi
+		if [ "$rc" = 0 ]; then
+			pgsu pg_restore --single-transaction --exit-on-error -d "$db" "$(readlink -f "$src")" || rc=1
+		fi
+		[ -z "$tmpd" ] || sudo rm -rf "$tmpd"
+	fi
+	[ "$rc" = 0 ] || return 1
+	pgsu psql -X -q -d "$db" -c ANALYZE # pg_restore không cập nhật thống kê cho planner
+}
+
 step_database() {
 	log "Dựng database ($DB_MODE)"
 	cd "$APP_DIR"
-	local tables transferred=0
+	local tables transferred=0 restored=0
 	tables="$(psql -h 127.0.0.1 -U rms_migrate -d rms_hospital -tAc \
 		"SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")"
 	if [ "$tables" -gt 0 ]; then
@@ -730,7 +873,7 @@ step_database() {
 			info "Chưa thấy $BAK_FILE. Trên máy của bạn chép file lên (mục 7 tài liệu):"
 			info "  scp <file>.bak $USER@$(server_ip):$BAK_FILE"
 			read -rp "   Chép xong nhấn Enter (q để dừng): " a </dev/tty
-			[ "$a" != q ] || die "Dừng. Chép file .bak lên rồi chạy lại: bash $SELF database start https ports backup jwt ssh"
+			[ "$a" != q ] || die "Dừng. Chép file .bak lên rồi chạy lại: bash $SELF database files start https ports backup jwt ssh"
 		done
 		chmod 600 "$BAK_FILE" 2>/dev/null || true
 		info "Chuyển dữ liệu từ $BAK_FILE (dựng SQL Server tạm trong Docker, lâu tuỳ dung lượng)"
@@ -739,6 +882,34 @@ step_database() {
 			bash "$APP_DIR/backend/scripts/pg-transfer/transfer-from-bak.sh" "$BAK_FILE"
 		ok "Chuyển dữ liệu xong"
 		transferred=1
+	elif [ "$DB_MODE" = restore ]; then
+		local a
+		# DUMP_FILE đặt sẵn (biến môi trường / rms-setup.env) thì dùng, không thì chọn trong IMPORT_DIR
+		while :; do
+			if [ -n "${DUMP_FILE:-}" ]; then
+				[ -r "$DUMP_FILE" ] && break
+				info "Chưa thấy $DUMP_FILE. Chép bản backup PostgreSQL lên (vd rms_hospital_<ngày>.dump của máy cũ):"
+				info "  scp rms_hospital_<ngày>.dump $USER@$(server_ip):$DUMP_FILE"
+			else
+				scan_import
+				if [ "${#FOUND_DUMP[@]}" -gt 0 ]; then
+					choose_import DUMP_FILE "Bản backup PostgreSQL để khôi phục" "${FOUND_DUMP[@]}"
+					[ -n "$DUMP_FILE" ] && break
+					die "Chưa chọn bản backup. Muốn dựng DB trống: sửa DB_MODE=new trong $CONF_FILE rồi chạy lại"
+				fi
+				info "Chưa có bản backup PostgreSQL trong $IMPORT_DIR. Từ máy của bạn chép lên"
+				info "(vd rms_hospital_<ngày>.dump của máy cũ, kèm uploads.tar.gz / secrets.tar.gz nếu có):"
+				info "  scp <các file> $USER@$(server_ip):$IMPORT_DIR/"
+			fi
+			read -rp "   Chép xong nhấn Enter (q để dừng): " a </dev/tty
+			[ "$a" != q ] || die "Dừng. Chép file dump lên rồi chạy lại: bash $SELF database files start https ports backup jwt ssh"
+		done
+		info "Khôi phục từ $DUMP_FILE ($(du -h "$DUMP_FILE" | cut -f1)) bằng superuser postgres"
+		restore_dump "$DUMP_FILE" ||
+			die "Khôi phục $DUMP_FILE lỗi (log ở trên). DB vẫn trống (chạy trong 1 transaction) — sửa rồi chạy lại: bash $SELF database files start"
+		restored=1
+		ok "Khôi phục xong: $(psql -h 127.0.0.1 -U rms_migrate -d rms_hospital -tAc \
+			"SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'") bảng"
 	else
 		run_migrate init
 		ok "Tạo schema (baseline + migration)"
@@ -750,7 +921,8 @@ step_database() {
 	#  - DB mới: tạo cả 2 tài khoản, nạp danh mục.
 	#  - Vừa chuyển từ .bak (lần chạy này): tài khoản toàn quyền duy nhất là "admin" của hệ
 	#    thống cũ thì bỏ nó (xoá / vô hiệu hoá + đổi tên admin_cu), tạo superadmin + admin mới.
-	#  - DB chuyển từ trước (chạy lại): chỉ bảo đảm có Super Admin, không đụng tài khoản cũ.
+	#  - DB chuyển từ trước (chạy lại), hoặc khôi phục từ file dump (DB_MODE=restore — tài khoản
+	#    của hệ thống mới sẵn trong bản backup): chỉ bảo đảm có Super Admin, không đụng tài khoản cũ.
 	log "Vai trò hệ thống và tài khoản quản trị"
 	if [ "$transferred" = 1 ]; then
 		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" \
@@ -764,6 +936,249 @@ step_database() {
 	else
 		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" --no-admin-account
 	fi
+	[ "$restored" = 0 ] || remove_imported "$DUMP_FILE"
+}
+
+# Giải nén 1 gói .tar.gz (uploads | secrets) vào volume server_<kind>, bằng
+# backend/scripts/import-old-files.sh trong container backend (compose tự tạo volume).
+# Gói ghép vào file đang có: trùng tên thì ghi đè, không xoá file nào.
+import_old_file() { # import_old_file uploads|secrets FILE
+	local kind="$1" file="$2"
+	[ "$kind" = secrets ] && chmod 600 "$file" 2>/dev/null || true
+	info "Giải nén $file ($(du -h "$file" | cut -f1)) vào volume server_$kind"
+	cd "$APP_DIR"
+	compose run --rm --no-deps -T -u 0 --entrypoint sh \
+		-v "$(dirname "$(readlink -f "$file")"):/import:ro" backend \
+		scripts/import-old-files.sh "$kind" "/import/$(basename "$file")" | sed 's/^/   /'
+}
+
+# Nhập xong thì xoá file nguồn (dump / .tar.gz) — secrets.tar.gz chứa khoá 2FA, dump
+# chứa toàn bộ dữ liệu: không để nằm lại trên đĩa. Giữ lại: KEEP_IMPORT_FILES=1.
+remove_imported() {
+	local f
+	for f in "$@"; do
+		[ -n "$f" ] && [ -e "$f" ] || continue
+		if [ "${KEEP_IMPORT_FILES:-}" = 1 ]; then
+			info "Giữ lại $f (KEEP_IMPORT_FILES=1)"
+			continue
+		fi
+		rm -f -- "$f" 2>/dev/null || sudo rm -f -- "$f"
+		ok "Đã xoá file đã nhập: $f"
+	done
+}
+
+# ─── 9b. File upload + khoá bí mật của hệ thống cũ ──────────────────────────
+# Giải nén uploads.tar.gz / secrets.tar.gz (mục C.6 tài liệu chuyển dữ liệu) vào volume
+# server_uploads / server_secrets bằng backend/scripts/import-old-files.sh, chạy trong
+# container backend (compose tự tạo volume nếu chưa có). Mỗi loại chỉ 1 lần.
+# File lấy từ UPLOADS_FILE / SECRETS_FILE nếu đặt sẵn, không thì (DB_MODE transfer |
+# restore) chọn trong IMPORT_DIR; không có thì bỏ qua — nạp sau bằng bước import.
+step_files() {
+	local kind var file a imported=0 changed=0 scanned=0 found=()
+	for kind in uploads secrets; do
+		var="${kind^^}_FILE"
+		file="${!var:-}"
+		[ "$file" != none ] || continue
+		[ -n "$file" ] || [ "$DB_MODE" != new ] || continue
+		[ "$imported" = 1 ] || log "File của hệ thống cũ"
+		imported=1
+		if is_done "files-$kind"; then
+			ok "$kind: đã giải nén ở lần chạy trước, bỏ qua (nạp gói khác: bash $SELF import)"
+			continue
+		fi
+		if [ -z "$file" ]; then
+			[ "$scanned" = 1 ] || scan_import
+			scanned=1
+			if [ "$kind" = uploads ]; then found=("${FOUND_UPLOADS[@]}"); else found=("${FOUND_SECRETS[@]}"); fi
+			if [ "${#found[@]}" -eq 0 ]; then
+				info "$kind: không có $kind.tar.gz trong $IMPORT_DIR — bỏ qua (nạp sau: bash $SELF import)"
+				continue
+			fi
+			choose_import "$var" "$([ "$kind" = uploads ] && echo 'File upload cũ (.tar.gz)' || echo 'Khoá 2FA + JWT cũ (.tar.gz)')" "${found[@]}"
+			file="${!var:-}"
+			[ -n "$file" ] || continue
+		fi
+		until [ -r "$file" ]; do
+			info "Chưa thấy $file. Trên máy chủ cũ đóng gói rồi chép lên (mục C.6 tài liệu chuyển dữ liệu):"
+			info "  scp $kind.tar.gz $USER@$(server_ip):$file"
+			read -rp "   Chép xong nhấn Enter (s = bỏ qua file này, q = dừng): " a </dev/tty
+			[ "$a" != q ] || die "Dừng. Chép file lên rồi chạy lại: bash $SELF files start"
+			if [ "$a" = s ]; then
+				warn "Bỏ qua $kind. Làm sau: đặt $var rồi chạy bash $SELF files"
+				continue 2
+			fi
+		done
+		import_old_file "$kind" "$file"
+		changed=1
+		done_mark "files-$kind"
+		ok "$kind: xong"
+		remove_imported "$file"
+	done
+	[ "$changed" = 1 ] || return 0
+	# Backend đang chạy (chạy lại bước này sau start) thì khởi động lại để đọc khoá mới
+	if [ -n "$(compose ps -q --status running backend 2>/dev/null)" ]; then
+		compose restart backend
+		ok "Đã khởi động lại backend"
+	fi
+	return 0
+}
+
+# ─── 9c. Cập nhật từ file sao lưu (bước import — chỉ chạy khi gọi tên) ──────
+# Hệ thống đã chạy, muốn nạp dữ liệu mới từ máy khác / bản backup:
+#   scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz rms:/data/backup/import/
+#   bash setup-server.sh import
+# Chọn file theo số, sao lưu DB đang dùng, thay DB, ghép file upload, khởi động lại,
+# xong thì xoá file nguồn. Lỗi giữa chừng thì tự trả lại DB cũ.
+
+# File ở cấp cao nhất của IMPORT_DIR, phân loại theo nội dung, mới nhất trước:
+# FOUND_DUMP (bản backup PostgreSQL), FOUND_SECRETS (.tar.gz có "secret" trong tên),
+# FOUND_UPLOADS (.tar.gz còn lại). File khác: cảnh báo, bỏ qua.
+scan_import() {
+	local f others=()
+	FOUND_DUMP=() FOUND_UPLOADS=() FOUND_SECRETS=()
+	[ -d "$IMPORT_DIR" ] || return 0
+	while IFS= read -r f; do
+		[ -r "$f" ] || {
+			warn "Không đọc được $f, bỏ qua"
+			continue
+		}
+		if [ -n "$(dump_kind "$f")" ]; then
+			FOUND_DUMP+=("$f")
+		elif is_gzip "$f"; then
+			case "$(basename "$f" | tr '[:upper:]' '[:lower:]')" in
+			*secret*) FOUND_SECRETS+=("$f") ;;
+			*) FOUND_UPLOADS+=("$f") ;;
+			esac
+		else
+			others+=("$(basename "$f")")
+		fi
+	done < <(find "$IMPORT_DIR" -maxdepth 1 -type f ! -name '.*' -printf '%T@\t%p\n' | sort -rn | cut -f2-)
+	[ "${#others[@]}" -eq 0 ] || warn "Trong $IMPORT_DIR có file không nhận ra, bỏ qua: ${others[*]}"
+}
+
+# choose_import VAR "mô tả" FILE... — VAR đã đặt (biến môi trường) thì dùng luôn
+# (none = bỏ qua); ASSUME_YES=1 lấy file đầu (mới nhất); không thì hỏi theo số.
+choose_import() {
+	local var="$1" label="$2" ans f n=0
+	shift 2
+	if [ -n "${!var:-}" ]; then
+		if [ "${!var}" = none ]; then
+			printf -v "$var" '%s' ''
+		else
+			[ -r "${!var}" ] || die "$var=${!var}: không đọc được file"
+			info "$label: ${!var}"
+		fi
+		return 0
+	fi
+	[ $# -gt 0 ] || return 0
+	if [ "${ASSUME_YES:-}" = 1 ]; then
+		printf -v "$var" '%s' "$1"
+		info "$label: $1"
+		return 0
+	fi
+	info "$label:"
+	for f in "$@"; do
+		n=$((n + 1))
+		info "  $n) $(basename "$f")   $(du -h "$f" | cut -f1), $(date -r "$f" '+%d/%m/%Y %H:%M')"
+	done
+	info "  0) không dùng"
+	while :; do
+		read -rp "   Chọn [1]: " ans </dev/tty
+		ans="${ans:-1}"
+		[[ "$ans" =~ ^[0-9]+$ ]] && [ "$ans" -le $# ] && break
+		warn "Nhập số từ 0 đến $#"
+	done
+	[ "$ans" = 0 ] || printf -v "$var" '%s' "${!ans}"
+}
+
+# Khôi phục lỗi / backend không lên: bỏ DB vừa nạp, đổi DB cũ về tên rms_hospital
+import_rollback() {
+	local old="$1"
+	warn "Trả lại DB cũ ($old → rms_hospital)"
+	pgsu psql -X -q -d postgres -c 'DROP DATABASE IF EXISTS rms_hospital WITH (FORCE)' \
+		-c "ALTER DATABASE $old RENAME TO rms_hospital" ||
+		warn "Không trả lại được — làm tay: sudo -u postgres psql -c 'ALTER DATABASE $old RENAME TO rms_hospital'"
+	(cd "$APP_DIR" && compose up -d backend) || true
+	warn "File nguồn vẫn giữ trong $IMPORT_DIR"
+}
+
+step_import() {
+	log "Cập nhật dữ liệu từ file sao lưu ($IMPORT_DIR)"
+	cd "$APP_DIR"
+	IMPORT_DUMP="${IMPORT_DUMP:-}" IMPORT_UPLOADS="${IMPORT_UPLOADS:-}" IMPORT_SECRETS="${IMPORT_SECRETS:-}"
+	[ -d "$IMPORT_DIR" ] || sudo install -d -o "$USER" -g "$(id -gn)" -m 700 "$IMPORT_DIR"
+
+	scan_import
+	choose_import IMPORT_DUMP "Bản backup PostgreSQL — THAY toàn bộ dữ liệu đang có" "${FOUND_DUMP[@]}"
+	choose_import IMPORT_UPLOADS "File upload (.tar.gz) — ghép vào file đang có" "${FOUND_UPLOADS[@]}"
+	choose_import IMPORT_SECRETS "Khoá 2FA + JWT (.tar.gz) — thay khoá đang có" "${FOUND_SECRETS[@]}"
+	if [ -z "$IMPORT_DUMP$IMPORT_UPLOADS$IMPORT_SECRETS" ]; then
+		info "Không có file nào để nạp. Từ máy của bạn chép lên rồi chạy lại:"
+		info "  scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz $USER@$(server_ip):$IMPORT_DIR/"
+		info "  bash $SELF import"
+		return 0
+	fi
+
+	local stamp old bk
+	stamp="$(date +%Y%m%d_%H%M%S)"
+	old="rms_hospital_truoc_import_$stamp"
+	bk="/data/backup/db/truoc-import/rms_hospital_$stamp.dump"
+	log "Sẽ cập nhật"
+	[ -z "$IMPORT_DUMP" ] || info "Database   : THAY bằng $IMPORT_DUMP (bản đang dùng sao lưu vào $bk)"
+	[ -z "$IMPORT_UPLOADS" ] || info "File upload: ghép $IMPORT_UPLOADS (trùng tên thì ghi đè)"
+	[ -z "$IMPORT_SECRETS" ] || info "Khoá bí mật: thay bằng $IMPORT_SECRETS (khoá đang có chép sang .truoc-import-*)"
+	if [ "${KEEP_IMPORT_FILES:-}" = 1 ]; then
+		info "Giữ lại file nguồn (KEEP_IMPORT_FILES=1)"
+	else
+		info "Xong thì XOÁ các file trên khỏi $IMPORT_DIR (giữ lại: KEEP_IMPORT_FILES=1)"
+	fi
+	[ -z "$IMPORT_DUMP" ] || warn "Hệ thống ngừng phục vụ trong lúc khôi phục"
+	confirm "Tiếp tục?" N || die "Đã huỷ. Không có gì bị thay đổi."
+
+	if [ -n "$IMPORT_DUMP" ]; then
+		compose stop backend
+		sudo install -d -o postgres -g postgres -m 750 /data/backup/db/truoc-import
+		info "Sao lưu DB đang dùng → $bk"
+		pgsu pg_dump -Fc -d rms_hospital -f "$bk"
+		ok "Đã sao lưu ($(sudo du -h "$bk" | cut -f1))"
+
+		# Đổi tên DB đang dùng sang bên (không xoá): lỗi thì đổi lại ngay
+		local i
+		for i in 1 2 3 4 5; do
+			pgsu psql -X -q -o /dev/null -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+				WHERE datname = 'rms_hospital' AND pid <> pg_backend_pid()"
+			pgsu psql -X -q -d postgres -c "ALTER DATABASE rms_hospital RENAME TO $old" 2>/dev/null && break
+			if [ "$i" = 5 ]; then
+				compose up -d backend
+				die "Không đổi tên được DB rms_hospital (còn kết nối khác). Không có gì bị thay đổi."
+			fi
+			sleep 2
+		done
+		# shellcheck disable=SC2064 # cố ý: lấy tên DB cũ ngay lúc này
+		trap "import_rollback $old" EXIT
+		ensure_db_and_roles
+		info "Khôi phục $IMPORT_DUMP ($(du -h "$IMPORT_DUMP" | cut -f1))"
+		restore_dump "$IMPORT_DUMP" || die "Khôi phục $IMPORT_DUMP lỗi (log ở trên)"
+		ok "Khôi phục xong: $(pgsu psql -X -tAc "SELECT count(*) FROM information_schema.tables
+			WHERE table_schema = 'public' AND table_type = 'BASE TABLE'" -d rms_hospital) bảng"
+		run_migrate up
+		run_backend_script scripts/init-system.js --username="$ADMIN_USERNAME" --no-admin-account
+	fi
+	[ -z "$IMPORT_UPLOADS" ] || import_old_file uploads "$IMPORT_UPLOADS"
+	[ -z "$IMPORT_SECRETS" ] || import_old_file secrets "$IMPORT_SECRETS"
+
+	if [ -n "$IMPORT_DUMP$IMPORT_SECRETS" ]; then
+		# Backend đọc khoá lúc khởi động; thay DB thì backend đang dừng, up -d bật lại
+		[ -n "$IMPORT_DUMP" ] || compose restart backend
+		step_start # không khoẻ thì (có thay DB) trả lại DB cũ
+	fi
+	if [ -n "$IMPORT_DUMP" ]; then
+		trap - EXIT
+		pgsu psql -X -q -d postgres -c "DROP DATABASE $old"
+		ok "Đã bỏ DB cũ (còn bản sao lưu $bk)"
+	fi
+	remove_imported "$IMPORT_DUMP" "$IMPORT_UPLOADS" "$IMPORT_SECRETS"
+	ok "Cập nhật xong"
 }
 
 # ─── 10. Khởi động ───────────────────────────────────────────────────────────
@@ -955,10 +1370,12 @@ for a in "$@"; do
 	-h | --help) usage 0 ;;
 	--list)
 		printf '%s\n' "${STEPS[@]}"
+		printf '%s   (chỉ chạy khi gọi tên)\n' "${EXTRA_STEPS[@]}"
 		exit 0
 		;;
 	*)
-		printf '%s\n' "${STEPS[@]}" | grep -qx "$a" || die "Không có bước '$a'. Các bước: ${STEPS[*]}"
+		printf '%s\n' "${STEPS[@]}" "${EXTRA_STEPS[@]}" | grep -qx "$a" ||
+			die "Không có bước '$a'. Các bước: ${STEPS[*]} — chỉ chạy khi gọi tên: ${EXTRA_STEPS[*]}"
 		SELECTED+=("$a")
 		;;
 	esac
@@ -982,4 +1399,4 @@ for i in "${!SELECTED[@]}"; do
 	REMAINING=("${SELECTED[@]:i+1}")
 	"step_${SELECTED[$i]}"
 done
-summary
+[ "${SELECTED[*]}" = import ] || summary

@@ -299,16 +299,29 @@ docker run --rm -v hospital_rms_server_secrets:/data:ro -v "$PWD":/backup alpine
   tar czf /backup/secrets.tar.gz -C /data .
 ```
 
-Chép 2 file sang máy Ubuntu (`/data/backup/files/`), rồi giải nén vào volume mới
-(tạo sẵn khi stack chạy lần đầu):
+Chép 2 file sang máy Ubuntu, vào `/data/backup/import/` (cùng chỗ với bản backup PostgreSQL):
 
 ```bash
-cd /data/backup/files
-docker run --rm -v hospital_rms_server_uploads:/data -v "$PWD":/backup alpine \
-  sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'
-docker run --rm -v hospital_rms_server_secrets:/data -v "$PWD":/backup alpine \
-  sh -c 'tar xzf /backup/secrets.tar.gz -C /data && chown -R 1000:1000 /data'
+scp uploads.tar.gz secrets.tar.gz <user>@<IP-VM>:/data/backup/import/
 ```
+
+- **Cài từ đầu** với `DB_MODE=transfer` / `restore` (mục 14.2 [cai-dat-may-ao-ubuntu.md](cai-dat-may-ao-ubuntu.md)):
+  không phải làm gì thêm — bước `files` chạy ngay sau bước `database`, tự tìm 2 gói trong
+  `/data/backup/import/` và cho chọn theo số. Gói nào chưa có thì bỏ qua.
+- **Hệ thống đã chạy**: `bash ~/setup-server.sh import` (mục 14.2).
+- Đặt đường dẫn khác thì dùng biến `UPLOADS_FILE` / `SECRETS_FILE` (`none` = không chép).
+- Bước này chạy `backend/scripts/import-old-files.sh` trong container backend. Script
+  kiểm tra gói trước khi giải nén: từ chối file hỏng, đường dẫn tuyệt đối, `..`,
+  symlink. Gói có thư mục bọc ngoài (`uploads/…`) cũng nhận. Script chuyển quyền
+  cho user `node`, chép `totp.key`/`jwt.env` đang có sang `.truoc-import-<thời điểm>/`
+  trong volume rồi mới ghi đè, và khởi động lại backend nếu backend đang chạy.
+- Giải nén xong, file `.tar.gz` bị **xoá** (giữ lại: `KEEP_IMPORT_FILES=1`).
+- Mỗi file chỉ giải nén 1 lần. Nạp lại / nạp gói khác sau này (vd sau lần diễn tập): chép vào
+  `/data/backup/import/` rồi `bash ~/setup-server.sh import` — chọn file theo số, xem mục 14.2
+  [cai-dat-may-ao-ubuntu.md](cai-dat-may-ao-ubuntu.md).
+- Máy dev (Windows): `npm run setup:dev -- --uploads="D:\backup\uploads.tar.gz" --secrets="D:\backup\secrets.tar.gz"`,
+  hoặc chép vào thư mục `import/` ở gốc repo rồi `npm run setup:dev -- --import` để chọn
+  (`--keep-files` để giữ file sau khi nạp).
 
 - `secrets` chứa **khoá giải mã 2FA** (`totp.key`): thiếu thì mọi người dùng đã bật
   2FA phải thiết lập lại. Cũng chứa JWT secret: giữ thì người dùng không bị đăng xuất
@@ -422,4 +435,4 @@ nhóm phát triển trước khi quyết định.
 | `connect ECONNREFUSED …:5432` hoặc treo khi kết nối | PostgreSQL chưa chạy, hoặc firewall chặn mạng Docker | `systemctl status postgresql@18-main`; `infra/cai-dat-postgresql.md` mục 4 (ufw) |
 | Backend: `The server does not support SSL connections` | PostgreSQL tắt SSL | Bật SSL (A.1) rồi khởi động lại PostgreSQL |
 | Migration lỗi ở `2026-12-15_unique_nulls_not_distinct` | Có dòng trùng theo khoá UNIQUE (NULL được coi là trùng nhau) | File tự rollback. Gửi log cho nhóm phát triển xử lý dòng trùng |
-| Mở file upload cũ báo không tìm thấy | Chưa chép volume `server_uploads` | Làm C.6 |
+| Mở file upload cũ báo không tìm thấy | Chưa chép volume `server_uploads` | Làm C.6 (`bash ~/setup-server.sh files`) |

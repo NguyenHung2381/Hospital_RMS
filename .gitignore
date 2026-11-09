@@ -35,6 +35,9 @@ build/
 # Uploaded files
 backend/uploads/
 
+# File backup / .tar.gz để nạp bằng `npm run setup:dev -- --import` (+ bản sao lưu DB trước khi thay)
+/import/
+
 # OS files
 .DS_Store
 Thumbs.db

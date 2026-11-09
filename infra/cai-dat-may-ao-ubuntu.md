@@ -47,7 +47,14 @@ Script hỏi vài câu ở đầu rồi tự chạy hết (lần đầu 20–40 
 | Ổ dùng làm `/data` | Script liệt kê các ổ **chưa phân vùng, chưa có dữ liệu** và bắt gõ lại tên ổ trước khi format. Ổ đã có phân vùng/dữ liệu thì không bao giờ bị format. `none` = để `/data` trên ổ hệ điều hành |
 | Cách truy cập web | `ip` (thử bằng `http://<IP-VM>:8081`), `proxy` (reverse proxy HTTPS của bệnh viện ở máy khác), `letsencrypt` (dựng HTTPS ngay trên máy ảo) |
 | Số worker, ClamAV | Mặc định theo số vCPU và RAM của máy |
-| Database | `new` (hệ thống mới, DB trống) hoặc `transfer` (chuyển từ file `.bak` SQL Server, bước 7). Chưa chép file `.bak` lên thì script chờ bạn chép |
+| Có dữ liệu của hệ thống cũ không | `n` (mặc định) = hệ thống mới, DB trống. `y` (gõ `c` / `có` cũng được) thì hỏi tiếp loại dữ liệu: `1` bản backup PostgreSQL (file dump `.dump` / `.sql`, có thể `.gz`, mục 14.2) hoặc `2` file `.bak` SQL Server (bước 7). Đặt sẵn `DB_MODE=new` / `restore` / `transfer` thì không hỏi |
+
+**Cài từ đầu bằng dữ liệu cũ** (trả lời `y` ở câu trên): không phải gõ đường dẫn file. Chép bản backup PostgreSQL, `uploads.tar.gz` (file người dùng đã upload) và `secrets.tar.gz` (khoá 2FA + JWT, đóng gói theo mục C.6 [chuyen-du-lieu-sang-postgresql.md](chuyen-du-lieu-sang-postgresql.md)) vào **`/data/backup/import/`** — trước khi chạy (máy có sẵn `/data`) hoặc trong lúc chạy (bước `disk` tạo thư mục). Bước `database` / `files` tự tìm ở đó, liệt kê để chọn theo số; chưa có bản backup thì script chờ bạn chép. Thiếu `uploads` / `secrets` thì bỏ qua, nạp sau bằng bước `import`.
+
+```bash
+scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz rms:/data/backup/import/
+```
+
 | Khoá SSH bằng mật khẩu | Chỉ hỏi khi `~/.ssh/authorized_keys` đã có khoá (bước 3.5) |
 
 Giữa chừng script dừng chờ 1 lần: in **deploy key** để bạn thêm vào GitHub (bước 10), thêm xong nhấn Enter.
@@ -62,9 +69,12 @@ Kết quả:
 bash ~/setup-server.sh --list             # tên các bước
 bash ~/setup-server.sh https              # chỉ chạy lại 1 bước, vd sau khi trỏ domain
 REBUILD=1 bash ~/setup-server.sh build start
+bash ~/setup-server.sh import             # nạp dữ liệu mới từ file backup / .tar.gz (mục 14.2)
 ```
 
-Tài khoản quản trị đầu tiên tên `admin` (đổi bằng biến `ADMIN_USERNAME`): **mật khẩu tạm in 1 lần** ở bước *Vai trò hệ thống và tài khoản quản trị đầu tiên*, bắt đổi ở lần đăng nhập đầu. Mật khẩu này cũng nằm trong `~/rms-setup.log` (chỉ chủ file đọc được) và hết tác dụng sau khi bạn đổi.
+File dump / `.tar.gz` nạp xong bị **xoá khỏi đĩa** (chứa toàn bộ dữ liệu và khoá 2FA). Muốn giữ: đặt `KEEP_IMPORT_FILES=1` trước lệnh.
+
+Hai tài khoản quản trị `superadmin` (toàn quyền) và `admin` (quyền nghiệp vụ, đổi tên bằng biến `ADMIN_USERNAME` / `LIMITED_ADMIN_USERNAME`; DB `restore` giữ tài khoản của bản backup): **mật khẩu tạm in 1 lần** ở bước *Vai trò hệ thống và tài khoản quản trị*, bắt đổi ở lần đăng nhập đầu. Mật khẩu này cũng nằm trong `~/rms-setup.log` (chỉ chủ file đọc được) và hết tác dụng sau khi bạn đổi.
 
 Script **không** làm: IP tĩnh (4.2), GitHub runner cho CI/CD (15). Chạy không hỏi (đặt sẵn mọi câu trả lời bằng biến môi trường): xem đầu file script.
 
@@ -973,6 +983,52 @@ Khôi phục (ra DB khác để kiểm tra, không đè DB đang chạy):
 sudo -u postgres createdb -T template0 rms_restore_test
 sudo -u postgres pg_restore -d rms_restore_test --no-owner /data/backup/db/daily/rms_hospital_<ngày>.dump
 ```
+
+**Dựng máy MỚI từ bản sao lưu** (máy cũ hỏng, hoặc chuyển sang máy khác): chạy `setup-server.sh`,
+trả lời **có dữ liệu cũ → `1` bản backup PostgreSQL** (hoặc đặt sẵn `DB_MODE=restore`), chép 3 file của máy cũ vào `/data/backup/import/` — 1 lần chạy làm hết,
+không cần bước `import`:
+
+```bash
+# trên máy có bản sao lưu (NAS / máy cũ)
+scp rms_hospital_<ngày>.dump uploads-<ngày>.tar.gz secrets-<ngày>.tar.gz <user>@<IP-mới>:/data/backup/import/
+# trên máy mới
+DB_MODE=restore bash ~/setup-server.sh     # /data chưa có: chạy trước, script chờ ở bước database
+```
+
+- File dump: `.dump` (`pg_dump -Fc`, như bản hằng đêm ở trên), `-Ft`, hoặc `.sql`; nén `.gz` cũng
+  được (script nhận dạng theo nội dung, không theo đuôi).
+- Bước `database` khôi phục bằng superuser `postgres` (`rms_migrate` không khôi phục được
+  `COMMENT ON EXTENSION pg_stat_statements`), giữ nguyên chủ sở hữu + quyền của `rms_app`, trong
+  1 transaction: lỗi giữa chừng thì DB không đổi, sửa rồi chạy lại `bash ~/setup-server.sh database files start`.
+  Sau đó chạy migration mới hơn bản backup (nếu có). Tài khoản giữ nguyên như bản backup, không tạo tài khoản quản trị mới.
+- Bước `files` giải nén `uploads.tar.gz` / `secrets.tar.gz` vào volume mới (mục C.6
+  [chuyen-du-lieu-sang-postgresql.md](chuyen-du-lieu-sang-postgresql.md)). Thiếu `secrets` thì người đã bật 2FA phải thiết lập lại.
+- DB phải trống (máy mới cài). Hệ thống đang chạy thì dùng bước `import` ở dưới.
+- Nạp xong, file dump / `.tar.gz` bị xoá (`KEEP_IMPORT_FILES=1` để giữ).
+
+**Cập nhật dữ liệu trên hệ thống đang chạy** (nạp bản backup mới hơn, chép file upload từ máy
+khác…): chép file vào `/data/backup/import/` rồi chạy bước `import` — bước này chỉ chạy khi gọi tên:
+
+```bash
+# trên máy có file
+scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz <user>@<IP>:/data/backup/import/
+# trên máy chủ
+bash ~/setup-server.sh import
+```
+
+- Script liệt kê file theo loại, mới nhất trước, chọn theo số (`0` = không dùng). Nhận dạng theo
+  nội dung: bản backup PostgreSQL (như trên) / `.tar.gz` có chữ `secret` trong tên là khoá 2FA + JWT /
+  `.tar.gz` còn lại là file upload. File khác bị bỏ qua.
+- Chọn bản backup = **thay toàn bộ DB**: dừng backend, sao lưu DB đang dùng vào
+  `/data/backup/db/truoc-import/`, đổi tên DB cũ sang bên, khôi phục vào DB mới, chạy migration,
+  khởi động. Lỗi ở bất kỳ bước nào (file hỏng, migration lỗi, backend không lên) thì tự trả lại DB cũ
+  và giữ file. Thành công thì bỏ DB cũ (còn bản sao lưu) và **xoá file đã chọn**.
+- `uploads.tar.gz` ghép vào file đang có (trùng tên thì ghi đè); `secrets.tar.gz` thay khoá đang có
+  (khoá cũ chép sang `.truoc-import-<thời điểm>/` trong volume).
+- Chạy không hỏi: `IMPORT_DUMP=… IMPORT_UPLOADS=none IMPORT_SECRETS=none ASSUME_YES=1 bash ~/setup-server.sh import`
+  (`ASSUME_YES=1` mà không đặt biến thì lấy file mới nhất mỗi loại). Thư mục khác: `IMPORT_DIR=…`.
+- Máy dev: chép file vào thư mục `import/` ở gốc repo rồi `npm run setup:dev -- --import`
+  (hoặc `--import="E:\thu-muc"`); DB đang dùng sao lưu vào `import/sao-luu/`, `--keep-files` để giữ file.
 
 ### 14.3. Sao lưu file upload và khoá bí mật
 
