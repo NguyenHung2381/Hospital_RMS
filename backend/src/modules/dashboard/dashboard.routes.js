@@ -42,6 +42,7 @@ router.post(
 router.get(
 	'/training-stats',
 	authorizePermission(['reports', 'read']),
+	requireModule('TRAINING'),
 	asyncHandler(async (req, res) => {
 		success(res, await dashboardService.getTrainingStats());
 	}),
@@ -50,6 +51,7 @@ router.get(
 router.get(
 	'/seminar-stats',
 	authorizePermission(['reports', 'read']),
+	requireModule('SEMINAR'),
 	asyncHandler(async (req, res) => {
 		success(res, await dashboardService.getSeminarStats());
 	}),

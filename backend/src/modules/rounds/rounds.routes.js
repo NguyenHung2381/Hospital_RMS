@@ -6,8 +6,11 @@ const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const roundCtrl = require('./roundController');
 const deadlineSvc = require('./deadlineService');
+const { requireModule } = require('../../middlewares/moduleGuard');
 
 // ─── Research Rounds ──────────────────────────────────────────────────────────
+// Router gắn ở gốc API (không có tiền tố) nên công tắc module gắn theo đường dẫn.
+router.use('/research-rounds', requireModule('RESEARCH'));
 
 router.get(
 	'/research-rounds',

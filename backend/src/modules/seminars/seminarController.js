@@ -137,6 +137,8 @@ const importParticipants = asyncHandler(async (req, res) => {
 			seminar_id: req.params.id,
 			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
 			issue_cme: req.body.issue_cme === '1' || req.body.issue_cme === 'true',
+			// Cấp số CME chỉ dành cho người có seminars:cme_manage (cùng quy tắc M-04)
+			canCme: hasPermission(req.user, 'seminars', 'cme_manage'),
 			credits_by_role: req.body.credits_by_role,
 		},
 		req.user.id,
