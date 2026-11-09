@@ -1,4 +1,5 @@
-const { getPool, sql, nowSql, upsert } = require('../../config/db');
+const { getPool, sql, nowSql, upsert, withTransaction, lockResource } = require('../../config/db');
+const { httpError } = require('../../utils/httpError');
 const { broadcast } = require('../events/eventService');
 
 // Cấu hình hệ thống qua UI (2026-09-14_system_settings.sql) — thay .env cho các
@@ -137,49 +138,90 @@ const getById = async (key) => maskRow(await getRaw(key));
 // UI nhưng vẫn lộ theo đường này).
 //   Mật khẩu lưu ở DB: update() xóa khi máy chủ SMTP đang áp dụng đổi.
 //   Mật khẩu ở .env: chỉ dùng khi máy chủ đang áp dụng = SMTP_HOST của .env.
-const smtpPassword = async () => {
-	const row = await getRaw('SMTP_PASS');
-	if (row?.value) return row.value;
-	return (await getValue('SMTP_HOST')) === process.env.SMTP_HOST
-		? process.env.SMTP_PASS
-		: undefined;
+// Cấu hình SMTP lấy từ MỘT snapshot cache duy nhất (một lần loadRows — Map không bị sửa
+// tại chỗ, chỉ bị thay nguyên khối) → host/port/user/mật khẩu luôn thuộc cùng một trạng
+// thái. Đọc host và mật khẩu bằng các lần getValue riêng thì có thể ghép host mới với
+// mật khẩu của host cũ nếu cache bị nạp lại giữa chừng.
+const smtpConfig = async () => {
+	const rows = await loadRows();
+	const val = (key) => {
+		const v = rows.get(key)?.value;
+		return v !== null && v !== undefined && v !== '' ? v : process.env[key];
+	};
+	const host = val('SMTP_HOST');
+	const dbPass = rows.get('SMTP_PASS')?.value;
+	const pass = dbPass || (host === process.env.SMTP_HOST ? process.env.SMTP_PASS : undefined);
+	return {
+		host,
+		port: val('SMTP_PORT'),
+		secure: val('SMTP_SECURE'),
+		user: val('SMTP_USER'),
+		pass,
+	};
 };
+
+const smtpPassword = async () => (await smtpConfig()).pass;
+
+const UPSERT_SETTING_SQL = upsert({
+	table: 'system_settings',
+	key: ['setting_key'],
+	values: {
+		setting_key: '@key',
+		value: '@value',
+		created_by: '@actor_id',
+		updated_by: '@actor_id',
+	},
+	update: { value: '@value', updated_at: nowSql, updated_by: '@actor_id' },
+});
+
+// Đổi SMTP_HOST: ghi host và xóa mật khẩu DB trong CÙNG transaction (hostBefore đọc từ DB
+// dưới khóa, không đọc cache có thể cũ) → không reader nào, ở worker nào, thấy host mới đi
+// kèm mật khẩu của host cũ; ghi mật khẩu xóa lỗi thì host cũng rollback.
+const effectiveHost = (v) =>
+	v !== null && v !== undefined && v !== '' ? v : process.env.SMTP_HOST;
+const updateSmtpHost = (value, actorId) =>
+	withTransaction(async (tx) => {
+		// Tuần tự hóa các lần đổi host đồng thời để hostBefore luôn đúng
+		if (!(await lockResource(tx, 'system_settings:SMTP_HOST')))
+			throw httpError(409, 'Đang có thay đổi máy chủ SMTP khác, vui lòng thử lại');
+		const before = (
+			await tx.request().query(`SELECT value FROM system_settings WHERE setting_key = 'SMTP_HOST'`)
+		).recordset[0]?.value;
+		const next = value === '' ? null : value;
+		await tx
+			.request()
+			.input('key', sql.VarChar(50), 'SMTP_HOST')
+			.input('value', sql.NVarChar(sql.MAX), next)
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(UPSERT_SETTING_SQL);
+		if (effectiveHost(before) !== effectiveHost(next)) {
+			await tx
+				.request()
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(
+					`UPDATE system_settings SET value = NULL, updated_at = ${nowSql}, updated_by = @actor_id WHERE setting_key = 'SMTP_PASS'`,
+				);
+		}
+	});
 
 const update = async (key, value, actorId) => {
 	// UI gửi lại MASK khi admin không đổi secret → giữ nguyên giá trị cũ.
 	if (SECRET_KEYS.has(key) && value === MASK) return getById(key);
-	const pool = await getPool();
-	const hostBefore = key === 'SMTP_HOST' ? await getValue('SMTP_HOST') : undefined;
-	await pool
-		.request()
-		.input('key', sql.VarChar(50), key)
-		.input('value', sql.NVarChar(sql.MAX), value === '' ? null : value)
-		.input('actor_id', sql.VarChar(20), actorId)
-		.query(
-			upsert({
-				table: 'system_settings',
-				key: ['setting_key'],
-				values: {
-					setting_key: '@key',
-					value: '@value',
-					created_by: '@actor_id',
-					updated_by: '@actor_id',
-				},
-				update: { value: '@value', updated_at: nowSql, updated_by: '@actor_id' },
-			}),
-		);
-	cache = null;
-	if (key === 'SMTP_HOST' && (await getValue('SMTP_HOST')) !== hostBefore) {
+	if (key === 'SMTP_HOST') {
+		await updateSmtpHost(value, actorId);
+	} else {
+		const pool = await getPool();
 		await pool
 			.request()
+			.input('key', sql.VarChar(50), key)
+			.input('value', sql.NVarChar(sql.MAX), value === '' ? null : value)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query(
-				`UPDATE system_settings SET value = NULL, updated_at = ${nowSql}, updated_by = @actor_id WHERE setting_key = 'SMTP_PASS'`,
-			);
-		cache = null;
+			.query(UPSERT_SETTING_SQL);
 	}
+	// Xóa cache SAU khi commit — không bao giờ nạp lại trạng thái dở dang
+	cache = null;
 	broadcast('update', { entity: 'system_setting' });
 	return getById(key);
 };
 
-module.exports = { getAll, getById, getValue, smtpPassword, update, isKey };
+module.exports = { getAll, getById, getValue, smtpConfig, smtpPassword, update, isKey };

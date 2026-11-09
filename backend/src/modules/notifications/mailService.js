@@ -37,13 +37,8 @@ const isEnabled = async (event) => {
 // Không cache transporter — số lượng email gửi thấp (notification/deadline),
 // đổi lấy việc thay đổi cấu hình SMTP qua UI có hiệu lực ngay, không cần restart.
 const getTransporter = async () => {
-	const [host, port, secure, user, pass] = await Promise.all([
-		systemSettingService.getValue('SMTP_HOST'),
-		systemSettingService.getValue('SMTP_PORT'),
-		systemSettingService.getValue('SMTP_SECURE'),
-		systemSettingService.getValue('SMTP_USER'),
-		systemSettingService.smtpPassword(),
-	]);
+	// MỘT snapshot cấu hình: host và mật khẩu phải cùng thuộc một trạng thái (xem smtpConfig)
+	const { host, port, secure, user, pass } = await systemSettingService.smtpConfig();
 	return nodemailer.createTransport({
 		host,
 		port: Number(port) || 587,

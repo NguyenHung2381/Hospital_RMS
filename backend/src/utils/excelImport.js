@@ -95,6 +95,8 @@ const parseStaffNumber = (s) => {
 // lượng trước khi đưa cho ExcelJS; không tin kích thước khai trong mục lục zip.
 // ponytail: trần cố định 20MB (~50.000 dòng × 7 cột); nâng heap worker thì nâng theo.
 const MAX_UNZIPPED_BYTES = 20 * 1024 * 1024;
+// .xlsx thật chỉ vài chục mục; trần này chặn file nhồi hàng chục nghìn mục.
+const MAX_ZIP_ENTRIES = 10000;
 const UNREADABLE = 'File không đọc được — cần file .xlsx hợp lệ.';
 
 const assertUnzippedSize = (buf, max = MAX_UNZIPPED_BYTES) => {
@@ -112,10 +114,20 @@ const assertUnzippedSize = (buf, max = MAX_UNZIPPED_BYTES) => {
 			}
 		}
 		if (eocd < 0) throw new Error('no eocd');
-		let p = buf.readUInt32LE(eocd + 16);
+		// JSZip (ExcelJS) duyệt mục lục theo CHỮ KÝ từ cdOffset, không tin số mục của
+		// EOCD; guard chỉ duyệt đúng số mục khai thì file khai 0/1 mục vẫn bị JSZip bung
+		// hết (bypass zip-bomb). Nên: mục lục phải liền ngay trước EOCD, duyệt tới hết
+		// bằng chữ ký, rồi bắt số mục thấy được KHỚP số khai — lệch là từ chối.
+		const declared = buf.readUInt16LE(eocd + 10);
+		const cdSize = buf.readUInt32LE(eocd + 12);
+		const cdOffset = buf.readUInt32LE(eocd + 16);
+		if (buf.readUInt16LE(eocd + 8) !== declared || cdOffset + cdSize !== eocd)
+			throw new Error('bad eocd');
+		let p = cdOffset;
 		let total = 0;
-		for (let n = buf.readUInt16LE(eocd + 10); n > 0; n--) {
-			if (buf.readUInt32LE(p) !== 0x02014b50) throw new Error('bad cd');
+		let seen = 0;
+		while (p < eocd && buf.readUInt32LE(p) === 0x02014b50) {
+			if (++seen > MAX_ZIP_ENTRIES) throw tooBig();
 			const method = buf.readUInt16LE(p + 10);
 			const size = buf.readUInt32LE(p + 20);
 			const local = buf.readUInt32LE(p + 42);
@@ -129,6 +141,7 @@ const assertUnzippedSize = (buf, max = MAX_UNZIPPED_BYTES) => {
 			else throw new Error('bad method');
 			if (total > max) throw tooBig();
 		}
+		if (seen === 0 || seen !== declared || p !== eocd) throw new Error('bad cd');
 	} catch (err) {
 		if (err.code === 'ERR_BUFFER_TOO_LARGE') throw tooBig();
 		if (err.statusCode) throw err;

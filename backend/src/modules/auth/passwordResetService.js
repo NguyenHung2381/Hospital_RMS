@@ -167,11 +167,20 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 	if (policyError) throw httpError(400, policyError);
 
 	const hashed = await credentialService.hashPassword(newPassword);
+	// failed_login_count / locked_until là bộ đếm DUY NHẤT của tài khoản, dùng chung cho
+	// sai mật khẩu và sai mã TOTP — và là lớp duy nhất chặn dò mã 6 số từ nhiều IP
+	// (authService.login). Đặt lại mật khẩu chỉ khôi phục yếu tố 1; nếu xóa bộ đếm thì kẻ
+	// chiếm được hộp thư lặp "reset → đoán 5 mã TOTP → reset" để có thêm 5 lượt mỗi
+	// vòng và gỡ cả khóa đang có. Tài khoản bật TOTP thì GIỮ NGUYÊN bộ đếm và khóa
+	// (hết khóa theo locked_until; đăng nhập đủ 2 bước mới xóa — resetFailedLogins).
+	// Tài khoản không TOTP: xóa như cũ để người quên mật khẩu bị khóa vì gõ sai vào lại được.
 	await queryBatch(
 		pool.request().input('id', sql.VarChar(20), row.id).input('password', sql.VarChar(255), hashed),
 		[
 			`UPDATE users SET password = @password, password_changed_at = ${nowSql}, must_change_password = 'false',
-			       temp_password_issued_at = NULL, failed_login_count = 0, locked_until = NULL,
+			       temp_password_issued_at = NULL,
+			       failed_login_count = CASE WHEN totp_enabled THEN failed_login_count ELSE 0 END,
+			       locked_until = CASE WHEN totp_enabled THEN locked_until ELSE NULL END,
 			       updated_at = ${nowSql}, updated_by = @id
 			WHERE id = @id`,
 			`DELETE FROM password_reset_otps WHERE user_id = @id`,
