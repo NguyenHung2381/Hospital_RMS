@@ -373,7 +373,13 @@ const saveGradesBulk = asyncHandler(async (req, res) => {
 });
 
 const lockGrades = asyncHandler(async (req, res) => {
-	return success(res, await gradebookService.lock(req.params.id, req.user.id), 'Đã khóa điểm');
+	// CME giảng viên sinh khi khóa điểm chỉ được duyệt sẵn nếu người khóa có cme_records:manage
+	const canApproveCme = hasPermission(req.user, 'cme_records', 'manage');
+	return success(
+		res,
+		await gradebookService.lock(req.params.id, req.user.id, { canApproveCme }),
+		'Đã khóa điểm',
+	);
 });
 
 const unlockGrades = asyncHandler(async (req, res) => {

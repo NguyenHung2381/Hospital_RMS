@@ -334,7 +334,7 @@ DELETE /api/v1/seminars/:id/participants/:pid  seminars:update
 POST   /api/v1/seminars/:id/participants/:pid/revoke-cme  seminars:cme_manage
 POST   /api/v1/seminars/:id/participants/add-required  seminars:update
 POST   /api/v1/seminars/:id/participants/add-users  seminars:update
-POST   /api/v1/seminars/:id/participants/bulk-cme  seminars:update
+POST   /api/v1/seminars/:id/participants/bulk-cme  seminars:cme_manage
 POST   /api/v1/seminars/:id/participants/import-excel  seminars:import
 POST   /api/v1/seminars/:id/participants/issue-cme  seminars:cme_manage
 GET    /api/v1/seminars/:id/required-absentees  seminars:read

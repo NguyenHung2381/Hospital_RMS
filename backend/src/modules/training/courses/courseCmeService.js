@@ -45,7 +45,14 @@ const SAME_AS_INSERT = [
 	'year',
 	'note',
 ];
-const upsertCmeSql = (sourceType, source) =>
+// approve=false (mặc định cho dòng giảng viên khi người gọi không có cme_records:manage):
+//   - chèn 'pending' (chưa duyệt), không ghi người duyệt;
+//   - conflict: 'rejected' giữ nguyên (lời từ chối của người quản lý CME không bị hoàn tác),
+//     'approved' chỉ giữ khi tín chỉ không đổi, còn lại về 'pending' chờ duyệt lại.
+// approve=true: chèn 'approved'; conflict vẫn giữ 'rejected', không xóa lý do từ chối.
+// keepRejected=false (dòng học viên theo giấy chứng nhận): giữ hành vi cũ — luôn 'approved',
+// vì cấp lại giấy sau thu hồi (cần courses:approve) phải duyệt lại dòng CME.
+const upsertCmeSql = (sourceType, source, { approve = true, keepRejected = false } = {}) =>
 	upsert({
 		table: 'cme_records',
 		key: ['source_type', 'source_id', 'user_id'],
@@ -62,17 +69,25 @@ const upsertCmeSql = (sourceType, source) =>
 			quantity: 'src.quantity',
 			credits: 'src.credits',
 			note: 'src.note',
-			approval_status: "'approved'",
-			reviewed_by: '@actor_id',
-			reviewed_at: nowSql,
+			approval_status: approve ? "'approved'" : "'pending'",
+			reviewed_by: approve ? '@actor_id' : 'NULL',
+			reviewed_at: approve ? nowSql : 'NULL',
 			source_type: `'${sourceType}'`,
 			source_id: '@course_id',
 			created_by: '@actor_id',
 		},
 		update: {
 			...Object.fromEntries(SAME_AS_INSERT.map((c) => [c, `EXCLUDED.${c}`])),
-			approval_status: "'approved'",
-			reject_reason: 'NULL',
+			...(keepRejected
+				? {
+						approval_status: approve
+							? "CASE WHEN tgt.approval_status = 'rejected' THEN 'rejected' ELSE 'approved' END"
+							: `CASE WHEN tgt.approval_status = 'rejected' THEN 'rejected'
+                  WHEN tgt.approval_status = 'approved' AND tgt.credits = EXCLUDED.credits THEN 'approved'
+                  ELSE 'pending' END`,
+						reject_reason: 'tgt.reject_reason',
+					}
+				: { approval_status: "'approved'", reject_reason: 'NULL' }),
 			updated_at: nowSql,
 			updated_by: '@actor_id',
 		},
@@ -162,7 +177,9 @@ const withdrawForCertificate = async (certId, actorId, { remove = false, reason 
  * Giảng viên: ghi CME theo số tiết đảm nhận (gọi khi khóa điểm). GV không còn
  * phân công (hoặc còn 0 tiết) thì xóa dòng tự động cũ của khóa.
  */
-const syncLecturers = async (courseId, actorId) => {
+// canApprove: người gọi có cme_records:manage — chỉ khi đó dòng mới được 'approved'; người chỉ
+// có courses:update/approve (kể cả phạm vi 'assigned') ghi dòng 'pending' chờ người quản lý CME duyệt.
+const syncLecturers = async (courseId, actorId, { canApprove = false } = {}) => {
 	if (!(await isOn('CME_AUTO_LECTURER'))) return 0;
 	// Xóa dòng của GV không còn trong danh sách rồi ghi / cập nhật, trong 1 transaction
 	const n = await withTransaction(async (tx) => {
@@ -170,11 +187,18 @@ const syncLecturers = async (courseId, actorId) => {
 			new sql.Request(tx)
 				.input('course_id', sql.VarChar(20), courseId)
 				.input('actor_id', sql.VarChar(20), actorId);
+		// Người không có quyền duyệt chỉ dọn được dòng còn chờ duyệt, không xóa dòng đã duyệt / từ chối
 		await req().query(`
       DELETE FROM cme_records
       WHERE source_type = '${SOURCE.lecturer}' AND source_id = @course_id
+        ${canApprove ? '' : "AND approval_status = 'pending'"}
         AND NOT EXISTS (SELECT 1 FROM (${LECTURER_SOURCE}) s WHERE s.user_id = cme_records.user_id)`);
-		const r = await req().query(upsertCmeSql(SOURCE.lecturer, LECTURER_SOURCE));
+		const r = await req().query(
+			upsertCmeSql(SOURCE.lecturer, LECTURER_SOURCE, {
+				approve: canApprove,
+				keepRejected: true,
+			}),
+		);
 		return r.rowsAffected[0] ?? 0;
 	});
 	if (n) broadcast('update', { entity: 'cme_record' });
@@ -220,7 +244,7 @@ const gradesLocked = async (courseId) => {
 };
 
 /** Nút "Ghi lại CME" ở tab Kết quả: học viên theo giấy đã cấp, giảng viên khi điểm đã khóa. */
-const syncCourse = async (courseId, actorId) => {
+const syncCourse = async (courseId, actorId, { canApprove = false } = {}) => {
 	const [traineeOn, lecturerOn, locked] = [
 		await isOn('CME_AUTO_TRAINEE'),
 		await isOn('CME_AUTO_LECTURER'),
@@ -228,7 +252,7 @@ const syncCourse = async (courseId, actorId) => {
 	];
 	return {
 		trainees: traineeOn ? await syncTrainees(courseId, actorId) : null,
-		lecturers: lecturerOn && locked ? await syncLecturers(courseId, actorId) : null,
+		lecturers: lecturerOn && locked ? await syncLecturers(courseId, actorId, { canApprove }) : null,
 		trainee_enabled: traineeOn,
 		lecturer_enabled: lecturerOn,
 		grades_locked: locked,

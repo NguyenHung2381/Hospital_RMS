@@ -287,7 +287,7 @@ router.post('/:id/participants/:pid/revoke-cme', authenticate, canCme, ctrl.revo
 router.post(
 	'/:id/participants/bulk-cme',
 	authenticate,
-	canUpdate,
+	canCme,
 	[body('participant_ids').isArray({ min: 1 }), body('status').isIn(['issued', 'signed'])],
 	validate,
 	ctrl.bulkCmeStatus,
