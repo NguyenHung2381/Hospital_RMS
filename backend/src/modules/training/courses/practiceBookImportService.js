@@ -258,6 +258,14 @@ const buildPreview = (records, traineePreview, lookups) => {
 		const existing = rec.practice_code ? lookups.enrollmentByCode.get(rec.practice_code) : null;
 		if (existing && existing.course_id !== lookups.course.id)
 			warn.add('Mã thực hành đã thuộc khóa khác — bỏ qua hồ sơ', rec.row);
+		// Mã thực hành của ghi danh đã có chủ: CCCD của dòng phải trỏ đúng học viên đó, nếu không
+		// import sẽ chuyển ghi danh (kèm chứng chỉ, điểm) sang người khác ⇒ bỏ qua hồ sơ
+		const ownerMismatch =
+			!!existing &&
+			existing.course_id === lookups.course.id &&
+			(!t?.trainee_id || t.trainee_id !== existing.trainee_id);
+		if (ownerMismatch)
+			warn.add('Mã thực hành thuộc học viên khác (CCCD không khớp) — bỏ qua hồ sơ', rec.row);
 		if (rec.practice_code && seenCodes.has(rec.practice_code))
 			warn.add('Mã thực hành lặp lại trong file — bỏ qua dòng sau', rec.row);
 		if (rec.practice_code) seenCodes.add(rec.practice_code);
@@ -316,7 +324,8 @@ const buildPreview = (records, traineePreview, lookups) => {
 			full_name: rec.full_name,
 			trainee_action: t?.action ?? 'new',
 			action: existing ? 'update' : 'new',
-			skip: (existing && existing.course_id !== lookups.course.id) || false,
+			skip: (existing && existing.course_id !== lookups.course.id) || ownerMismatch || false,
+			owner_mismatch: ownerMismatch,
 			enrollment_id: existing?.course_id === lookups.course.id ? existing.id : null,
 			program_code: code,
 			program_id: program?.id ?? null,
@@ -349,9 +358,12 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 		throw badRequest(
 			'Sổ thực hành chỉ nhập vào khóa GPHN mở liên tục (sửa khóa: bật "Mở liên tục").',
 		);
-	const traineePreview = traineeImport.buildPreview(traineeRows, traineeLookups);
-	const { items, warnings } = buildPreview(records, traineePreview, lookups);
+	const allTraineePreview = traineeImport.buildPreview(traineeRows, traineeLookups);
+	const { items, warnings } = buildPreview(records, allTraineePreview, lookups);
 	const kept = items.filter((it) => !it.skip);
+	// Dòng bị bỏ vì CCCD không khớp chủ ghi danh thì cũng không ghi / sửa hồ sơ học viên của dòng đó
+	const mismatchRows = new Set(items.filter((it) => it.owner_mismatch).map((it) => it.row));
+	const traineePreview = allTraineePreview.filter((t) => !mismatchRows.has(t.row));
 
 	const programCounts = {};
 	for (const it of kept)
