@@ -1,6 +1,7 @@
 const permCache = require('../../permissions/permissionCache');
-const { hasPermission, scopeOf } = require('../../permissions/authz');
+const { hasPermission } = require('../../permissions/authz');
 const { isScoped, scopeRank } = require('../../permissions/scopes');
+const { effectiveScope, withinDepartment } = require('../../permissions/actionScope');
 const { httpError } = require('../../utils/httpError');
 
 // Chốt chặn leo thang quyền — dùng chung cho quản lý vai trò và tài khoản.
@@ -24,11 +25,16 @@ const isSuperuser = (actor) => !!actor?.permissions?.has(SUPERUSER);
 const describe = ({ key, scope }) => (scope ? `${key}@${scope}` : key);
 
 // actor có quyền `key` với phạm vi không hẹp hơn `scope`.
+// Trần phạm vi = phạm vi HIỆU LỰC của actor cho action đó (effectiveScope: hẹp
+// hơn trong lượt cấp của action và phạm vi xem mà policy runtime dùng), không
+// chỉ lượt cấp của riêng action — nếu không, actor topics:read@department +
+// topics:update@all cấp được vai trò [topics:update@all] (không có read) mà
+// runtime coi là toàn viện, rộng hơn chính actor.
 const holds = (actor, { key, scope }) => {
 	const [resource, action] = key.split(':');
 	if (!hasPermission(actor, resource, action)) return false;
 	if (!isScoped(resource) || isSuperuser(actor)) return true;
-	const own = scopeOf(actor, resource, action);
+	const own = effectiveScope(actor, resource, action);
 	return scopeRank(resource, own) >= scopeRank(resource, scope);
 };
 
@@ -58,13 +64,13 @@ const assertCanAssignRole = async (actor, roleId) => {
 
 // Sửa / xóa / reset mật khẩu một tài khoản: phải cùng khoa (nếu actor bị giới
 // hạn theo khoa) và tài khoản đích không được mang quyền cao hơn actor.
-const assertCanManageUser = async (actor, target) => {
+// `action` = thao tác đang làm ('update' cho sửa / reset mật khẩu, 'delete'):
+// giới hạn khoa lấy theo lượt cấp users:<action>, KHÔNG theo users:read — vai trò
+// users:read@all + users:update@department chỉ sửa được tài khoản trong khoa.
+const assertCanManageUser = async (actor, target, action = 'update') => {
 	if (isSuperuser(actor)) return;
 	// Giới hạn theo khoa mà actor chưa có khoa ⇒ từ chối (NULL === NULL không phải "cùng khoa")
-	if (
-		scopeOf(actor, 'users') !== 'all' &&
-		(!actor.department_id || target.department_id !== actor.department_id)
-	) {
+	if (!withinDepartment(actor, 'users', action, target.department_id)) {
 		throw forbiddenError('Bạn không có quyền thao tác trên tài khoản ngoài khoa của mình');
 	}
 	try {
