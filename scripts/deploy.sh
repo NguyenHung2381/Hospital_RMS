@@ -133,14 +133,31 @@ write_history() {
 	fi
 }
 
-# Chạy lệnh migrate trong image mới, bằng role migration nếu có
-migrate() {
-	local env_args=()
-	if [ -n "${MIGRATION_DB_USER:-}" ]; then
-		export DB_USER="$MIGRATION_DB_USER" DB_PASSWORD="${MIGRATION_DB_PASSWORD:-}"
-		env_args+=(-e DB_USER -e DB_PASSWORD)
+# Mật khẩu role migration: MIGRATION_DB_PASSWORD → PGPASSWORD → ~/.pgpass (như backup_db /
+# pg_dump và setup-server.sh). Container không đọc được ~/.pgpass nên phải tự lấy ra ở đây.
+migration_password() {
+	local user="$1" host="${MIGRATION_DB_HOST:-127.0.0.1}" port="${MIGRATION_DB_PORT:-5432}"
+	if [ -n "${MIGRATION_DB_PASSWORD:-}" ]; then
+		printf '%s' "$MIGRATION_DB_PASSWORD"
+	elif [ -n "${PGPASSWORD:-}" ]; then
+		printf '%s' "$PGPASSWORD"
+	elif [ -f ~/.pgpass ]; then
+		awk -F: -v h="$host" -v p="$port" -v u="$user" 			'($1 == h || $1 == "*") && ($2 == p || $2 == "*") && $4 == u { print $5; exit }' ~/.pgpass
 	fi
-	compose run --rm --no-deps -T "${env_args[@]}" backend node scripts/migrate.js "$@"
+}
+
+# Chạy lệnh migrate trong image mới, LUÔN bằng role migration (mặc định rms_migrate, như
+# backup_db). Không rơi về DB_USER của app (rms_app): role đó không có quyền CREATE trên
+# schema public nên migrate hỏng ở "permission denied for schema public" — đúng lúc đã
+# backup xong và có migration chờ chạy.
+migrate() {
+	local user="${MIGRATION_DB_USER:-rms_migrate}" pw
+	pw="$(migration_password "$user")"
+	if [ -z "$pw" ]; then
+		echo "Không có mật khẩu cho role migration '$user': đặt secret MIGRATION_DB_PASSWORD hoặc thêm dòng" 			"${MIGRATION_DB_HOST:-127.0.0.1}:${MIGRATION_DB_PORT:-5432}:*:$user:<mật khẩu> vào ~/.pgpass của user chạy runner" >&2
+		return 1
+	fi
+	DB_USER="$user" DB_PASSWORD="$pw" 		compose run --rm --no-deps -T -e DB_USER -e DB_PASSWORD backend node scripts/migrate.js "$@"
 }
 
 backup_db() {
