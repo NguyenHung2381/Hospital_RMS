@@ -4,6 +4,9 @@
 // được cập nhật bản ghi cũ. Chạy qua route thật + authorizePermission thật, CSDL giả, và
 // ghi nhận các lệnh ghi của programService thay vì thực thi.
 process.env.JWT_SECRET = 'test-secret';
+// Tắt ClamAV như test/upload/secureUpload.test.js: .env dev đặt CLAMAV_HOST=clamav (chỉ
+// phân giải được trong mạng Docker) nên chạy trên máy host upload sẽ bị từ chối fail-closed.
+process.env.CLAMAV_HOST = '';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
