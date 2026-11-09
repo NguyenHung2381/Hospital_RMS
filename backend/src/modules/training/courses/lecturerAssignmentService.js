@@ -111,7 +111,9 @@ const resolveLecturerId = async (id, actorId) => {
 };
 
 // Không phân công học viên làm giảng viên: chặn tài khoản học viên (VT08) và
-// người đang đăng ký học chính khóa này (khớp theo hồ sơ người / tài khoản).
+// người đang học chính khóa này (khớp theo hồ sơ người / tài khoản). Chỉ tính ghi
+// danh đã được duyệt / danh sách chờ — đăng ký 'pending' từ cổng công khai (ẩn danh)
+// chưa ai xác minh nên không được chặn việc phân công giảng viên.
 const assertAssignable = async (request, courseId, lecturerId) => {
 	const check = await request
 		.input('course_id', sql.VarChar(20), courseId)
@@ -119,7 +121,7 @@ const assertAssignable = async (request, courseId, lecturerId) => {
       SELECT l.full_name, l.is_active, u.role_id,
              (SELECT COUNT(*) FROM course_enrollments e
               JOIN trainees t ON t.id = e.trainee_id
-              WHERE e.course_id = @course_id AND e.status <> 'rejected'
+              WHERE e.course_id = @course_id AND e.status IN ('approved', 'waitlisted')
                 AND ((l.person_id IS NOT NULL AND t.person_id = l.person_id)
                   OR (l.user_id IS NOT NULL AND t.staff_user_id = l.user_id))) AS enrolled
       FROM lecturers l

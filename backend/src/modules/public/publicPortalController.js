@@ -38,13 +38,15 @@ const lookup = asyncHandler(async (req, res) => {
 // Honeypot 'website': người dùng thật không thấy field này (ẩn bằng CSS) nên
 // luôn để trống; bot điền tự động thường điền vào mọi input tìm thấy. Trả về
 // một phản hồi "thành công" giả thay vì báo lỗi, để không lộ cơ chế chống bot.
-// Đăng ký kèm CCCD là phép thử ngày sinh với hồ sơ học viên đã có (sai ⇒ 409)
-// ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò ngày sinh từ nhiều IP.
+// Đăng ký kèm CCCD là phép thử ngày sinh/họ tên với hồ sơ học viên đã có
+// ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò từ nhiều IP.
+// Mọi nhánh (kể cả honeypot) trả cùng 1 thân phản hồi + thông điệp: service.PUBLIC_REGISTER_ACK.
 const REGISTER_PER_ID_MAX = 5;
+const REGISTER_MESSAGE = 'Đã nhận đăng ký khóa học, vui lòng chờ duyệt.';
 
 const register = asyncHandler(async (req, res) => {
 	if (req.body.website) {
-		return success(res, { enrollment_id: null }, 'Đăng ký thành công', 201);
+		return created(res, service.PUBLIC_REGISTER_ACK, REGISTER_MESSAGE);
 	}
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
@@ -60,8 +62,8 @@ const register = asyncHandler(async (req, res) => {
 			429,
 		);
 	}
-	const result = await service.register(req.body, req.files, req.formCustom);
-	created(res, result, 'Đăng ký khóa học thành công, vui lòng chờ duyệt.');
+	await service.register(req.body, req.files, req.formCustom);
+	created(res, service.PUBLIC_REGISTER_ACK, REGISTER_MESSAGE);
 });
 
 const getOpenTopicRounds = asyncHandler(async (req, res) => {

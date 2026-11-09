@@ -122,10 +122,55 @@ const toDateKey = (v) => {
 	return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 };
 
-// Đăng ký khóa học công khai: tự tìm học viên đã có theo CCCD (tránh tạo
-// trùng nếu học viên đã từng đăng ký khóa khác), nếu chưa có thì tạo mới với
-// actor_id = NULL (không có tài khoản đứng sau thao tác này — cột created_by
-// cho phép NULL, giống các trường hợp import/nguồn ngoài khác).
+// Phản hồi DUY NHẤT cho mọi nhánh đăng ký công khai (kể cả honeypot ở controller):
+// hình dạng phản hồi không được cho người gọi ẩn danh biết CCCD có hồ sơ hay không,
+// ngày sinh/họ tên có đúng hay không, hồ sơ cũ có thiếu ngày sinh hay không...
+// Không trả enrollment_id / mã học viên — người gọi không đăng nhập không cần biết.
+const PUBLIC_REGISTER_ACK = Object.freeze({ submitted: true });
+
+const traineeFields = (data) => ({
+	full_name: data.full_name,
+	dob: data.dob,
+	gender: data.gender,
+	national_id: data.national_id,
+	phone: data.phone,
+	email: data.email,
+	address: data.address,
+	trainee_type_id: data.trainee_type_id,
+});
+
+// Ghi danh + giấy tờ cho 1 hồ sơ học viên. Giấy tờ luôn ở trạng thái 'pending'.
+const enrollTrainee = async (data, traineeId, files, custom) => {
+	const enrollment = await courseEnrollmentService.registerTrainee(data.course_id, traineeId, null, {
+		programId: data.program_id || null,
+	});
+	await formCustomValueService.save('course_registration', enrollment.id, custom);
+	if (hasFiles(files)) await attachTraineeDocuments(traineeId, files, data.doc_types);
+};
+
+// Đăng ký không chứng minh được là chủ hồ sơ đã có (CCCD trùng nhưng sai ngày sinh /
+// sai họ tên / hồ sơ cũ thiếu ngày sinh / ghi danh hồ sơ đó bị từ chối): KHÔNG đụng
+// tới hồ sơ đã có và không đính giấy tờ vào đó. Lưu thành hồ sơ mới KHÔNG có CCCD
+// (tránh đụng chỉ mục duy nhất uq_trainees_national_id) kèm ghi chú để phòng Đào tạo
+// đối chiếu thủ công; người gọi vẫn nhận đúng phản hồi như mọi nhánh khác.
+const queueUnverifiedRegistration = async (data, files, custom) => {
+	const trainee = await traineeService.create(
+		{
+			...traineeFields(data),
+			national_id: null,
+			notes: `Đăng ký công khai chưa xác minh: người đăng ký khai CCCD ${data.national_id} nhưng không khớp (ngày sinh + họ tên) với hồ sơ đã có. Phòng Đào tạo đối chiếu trước khi duyệt.`,
+		},
+		null,
+	);
+	await enrollTrainee(data, trainee.id, files, custom);
+};
+
+// Đăng ký khóa học công khai: chỉ gắn vào học viên đã có khi CCCD + ngày sinh +
+// họ tên (chuẩn hóa như tra cứu) đều khớp và hồ sơ đó CÓ ngày sinh — không yếu hơn
+// /public/lookup. Mọi trường hợp khác không gắn vào hồ sơ đã có. Chưa có CCCD đó thì
+// tạo hồ sơ mới với actor_id = NULL (không có tài khoản đứng sau thao tác này — cột
+// created_by cho phép NULL, giống các trường hợp import/nguồn ngoài khác).
+// Mọi nhánh trả cùng PUBLIC_REGISTER_ACK. Số lượt thử theo CCCD bị giới hạn ở controller.
 // custom = trường tùy chỉnh (Cấu hình form 'course_registration') — lưu theo lượt ghi danh
 const register = async (data, files, custom = null) => {
 	const course = await courseService.getById(data.course_id);
@@ -138,62 +183,44 @@ const register = async (data, files, custom = null) => {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
 
-	let trainee = null;
-	// Hồ sơ cũ khớp CCCD nhưng không có ngày sinh để đối chiếu: người đăng ký chưa
-	// chứng minh là chủ hồ sơ ⇒ vẫn ghi danh (chờ duyệt) nhưng không đính hồ sơ
-	// giấy tờ vào hồ sơ người khác — nộp trực tiếp tại phòng Đào tạo.
-	let unverifiedOwner = false;
+	let existing = null;
 	if (data.national_id) {
 		const pool = await getPool();
-		const existing = await pool
+		const found = await pool
 			.request()
 			.input('national_id', sql.VarChar(20), data.national_id)
 			.query(
 				'SELECT * FROM trainees WHERE national_id = @national_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 			);
-		trainee = existing.recordset[0] || null;
-		// Người đăng ký phải là chủ hồ sơ: ngày sinh khớp hồ sơ đã có. Trước đây
-		// chỉ cần biết số CCCD của người khác là ghi danh được họ vào khóa học.
-		// Số lượt thử theo CCCD bị giới hạn (publicPortalController.register).
-		if (trainee?.dob && toDateKey(trainee.dob) !== toDateKey(data.dob)) {
-			throw httpError(
-				409,
-				'Thông tin không khớp với hồ sơ học viên đã có. Vui lòng kiểm tra lại ngày sinh hoặc liên hệ phòng Đào tạo.',
-			);
-		}
-		unverifiedOwner = Boolean(trainee && !trainee.dob);
-	}
-	if (!trainee) {
-		trainee = await traineeService.create(
-			{
-				full_name: data.full_name,
-				dob: data.dob,
-				gender: data.gender,
-				national_id: data.national_id,
-				phone: data.phone,
-				email: data.email,
-				address: data.address,
-				trainee_type_id: data.trainee_type_id,
-			},
-			null,
-		);
+		existing = found.recordset[0] || null;
 	}
 
-	const enrollment = await courseEnrollmentService.registerTrainee(
-		data.course_id,
-		trainee.id,
-		null,
-		{ programId: data.program_id || null },
-	);
-	await formCustomValueService.save('course_registration', enrollment.id, custom);
-	const attach = hasFiles(files) && !unverifiedOwner;
-	if (attach) await attachTraineeDocuments(trainee.id, files, data.doc_types);
-	// Không trả mã học viên: người gọi không đăng nhập, mã hồ sơ của người có
-	// CCCD đó không phải việc của họ.
-	return {
-		enrollment_id: enrollment.id,
-		...(hasFiles(files) && !attach ? { documents_skipped: true } : {}),
-	};
+	if (!existing) {
+		const trainee = await traineeService.create(traineeFields(data), null);
+		await enrollTrainee(data, trainee.id, files, custom);
+		return PUBLIC_REGISTER_ACK;
+	}
+
+	const nameKey = norm(data.full_name);
+	const owns =
+		Boolean(existing.dob) &&
+		toDateKey(existing.dob) === toDateKey(data.dob) &&
+		Boolean(nameKey) &&
+		norm(existing.full_name) === nameKey;
+	if (!owns) {
+		await queueUnverifiedRegistration(data, files, custom);
+		return PUBLIC_REGISTER_ACK;
+	}
+
+	try {
+		await enrollTrainee(data, existing.id, files, custom);
+	} catch (err) {
+		// 409 phụ thuộc hồ sơ (đang học chương trình khác, lớp đầy, đã ghi danh...) không
+		// được trả nguyên văn cho người ẩn danh — như nhánh không khớp.
+		if (err?.statusCode !== 409) throw err;
+		await queueUnverifiedRegistration(data, files, custom);
+	}
+	return PUBLIC_REGISTER_ACK;
 };
 
 // ─── Đăng ký đề tài công khai (rút gọn) ─────────────────────────────────────
@@ -266,13 +293,15 @@ const getPublicLevels = async (roundId) => {
 };
 
 // Hồ sơ học viên đính kèm khi đăng ký khóa học (CCCD, bằng cấp...) — cùng chỗ
-// lưu với tab "Hồ sơ" của học viên (traineeService.addDocument).
+// lưu với tab "Hồ sơ" của học viên (traineeService.addDocument). Người gửi không
+// đăng nhập ⇒ luôn 'pending' (chờ phòng Đào tạo duyệt qua reviewDocument), không
+// được tính vào checklist hồ sơ bắt buộc như giấy tờ nhân viên tải lên.
 const attachTraineeDocuments = async (traineeId, files, docTypes) => {
 	const dir = path.join(UPLOADS_ROOT, 'training', 'trainee_document', traineeId);
 	const moved = await moveUploadedFiles(files, dir);
 	const types = Array.isArray(docTypes) ? docTypes : [];
 	for (const [i, f] of moved.entries()) {
-		await traineeService.addDocument(traineeId, types[i] || 'other', f, null);
+		await traineeService.addDocument(traineeId, types[i] || 'other', f, null, { status: 'pending' });
 	}
 };
 
@@ -448,6 +477,7 @@ module.exports = {
 	getTraineeTypes: cached('trainee-types', getTraineeTypes),
 	lookupResults,
 	register,
+	PUBLIC_REGISTER_ACK,
 	getOpenTopicRounds: cached('open-topic-rounds', getOpenTopicRounds),
 	getTopicRoundByToken,
 	getPublicCategories: cached('categories', getPublicCategories),
