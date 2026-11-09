@@ -6,7 +6,7 @@ const logger = require('../config/logger');
 
 // Đề tài "Yêu cầu bổ sung" quá hạn mốc bổ sung của đợt ⇒ tự TỪ CHỐI (quyết
 // định nghiệp vụ 18/10/2026). Thay phần B của proc SQL cũ sp_process_daily_deadlines
-// (proc đó tự DUYỆT, và chỉ chạy nếu có SQL Agent job — xem database/README.md).
+// (proc đó tự DUYỆT, và chỉ chạy nếu có SQL Agent job).
 //
 // Từ chối qua đúng đường của người duyệt (topicApprovalService.approve):
 // cập nhật approvals, trạng thái, topic_progress, thông báo chủ nhiệm + thành viên.

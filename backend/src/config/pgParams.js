@@ -77,7 +77,7 @@ const CASTS = {
 
 // mssql chạy với useUTC (mặc định): Date gửi xuống theo giờ UTC của đối tượng.
 // Quy ước của hệ thống: DB lưu giờ VN không múi giờ, JS giữ Date "gắn nhãn UTC"
-// (POSTGRESQL_MIGRATION_PLAN.md mục 4.3) → định dạng theo UTC là đúng.
+// (backend/README.md, mục Viết SQL) → định dạng theo UTC là đúng.
 const formatDate = (d) => d.toISOString().slice(0, 10);
 const formatTimestamp = (d) => d.toISOString().replace('T', ' ').replace('Z', '');
 

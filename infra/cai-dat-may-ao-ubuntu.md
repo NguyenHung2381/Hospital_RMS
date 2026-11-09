@@ -119,7 +119,7 @@ Quy ước trong tài liệu:
 | Ổ 2 | 50 GB, **chưa phân vùng** | |
 | Mạng | 1 card, IP tĩnh trong LAN, ra được Internet (để tải gói) | |
 
-RAM ước tính: PostgreSQL ~3–4 GB (`shared_buffers` + cache, bước 6), ClamAV (quét virus file upload) ~1,5 GB, backend ~300 MB mỗi worker, Redis + Nginx < 250 MB, hệ điều hành ~1 GB. Máy 8 GB thì để `WEB_CONCURRENCY=2` (bước 11.3) và chép `infra/postgresql/rms-ram-8gb.conf` (PostgreSQL ~2,5–3 GB, xem [cai-dat-postgresql.md](cai-dat-postgresql.md) mục 3), RAM ít hơn nữa thì tắt ClamAV.
+RAM ước tính: PostgreSQL ~3–4 GB (`shared_buffers` + cache, bước 6), ClamAV (quét virus file upload) ~1,5 GB, backend ~300 MB mỗi worker, Redis + Nginx < 250 MB, hệ điều hành ~1 GB. Máy 8 GB thì để `WEB_CONCURRENCY=2` (bước 11.3) và chép `infra/postgresql/rms-ram-8gb.conf` (PostgreSQL ~2,5–3 GB, bước 6.3), RAM ít hơn nữa thì tắt ClamAV.
 
 Lúc chuyển dữ liệu cũ từ file `.bak` (bước 12.2), máy cần thêm ~2 GB RAM trống cho SQL Server tạm trong Docker: tạm dừng ClamAV trong lúc chuyển nếu máy chỉ có 8 GB.
 
@@ -470,9 +470,84 @@ SSH lại rồi chạy `df -h /data`. Còn thấy `/data` là xong.
 
 ## 6. Cài PostgreSQL 18 (ngoài Docker)
 
-Làm theo [cai-dat-postgresql.md](cai-dat-postgresql.md) **mục 1 → 5**: cài gói từ kho PGDG, tạo cluster ở `/data/pgsql`, chép cấu hình `infra/postgresql/rms.conf` + `pg_hba.rms.conf`, mở firewall cho mạng Docker, tạo role `rms_migrate` / `rms_app` và DB `rms_hospital`. Các file cấu hình nằm trong repo, nên **lấy source code trước** (bước 10) rồi quay lại đây, hoặc chép riêng thư mục `infra/postgresql/` lên máy.
+PostgreSQL chạy **trực tiếp trên Ubuntu** (systemd, dữ liệu ở `/data/pgsql`), container gọi ra máy host qua `host.docker.internal:5432`. Các file cấu hình nằm trong repo, nên **lấy source code trước** (bước 10) rồi quay lại đây, hoặc chép riêng thư mục `infra/postgresql/` lên máy. Schema **chưa** dựng ở đây mà ở bước 12.2, bằng image backend.
 
-**Chưa** chạy mục 6 của tài liệu đó (dựng schema): việc này làm ở bước 12.2, bằng image backend.
+| File | Dùng cho |
+|---|---|
+| `infra/postgresql/rms.conf` | Bộ nhớ, WAL, múi giờ, theo dõi truy vấn (máy 12–16 GB RAM, ổ SSD) |
+| `infra/postgresql/rms-ram-8gb.conf` | Ghi đè phần bộ nhớ/CPU cho máy 8 GB RAM, 4 vCPU |
+| `infra/postgresql/pg_hba.rms.conf` | Ai được kết nối, từ đâu |
+| `infra/postgresql/01_tao_db_va_role.sql` | Tạo role `rms_migrate`, `rms_app` và DB `rms_hospital` |
+| `backend/database/baseline/00–04_*.sql` | Schema của ứng dụng |
+
+### 6.1. Cài gói từ kho PGDG
+
+Kho chính thức của PostgreSQL (có bản cho Ubuntu 24.04 và 26.04; bản trong kho Ubuntu thường cũ hơn):
+
+```bash
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+# Không tạo cluster mặc định trên ổ hệ điều hành — tạo ở /data (6.2)
+echo 'create_main_cluster = false' | sudo tee /etc/postgresql-common/createcluster.d/no-main.conf
+sudo apt install -y postgresql-18
+```
+
+### 6.2. Tạo cluster trên `/data`
+
+```bash
+sudo install -d -o postgres -g postgres -m 700 /data/pgsql
+sudo pg_createcluster 18 main -d /data/pgsql/18/main \
+  --locale-provider=builtin --locale=C.UTF-8 -e UTF8 -- --data-checksums
+```
+
+`--data-checksums` phát hiện hỏng dữ liệu do ổ đĩa. Locale `C.UTF-8` (builtin) không phụ thuộc phiên bản ICU/glibc nên nâng cấp OS không làm hỏng index; cột tên tiếng Việt tự đặt collation ICU riêng.
+
+### 6.3. Cấu hình
+
+```bash
+sudo cp infra/postgresql/rms.conf /etc/postgresql/18/main/conf.d/rms.conf
+# Máy 8 GB RAM: thêm file ghi đè (tên zz- để được đọc SAU rms.conf), không sửa rms.conf
+sudo cp infra/postgresql/rms-ram-8gb.conf /etc/postgresql/18/main/conf.d/zz-rms-ram.conf
+```
+
+Mở `/etc/postgresql/18/main/pg_hba.conf`, chép nội dung `infra/postgresql/pg_hba.rms.conf` lên **đầu** phần quy tắc (dòng khớp đầu tiên được dùng).
+
+```bash
+sudo systemctl enable --now postgresql@18-main
+sudo systemctl restart postgresql@18-main
+sudo -u postgres psql -c "SHOW shared_buffers; SHOW timezone; SHOW shared_preload_libraries; SHOW ssl;"
+```
+
+Phải thấy `3GB` (máy 8 GB: `2GB`), `Asia/Ho_Chi_Minh`, `pg_stat_statements,auto_explain`, `on`. Backend production luôn kết nối mã hoá (`DB_ENCRYPT=true`), nên SSL phải bật: Ubuntu thường tự bật với chứng chỉ tự ký khi tạo cluster; ra `off` thì làm 6.7. `max_connections` (100) phải ≥ `WEB_CONCURRENCY × DB_POOL_MAX` + job + dự phòng.
+
+### 6.4. Mở cổng cho container, chặn bên ngoài
+
+`rms.conf` cho PostgreSQL nghe mọi địa chỉ (cổng `docker0` có thể chưa có lúc PostgreSQL khởi động). Việc chặn do `pg_hba.conf` và firewall:
+
+```bash
+# Chỉ mạng Docker (172.16.0.0/12) được vào 5432; máy khác trong LAN thì không
+sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp
+sudo ufw deny 5432/tcp
+```
+
+Kiểm tra từ container backend (khi đã chạy): `docker compose -f docker-compose.prod.yml exec backend node -e "require('net').connect(5432,'host.docker.internal').on('connect',()=>{console.log('OK');process.exit()}).on('error',e=>{console.log(e.message);process.exit(1)})"`.
+
+### 6.5. Tạo role và DB
+
+Sinh 2 mật khẩu mạnh, lưu vào nơi quản lý mật khẩu của viện, **không** ghi vào file:
+
+```bash
+read -rs MIGRATE_PW && read -rs APP_PW
+sudo -u postgres psql -v ON_ERROR_STOP=1 \
+  -v migrate_password="$MIGRATE_PW" -v app_password="$APP_PW" \
+  -f infra/postgresql/01_tao_db_va_role.sql
+unset MIGRATE_PW APP_PW
+```
+
+- `rms_migrate`: chủ DB và các bảng. Dùng cho migration (`scripts/deploy.sh`), backup trước migration và chuyển dữ liệu.
+- `rms_app`: role của ứng dụng — chỉ đọc/ghi dữ liệu, `statement_timeout = 60s`. **Không dùng `postgres` cho ứng dụng** (server cảnh báo khi `DB_USER=postgres`).
+
+### 6.6. Khởi động sau `/data`, pgpass, SSH tunnel
 
 PostgreSQL phải khởi động **sau** khi `/data` đã mount:
 
@@ -501,6 +576,40 @@ ssh -N -L 15432:127.0.0.1:5432 rms
 ```
 
 Rồi kết nối tới `127.0.0.1:15432`, user `rms_migrate`, DB `rms_hospital`.
+
+### 6.7. Chứng chỉ PostgreSQL để backend kiểm tra (khuyến nghị)
+
+Mã hoá mà **không kiểm tra chứng chỉ** (`DB_TRUST_SERVER_CERT=true`, mặc định) thì ai chen được vào đường mạng tới DB vẫn giả làm server được — backend cảnh báo lúc khởi động. Không cần CA: tạo 1 chứng chỉ tự ký cố định cho PostgreSQL rồi đưa đúng file chứng chỉ đó (không phải khoá) cho backend; backend chỉ tin chứng chỉ trong file.
+
+1. Trên máy PostgreSQL. `subjectAltName` phải có **đúng tên backend dùng để kết nối** (`DB_SERVER`: `host.docker.internal` khi PostgreSQL ở chính máy chạy Docker, hoặc tên máy / IP):
+
+   ```bash
+   cd /etc/postgresql/18/main
+   sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1825 -subj "/CN=$(hostname)" \
+     -addext "subjectAltName=DNS:$(hostname),DNS:host.docker.internal" \
+     -keyout rms-server.key -out rms-server.pem
+   sudo chown postgres:postgres rms-server.key rms-server.pem && sudo chmod 600 rms-server.key
+   printf "ssl = on\nssl_cert_file = '%s'\nssl_key_file = '%s'\nssl_min_protocol_version = 'TLSv1.2'\n" \
+     /etc/postgresql/18/main/rms-server.pem /etc/postgresql/18/main/rms-server.key \
+     | sudo tee /etc/postgresql/18/main/conf.d/ssl.conf
+   sudo systemctl reload postgresql@18-main
+   ```
+
+2. Sau khi stack đã chạy (bước 12), chép **file chứng chỉ** (`.pem`, không phải `.key`) vào volume bí mật của backend và khai báo trong `backend/.env.production`:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml cp /etc/postgresql/18/main/rms-server.pem backend:/app/secrets/postgresql.pem
+   ```
+
+   ```env
+   DB_CA_CERT_FILE=/app/secrets/postgresql.pem
+   # Chỉ khi tên trong chứng chỉ khác DB_SERVER (vd DB_SERVER là IP):
+   # DB_CERT_SERVER_NAME=<tên trong chứng chỉ>
+   ```
+
+3. `docker compose -f docker-compose.prod.yml up -d backend`: log không còn cảnh báo `DB_TRUST_SERVER_CERT` và có `Connected to PostgreSQL`. Lỗi `ERR_TLS_CERT_ALTNAME_INVALID` = tên kết nối không có trong chứng chỉ (sửa `subjectAltName` hoặc đặt `DB_CERT_SERVER_NAME`).
+
+Chứng chỉ hết hạn sau 5 năm — tạo lại và chép lại trước ngày đó. Đổi chứng chỉ trên PostgreSQL mà quên chép sang backend thì backend không kết nối được DB.
 
 ---
 
@@ -607,7 +716,7 @@ docker run --rm hello-world                   # in "Hello from Docker!"
 
 ## 9. Cài Node.js (tuỳ chọn)
 
-Bản production build và chạy hoàn toàn **trong Docker** (image `node:24-alpine`), máy host **không cần** Node.js. Chỉ cài khi muốn chạy script của dự án trực tiếp trên host, hoặc chạy bản dev không Docker:
+Bản production build và chạy hoàn toàn **trong Docker** (image Node Alpine), máy host **không cần** Node.js. Chỉ cài khi muốn chạy script của dự án trực tiếp trên host, hoặc chạy bản dev không Docker:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_24.x -o /tmp/nodesource_setup.sh
@@ -729,6 +838,30 @@ nano .env
 
 Đổi domain thì sửa thêm `server_name` trong `frontend/nginx.conf` cho khớp (truy cập bằng IP vẫn chạy vì đó là server block duy nhất).
 
+Các biến khác của file `.env` này (đều có mặc định):
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `TRUSTED_PROXIES` | `127.0.0.1/32 172.16.0.0/12` | IP/CIDR của reverse proxy HTTPS. Chỉ request từ đây mới được tin `X-Forwarded-For` / `X-Forwarded-Proto`. Proxy ở máy khác thì **bắt buộc** khai (13.3) |
+| `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker được vào `8081`, nơi khác nhận **403**. `false`: cho truy cập thẳng. `true`: luôn chặn |
+| `CSP_REPORT_ONLY` | `false` | `true` = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm (13.4) |
+| `FRONTEND_BIND` | `8081` | Địa chỉ publish cổng frontend |
+
+### 11.4. Biến do `docker-compose.prod.yml` đặt cứng
+
+Các biến sau **luôn thắng** giá trị trong file `.env` của backend — không cần khai:
+
+| Biến | Giá trị | Ghi chú |
+|---|---|---|
+| `DB_ENCRYPT` | `true` | Luôn kết nối PostgreSQL bằng SSL. Bật kiểm tra chứng chỉ: 6.7 |
+| `PORT` | `3001` | Khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
+| `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD_FILE` | `redis` / `6379` / `/run/redis-secret/pass` | Mật khẩu Redis do container `redis` tự sinh vào volume `redis_secret` |
+| `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước backend (nginx container), nginx đã lọc IP thật và **ghi đè** `X-Forwarded-For` |
+| `CORS_ORIGIN` | `${CORS_ORIGIN:-https://nckh.bvnghean.vn}` | Lấy từ `.env` 11.3 |
+| `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
+
+Service: `frontend` (Nginx, `${FRONTEND_BIND:-8081}` → `80`), `backend` (`127.0.0.1:3001`, chỉ loopback, chạy bằng user `node`), `redis` và `clamav` (không publish cổng). Mọi service `restart: unless-stopped`. Biến `backend/.env*` đầy đủ: `backend/.env.example`.
+
 ---
 
 ## 12. Build, dựng database, khởi động
@@ -778,16 +911,16 @@ for cmd in up status; do
 done
 ```
 
-Hệ thống mới (trường hợp a) chưa có vai trò nào, chưa ai đăng nhập được. Tạo 8 vai trò hệ thống (quyền mặc định ở `backend/database/seed/system-roles.json`) và tài khoản quản trị đầu tiên:
+Hệ thống mới (trường hợp a) chưa có vai trò nào, chưa ai đăng nhập được. Tạo 9 vai trò hệ thống (quyền mặc định ở `backend/database/seed/system-roles.json`) và 2 tài khoản quản trị: `superadmin` (toàn quyền) và `admin` (NCKH, hội thảo / CME, đào tạo, người dùng — không phân quyền, không cấu hình hệ thống):
 
 ```bash
 docker compose -f docker-compose.prod.yml run --rm --no-deps -T \
   -e DB_USER=rms_migrate -e DB_PASSWORD \
-  backend node scripts/init-system.js --username=admin
+  backend node scripts/init-system.js --username=superadmin --admin-username=admin
 unset DB_PASSWORD
 ```
 
-Lệnh in **mật khẩu tạm 1 lần duy nhất**: chép lại, đăng nhập và đổi mật khẩu trong 7 ngày. Quên hoặc quá hạn: chạy lại lệnh trên với thêm `--reset-admin` (cấp mật khẩu tạm mới, mở khoá, đăng xuất mọi phiên). Lệnh chạy lại an toàn: vai trò đã có thì không đụng tới quyền, đã có quản trị thì không tạo thêm, nên chạy ở trường hợp b) cũng không sao.
+Lệnh in **mật khẩu tạm 1 lần duy nhất**: chép lại, đăng nhập và đổi mật khẩu trong 7 ngày. Quên hoặc quá hạn: chạy lại với thêm `--reset-admin --username=<tài khoản>` (cấp mật khẩu tạm mới, mở khoá, đăng xuất mọi phiên). Chạy lại an toàn: vai trò đã có thì không đụng tới quyền, đã có quản trị thì không tạo thêm. Sau khi chuyển dữ liệu (trường hợp b) thêm `--replace-legacy-admin`: nếu tài khoản toàn quyền duy nhất là `admin` của hệ thống cũ thì nó được đổi thành `admin_cu` (hoặc xoá nếu không còn dữ liệu liên kết) để nhường tên. Danh mục cơ bản (loại / cấp đề tài, đào tạo / CME, chức danh...): thêm 1 lần chạy `node scripts/seed-catalogs.js` cùng cách (chỉ nạp vào bảng còn trống).
 
 ### 12.3. Khởi động
 
@@ -818,6 +951,8 @@ Trên máy bạn, mở trình duyệt: `http://<IP-VM>:8081` (hoặc domain sau 
 
 ClamAV cần ~1 phút nạp CSDL virus sau khi khởi động. Trong lúc đó upload file bị từ chối (503), đợi rồi thử lại.
 
+Swagger UI **tắt ở production**. Cần tạm thì đặt `SWAGGER_ENABLED=true` (kèm `SWAGGER_USER` / `SWAGGER_PASS`) trong `backend/.env.production`, truy cập từ chính máy ảo `http://127.0.0.1:3001/api-docs`, xong nhớ tắt.
+
 ### 12.5. Thử khởi động lại máy
 
 ```bash
@@ -844,7 +979,7 @@ sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow OpenSSH
 # Cho container Docker gọi PostgreSQL trên host (dải mạng nội bộ của Docker).
-# Đã làm ở bước 6 (cai-dat-postgresql.md mục 4) thì bỏ qua 2 dòng này.
+# Đã làm ở bước 6.4 thì bỏ qua 2 dòng này.
 sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp
 sudo ufw deny 5432/tcp
 sudo ufw reload
@@ -874,11 +1009,17 @@ sudo bash scripts/firewall-ports.sh remove                            # gỡ, tr
 
 Backend (`127.0.0.1:3001`) chỉ mở trên loopback, Redis và ClamAV không publish cổng.
 
-### 13.3. HTTPS ngay trên máy ảo (tuỳ chọn)
+### 13.3. HTTPS
 
-Nếu bệnh viện đã có reverse proxy HTTPS chung (IIS ARR, nginx, F5…) thì trỏ nó về `http://<IP-VM>:8081`, gửi kèm `X-Forwarded-For` và `X-Forwarded-Proto: https`. Xem README mục *Bước 3b: Nối với reverse proxy HTTPS*.
+HTTPS kết thúc ở reverse proxy đứng trước cổng `8081`; container chỉ nhận HTTP từ proxy đó. Máy trong LAN gọi thẳng `http://<IP-VM>:8081` là bỏ qua HTTPS (mật khẩu đi dạng chữ thường) và tự khai được IP giả, nên phải thu hẹp lại.
 
-Tự dựng HTTPS trên máy ảo (domain đã trỏ về máy, nhận được kết nối 80/443 từ Internet để Let's Encrypt xác thực):
+**a) Reverse proxy HTTPS chung của bệnh viện** (IIS ARR, nginx, F5… ở máy khác): trỏ nó về `http://<IP-VM>:8081`, gửi kèm `X-Forwarded-For` và `X-Forwarded-Proto: https`. Rồi:
+
+- Đặt `TRUSTED_PROXIES=<IP proxy>` trong `.env` (11.3): nginx tự trả 403 cho mọi máy khác. Chặn thêm bằng `scripts/firewall-ports.sh apply --allow "8081@<IP proxy>"` (13.2).
+- IIS ARR mặc định **không** gửi `X-Forwarded-Proto`: thêm server variable `HTTP_X_FORWARDED_PROTO` = `https` trong rule URL Rewrite. Thiếu thì backend log cảnh báo `Request ... tới qua http, không phải https` và trình duyệt không nhận HSTS.
+- Kiểm tra: từ 1 máy trong LAN `curl -I http://<IP-VM>:8081` phải trả `403`; `curl -sI https://nckh.bvnghean.vn/ | grep -i strict-transport` phải có HSTS; `docker compose -f docker-compose.prod.yml logs frontend | tail` — cột đầu là IP thật người dùng, không phải IP proxy.
+
+**b) Tự dựng HTTPS trên máy ảo** (domain đã trỏ về máy, nhận được kết nối 80/443 từ Internet để Let's Encrypt xác thực):
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
@@ -917,6 +1058,16 @@ docker compose -f docker-compose.prod.yml up -d
 
 Dùng chứng chỉ nội bộ của bệnh viện thay Let's Encrypt: bỏ lệnh `certbot`, tự thêm `listen 443 ssl;`, `ssl_certificate`, `ssl_certificate_key` vào file cấu hình trên.
 
+### 13.4. Nginx trong container và CSP
+
+`frontend/nginx.conf`:
+
+- `client_max_body_size 300m` (khớp `TRAINING_MEDIA_MAX_MB`). `/api/v1/events` (SSE) tắt buffering và gzip, `proxy_read_timeout 1h`.
+- `/api/`, `/uploads/` proxy tới backend. `X-Forwarded-For` bị **ghi đè** bằng IP thật (module `real_ip`, chỉ tin proxy trong `TRUSTED_PROXIES`, sinh lúc khởi động bởi `frontend/docker/40-trusted-proxies.sh`); `X-Forwarded-Proto` chỉ lấy từ proxy tin cậy.
+- Đường dẫn còn lại trả `index.html` (SPA) kèm header bảo mật: HSTS (chỉ khi vào bằng HTTPS), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP. `server_tokens off`.
+
+**CSP chặn thật** (`map $csp_policy` đầu `frontend/nginx.conf`): script ngoài danh sách, script nội tuyến, `eval` đều bị chặn. Vi phạm gửi về `/api/v1/csp-report`, backend ghi log `[CSP] vi phạm …` (`docker compose -f docker-compose.prod.yml logs backend | grep CSP`). Chức năng bị chặn nhầm: đặt `CSP_REPORT_ONLY=true` trong `.env` rồi `docker compose -f docker-compose.prod.yml up -d frontend` (không cần build lại), bổ sung nguồn vào `$csp_policy`, xong thì bỏ biến này.
+
 ---
 
 ## 14. Vận hành: cập nhật, sao lưu, theo dõi ổ đĩa
@@ -949,7 +1100,7 @@ Dùng chứng chỉ nội bộ của bệnh viện thay Let's Encrypt: bỏ lệ
 
 ### 14.2. Sao lưu database hằng ngày
 
-Bản tối thiểu: `pg_dump` mỗi đêm, chạy bằng user hệ thống `postgres` (đăng nhập kiểu *peer*, không cần file mật khẩu). Cần khôi phục tới thời điểm bất kỳ thì dùng pgBackRest ([cai-dat-postgresql.md](cai-dat-postgresql.md) mục 7).
+Bản tối thiểu: `pg_dump` mỗi đêm, chạy bằng user hệ thống `postgres` (đăng nhập kiểu *peer*, không cần file mật khẩu). Cần khôi phục tới thời điểm bất kỳ thì dùng pgBackRest (cuối mục này).
 
 ```bash
 sudo install -d -o postgres -g postgres -m 750 /data/backup/db/daily
@@ -1030,7 +1181,18 @@ bash ~/setup-server.sh import
 - Máy dev: chép file vào thư mục `import/` ở gốc repo rồi `npm run setup:dev -- --import`
   (hoặc `--import="E:\thu-muc"`); DB đang dùng sao lưu vào `import/sao-luu/`, `--keep-files` để giữ file.
 
+**Khôi phục tới thời điểm bất kỳ (pgBackRest, tuỳ chọn)**: bản đầy đủ hằng tuần + chênh lệch hằng đêm + lưu WAL liên tục, kho đặt **ngoài máy** (NAS). `sudo apt install -y pgbackrest`, cấu hình `/etc/pgbackrest/pgbackrest.conf` (stanza `rms`, `repo1-path` trỏ tới NAS, `repo1-retention-full=4`), bật 2 dòng `archive_mode` / `archive_command` trong `rms.conf`, khởi động lại PostgreSQL, rồi `pgbackrest --stanza=rms stanza-create` và `pgbackrest --stanza=rms check`. Lịch chạy bằng systemd timer hoặc cron. Diễn tập khôi phục ít nhất mỗi quý.
+
 ### 14.3. Sao lưu file upload và khoá bí mật
+
+| Volume | Nội dung |
+|---|---|
+| `hospital_rms_server_uploads` | Toàn bộ file người dùng upload (hồ sơ đề tài, tài liệu, video khoá học…) |
+| `hospital_rms_server_secrets` | JWT secret tự sinh (`jwt.env`) và **khoá mã hoá secret 2FA** (`totp.key`) |
+| `hospital_rms_server_logs` | Log hoạt động `audit-*.log`, nguồn của trang Nhật ký hoạt động |
+| `hospital_rms_redis_secret` | Mật khẩu Redis tự sinh. Xoá thì lần chạy sau sinh mật khẩu mới, không mất gì (Redis chỉ là cache) |
+
+Tiền tố `hospital_rms` là tên project đặt cố định trong `docker-compose.prod.yml`. Máy chạy từ trước khi có tên cố định thì volume mang tiền tố tên thư mục cũ: chạy compose với `-p <tên cũ>` để giữ dữ liệu.
 
 ```bash
 docker run --rm -v hospital_rms_server_uploads:/data:ro -v /data/backup/files:/backup alpine \
@@ -1040,7 +1202,7 @@ docker run --rm -v hospital_rms_server_secrets:/data:ro -v /data/backup/files:/b
 ls -lh /data/backup/files
 ```
 
-Volume `hospital_rms_server_secrets` chứa **khoá giải mã 2FA** (`totp.key`). Phải sao lưu **cùng lịch với DB** và cất kỹ như mật khẩu. Mất khoá này thì mọi người dùng đã bật 2FA phải thiết lập lại.
+Volume `hospital_rms_server_secrets` chứa **khoá giải mã 2FA** (`totp.key`). Phải sao lưu **cùng lịch với DB** và cất kỹ như mật khẩu: mất khoá thì mọi người dùng đã bật 2FA phải thiết lập lại; ai có cả bản sao DB lẫn khoá này sinh được mã 2FA của người dùng.
 
 ### 14.4. Chép bản sao lưu ra ngoài máy ảo
 
@@ -1058,6 +1220,20 @@ rsync -av rms:/data/backup/ ./rms-backup/
 df -h / /data
 docker system df
 sudo du -sh /data/pgsql /data/backup/* /data/docker/volumes/* 2>/dev/null | sort -h
+```
+
+Theo dõi PostgreSQL hằng tháng (`sudo -u postgres psql -d rms_hospital`); log truy vấn chậm (> 500 ms) ở `/var/log/postgresql/postgresql-18-main.log`:
+
+```sql
+-- 20 câu tốn thời gian nhất
+SELECT round(total_exec_time) AS ms, calls, left(query, 120) FROM pg_stat_statements
+ORDER BY total_exec_time DESC LIMIT 20;
+-- Bảng lớn nhất
+SELECT relname, pg_size_pretty(pg_total_relation_size(oid)) FROM pg_class
+WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'p')
+ORDER BY pg_total_relation_size(oid) DESC LIMIT 20;
+-- Partition DEFAULT của security_events phải luôn rỗng (job tạo trước 2 tháng)
+SELECT count(*) FROM security_events_default;
 ```
 
 Nên để ổ 2 dưới 80%. Gần đầy thì dọn image (`docker image prune -a`), dọn bản backup cũ (kể cả file `.bak` SQL Server sau khi đã chuyển xong), hoặc tăng dung lượng ổ 2 ở hypervisor rồi mở rộng phân vùng:
@@ -1120,16 +1296,21 @@ Bật *Required reviewers* cho `production` để mỗi lần triển khai phả
 
 Actions → *Deploy* → *Run workflow*, chọn `production`, nhập SHA đầy đủ của commit đang chạy (`git rev-parse HEAD`). Xem log job; lịch sử triển khai trên máy ở `/data/code/Hospital_RMS/logs/deploy-history.log`.
 
-### 15.4. Đổi JWT secret định kỳ
+### 15.4. JWT secret
+
+Container backend tự sinh `JWT_SECRET` / `JWT_REFRESH_SECRET` khi còn trống hoặc là giá trị mẫu `change-me…` (`backend/docker-entrypoint.sh`) và lưu trong volume `server_secrets` — giữ nguyên qua restart/redeploy nên người dùng không bị đăng xuất khi triển khai. Secret đặt thật trong `.env` / `.env.production` thì được giữ nguyên.
+
+Đổi định kỳ (crontab của user chạy Docker). **Mỗi lần đổi, mọi người dùng phải đăng nhập lại**:
 
 ```bash
 cd /data/code/Hospital_RMS
-scripts/rotate-jwt-secrets.sh --register        # 4 tuần/lần, 02:30 sáng Chủ nhật (crontab)
-crontab -l                                      # xem lịch
+scripts/rotate-jwt-secrets.sh --register        # 4 tuần/lần, 02:30 sáng Chủ nhật (--every-weeks N để đổi)
+scripts/rotate-jwt-secrets.sh                   # đổi ngay
+scripts/rotate-jwt-secrets.sh --unregister      # gỡ lịch
 tail logs/jwt-rotate.log
 ```
 
-Mỗi lần đổi, mọi người dùng phải đăng nhập lại. Gỡ lịch: `scripts/rotate-jwt-secrets.sh --unregister`.
+Script ghi secret mới vào đúng nơi đang giữ: `backend/.env.production`, rồi `backend/.env`, cuối cùng volume `server_secrets`; file bị ghi đè được backup thành `<tên file>.bak`.
 
 ---
 
@@ -1155,8 +1336,15 @@ Mỗi lần đổi, mọi người dùng phải đăng nhập lại. Gỡ lịch
 | Ổ đầy | `docker image prune -a`, `docker builder prune`, xoá bản backup cũ trong `/data/backup`, hoặc mở rộng ổ 2 (14.5). |
 | Upload báo 503 "quét virus" | ClamAV chưa nạp xong (~1 phút) hoặc đã dừng: `docker compose -f docker-compose.prod.yml logs clamav`. |
 | Compose báo lỗi ở `env_file` | Compose cũ hơn 2.24: cài Docker theo bước 8, không dùng gói `docker.io` / snap. |
-
-Xem thêm bảng *Xử lý sự cố Docker* trong `README.md`.
+| Backend cảnh báo `DB_TRUST_SERVER_CERT` / lỗi `ERR_TLS_CERT_ALTNAME_INVALID` | Chưa bật kiểm tra chứng chỉ PostgreSQL / tên kết nối không có trong chứng chỉ (6.7). |
+| Log backend: `tới qua http, không phải https` | Reverse proxy không gửi `X-Forwarded-Proto: https`, hoặc IP proxy không nằm trong `TRUSTED_PROXIES` (13.3). |
+| Mọi người dùng bị khoá đăng nhập theo IP cùng lúc | Nginx thấy mọi request đến từ IP proxy: proxy không gửi `X-Forwarded-For`, hoặc không nằm trong `TRUSTED_PROXIES`. |
+| Log backend: `không đọc được /run/redis-secret/pass` | Container `redis` chưa sinh kịp mật khẩu. Chạy lại `up -d`; app vẫn chạy, chỉ tạm không có cache. |
+| Backend báo `EACCES` khi ghi upload / log | Quyền volume chưa chuyển cho user `node` (lần đầu nâng cấp từ bản chạy root, entrypoint tự chuyển, có thể mất vài phút): `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`. |
+| Upload lỗi `413` | Vượt `client_max_body_size 300m` (`frontend/nginx.conf`) hoặc giới hạn `UPLOAD_MAX_MB` / `TRAINING_MEDIA_MAX_MB` của backend. |
+| Upload bị từ chối "nội dung không đúng định dạng" | File bị đổi đuôi (ảnh chụp lưu thành `.pdf`) hoặc hỏng: mở bằng phần mềm tương ứng rồi lưu lại đúng định dạng. |
+| Upload bị từ chối `429` "vượt hạn mức" | Tài khoản upload quá `UPLOAD_DAILY_QUOTA_MB` (2048 MB) trong ngày. |
+| Chức năng nào đó không chạy, console trình duyệt báo CSP | Tạm `CSP_REPORT_ONLY=true` rồi bổ sung nguồn vào CSP (13.4). |
 
 ---
 

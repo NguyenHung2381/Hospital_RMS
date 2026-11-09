@@ -27,7 +27,7 @@ services:
       context: ./backend
       target: prod
     # .env.production (nếu có) nạp sau → ghi đè .env: đặt DB_USER/DB_PASSWORD
-    # của role ứng dụng (rms_app, infra/cai-dat-postgresql.md) ở đây.
+    # của role ứng dụng (rms_app, infra/cai-dat-may-ao-ubuntu.md mục 6.5) ở đây.
     env_file:
       - path: ./backend/.env
         required: false
@@ -37,7 +37,7 @@ services:
       # Luôn kết nối PostgreSQL bằng SSL ở prod (ghi đè DB_ENCRYPT trong
       # backend/.env). Chứng chỉ tự ký của cluster được chấp nhận khi
       # DB_TRUST_SERVER_CERT=true (mặc định); kiểm tra chứng chỉ thật: đặt
-      # DB_CA_CERT_FILE trong backend/.env.production (infra/cai-dat-postgresql.md).
+      # DB_CA_CERT_FILE trong backend/.env.production (infra/cai-dat-may-ao-ubuntu.md mục 6.7).
       DB_ENCRYPT: "true"
       # Ghim cổng API (ghi đè PORT trong backend/.env) — phải khớp proxy_pass
       # trong frontend/nginx.conf.
@@ -67,7 +67,7 @@ services:
       # Số worker của src/cluster.js. Server 8 core: 6 worker, chừa 2 core cho
       # PostgreSQL (cùng máy, host.docker.internal) + nginx + Redis. Mỗi worker
       # có pool DB riêng: tổng kết nối PostgreSQL = WEB_CONCURRENCY × DB_POOL_MAX
-      # (phải dưới max_connections, xem infra/cai-dat-postgresql.md).
+      # (phải dưới max_connections, xem infra/cai-dat-may-ao-ubuntu.md mục 6.3).
       WEB_CONCURRENCY: "${WEB_CONCURRENCY:-6}"
       DB_POOL_MAX: "${DB_POOL_MAX:-10}"
       # bcrypt (native) chạy trên threadpool libuv, ~200ms CPU/lượt. Mỗi worker

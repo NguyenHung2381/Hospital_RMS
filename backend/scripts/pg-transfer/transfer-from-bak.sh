@@ -23,7 +23,7 @@
 #
 # Yêu cầu: Docker, stack đã `docker compose up` ít nhất 1 lần (có mạng Docker của
 # project), image backend là bản có scripts/pg-transfer/restore.js, PostgreSQL đã
-# cài theo infra/cai-dat-postgresql.md mục 1–5 (DB rms_hospital RỖNG). Máy cần
+# cài theo infra/cai-dat-may-ao-ubuntu.md mục 6 (DB rms_hospital RỖNG). Máy cần
 # ≥ 2 GB RAM trống cho SQL Server tạm và ổ trống ≈ 3 lần kích thước file .bak.
 # Hướng dẫn đầy đủ: infra/chuyen-du-lieu-sang-postgresql.md
 set -euo pipefail

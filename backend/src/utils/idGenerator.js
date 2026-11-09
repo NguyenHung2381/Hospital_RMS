@@ -1,7 +1,7 @@
 /**
  * idGenerator.js — Sinh mã (khoá chính, số chứng chỉ, số CME...) bằng JS, chạy
- * được trên cả SQL Server và PostgreSQL. Thay cho các thủ tục `sp_gen_*`
- * (POSTGRESQL_MIGRATION_PLAN.md mục 5.4), giữ nguyên định dạng mã.
+ * được trên cả SQL Server và PostgreSQL. Thay cho các thủ tục `sp_gen_*` (đã gỡ),
+ * giữ nguyên định dạng mã.
  *
  * Mọi hàm nhận `tx` (Transaction) và giữ khoá sinh mã tới khi transaction kết
  * thúc ⇒ phải INSERT dòng mới trong CÙNG transaction rồi commit ngay:

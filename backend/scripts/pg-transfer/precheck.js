@@ -1,5 +1,5 @@
 // pg:transfer precheck — CHỈ ĐỌC SQL Server. Tìm dữ liệu sẽ làm lần nạp PG
-// thất bại hoặc đổi nghĩa (POSTGRESQL_MIGRATION_PLAN.md mục 6.5.2). Lỗi chặn →
+// thất bại hoặc đổi nghĩa (runbook: infra/chuyen-du-lieu-sang-postgresql.md). Lỗi chặn →
 // mã thoát 1; cảnh báo → in ra, vẫn thoát 0.
 const fs = require('fs');
 const path = require('path');

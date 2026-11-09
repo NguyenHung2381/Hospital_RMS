@@ -1,5 +1,5 @@
-// Quy tắc đổi schema SQL Server → PostgreSQL (database/DB_SCALING_PLAN.md mục 5,
-// giai đoạn 2). Baseline đã sinh từ đây (công cụ sinh đã gỡ); giờ pg-transfer dùng
+// Quy tắc đổi schema SQL Server → PostgreSQL (quy ước kiểu dữ liệu:
+// backend/README.md, mục Viết SQL). Baseline đã sinh từ đây (công cụ sinh đã gỡ); giờ pg-transfer dùng
 // để đổi kiểu dữ liệu lúc chép. Sửa ở đây thì sửa cả database/baseline/ cho khớp.
 
 // Không chuyển: bảng theo dõi migration của SQL Server (PG có migrator riêng).
@@ -60,7 +60,7 @@ const COMPUTED_COLUMNS = {
 	'training_programs.total_hours': 'coalesce(theory_hours, 0) + coalesce(practice_hours, 0)',
 };
 
-// Bảng chia partition theo tháng (DB_SCALING_PLAN.md mục 3.2). PG bắt buộc
+// Bảng chia partition theo tháng. PG bắt buộc
 // khoá chính chứa cột partition. Partition tạo bằng hàm
 // rms_maintain_monthly_partitions (00_extensions.sql): lúc tạo bảng lùi
 // monthsBack tháng (khớp hạn giữ 24 tháng của dataRetentionJob) và tạo sẵn

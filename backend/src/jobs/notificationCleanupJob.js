@@ -6,7 +6,7 @@ const logger = require('../config/logger');
 // Xóa thông báo cũ: đã đọc sau 90 ngày, chưa đọc sau 180 ngày (quyết định
 // 18/10/2026). Thay sp_cleanup_old_notifications — proc đó chỉ chạy nếu có SQL
 // Agent job, và sp_process_daily_deadlines gọi nó sai tên tham số nên bước dọn
-// luôn lỗi (xem database/README.md). Xóa theo lô nhỏ, nghỉ giữa các lô để không
+// luôn lỗi. Xóa theo lô nhỏ, nghỉ giữa các lô để không
 // khóa bảng lâu. Mỗi ngày chạy 1 lần dù nhiều worker (markOnce).
 
 const JOB = 'notification_cleanup';

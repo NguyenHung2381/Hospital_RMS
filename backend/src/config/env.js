@@ -184,12 +184,12 @@ const loadConfig = (source = process.env) => {
 				//     tới DB giả làm server được (đọc mật khẩu DB, dữ liệu).
 				warnings.push(
 					'DB_TRUST_SERVER_CERT=true ở production — mã hóa nhưng KHÔNG kiểm tra chứng chỉ PostgreSQL ' +
-						'(giả mạo được server). Đặt DB_CA_CERT_FILE (xem infra/cai-dat-postgresql.md).',
+						'(giả mạo được server). Đặt DB_CA_CERT_FILE (infra/cai-dat-may-ao-ubuntu.md mục 6.7).',
 				);
 			}
 			if (raw.DB_USER.toLowerCase() === 'postgres') {
 				warnings.push(
-					'DB_USER=postgres ở production — ứng dụng nên dùng role rms_app (chỉ đọc/ghi dữ liệu, infra/cai-dat-postgresql.md).',
+					'DB_USER=postgres ở production — ứng dụng nên dùng role rms_app (chỉ đọc/ghi dữ liệu, infra/cai-dat-may-ao-ubuntu.md mục 6.5).',
 				);
 			}
 		}

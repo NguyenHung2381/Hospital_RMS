@@ -713,7 +713,7 @@ step_postgres() {
 			sudo tee "$PG_CONF_DIR/conf.d/zz-rms-ssl.conf" >/dev/null
 		sudo systemctl restart "postgresql@$PG_VER-main"
 		wait_pg
-		[ "$(pgsu psql -tAc 'SHOW ssl')" = on ] || die "Không bật được SSL cho PostgreSQL (mục 3 infra/cai-dat-postgresql.md)"
+		[ "$(pgsu psql -tAc 'SHOW ssl')" = on ] || die "Không bật được SSL cho PostgreSQL (mục 6.3 infra/cai-dat-may-ao-ubuntu.md)"
 	fi
 	ok "$(pgsu psql -tAc "SELECT 'shared_buffers=' || current_setting('shared_buffers') || ', timezone=' || current_setting('timezone') || ', ssl=' || current_setting('ssl')")"
 	ensure_db_and_roles
@@ -737,7 +737,7 @@ ensure_db_and_roles() {
 	app_pw="$(env_value "$APP_DIR/backend/.env.production" DB_PASSWORD)"
 	[ -n "$app_pw" ] || die "Thiếu DB_PASSWORD trong backend/.env.production"
 	[[ "$migrate_pw$app_pw" =~ ^[A-Za-z0-9._~-]+$ ]] ||
-		die "Mật khẩu DB có ký tự đặc biệt (chỉ nhận chữ, số, . _ ~ -). Tạo role tay theo mục 5 infra/cai-dat-postgresql.md"
+		die "Mật khẩu DB có ký tự đặc biệt (chỉ nhận chữ, số, . _ ~ -). Tạo role tay theo mục 6.5 infra/cai-dat-may-ao-ubuntu.md"
 
 	# Truyền mật khẩu qua stdin (\set), không lộ trên dòng lệnh. File SQL chạy lại an
 	# toàn, KHÔNG đổi mật khẩu role đã có.

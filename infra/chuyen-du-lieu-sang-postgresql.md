@@ -15,9 +15,10 @@ BACKUP ... COPY_ONLY ──.bak──► SQL Server TẠM ──đọc (stream)�
 ```
 
 - Máy Ubuntu đã dựng theo `infra/cai-dat-may-ao-ubuntu.md` tới bước 12.1 (đã
-  build/kéo image backend), PostgreSQL cài theo `infra/cai-dat-postgresql.md`
-  **mục 1–5**. **Không** chạy `migrate init`: DB phải rỗng thì mới nạp được.
-- Lý do và thiết kế: `backend/database/POSTGRESQL_MIGRATION_PLAN.md`.
+  build/kéo image backend), PostgreSQL cài theo mục 6 tài liệu đó.
+  **Không** chạy `migrate init`: DB phải rỗng thì mới nạp được.
+- Thiết kế công cụ chuyển: `backend/scripts/pg-transfer/` (kế hoạch chuyển DB đầy đủ
+  đã gỡ khỏi repo, xem lịch sử git trước commit gỡ `POSTGRESQL_MIGRATION_PLAN.md`).
 
 Một lệnh làm hết, mã thoát khác 0 nghĩa là có lỗi hoặc chênh lệch:
 
@@ -389,7 +390,7 @@ nhóm phát triển trước khi quyết định.
 ### D.2. Việc cần làm ngay sau khi go
 
 - [ ] Bật sao lưu PostgreSQL: `infra/cai-dat-may-ao-ubuntu.md` mục 14.2 (`pg_dump`
-  hằng đêm) hoặc pgBackRest (`infra/cai-dat-postgresql.md` mục 7). Chạy bản đầu
+  hằng đêm) hoặc pgBackRest (`infra/cai-dat-may-ao-ubuntu.md` mục 14.2). Chạy bản đầu
   tiên ngay trong ngày.
 - [ ] Bật CI/CD cho máy mới (`infra/cai-dat-may-ao-ubuntu.md` mục 15):
   `MIGRATION_DB_USER=rms_migrate`, `MIGRATION_DB_PASSWORD` là mật khẩu `rms_migrate`
@@ -401,7 +402,7 @@ nhóm phát triển trước khi quyết định.
 ### D.3. Theo dõi 1–2 tuần
 
 - Log backend: lỗi 5xx, lỗi DB (`docker compose -f docker-compose.prod.yml logs backend`).
-- Truy vấn chậm và bảng lớn: `infra/cai-dat-postgresql.md` mục 8.
+- Truy vấn chậm và bảng lớn: `infra/cai-dat-may-ao-ubuntu.md` mục 14.5.
 - Số kết nối: không vượt `WEB_CONCURRENCY × DB_POOL_MAX` + dự phòng
   (`SELECT count(*) FROM pg_stat_activity WHERE datname = 'rms_hospital';`).
 
@@ -431,8 +432,8 @@ nhóm phát triển trước khi quyết định.
 | `load` dừng giữa chừng ở `02_constraints_indexes` | Dữ liệu vi phạm UNIQUE / FK mà `precheck` không bắt được | Ghi lại thông báo lỗi, gửi nhóm phát triển; DB PG bỏ, làm lại từ B.1 |
 | `verify`: `n chênh lệch` | Lỗi chuyển kiểu | Lúc cutover: D.1. Lúc diễn tập: gửi log cho nhóm phát triển |
 | `password authentication failed for user "rms_migrate"` | Sai mật khẩu PG | Gõ lại (A.3); mật khẩu đúng là mật khẩu lúc tạo role |
-| `no pg_hba.conf entry for host "172.x.x.x"` | Chưa thêm dòng cho mạng Docker vào `pg_hba.conf` | `infra/cai-dat-postgresql.md` mục 3, rồi `sudo systemctl reload postgresql@18-main` |
-| `connect ECONNREFUSED …:5432` hoặc treo khi kết nối | PostgreSQL chưa chạy, hoặc firewall chặn mạng Docker | `systemctl status postgresql@18-main`; `infra/cai-dat-postgresql.md` mục 4 (ufw) |
+| `no pg_hba.conf entry for host "172.x.x.x"` | Chưa thêm dòng cho mạng Docker vào `pg_hba.conf` | `infra/cai-dat-may-ao-ubuntu.md` mục 6.3, rồi `sudo systemctl reload postgresql@18-main` |
+| `connect ECONNREFUSED …:5432` hoặc treo khi kết nối | PostgreSQL chưa chạy, hoặc firewall chặn mạng Docker | `systemctl status postgresql@18-main`; `infra/cai-dat-may-ao-ubuntu.md` mục 6.4 (ufw) |
 | Backend: `The server does not support SSL connections` | PostgreSQL tắt SSL | Bật SSL (A.1) rồi khởi động lại PostgreSQL |
 | Migration lỗi ở `2026-12-15_unique_nulls_not_distinct` | Có dòng trùng theo khoá UNIQUE (NULL được coi là trùng nhau) | File tự rollback. Gửi log cho nhóm phát triển xử lý dòng trùng |
 | Mở file upload cũ báo không tìm thấy | Chưa chép volume `server_uploads` | Làm C.6 (`bash ~/setup-server.sh files`) |

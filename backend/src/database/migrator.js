@@ -15,7 +15,7 @@ const path = require('path');
 // Phần chạm DB (PostgreSQL) nằm ở migrator.pg.js: mỗi file 1 transaction,
 // pg_advisory_lock, pg_dump, baseline cho DB trống.
 //
-// Quy ước viết file: database/README.md.
+// Quy ước viết file: backend/README.md, mục Cơ sở dữ liệu.
 
 const driver = require('./migrator.pg');
 const { TABLE } = driver;

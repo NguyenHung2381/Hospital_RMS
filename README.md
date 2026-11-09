@@ -2,265 +2,152 @@
 
 Ứng dụng web quản lý hoạt động **nghiên cứu khoa học** và **đào tạo liên tục (CME)** trong bệnh viện: đăng ký đề tài, hội đồng chấm đề cương, quy trình phê duyệt nhiều bước, hội thảo/hội nghị, chương trình – kế hoạch – khoá đào tạo, thi trực tuyến, khảo sát, điểm danh QR, cấp và theo dõi tín chỉ CME, cùng hệ thống báo cáo – thống kê.
 
-Monorepo gồm hai ứng dụng chạy độc lập, dùng chung một REST API:
+## Tài liệu
 
-| Thư mục | Vai trò |
+| Tài liệu | Nội dung |
 |---|---|
-| [`frontend/`](frontend/) | React + TypeScript SPA (Vite) |
-| [`backend/`](backend/) | Node.js + Express REST API trên PostgreSQL 18 |
-
----
-
-## Mục lục
-
-- [Tổng quan](#tổng-quan)
-- [Công nghệ](#công-nghệ)
-- [Bắt đầu nhanh](#bắt-đầu-nhanh)
-- [Cấu hình môi trường](#cấu-hình-môi-trường)
-- [Chạy bằng Docker](#chạy-bằng-docker)
-  - [Develop](#develop-docker-composeyml)
-  - [Production](#production-docker-composeprodyml)
-  - [JWT secret](#jwt-secret)
-  - [Xử lý sự cố](#xử-lý-sự-cố-docker)
-- [Cấu trúc dự án](#cấu-trúc-dự-án)
-- [Phân hệ chức năng](#phân-hệ-chức-năng)
-- [API](#api)
-- [Xác thực & phân quyền](#xác-thực--phân-quyền)
-- [Database](#database)
-- [Tác vụ nền, cache & logging](#tác-vụ-nền-cache--logging)
-- [Quy ước phát triển](#quy-ước-phát-triển)
-
----
+| `README.md` (file này) | Tổng quan, cài môi trường dev, biến môi trường, Docker dev |
+| [backend/README.md](backend/README.md) | Cấu trúc + quy ước backend, kiểm tra chất lượng, cơ sở dữ liệu & migration, phân quyền, bảo mật, job nền |
+| [frontend/README.md](frontend/README.md) | Cấu trúc + quy ước frontend, UI kit, realtime, phân quyền trên giao diện |
+| [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md) | Triển khai production: máy ảo Ubuntu, PostgreSQL, Docker, HTTPS, sao lưu, vận hành, xử lý sự cố |
+| [infra/chuyen-du-lieu-sang-postgresql.md](infra/chuyen-du-lieu-sang-postgresql.md) | Runbook chuyển dữ liệu 1 lần từ backup SQL Server cũ (`.bak`), đóng gói file upload / khoá bí mật |
+| [.github/CICD.md](.github/CICD.md) | CI/CD: các bước kiểm tra, build image, deploy, rollback, quy tắc phiên bản thư viện |
 
 ## Tổng quan
 
-Ứng dụng có ba cổng truy cập:
+Monorepo gồm [`frontend/`](frontend/) (React + TypeScript SPA, Vite) và [`backend/`](backend/) (Node.js + Express REST API trên PostgreSQL 18). Ứng dụng có ba cổng:
 
 | Cổng | Đường dẫn | Dành cho |
 |---|---|---|
-| **Cổng công khai** | `/`, `/dang-ky-de-tai`, `/de-xuat-de-tai`, `/dang-ky-khoa-hoc`, `/tra-cuu-ket-qua`, `/tra-cuu-ho-so/:maTraCuu`, `/thu-vien-de-tai` | Khách chưa đăng nhập: đăng ký/đề xuất đề tài, đăng ký khoá học, tra cứu hồ sơ bằng mã, thư viện đề tài |
-| **Cổng người dùng** | `/user/*` | Nhân viên: đề tài của tôi, tiến độ hội đồng, việc của tôi, khảo sát, thi trực tuyến, điểm danh, hồ sơ cá nhân |
-| **Cổng quản trị** | `/admin/*` | Quản trị viên và cán bộ quản lý: toàn bộ nghiệp vụ, danh mục, phân quyền, nhật ký |
+| **Công khai** | `/`, `/dang-ky-de-tai`, `/de-xuat-de-tai`, `/dang-ky-khoa-hoc`, `/tra-cuu-ket-qua`, `/tra-cuu-ho-so/:maTraCuu`, `/thu-vien-de-tai` | Khách: đăng ký/đề xuất đề tài, đăng ký khoá học, tra cứu hồ sơ, thư viện đề tài |
+| **Người dùng** | `/user/*` | Nhân viên: đề tài của tôi, tiến độ hội đồng, việc của tôi, khảo sát, thi trực tuyến, điểm danh, hồ sơ |
+| **Quản trị** | `/admin/*` | Quản trị viên, cán bộ quản lý: toàn bộ nghiệp vụ, danh mục, phân quyền, nhật ký |
 
-Nhóm người dùng chính:
+Người dùng chính: nhân viên nghiên cứu / học viên, thành viên hội đồng (chấm đề cương), quản lý khoa / cấp duyệt, quản trị viên.
 
-- **Nhân viên nghiên cứu / học viên**: đăng ký đề tài, nộp hồ sơ, tham gia khoá học, làm bài thi, khảo sát, theo dõi tiến độ.
-- **Thành viên hội đồng**: chấm đề cương, nhập điểm/nhận xét, theo dõi các đề tài được phân công.
-- **Quản lý khoa / cấp duyệt**: duyệt hoặc trả lại đề tài, quản lý tài khoản trong khoa.
-- **Quản trị viên**: người dùng, vai trò/quyền, danh mục, đợt nghiên cứu, hội đồng, đào tạo, CME, quy trình duyệt, cài đặt hệ thống, nhật ký.
+**Phân hệ chức năng**
 
----
+- **Nghiên cứu khoa học**: đề tài (đăng ký theo loại, cấp, đợt; kiểm tra cửa sổ thời gian của đợt; thành viên, cấp tài khoản, nộp hồ sơ theo lô, xuất Excel) · đợt nghiên cứu & lịch các mốc, tự nhắc deadline · hội đồng chấm đề cương (phân ghế tay/tự động, người ngoài viện, chấm điểm, theo dõi tiến độ) · phê duyệt nhiều bước theo workflow (`/admin/workflows`) · cổng công khai có captcha, tra cứu bằng mã hồ sơ.
+- **Đào tạo & CME**: hội thảo / hội nghị (danh sách tham dự, sổ cấp CME) · học viên, giảng viên, chương trình – bài học, kế hoạch đào tạo, khoá học (đăng ký công khai) · thi trực tuyến, khảo sát, điểm danh QR · hồ sơ tín chỉ CME, theo dõi mức đáp ứng (`/admin/cme-compliance`), chứng chỉ hành nghề, chấm công.
+- **Chung**: dashboard nghiên cứu và đào tạo, trang báo cáo & xuất dữ liệu, việc của tôi, thông báo realtime (SSE) + email, quản trị người dùng / khoa / danh mục / vai trò & quyền / cấu hình hệ thống / cấu hình form / gộp trùng danh tính / nhật ký hoạt động.
 
 ## Công nghệ
 
-### Frontend
-
-| Thành phần | Công nghệ |
-|---|---|
-| Framework | React 19, TypeScript 6 |
-| Build | Vite 8 (`@vitejs/plugin-react`, `vite-plugin-svgr`) |
-| Routing | React Router 7: lazy route + prefetch, guard theo quyền |
-| UI | Ant Design 5 + UI kit nội bộ (`shared/components`) |
-| Server state | TanStack Query 5 |
-| Client state | Zustand |
-| Form & validation | React Hook Form + Zod |
-| Khác | Recharts (biểu đồ), dnd-kit (kéo thả), html5-qrcode (quét QR), DOMPurify, docx-preview |
-| Realtime | SSE, dùng một `EventSource` chung cho mỗi tab |
-
-### Backend
-
-| Thành phần | Công nghệ |
-|---|---|
-| Runtime | Node.js, Express 4 (JS, đang chuyển dần một phần sang TS: `tsx`, `npm run typecheck`) |
-| Database | PostgreSQL 18 (`pg`, connection pool; lớp `src/config/db.js`) |
-| Cache | Redis (`ioredis`), cache-aside, fail-open |
-| Xác thực | JWT access + refresh token, `bcryptjs`, 2FA TOTP (`otplib`), captcha, khoá tài khoản khi sai mật khẩu nhiều lần |
-| Bảo mật | `helmet`, `express-rate-limit`, `sanitize-html`, link `/uploads` ký HMAC có hạn |
-| Validation | `express-validator`, Zod |
-| Upload / Excel | Multer (kèm allowlist loại file), ExcelJS |
-| Email | Nodemailer (mặc định tắt) |
-| Tác vụ nền | `node-cron` |
-| Logging | Pino + `pino-roll`, tuỳ chọn Loki + Promtail |
-| API docs | Swagger / OpenAPI (`swagger-jsdoc`, `swagger-ui-express`), bảo vệ bằng Basic Auth |
+| | Frontend | Backend |
+|---|---|---|
+| Nền tảng | React 19, TypeScript 6, Vite 8 | Node.js, Express 5 (JS, kiểm kiểu bằng `tsc` checkJs) |
+| Dữ liệu | TanStack Query 5, React Router 7 | PostgreSQL 18 (`pg`), Redis (`ioredis`, cache fail-open) |
+| UI / thư viện | Ant Design 6 + UI kit nội bộ, Recharts, dnd-kit, html5-qrcode, Leaflet, DOMPurify, docx-preview | ExcelJS, docxtemplater, Multer, Nodemailer, `node-cron`, Pino (+ Loki/Promtail tuỳ chọn) |
+| Bảo mật | CSP chặn thật (Nginx) | JWT access + refresh (cookie HttpOnly), 2FA TOTP, `helmet`, rate-limit, `sanitize-html`, ClamAV, link `/uploads` ký HMAC |
+| Validation / API docs | | zod, `express-validator`; Swagger (Basic Auth) |
 
 ---
 
-## Bắt đầu nhanh
+## Bắt đầu nhanh (dev)
 
-### Yêu cầu
-
-- **Node.js** ≥ 20 LTS, **npm** ≥ 9
-- **PostgreSQL 18** có DB `rms_hospital` và 2 role `rms_migrate` / `rms_app` — cài theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md) (máy dev Windows: mục cuối tài liệu đó). DB trống thì dựng schema bằng `npm run migrate init`, tạo vai trò hệ thống + 2 tài khoản quản trị bằng `npm run init:system` (in mật khẩu tạm 1 lần), rồi nạp danh mục cơ bản bằng `npm run seed:catalogs` (thư mục `backend`).
-- **Redis** (tuỳ chọn): không có Redis thì server vẫn chạy, chỉ bỏ qua cache.
+**Yêu cầu**: Node.js ≥ 20 LTS; **PostgreSQL 18** cài trên máy (xem [dưới](#postgresql-trên-máy-dev-windows)); Docker Desktop (khi chạy bằng Docker); Redis tuỳ chọn (không có thì server bỏ qua cache).
 
 ### Setup tự động (khuyến nghị)
-
-Cài sẵn PostgreSQL 18 và Docker Desktop, rồi ở thư mục gốc:
 
 ```bash
 npm run setup:dev              # backend + frontend trong Docker
 npm run setup:dev -- --native  # không Docker (sau đó chạy npm run dev)
 npm run setup:dev -- --db      # nhập lại tài khoản PostgreSQL
-npm run setup:dev -- --bak="D:\backup\RMS.bak"   # chuyển dữ liệu từ backup SQL Server cũ
+npm run setup:dev -- --help    # mọi tuỳ chọn
 ```
 
-Script [scripts/setup-dev.js](scripts/setup-dev.js) làm lần lượt:
+[scripts/setup-dev.js](scripts/setup-dev.js) làm lần lượt:
 
-1. Tạo `backend/.env`, hỏi **tài khoản PostgreSQL** (máy chủ, cổng, database, role, mật khẩu — Enter để giữ giá trị gợi ý), tự sinh JWT secret / `SWAGGER_PASS`. PostgreSQL ở máy khác thì script ghi `DEV_DB_SERVER` vào `.env` cạnh `docker-compose.yml` để container kết nối tới đó.
+1. Tạo `backend/.env`, hỏi **tài khoản PostgreSQL** (Enter giữ giá trị gợi ý), tự sinh JWT secret / `SWAGGER_PASS`. PostgreSQL ở máy khác thì ghi `DEV_DB_SERVER` vào `.env` cạnh `docker-compose.yml`.
 2. Build image (hoặc `npm install` với `--native`).
-3. Kiểm tra kết nối. Chưa có DB / role thì tạo bằng `psql` theo `infra/postgresql/01_tao_db_va_role.sql` (hỏi mật khẩu `postgres`); sai mật khẩu / không tới được máy chủ thì cho nhập lại.
-   - **DB còn trống** thì hỏi đường dẫn file backup SQL Server cũ (`.bak`; Enter = dựng DB mới trống). Có file thì script dựng SQL Server tạm trong Docker (lần đầu tải image ~1,5 GB), chạy `pg:transfer` restore → precheck → load → verify, xong xoá container cùng bản sao file. Backup phải lấy từ bản code cuối còn SQL Server (đã chạy hết migration T-SQL); precheck báo lỗi thì dừng, không ghi gì vào PostgreSQL. Cần Docker (không dùng được với `--native`) và DB đích phải trống.
-4. `migrate init` (sau khi chuyển từ `.bak`: chạy nốt migration PG).
-5. `init:system`: các vai trò hệ thống và **2 tài khoản quản trị**, in mật khẩu tạm 1 lần:
+3. Kiểm tra kết nối; chưa có DB / role thì tạo bằng `psql` theo `infra/postgresql/01_tao_db_va_role.sql` (hỏi mật khẩu `postgres`).
+4. **DB còn trống** thì hỏi nguồn dữ liệu (Enter = DB mới trống):
+   - file backup SQL Server cũ `.bak` (`--bak=`): dựng SQL Server tạm trong Docker, chạy `pg:transfer` restore → precheck → load → verify rồi xoá container. File phải lấy từ bản code cuối còn SQL Server (commit `dd0f62e`, đã chạy hết migration).
+   - bản backup PostgreSQL `.dump` / `.sql` / `.gz` (`--dump=`): khôi phục bằng superuser `postgres`.
+   - kèm file của hệ thống cũ `--uploads=uploads.tar.gz --secrets=secrets.tar.gz` (đóng gói theo mục C.6 runbook chuyển dữ liệu).
+5. `migrate init` → `init:system` (9 vai trò hệ thống + 2 tài khoản `superadmin` toàn quyền và `admin` quyền nghiệp vụ, in mật khẩu tạm 1 lần) → `seed:catalogs` (danh mục cơ bản).
+6. `docker compose up -d` và chờ app lên.
 
-   | Tài khoản | Vai trò | Quyền |
-   |---|---|---|
-   | `superadmin` | Super Admin (`superadmin`) | Toàn quyền hệ thống |
-   | `admin` | Admin (`admin`) | NCKH, hội thảo / CME, đào tạo, quản lý người dùng. Không có: phân quyền, cấu hình hệ thống, nhật ký, quy trình duyệt, cấu hình form, khảo sát |
+Chạy lại an toàn (không ghi đè `.env`, không đổi mật khẩu role, vai trò đã có giữ nguyên quyền, danh mục chỉ nạp bảng trống). Cập nhật dữ liệu dev sau này từ bản backup mới: chép file vào `import/` rồi `npm run setup:dev -- --import`.
 
-   Ngay sau khi chuyển từ `.bak`, nếu tài khoản toàn quyền đang hoạt động **duy nhất** là `admin` (của hệ thống cũ) thì script bỏ tài khoản đó rồi tạo 2 tài khoản trên: xoá hẳn nếu không còn dữ liệu liên kết, còn liên kết (đề tài, hội đồng, file…) thì vô hiệu hoá, đổi tên thành `admin_cu` và đăng xuất mọi phiên, giữ lịch sử. DB có sẵn (không chuyển từ `.bak`) không bị đụng tới.
+### PostgreSQL trên máy dev Windows
 
-6. `seed:catalogs`: danh mục NCKH (loại / cấp đề tài, loại đợt), đào tạo / CME (loại hình, đối tượng, hồ sơ học viên, tín chỉ CME), nhân sự (chức vụ, chức danh, học hàm / học vị) — từ `backend/database/seed/catalogs.json`.
-7. `docker compose up -d` và chờ app lên.
+- Cài PostgreSQL 18 bằng bộ cài EDB (đã có ICU, collation `vi-VN-x-icu`). Không cần `rms.conf`; thiếu `shared_preload_libraries` thì view `pg_stat_statements` báo lỗi khi đọc, không ảnh hưởng ứng dụng.
+- `setup:dev` tự tạo DB + role. Làm tay: chạy `infra/postgresql/01_tao_db_va_role.sql` bằng `psql.exe -h 127.0.0.1 -U postgres` (trong thư mục `bin` của bản cài), rồi `npm run migrate init` trong `backend`.
+- Mật khẩu lưu ở `%APPDATA%\postgresql\pgpass.conf`, dòng `127.0.0.1:5432:*:rms_migrate:<mật khẩu>` — adapter, migrator, `pg:transfer`, `test:pg` tự đọc khi không đặt `DB_PASSWORD` / `PG_TARGET_PASSWORD` / `PG_TEST_PASSWORD`.
+- Backend dev chạy trong Docker: thêm dòng cho mạng Docker `172.16.0.0/12` vào `pg_hba.conf` (như `infra/postgresql/pg_hba.rms.conf`) và mở firewall Windows cổng 5432 cho dải đó. Container coi PostgreSQL trên host là máy khác (`host.docker.internal`), không phải `localhost`.
 
-Chạy lại an toàn: không ghi đè giá trị đã có trong `.env`, không đổi mật khẩu role đã có; vai trò đã có thì giữ nguyên quyền, vai trò đã có người dùng thì không tạo thêm tài khoản; danh mục chỉ nạp vào bảng còn trống. Đổi tên tài khoản: `--superadmin=<tên> --admin=<tên>`. Xem mọi tuỳ chọn: `npm run setup:dev -- --help`.
-
-### Cài đặt và chạy (thủ công)
+### Chạy thủ công (không Docker)
 
 ```bash
-git clone <repo-url>
-cd Hospital_RMS
-
-npm install                      # root: chỉ có 'concurrently'
-npm install --prefix backend
-npm install --prefix frontend
-
-cp backend/.env.example backend/.env   # rồi điền thông tin DB và secret thật
-
+npm install && npm install --prefix backend && npm install --prefix frontend
+cp backend/.env.example backend/.env   # điền DB và secret thật
 npm run dev
-#   SERVER → nodemon src/server.js           http://localhost:3001
-#   CLIENT → vite (đợi server sẵn sàng)      http://localhost:5173
+#   SERVER → nodemon src/server.js       http://localhost:3001
+#   CLIENT → vite (đợi server sẵn sàng)  http://localhost:5173
 ```
 
-Chạy riêng từng phần: `npm run server` (backend) hoặc `npm run client` (frontend).
-
-Nếu port `3001` đang bận, backend tự chuyển sang port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env` để Vite proxy đúng port.
-
-### Build production (không Docker)
-
-```bash
-npm run build --prefix frontend        # ra frontend/dist (bundle JS được làm rối bằng javascript-obfuscator)
-npm run start:prod --prefix backend    # NODE_ENV=production
-```
-
-Ở production, server **không khởi động** nếu thiếu `CORS_ORIGIN`. Cách triển khai khuyến nghị là dùng Docker, xem [Docker: Production](#production-docker-composeprodyml).
+Chạy riêng: `npm run server` / `npm run client`. Port `3001` bận thì backend tự chọn port trống kế tiếp và ghi `VITE_API_PORT` vào `frontend/.env`. Sinh JWT secret tay: `npm run gen:jwt` (`-- --dry-run` xem trước, `-- --force` thay secret đang dùng).
 
 ---
 
-## Cấu hình môi trường
+## Cấu hình môi trường (`backend/.env`)
 
-### `backend/.env`
-
-Xem đầy đủ các biến và chú thích trong [`backend/.env.example`](backend/.env.example). Tóm tắt:
+Đầy đủ và có chú thích: [`backend/.env.example`](backend/.env.example).
 
 | Nhóm | Biến | Ghi chú |
 |---|---|---|
-| **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (+ `SWAGGER_USER`, `SWAGGER_PASS` khi Swagger bật) | Server thoát ngay khi khởi động nếu thiếu biến nào. Swagger tắt ở production, trừ khi đặt `SWAGGER_ENABLED=true`. Secret nên là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`). |
-| PostgreSQL | `DB_SERVER`, `DB_PORT` (5432), `DB_DATABASE` (`rms_hospital`), `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT`, `DB_CA_CERT_FILE` | Production: dùng role `rms_app` (không dùng `postgres`) và bật SSL. `DB_PASSWORD` bỏ trống = đọc `PGPASSWORD` / file pgpass. |
-| HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` = số proxy đứng ngay trước backend (thường là `1`). Không dùng `uniquelocal`: người dùng có IP nội bộ sẽ tự khai được IP giả để vượt rate-limit đăng nhập. |
-| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `UPLOAD_MAX_MB`, `UPLOAD_ALLOWED_EXTENSIONS`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Link tải file được ký HMAC. Đổi secret thì mọi link cũ mất hiệu lực. Xem [Bảo mật upload](#bảo-mật-upload). |
-| Log | `LOG_DIR`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | Xem phần [logging](#tác-vụ-nền-cache--logging). |
-| Email | `MAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mặc định tắt, email chỉ in ra console. |
-| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Mặc định `localhost:6379`, không mật khẩu. Docker prod tự sinh mật khẩu (volume `redis_secret`). |
-| Cron | `JOBS_ENABLED`, `CRON_TZ` | `JOBS_ENABLED=false` để tắt job nền (môi trường test, hoặc các instance phụ). |
-| Danh tính | `PERSON_DUAL_WRITE` | Đặt `false` để tắt khẩn cấp đồng bộ `persons`. |
+| **Bắt buộc** | `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET` (+ `SWAGGER_USER`, `SWAGGER_PASS` khi Swagger bật) | Thiếu thì server thoát ngay lúc khởi động. Secret là chuỗi ngẫu nhiên dài (`openssl rand -hex 32`) |
+| PostgreSQL | `DB_SERVER`, `DB_PORT` (5432), `DB_DATABASE` (`rms_hospital`), `DB_ENCRYPT`, `DB_TRUST_SERVER_CERT`, `DB_CA_CERT_FILE`, `DB_POOL_MAX`, `DB_AUTO_MIGRATE` | `DB_PASSWORD` trống = đọc `PGPASSWORD` / pgpass. Production dùng role `rms_app` và SSL |
+| HTTP | `PORT`, `CORS_ORIGIN`, `TRUST_PROXY`, `APP_URL`, `COOKIE_SECURE` | `CORS_ORIGIN` bắt buộc ở production. `TRUST_PROXY` = số proxy ngay trước backend (thường `1`); không dùng `uniquelocal` (người dùng IP nội bộ tự khai được IP giả để vượt rate-limit) |
+| Upload | `UPLOAD_URL_SECRET`, `UPLOAD_URL_TTL_SEC`, `UPLOAD_MAX_MB`, `UPLOAD_ALLOWED_EXTENSIONS`, `TRAINING_MEDIA_MAX_MB`, `UPLOAD_DAILY_QUOTA_MB`, `CLAMAV_HOST` | Xem [Bảo mật upload](backend/README.md#bảo-mật-upload) |
+| Bảo mật | `TOTP_ENC_KEY`, `REQUIRE_2FA_FOR_ADMINS`, `TWOFA_GRACE_DAYS`, `ALERT_EMAILS`, `TURNSTILE_*` / `RECAPTCHA_*` | Xem [Xác thực & bảo mật](backend/README.md#xác-thực--bảo-mật) |
+| Log | `LOG_DIR`, `LOG_LEVEL`, `LOG_RETENTION_FILES`, `LOG_STDOUT`, `AUDIT_LOG_METHODS` | |
+| Email | `MAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mặc định tắt, email chỉ in ra console |
+| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Mặc định `localhost:6379` |
+| Job | `JOBS_ENABLED`, `CRON_TZ` | `JOBS_ENABLED=false` để tắt job nền |
+| Swagger | `SWAGGER_ENABLED` | Swagger tắt ở production trừ khi đặt `true` |
 
-### `frontend/.env` (tuỳ chọn)
-
-Khi dev, client gọi đường dẫn tương đối qua proxy của Vite nên thường không cần tự tạo file này.
-
-```env
-VITE_API_PORT=3001        # backend tự ghi mỗi lần khởi động
-# VITE_API_BASE_URL=      # chỉ đặt khi deploy client ở domain khác với API
-```
+`frontend/.env` (tuỳ chọn): xem [frontend/README.md](frontend/README.md).
 
 ---
 
 ## Chạy bằng Docker
 
-Dự án có hai file compose:
-
 | | Develop | Production |
 |---|---|---|
-| File | `docker-compose.yml` | `docker-compose.prod.yml` |
-| Project Compose | `hospital_rms_dev` | `hospital_rms` |
-| Build target | `dev` (Node, mount source code) | `prod` (backend `npm ci --omit=dev`, frontend build tĩnh + Nginx) |
-| Service | `server`, `client`, `redis` (+ `loki`, `promtail`) | `backend`, `frontend`, `redis` |
-| Truy cập web | `http://localhost:5173` (Vite) | `http://<host>:8081` (Nginx) |
-| API | `http://localhost:3001` | `127.0.0.1:3001` (chỉ loopback trên máy server) |
-| Hot reload | Có (nodemon + Vite, polling) | Không |
-| Biến môi trường | `backend/.env` được mount vào container | `backend/.env` + `backend/.env.production` qua `env_file` |
-| Upload | `backend/uploads/` trên máy host | Volume `server_uploads` |
+| File / project | `docker-compose.yml` / `hospital_rms_dev` | `docker-compose.prod.yml` / `hospital_rms` |
+| Build target | `dev` (Node, mount source code, hot reload) | `prod` (backend `npm ci --omit=dev`, frontend build tĩnh + Nginx) |
+| Service | `backend`, `frontend`, `redis`, `clamav` (+ `loki`, `promtail` profile `logs`) | `backend`, `frontend`, `redis`, `clamav` |
+| Web / API | `http://localhost:5173` / `http://localhost:3001` | `http://<host>:8081` / `127.0.0.1:3001` (chỉ loopback) |
+| Biến môi trường | `backend/.env` mount vào container | `backend/.env` + `backend/.env.production` qua `env_file` |
+| Upload | `backend/uploads/` trên host | volume `server_uploads` |
 
-Mỗi file đặt tên project riêng (khoá `name:` ở đầu file) nên hai môi trường chạy song song được trên cùng một máy: container, network và volume tách biệt, không dùng chung JWT secret. Trước đây cả hai cùng lấy tên thư mục làm tên project, chạy môi trường này sẽ dừng container của môi trường kia.
+Hai file đặt tên project riêng nên chạy song song được trên cùng máy (container, network, volume, JWT secret tách biệt). Yêu cầu Docker Compose ≥ v2.24 (cú pháp `env_file` với `path`/`required`) và BuildKit. **PostgreSQL không chạy trong container**: chạy trên host hoặc máy riêng, `pg_hba.conf` + firewall phải cho dải Docker `172.16.0.0/12`.
 
-> Dựng production từ đầu trên máy ảo Ubuntu 26.04 (2 ổ đĩa, PostgreSQL cài riêng ngoài Docker, quản trị qua SSH, CI/CD tự triển khai): xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md).
-
-### Yêu cầu chung
-
-- **Docker Desktop** (Windows/macOS) hoặc **Docker Engine** (Linux) có **Compose v2.24 trở lên**. Bản prod dùng cú pháp `env_file` với `path`/`required`, bản cũ hơn sẽ báo lỗi.
-- BuildKit bật sẵn (mặc định từ Docker 23). Dockerfile dùng `RUN --mount=type=cache` để giữ cache npm giữa các lần build.
-- **PostgreSQL không chạy trong container** mà chạy trên máy host hoặc một máy chủ riêng:
-  - `pg_hba.conf` cho phép dải IP của Docker (`172.16.0.0/12`, xem `infra/postgresql/pg_hba.rms.conf`), firewall mở cổng `5432` cho dải đó. Container coi PostgreSQL trên host là máy khác trong mạng, không phải `localhost`.
-
----
+**Production**: dựng từ đầu trên máy ảo Ubuntu (1 lệnh `scripts/setup-server.sh`), cấu hình, HTTPS, sao lưu, cập nhật phiên bản — xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md). Bình thường CI/CD tự triển khai (`scripts/deploy.sh`: backup DB, migration, smoke test, tự rollback — [.github/CICD.md](.github/CICD.md)). ⚠️ Không bao giờ chạy `docker compose -f docker-compose.prod.yml down -v` (xoá volume: mất file upload, nhật ký, khoá 2FA).
 
 ### Develop (`docker-compose.yml`)
 
-Source code được bind mount vào container. Sửa code trên máy là container tự nạp lại: nodemon cho backend, Vite HMR cho frontend.
-
-#### Service
+Source code bind mount vào container: nodemon (`-L`, polling) cho backend, Vite HMR cho frontend.
 
 | Service | Port | Ghi chú |
 |---|---|---|
-| `server` | `3001` | Express + nodemon (`-L`, polling). `mem_limit: 640m`, heap V8 384 MB |
-| `client` | `5173` | Vite dev server, proxy `/api` và `/uploads` sang `server:3001`. `mem_limit: 768m` |
-| `redis` | `6379` | Redis 7, `maxmemory 128mb`, `allkeys-lru`, tắt RDB/AOF (chỉ làm cache) |
-| `loki` | `3100` | Profile `logs`, **không chạy mặc định** |
-| `promtail` | – | Profile `logs`, đọc `backend/logs` rồi đẩy vào Loki |
+| `backend` | `3001` | Express + nodemon. `mem_limit: 640m`, heap V8 384 MB |
+| `frontend` | `5173` | Vite dev server, proxy `/api` và `/uploads` sang `backend:3001` |
+| `redis` | `6379` | Redis 7, `maxmemory 128mb`, `allkeys-lru`, chỉ làm cache |
+| `clamav` | – | Quét virus file upload |
+| `loki` / `promtail` | `3100` / – | Profile `logs`, **không chạy mặc định**; Promtail đọc `backend/logs` đẩy vào Loki |
 
-#### Cấu hình
-
-1. Tạo `backend/.env` từ file mẫu:
-
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
-
-   Điền `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`. Để trống hoặc giữ nguyên giá trị mẫu của `JWT_SECRET` / `JWT_REFRESH_SECRET` cũng được, container sẽ tự sinh và ghi vào file này (xem [JWT secret](#jwt-secret)).
-
-2. Các biến compose tự đặt, **không cần** khai báo trong `.env`:
-
-   | Biến | Giá trị | Lý do |
-   |---|---|---|
-   | `NODE_ENV` | `development` | |
-   | `DB_SERVER` | `host.docker.internal` | Trỏ về PostgreSQL trên máy host (`extra_hosts: host-gateway` để chạy được cả trên Linux) |
-   | `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | Tên service trong mạng Docker |
-   | `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước (Vite), để `req.ip` là IP thật của máy khách chứ không phải IP container `frontend` |
-   | `LOG_RETENTION_FILES` | `100` | Giữ ít nhất khoảng 3 tháng log |
-   | `VITE_API_HOST` / `VITE_API_PORT` | `server` / `3001` | Đích proxy của Vite |
-   | `CHOKIDAR_USEPOLLING` | `true` | Bind mount qua Docker Desktop không phát fs-events, phải polling (chu kỳ 1 giây) |
-
-   Biến môi trường do compose đặt được ưu tiên hơn giá trị trong `backend/.env`.
-
-#### Chạy
+Compose tự đặt (ưu tiên hơn `backend/.env`): `NODE_ENV=development`, `DB_SERVER=host.docker.internal` (`extra_hosts: host-gateway` để chạy cả trên Linux), `REDIS_HOST=redis`, `TRUST_PROXY=1` (tin đúng Vite), `LOG_RETENTION_FILES=100`, `VITE_API_HOST=backend`, `CHOKIDAR_USEPOLLING=true` (bind mount qua Docker Desktop không phát fs-events). `JWT_SECRET` / `JWT_REFRESH_SECRET` để trống hoặc giá trị mẫu `change-me…` thì container tự sinh và ghi vào `backend/.env`.
 
 ```bash
 docker compose up --build            # lần đầu, hoặc sau khi sửa Dockerfile
 docker compose up -d                 # chạy nền
-docker compose logs -f backend       # xem log backend
+docker compose logs -f backend
 docker compose --profile logs up -d  # bật thêm Loki + Promtail
-docker compose down                  # dừng và xoá container (giữ volume)
+docker compose down                  # dừng, giữ volume
+npm run migrate -- status            # (ở thư mục gốc) chạy lệnh migrate trong container backend
 ```
 
 | Địa chỉ | Nội dung |
@@ -268,471 +155,37 @@ docker compose down                  # dừng và xoá container (giữ volume)
 | `http://localhost:5173` | Giao diện web |
 | `http://localhost:3001/api-docs` | Swagger UI (Basic Auth `SWAGGER_USER` / `SWAGGER_PASS`) |
 | `http://localhost:3001/health` | Health check |
-| `http://localhost:3100` | Loki (khi bật profile `logs`) |
 
-#### Thêm hoặc cập nhật package
+`node_modules` nằm trong anonymous volume để không bị bind mount ghi đè. Lúc khởi động container so hash `package.json` + `package-lock.json`, khác thì tự `npm ci` — sau `git pull` hay thêm package chỉ cần `docker compose restart backend frontend`.
 
-`node_modules` nằm trong anonymous volume (`/app/node_modules`) để không bị bind mount ghi đè — Compose giữ volume này cả khi `up --build`. Container dev tự xử lý: lúc khởi động so hash `package.json` + `package-lock.json` với dấu trong `node_modules`, khác thì tự `npm ci` (log `[deps] ... → npm ci`). Sau `git pull` hay thêm package chỉ cần khởi động lại container:
-
-```bash
-docker compose restart backend frontend
-```
-
----
-
-### Production (`docker-compose.prod.yml`)
-
-```
-Trình duyệt ──https──► Reverse proxy HTTPS (nginx trên host…, giữ chứng chỉ)
-                              │ http + X-Forwarded-For / X-Forwarded-Proto
-                              ▼
-                        :8081 frontend (Nginx, file tĩnh + header bảo mật)
-                              │  /api/, /uploads/, /api/v1/events (SSE)
-                              ▼
-                          backend:3001 ──► redis:6379 (có mật khẩu)
-                              │
-                              ▼
-                          PostgreSQL (DB_SERVER, ngoài Docker)
-```
-
-#### Service
-
-| Service | Port trên máy host | Ghi chú |
-|---|---|---|
-| `frontend` | `${FRONTEND_BIND:-8081}` → `80` | Nginx phục vụ `frontend/dist` và reverse proxy tới `backend:3001`. `mem_limit: 64m` |
-| `backend` | `127.0.0.1:3001` | Chỉ mở trên loopback để reverse proxy cùng máy gọi được. Không lộ ra mạng. Chạy bằng user `node` (không phải root). `mem_limit: 512m` |
-| `redis` | – | Không publish port, chỉ dùng trong mạng Docker. Bắt buộc mật khẩu, tự sinh lần đầu vào volume `redis_secret` |
-
-Mọi service đều có `restart: unless-stopped`, tự khởi động lại cùng Docker.
-
-> **Máy Ubuntu mới cài:** `scripts/setup-server.sh` làm hết các bước dưới đây (cùng PostgreSQL, Docker, ổ `/data`, firewall, HTTPS, sao lưu) bằng 1 lệnh. Xem mục *Cài bằng 1 lệnh* trong [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md#cài-bằng-1-lệnh).
-
-#### Bước 1: Chuẩn bị PostgreSQL
-
-- Cài PostgreSQL 18, tạo DB `rms_hospital`, role `rms_migrate` (chủ DB, dùng cho migration) và `rms_app` (chỉ đọc/ghi dữ liệu) theo [infra/cai-dat-postgresql.md](infra/cai-dat-postgresql.md).
-- **Không dùng role `postgres` cho ứng dụng.** Server in cảnh báo khi khởi động nếu `DB_USER=postgres`.
-- Dữ liệu cũ trên SQL Server: chuyển 1 lần từ file backup `.bak`, xem [infra/chuyen-du-lieu-sang-postgresql.md](infra/chuyen-du-lieu-sang-postgresql.md).
-
-#### Bước 2: Tạo file môi trường
-
-Compose nạp hai file theo thứ tự. File sau ghi đè file trước, và cả hai đều không bắt buộc phải có:
-
-| File | Nội dung nên đặt |
-|---|---|
-| `backend/.env` | Cấu hình chung: `DB_SERVER`, `DB_PORT`, `DB_DATABASE`, `SWAGGER_*`, `SMTP_*`, `JOBS_ENABLED`… |
-| `backend/.env.production` | Thông tin chỉ dùng cho prod: `DB_USER` / `DB_PASSWORD` của role `rms_app`, `DB_CA_CERT_FILE` ([chứng chỉ PostgreSQL](#chứng-chỉ-postgresql)), `UPLOAD_URL_SECRET` |
-
-```bash
-cp backend/.env.example backend/.env
-# DB_SERVER mặc định host.docker.internal (PostgreSQL trên chính máy chạy Docker);
-#   PostgreSQL ở máy khác thì sửa thành địa chỉ máy đó
-
-cat > backend/.env.production <<'EOF'
-DB_USER=rms_app
-DB_PASSWORD=<mật khẩu rms_app>
-SWAGGER_PASS=<mật khẩu mạnh>
-EOF
-```
-
-Cả hai file đều bị `.gitignore` và `.dockerignore` loại ra nên không bị commit hay đóng gói vào image.
-
-#### Bước 3: Kiểm tra các biến compose ghi đè
-
-Các biến sau được đặt cứng trong `docker-compose.prod.yml` và **luôn thắng** giá trị trong file `.env`:
-
-| Biến | Giá trị | Ghi chú |
-|---|---|---|
-| `DB_ENCRYPT` | `true` | Luôn kết nối PostgreSQL bằng SSL. Mã hoá mà **không kiểm tra chứng chỉ** (`DB_TRUST_SERVER_CERT=true`, mặc định) thì ai chen được vào đường mạng tới DB vẫn giả làm server được — backend cảnh báo lúc khởi động. Cách bật kiểm tra (không cần mua chứng chỉ): [Chứng chỉ PostgreSQL](#chứng-chỉ-postgresql) |
-| `PORT` | `3001` | Phải khớp `proxy_pass http://backend:3001` trong `frontend/nginx.conf` |
-| `REDIS_HOST` / `REDIS_PORT` | `redis` / `6379` | |
-| `TRUST_PROXY` | `1` | Tin đúng 1 proxy liền trước backend (nginx container). Nginx đã tự lọc IP thật và **ghi đè** `X-Forwarded-For`, nên rate-limit đăng nhập tính theo IP thật |
-| `CORS_ORIGIN` | `${CORS_ORIGIN:-https://nckh.bvnghean.vn}` | Bắt buộc ở production |
-| `REDIS_PASSWORD_FILE` | `/run/redis-secret/pass` | Entrypoint đọc mật khẩu Redis do container `redis` tự sinh |
-| `NODE_OPTIONS` | `--max-old-space-size=384` | Heap nhỏ hơn `mem_limit` để còn chỗ cho buffer upload và xuất Excel |
-
-#### Chứng chỉ PostgreSQL
-
-Cluster PostgreSQL trên Ubuntu dùng chứng chỉ tự ký `ssl-cert-snakeoil` (CN = tên máy). Muốn backend kiểm tra mà không cần CA: tạo 1 chứng chỉ tự ký cố định cho PostgreSQL rồi đưa đúng file chứng chỉ đó (không phải khoá) cho backend (`DB_CA_CERT_FILE`). Backend chỉ tin chứng chỉ trong file, server giả mạo bị từ chối.
-
-1. Trên máy PostgreSQL. `CN`/`subjectAltName` phải có **đúng tên backend dùng để kết nối** (`DB_SERVER`, vd `host.docker.internal` khi PostgreSQL ở chính máy chạy Docker, hoặc tên máy / IP):
-
-   ```bash
-   cd /etc/postgresql/18/main
-   sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1825 -subj "/CN=$(hostname)" \
-     -addext "subjectAltName=DNS:$(hostname),DNS:host.docker.internal" \
-     -keyout rms-server.key -out rms-server.pem
-   sudo chown postgres:postgres rms-server.key rms-server.pem && sudo chmod 600 rms-server.key
-   printf "ssl = on\nssl_cert_file = '%s'\nssl_key_file = '%s'\nssl_min_protocol_version = 'TLSv1.2'\n" \
-     /etc/postgresql/18/main/rms-server.pem /etc/postgresql/18/main/rms-server.key \
-     | sudo tee /etc/postgresql/18/main/conf.d/ssl.conf
-   sudo systemctl reload postgresql@18-main
-   ```
-
-2. Đưa **file chứng chỉ** (`rms-server.pem`, không phải `.key`) vào volume bí mật của backend, rồi khai báo trong `backend/.env.production`:
-
-   ```bash
-   docker compose -f docker-compose.prod.yml cp /etc/postgresql/18/main/rms-server.pem backend:/app/secrets/postgresql.pem
-   ```
-
-   ```bash
-   DB_CA_CERT_FILE=/app/secrets/postgresql.pem
-   # Chỉ khi tên trong chứng chỉ khác DB_SERVER (vd DB_SERVER là IP):
-   # DB_CERT_SERVER_NAME=<tên trong chứng chỉ>
-   ```
-
-3. `docker compose -f docker-compose.prod.yml up -d backend`, xem log không còn cảnh báo `DB_TRUST_SERVER_CERT` và có `Connected to PostgreSQL`. Lỗi `ERR_TLS_CERT_ALTNAME_INVALID` = tên kết nối không có trong chứng chỉ (sửa `subjectAltName` hoặc đặt `DB_CERT_SERVER_NAME`). File sai / không đọc được thì backend dừng ngay lúc khởi động và báo rõ.
-
-Chứng chỉ hết hạn sau 5 năm (`-days 1825`) — tạo lại và chép lại file trước ngày đó. Đổi chứng chỉ trên PostgreSQL mà quên chép sang backend thì backend không kết nối được DB.
-
-**Đổi domain** thì sửa đồng bộ: `CORS_ORIGIN` (origin chính xác trình duyệt dùng, gồm scheme và port nếu có) và `server_name` trong `frontend/nginx.conf`.
-
-#### Bước 3b: Nối với reverse proxy HTTPS
-
-HTTPS kết thúc ở reverse proxy đứng trước cổng `8081` (nginx trên host, proxy chung của bệnh viện…). Container chỉ nhận HTTP từ proxy đó. Các biến dưới đây đặt trong file `.env` **cạnh `docker-compose.prod.yml`** (file biến của Compose, khác `backend/.env`):
-
-| Biến | Mặc định | Ý nghĩa |
-|---|---|---|
-| `TRUSTED_PROXIES` | `127.0.0.1/32 172.16.0.0/12` (loopback + mạng Docker) | IP/CIDR của reverse proxy. Chỉ request đến từ các địa chỉ này mới được tin `X-Forwarded-For` (IP thật) và `X-Forwarded-Proto` (https). Proxy ở máy khác thì **bắt buộc** khai |
-| `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker (gateway mạng Docker — health check của deploy) được kết nối tới `8081`, nơi khác nhận **403**. `false`: cho phép truy cập thẳng. `true`: luôn chặn |
-| `CSP_REPORT_ONLY` | `false` | `true` = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm (xem mục Nginx) |
-| `FRONTEND_BIND` | `8081` | Địa chỉ publish cổng frontend |
-| `CORS_ORIGIN` | `https://nckh.bvnghean.vn` | |
-
-Container nhận HTTP thuần: máy trong LAN gọi thẳng `http://<server>:8081` là bỏ qua HTTPS của proxy (mật khẩu đi dạng chữ thường trên mạng) và tự khai được IP giả. Thu hẹp lại:
-
-- Proxy **cùng máy** với Docker: đặt `FRONTEND_BIND=127.0.0.1:8081` (chỉ proxy trên máy đó gọi được).
-- Proxy **ở máy khác**: đặt `TRUSTED_PROXIES=<IP proxy>`. Nginx tự trả 403 cho mọi máy khác (`ONLY_TRUSTED_PROXIES=auto`). Nên chặn thêm ở firewall của hypervisor / mạng, chỉ mở `8081` cho IP proxy. Sau khi đặt, thử từ 1 máy trong LAN: `curl -I http://<server>:8081` phải trả `403`; qua `https://nckh.bvnghean.vn` vẫn vào bình thường.
-
-Reverse proxy phải gửi `X-Forwarded-Proto: https`. IIS ARR mặc định **không** gửi header này: thêm server variable `HTTP_X_FORWARDED_PROTO` = `https` trong rule URL Rewrite. Nếu thiếu, backend in cảnh báo `Request ... tới qua http, không phải https` trong log, và trình duyệt không nhận HSTS.
-
-Kiểm tra sau khi cấu hình (trên máy có proxy):
-
-```bash
-curl -sI https://nckh.bvnghean.vn/ | grep -i strict-transport   # phải có HSTS
-docker compose -f docker-compose.prod.yml logs frontend | tail  # cột đầu = IP thật người dùng, không phải IP proxy
-```
-
-#### Bước 4: Build và chạy
-
-```bash
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs -f backend
-```
-
-Kiểm tra trên máy server:
-
-```bash
-curl http://127.0.0.1:3001/health     # backend
-curl -I http://localhost:8081         # frontend
-```
-
-Swagger UI **tắt ở production**. Cần tạm thời thì đặt `SWAGGER_ENABLED=true` (kèm `SWAGGER_USER` / `SWAGGER_PASS`) trong `backend/.env.production`, rồi truy cập từ chính máy server: `http://127.0.0.1:3001/api-docs`. Xong việc nhớ tắt lại.
-
-#### Cập nhật phiên bản
-
-Bình thường CI/CD tự triển khai image đã build (`scripts/deploy.sh`: backup DB, migration, smoke test, tự rollback — xem [.github/CICD.md](.github/CICD.md)). Chạy tay trên server: `scripts/deploy.sh <commit SHA> ghcr.io/<owner>`. Build ngay trên server: [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md) mục 14.1.
-
-Người dùng không bị đăng xuất khi redeploy vì JWT secret được giữ trong volume `server_secrets`.
-
-#### Dữ liệu và sao lưu
-
-| Volume | Nội dung |
-|---|---|
-| `server_uploads` | Toàn bộ file người dùng upload (hồ sơ đề tài, tài liệu, video khoá học…) |
-| `server_secrets` | JWT secret tự sinh (`/app/secrets/jwt.env`) và **khoá mã hoá secret 2FA** (`/app/secrets/totp.key`). **Bắt buộc sao lưu cùng DB**: mất `totp.key` thì mọi người dùng đã bật 2FA phải tắt và thiết lập lại (không giải mã được secret) |
-| `server_logs` | Log hoạt động `audit-*.log` (`/app/logs`), nguồn dữ liệu của trang Nhật ký hoạt động |
-| `redis_secret` | Mật khẩu Redis tự sinh. Xoá volume này thì lần chạy sau sinh mật khẩu mới, không mất dữ liệu (Redis chỉ là cache) |
-
-Backend chạy bằng user `node`. Lần đầu nâng cấp từ bản chạy root, entrypoint tự chuyển quyền các volume `server_uploads` / `server_logs` / `server_secrets` cho `node` (có thể mất vài phút nếu nhiều file upload).
-
-> ⚠️ **Không chạy `docker compose -f docker-compose.prod.yml down -v`.** Cờ `-v` xoá các volume trên: mất toàn bộ file upload, nhật ký hoạt động, và mọi người dùng bị đăng xuất.
-
-Tên volume thật có tiền tố là tên project (`hospital_rms`, đặt cố định trong `docker-compose.prod.yml`), ví dụ `hospital_rms_server_uploads`. Xem bằng `docker volume ls`. Nếu máy chủ trước đây chạy từ thư mục có tên khác, volume cũ mang tiền tố của thư mục đó: chạy với `-p <tên cũ>` (hoặc `COMPOSE_PROJECT_NAME=<tên cũ>`) để giữ dữ liệu. Sao lưu:
-
-```bash
-docker run --rm -v hospital_rms_server_uploads:/data -v "$PWD":/backup alpine \
-  tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
-```
-
-Sao lưu log hoạt động cũng làm tương tự với volume `hospital_rms_server_logs`. **Volume `hospital_rms_server_secrets` (chứa khoá 2FA) phải sao lưu cùng lịch với DB** và cất ở nơi an toàn như mật khẩu — ai có cả bản sao DB lẫn khoá này sinh được mã 2FA của người dùng.
-
-#### Nginx
-
-`frontend/nginx.conf`:
-
-- `client_max_body_size 300m`, khớp giới hạn `TRAINING_MEDIA_MAX_MB`.
-- `/api/v1/events` (SSE) tách riêng: tắt buffering và gzip, `proxy_read_timeout 1h`.
-- `/api/` và `/uploads/` proxy tới backend. `X-Forwarded-For` bị **ghi đè** bằng IP thật (module `real_ip`, chỉ tin proxy trong `TRUSTED_PROXIES`, sinh lúc khởi động bởi `frontend/docker/40-trusted-proxies.sh`). `X-Forwarded-Proto` chỉ lấy từ proxy tin cậy.
-- Các đường dẫn còn lại trả `index.html` cho SPA, kèm header bảo mật: HSTS (chỉ khi người dùng vào bằng HTTPS), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, CSP.
-- `server_tokens off` (không lộ phiên bản nginx).
-
-**CSP chặn thật** (`Content-Security-Policy`, nội dung ở `map $csp_policy` đầu `frontend/nginx.conf`): script ngoài danh sách cho phép, script nội tuyến, `eval` đều bị chặn — lỗi XSS chèn được HTML cũng không chạy được mã. Vi phạm vẫn được gửi về `/api/v1/csp-report`, backend ghi log dòng `[CSP] vi phạm …` (`docker compose -f docker-compose.prod.yml logs backend | grep CSP`). Chức năng nào bị chặn nhầm: đặt `CSP_REPORT_ONLY=true` trong `.env` cạnh `docker-compose.prod.yml` rồi `docker compose -f docker-compose.prod.yml up -d frontend` để tạm về chế độ chỉ báo cáo (không cần build lại), bổ sung nguồn cần thiết vào `$csp_policy`, xong thì bỏ biến này. Thêm thư viện / dịch vụ ngoài mới (font, bản đồ, captcha…) phải thêm nguồn của nó vào CSP. Không chèn `<script>` nội tuyến vào trang hay cửa sổ `window.open('')` (cửa sổ này thừa hưởng CSP của trang).
-
-Nginx trong container chỉ nghe HTTP. HTTPS do reverse proxy phía trước lo, xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https).
-
----
-
-### JWT secret
-
-Container server tự sinh `JWT_SECRET` / `JWT_REFRESH_SECRET` khi khởi động nếu còn trống hoặc là giá trị mẫu `change-me…` (`backend/docker-entrypoint.sh`):
-
-- **Dev** (có `backend/.env` được mount vào `/app/.env`): ghi thẳng vào `backend/.env`.
-- **Prod** (biến lấy qua `env_file`): lưu trong volume `server_secrets`, giữ nguyên qua restart/redeploy. Secret đã đặt thật trong `.env` / `.env.production` thì được giữ nguyên, không bị thay.
-
-Sinh tay (không Docker): `npm run gen:jwt` (thêm `-- --dry-run` để xem trước, `-- --force` để thay secret đang dùng).
-
-Đổi secret định kỳ (crontab của user chạy Docker). **Mỗi lần đổi, mọi người dùng bị đăng xuất**:
-
-```bash
-scripts/rotate-jwt-secrets.sh --register                     # 4 tuần/lần, 02:30 Chủ nhật, compose prod
-scripts/rotate-jwt-secrets.sh --register --compose-file docker-compose.yml --every-weeks 2
-scripts/rotate-jwt-secrets.sh                                # đổi ngay
-scripts/rotate-jwt-secrets.sh --unregister                   # gỡ lịch
-```
-
-Script dùng service API `backend` (cả dev lẫn prod), nhận prod theo tên file compose, và ghi secret mới vào đúng nơi đang giữ secret. Thứ tự tìm: `backend/.env.production` (chỉ ở prod), rồi `backend/.env`, cuối cùng là volume `server_secrets`. File bị ghi đè được backup thành `<tên file>.bak`.
-
-Log ghi tại `logs/jwt-rotate.log`.
-
-### Xử lý sự cố Docker
+### Xử lý sự cố (dev)
 
 | Hiện tượng | Nguyên nhân / cách xử lý |
 |---|---|
-| Backend báo `connect ECONNREFUSED` / timeout tới `host.docker.internal:5432` | PostgreSQL chưa nghe trên mạng (`listen_addresses`, xem `infra/postgresql/rms.conf`) hoặc firewall chưa mở `5432` cho dải Docker `172.16.0.0/12`. |
-| Backend báo `no pg_hba.conf entry for host "172…"` | Chưa thêm dòng cho mạng Docker vào `pg_hba.conf` (`infra/postgresql/pg_hba.rms.conf`), hoặc chưa reload PostgreSQL. |
-| Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD` (hoặc `SWAGGER_USER` / `SWAGGER_PASS` khi bật Swagger) trong `backend/.env` / `.env.production`. |
-| Log backend: `tới qua http, không phải https` | Reverse proxy không gửi `X-Forwarded-Proto: https`, hoặc IP proxy không nằm trong `TRUSTED_PROXIES`. Xem [Bước 3b](#bước-3b-nối-với-reverse-proxy-https). |
-| Mọi người dùng bị khoá đăng nhập theo IP cùng lúc | Nginx đang thấy mọi request đến từ IP proxy: proxy không gửi `X-Forwarded-For`, hoặc không nằm trong `TRUSTED_PROXIES`. |
-| Log backend: `không đọc được /run/redis-secret/pass` | Container `redis` chưa sinh kịp mật khẩu. Chạy lại `up -d`. App vẫn hoạt động, chỉ tạm không có cache. |
-| Backend báo `EACCES` khi ghi upload / log | Quyền volume chưa chuyển cho user `node`: xem log dòng `docker-entrypoint: chuyển quyền …`, hoặc chạy `docker compose -f docker-compose.prod.yml up -d --force-recreate backend`. |
-| Prod báo lỗi CORS trên trình duyệt | Origin trình duyệt đang dùng (scheme + domain + port) chưa có trong `CORS_ORIGIN` của `docker-compose.prod.yml`. |
-| Compose báo lỗi ở `env_file` | Docker Compose cũ hơn v2.24. Cập nhật Docker Desktop / plugin compose. |
-| Dev: sửa code không thấy cập nhật | Kiểm tra `docker compose logs frontend`. Polling có độ trễ khoảng 1 giây. Nếu vừa thêm package thì `docker compose restart frontend` để tự cài lại. |
-| Dev: lỗi `Cannot find module` sau khi `git pull` | Container tự `npm ci` khi khởi động nếu `package-lock.json` đổi — chạy `docker compose restart backend frontend`. Vẫn lỗi thì `docker compose up -d --build --renew-anon-volumes`. |
-| `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn. Chạy lại lệnh build, cache npm được giữ nên không phải tải lại từ đầu. |
-| Upload file lớn bị lỗi `413` ở prod | Vượt `client_max_body_size 300m` trong `frontend/nginx.conf` hoặc giới hạn `TRAINING_*_MAX_MB` của backend. |
-| Upload bị từ chối "nội dung không đúng định dạng" | File bị đổi đuôi (vd ảnh chụp lưu thành `.pdf`) hoặc hỏng. Mở file bằng phần mềm tương ứng rồi lưu lại đúng định dạng. |
-| Upload bị từ chối `429` "vượt hạn mức" | Tài khoản đã upload quá `UPLOAD_DAILY_QUOTA_MB` (mặc định 2048MB) trong ngày. Tăng hạn mức hoặc chờ sang ngày. |
-| Upload bị từ chối `503` "quét virus" | ClamAV đang bật (mặc định `CLAMAV_HOST=clamav`) nhưng container `clamav` chưa sẵn sàng (nạp CSDL virus ~1 phút sau khi khởi động) hoặc đã dừng. Xem `docker compose -f docker-compose.prod.yml logs clamav`. |
-| Docker Desktop ngốn RAM | Mỗi service đã có `mem_limit`. Tắt profile `logs` nếu không dùng Loki. |
+| `connect ECONNREFUSED` / timeout tới `host.docker.internal:5432` | PostgreSQL chưa nghe trên mạng (`listen_addresses`) hoặc firewall chưa mở `5432` cho `172.16.0.0/12` |
+| `no pg_hba.conf entry for host "172…"` | Chưa thêm dòng cho mạng Docker vào `pg_hba.conf`, hoặc chưa reload PostgreSQL |
+| Backend thoát ngay, log báo thiếu biến | Thiếu `DB_USER`, `DB_PASSWORD` (hoặc `SWAGGER_USER` / `SWAGGER_PASS`) trong `backend/.env` |
+| Sửa code không thấy cập nhật | `docker compose logs frontend`; polling trễ ~1 giây. Vừa thêm package thì `docker compose restart frontend` |
+| `Cannot find module` sau `git pull` | `docker compose restart backend frontend`; vẫn lỗi thì `docker compose up -d --build --renew-anon-volumes` |
+| `npm ci` lỗi `EIDLETIMEOUT` khi build | Mạng chập chờn — chạy lại, cache npm được giữ |
+| Upload bị từ chối `503` "quét virus" | Container `clamav` chưa nạp xong CSDL virus (~1 phút) hoặc đã dừng: `docker compose logs clamav` |
+| Docker Desktop ngốn RAM | Mỗi service đã có `mem_limit`; tắt profile `logs` nếu không dùng Loki |
 
----
-
-## Cấu trúc dự án
-
-```
-Hospital_RMS/
-├── frontend/src/
-│   ├── app/
-│   │   ├── providers/          # AntdProvider, QueryProvider
-│   │   └── router/             # publicRoutes, privateRoutes, guards, LazyRoute, routePrefetch
-│   ├── features/               # mỗi feature: api / components / hooks / pages / types / utils
-│   │   ├── auth, dashboard, notifications, activity-log, my-tasks
-│   │   ├── topics, approval, council, round, schedule, reports, workflow, person-merge
-│   │   ├── seminar, venue
-│   │   ├── trainee, lecturer, course, training-program, training-plan, training-catalog
-│   │   ├── exam, survey, attendance-checkin
-│   │   ├── catalog, department, user, roles
-│   │   ├── portal/             # cổng người dùng (/user/*)
-│   │   └── public/             # cổng công khai
-│   ├── layouts/                # AdminLayout, UserLayout, AuthLayout… + hooks (useRealtime)
-│   ├── shared/                 # components (UI kit), hooks, utils, api (apiClient, interceptors)
-│   └── styles/
-│
-├── backend/src/
-│   ├── server.js               # bootstrap: tự chọn port, đồng bộ port sang frontend/.env
-│   ├── app.js                  # nạp & kiểm tra .env, middleware, mount routes
-│   ├── config/                 # db, redis, swagger, auditLogger, loadEnv
-│   ├── routes/                 # định nghĩa endpoint + validation
-│   ├── controllers/            # request/response, các controller export Excel
-│   ├── services/               # business logic
-│   ├── middlewares/            # auth, permissionCache, activityLogger, upload*, fileTypeAllowlist…
-│   ├── jobs/                   # cron: bảo trì tài khoản, nhắc deadline, gắn persons
-│   └── utils/                  # response, paging, sqlFilters, cache, captcha, signedUpload…
-│
-├── scripts/                    # wait-server.js, script import dữ liệu từ hệ thống cũ
-├── infra/                      # cấu hình Loki, Promtail
-├── docker-compose.yml          # dev: backend, frontend, redis (+ loki, promtail qua profile "logs")
-└── docker-compose.prod.yml     # prod: backend, frontend (Nginx), redis
-```
-
----
-
-## Phân hệ chức năng
-
-### Nghiên cứu khoa học
-- **Đề tài**: đăng ký với loại, cấp độ, đợt nghiên cứu. Hệ thống kiểm tra cấp độ hợp lệ theo loại đợt và chỉ cho đăng ký trong cửa sổ thời gian của đợt. Quản lý thành viên, cấp tài khoản cho thành viên, upload hồ sơ theo lô, xuất Excel danh sách và hồ sơ đầy đủ.
-- **Đợt nghiên cứu & lịch trình**: nhiều loại deadline (đăng ký, nộp bổ sung…), tự động nhắc deadline, trang lịch tổng hợp các mốc.
-- **Hội đồng chấm đề cương**: tạo hội đồng, phân ghế thủ công hoặc tự động, thêm người ngoài viện, import từ file, chấm điểm/nhận xét, theo dõi tiến độ chấm, xuất Excel.
-- **Phê duyệt**: nộp, duyệt hoặc trả lại kèm ghi chú, lưu lịch sử duyệt. **Workflow engine** cho phép định nghĩa quy trình duyệt nhiều bước (`/admin/workflows`). Khi không có định nghĩa nào đang bật, hệ thống dùng luồng duyệt một bước (`topicApprovalService.approve`).
-- **Cổng công khai**: đăng ký/đề xuất đề tài không cần tài khoản (có captcha), tra cứu trạng thái bằng mã hồ sơ, thư viện đề tài tiêu biểu.
-
-### Đào tạo & CME
-- **Hội thảo / hội nghị**: quản lý theo năm, địa điểm, danh sách tham dự (import Excel), sổ cấp CME nội viện/ngoại viện.
-- **Đào tạo**: học viên, giảng viên, chương trình và bài học, kế hoạch đào tạo, khoá học (đăng ký công khai), danh mục đào tạo (loại học viên, hình thức, loại hình, môn học, nhóm tín chỉ CME).
-- **Thi trực tuyến**, **khảo sát** (có link chia sẻ), **điểm danh bằng QR**.
-- **CME**: sổ đăng ký, hồ sơ tín chỉ, theo dõi mức độ đáp ứng yêu cầu CME (`/admin/cme-compliance`), chứng chỉ hành nghề của nhân viên.
-
-### Chung
-- **Dashboard** riêng cho nghiên cứu và đào tạo, trang **Báo cáo & xuất dữ liệu** tập trung.
-- **Việc của tôi**: gom các việc đang chờ người dùng xử lý.
-- **Thông báo realtime** qua SSE, đánh dấu đã đọc/chưa đọc, admin gửi thông báo thủ công. Email thông báo duyệt/từ chối và nhắc deadline (khi bật SMTP).
-- **Quản trị**: người dùng, khoa/phòng, danh mục, vai trò & quyền, cài đặt hệ thống, duyệt trùng danh tính, nhật ký hoạt động.
+Sự cố production (proxy, HTTPS, CSP, quyền volume, upload 413/429): [infra/cai-dat-may-ao-ubuntu.md mục 16](infra/cai-dat-may-ao-ubuntu.md#16-xử-lý-sự-cố).
 
 ---
 
 ## API
 
-- **Swagger UI:** `http://localhost:3001/api-docs` (Basic Auth: `SWAGGER_USER` / `SWAGGER_PASS`). Tắt ở production trừ khi đặt `SWAGGER_ENABLED=true`.
-- **Base URL:** `/api/v1` · **Health check:** `GET /health`
-- **Response:** `{ "success": true, "message": "...", "data": {} }`
-- **Xác thực:** header `Authorization: Bearer <access_token>`, trừ `/auth/login`, `/auth/refresh` và `/public/*`.
-- **Query chung:** `page` (mặc định 1), `limit` (mặc định 20), `search`, cùng các bộ lọc riêng (`department_id`, `round_id`, `status`, `category_id`, `level_id`…).
+Base URL `/api/v1`, health check `GET /health`, response `{ "success": true, "message": "...", "data": {} }`. Xác thực bằng `Authorization: Bearer <access_token>`, trừ `/auth/login`, `/auth/refresh` và `/public/*`. Danh sách endpoint đầy đủ: Swagger UI (`/api-docs`); bảng module ↔ route: [backend/README.md](backend/README.md#cấu-trúc).
 
 | Nhóm | Base path |
 |---|---|
 | Xác thực | `/auth`: login, refresh, logout, logout-all, sessions, change-password, `2fa/*` |
-| Người dùng | `/users` |
-| Nghiên cứu | `/topics`, `/councils`, `/files`, `/workflows` |
+| Nghiên cứu | `/topics`, `/councils`, `/files`, `/workflows`, `/research-rounds` |
 | Hội thảo & CME | `/seminars`, `/cme-records`, `/staff-licenses` |
-| Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/exams`, `/surveys` |
-| Tổng hợp | `/dashboard`, `/my-tasks`, `/notifications`, `/events` (SSE, vé dùng 1 lần `?ticket=` lấy từ `POST /events/ticket`) |
-| Hệ thống | `/activity-logs`, `/security-events`, `/system-settings`, `/persons/merge-candidates` |
-| Công khai | `/public`: captcha, khoá học mở, đăng ký, tra cứu trạng thái đề tài, đề tài tiêu biểu |
-| Danh mục | `/departments`, `/categories`, `/levels`, `/roles`, `/research-rounds`, `/round-types`… (CRUD chuẩn) |
-
----
-
-## Xác thực & phân quyền
-
-- **JWT**: access token 15 phút (`JWT_EXPIRES_IN`) + refresh token 7 ngày (30 ngày nếu "Ghi nhớ đăng nhập"). Refresh token nằm trong **cookie HttpOnly** `rms_rt` (`SameSite=Strict`, `Path=/api/v1/auth`, `Secure` ở production — `utils/authCookie.js`), JavaScript không đọc được; access token do frontend giữ. Frontend tự làm mới khi gặp `401`. Người dùng có thể xem các phiên đăng nhập và đăng xuất khỏi mọi thiết bị.
-  - **Xoay refresh token có phát hiện dùng lại**: mỗi lần làm mới, token cũ bị đánh dấu `revoked_at` và token mới cùng `family_id`. Token đã thu hồi bị dùng lại sau 30 giây (không phải 2 tab làm mới cùng lúc) ⇒ coi như bị đánh cắp: xoá cả họ token, tăng `token_version`, ghi sự kiện `refresh_token_reuse`.
-  - **Khoá riêng theo mục đích** (`utils/keys.js`): access token, pre-auth 2FA, vé SSE, captcha, QR điểm danh, link `/uploads` ký bằng các khoá dẫn xuất (HKDF) khác nhau từ `JWT_SECRET`, kèm `iss`/`aud` — token loại này không dùng thay loại kia được.
-- **2FA** TOTP (tuỳ chọn cho từng người dùng):
-  - Secret TOTP lưu **mã hoá AES-256-GCM** (`utils/secretBox.js`), khoá nằm ngoài DB: biến `TOTP_ENC_KEY` hoặc file `secrets/totp.key` tự sinh. Khoá này **không** đổi khi xoay JWT secret.
-  - Chống dùng lại mã: lưu bước thời gian của mã dùng gần nhất (`users.totp_last_step`), mã đã dùng bị từ chối.
-  - 10 **mã khôi phục** dùng 1 lần (bảng `user_backup_codes`, lưu HMAC) khi mất điện thoại; hiển thị 1 lần lúc bật 2FA, tạo lại ở Hồ sơ (cần mật khẩu).
-  - Pre-auth token (giữa bước mật khẩu và bước mã) chỉ đổi được 1 phiên đăng nhập.
-  - **Bắt buộc với tài khoản quản trị** (`permissions/twoFactorPolicy.js`): superuser hoặc vai trò có quyền `critical`. Lần đầu thuộc diện có 14 ngày (`TWOFA_GRACE_DAYS`) — banner nhắc trên giao diện; quá hạn thì API khác trả `403 TWO_FACTOR_REQUIRED` và giao diện chuyển tới `/bat-2fa`. Tắt bằng `REQUIRE_2FA_FOR_ADMINS=false`.
-- **Cổng công khai**: tra cứu kết quả học tập cần **CCCD + ngày sinh**, giới hạn theo IP và theo từng số CCCD (5 lần/giờ). Đăng ký khoá học với CCCD đã có hồ sơ phải khớp ngày sinh. Chống bot: proof-of-work tự giải ngầm trên trình duyệt (mặc định, `CAPTCHA_POW_BITS`, kèm thời gian điền form tối thiểu) hoặc **Cloudflare Turnstile** khi đặt `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY`, hoặc **Google reCAPTCHA v2** khi đặt `RECAPTCHA_SITE_KEY` + `RECAPTCHA_SECRET_KEY` (Turnstile được ưu tiên nếu đặt cả hai); mỗi mã dùng 1 lần.
-- **Chống dò mật khẩu**: rate-limit đăng nhập (đếm trên Redis để dùng chung giữa các instance và không mất khi khởi động lại; Redis lỗi thì tự đếm trong bộ nhớ — `utils/rateLimit.js`), tạm khoá tài khoản sau nhiều lần sai, ghi lại sự kiện bảo mật (API `/security-events`).
-- **Bảo trì tài khoản**: job hằng đêm vô hiệu hoá tài khoản hết hạn và cảnh báo mật khẩu cũ.
-- **Phân quyền theo permission** gắn với vai trò, dạng `resource:action` (vd `topics:create`, `persons:merge`):
-  - **Danh mục quyền nằm trong code**: `backend/src/permissions/catalog.js` là nguồn duy nhất (module → resource → quyền, kèm tên/mô tả tiếng Việt). Server đồng bộ danh mục vào bảng `permissions` mỗi lần khởi động: thêm quyền mới, cập nhật tên/nhóm, không xoá quyền nào. Quyền tách ra từ quyền cũ khai báo `seedFrom` để vai trò đang có quyền cũ được cấp sẵn quyền mới.
-  - **Có đúng quyền mới được làm**: `manage` không còn là wildcard bao các action khác, nó chỉ là tên một quyền cụ thể (vd `roles:manage` = phân quyền vai trò). Riêng `system:manage` là superuser.
-  - **Phạm vi dữ liệu** là thuộc tính của lượt cấp quyền (cột `role_permissions.scope`), không phải action riêng: đề tài `own` / `department` / `all`, người dùng `department` / `all`, khoá học `assigned` / `all` (`backend/src/permissions/scopes.js`). Backend đọc bằng `scopeOf(user, resource)`; màn hình phân quyền có cột "Phạm vi dữ liệu" cho các resource này.
-  - Migration SQL tương ứng nằm ở `backend/database/migrations/` (`2026-09-28_00_permission_scopes.sql`, `2026-09-28_01_token_version_role_codes.sql`). CSDL còn quyền kiểu cũ (`topics:read_all`, `users:read_department`, `courses:read_assigned`, `X:manage` dạng wildcard) thì `npm run migrate` quy đổi một lần, giữ nguyên quyền hiệu lực của mọi vai trò. Chưa nâng cấp thì server dừng lúc khởi động và báo file cần chạy.
-  - Backend dùng `authorizePermission([...])`, quyền được cache trong `permissionCache`. Dùng quyền không có trong catalog sẽ bị cảnh báo lúc khởi động.
-  - Hướng dẫn cho lập trình viên (thêm quyền, thêm route, lọc theo phạm vi, nâng cấp CSDL): `backend/src/permissions/README.md`.
-  - `npm test` (trong `backend`) chạy bộ test phân quyền: danh mục quyền, quy tắc quyền/phạm vi, chống leo thang, ma trận vai trò mẫu × route. Không cần DB.
-  - `npm run check:routes` (trong `backend`) quét mọi route: route không gắn quyền phải được khai báo kèm lý do trong `src/permissions/routePolicy.js`, nếu không script báo lỗi.
-  - **Superuser** là cờ `roles.is_superuser`, không phải quyền trong ma trận, nên không cấp được qua giao diện. **Vai trò hệ thống** (`roles.is_system`, 8 vai trò gốc) không xoá được. Code nghiệp vụ tham chiếu vai trò qua mã `roles.code` (`admin`, `member`, `trainee`, `dept_head`…, xem `modules/access/roleCodes.js`), không dùng id `VT0x`.
-  - **Thu hồi phiên ngay lập tức**: access token mang `tv` = `users.token_version`. Reset mật khẩu, đăng xuất mọi thiết bị, tự đổi mật khẩu sẽ tăng version, nên mọi access token cũ bị từ chối ngay (tự đổi mật khẩu thì phiên hiện tại được cấp token mới).
-  - Cache quyền / trạng thái tài khoản nằm trong RAM từng instance; lệnh xoá cache được phát qua Redis pub/sub (`utils/cacheBus.js`) để mọi instance cùng xoá. Redis không sẵn sàng thì mỗi instance tự hết hạn theo TTL.
-  - Frontend làm mới quyền từ `GET /users/me` khi mở ứng dụng và khi vai trò/tài khoản thay đổi (SSE), nên đổi quyền có hiệu lực trên giao diện mà không cần đăng nhập lại.
-  - Frontend dùng `<RequirePermission perm="...">`, `<Can>`, `usePermission()`, `scopeOf()` với kiểu `PermissionKey` sinh từ catalog (`npm run gen:perm-types` trong `backend` → `frontend/src/shared/types/permissions.generated.ts`); gõ sai tên quyền là lỗi biên dịch.
-  - Chống leo thang quyền (`modules/access/privilegeGuard.js`): chỉ cấp/gán được quyền và vai trò không vượt quá quyền của chính mình.
-  - Vai trò và tập quyền được quản lý tại `/admin/roles`; ma trận quyền dựng từ `GET /permissions/catalog`.
-
----
-
-## Database
-
-**Engine:** PostgreSQL 18 · **Database:** `rms_hospital` · **Pool:** tối đa `DB_POOL_MAX` (10) kết nối mỗi worker.
-
-> **Trong git:** `backend/database/`: schema ban đầu (`baseline/00–04`) và migration (`migrations/`). Mọi file `*.sql` khác vẫn bị `.gitignore` loại (dump dữ liệu, script có mật khẩu). Chạy migration bằng `npm run migrate` (thư mục `backend`); dev tự chạy lúc khởi động server. Dev chạy Docker thì gõ `npm run migrate` ngay ở thư mục gốc — lệnh tự chạy migration trong container `backend` đang chạy, không cần restart (thêm lệnh con sau `--`, ví dụ `npm run migrate -- status`). Quy ước viết file: `backend/database/README.md`.
->
-> **Không viết stored procedure.** Logic nghiệp vụ nằm trong JS (sinh mã ở `backend/src/utils/idGenerator.js`, duyệt đề tài ở `topicApprovalService`…). Trigger chỉ dùng cho audit / ràng buộc dữ liệu (`baseline/04_trigger.sql`).
-
-**Audit người sửa:** trigger audit đọc `user_id` của người thao tác từ biến phiên `app.current_user_id`. Code đặt biến này qua `withActor` / `withActorTransaction` / `actorRequest` (`backend/src/config/db.js`), không tự viết `set_config` trong câu SQL.
-
-### Ghi chú nghiệp vụ
-
-- **Trạng thái đề tài:** `approvals.status` có thể lệch với `topics.status`. Giao diện luôn hiển thị theo `topics.status`. Trong bảng `approvals`, `created_*` là thời điểm nộp và `updated_*` là thời điểm duyệt.
-- **Danh tính hợp nhất (`persons`):** trước đây một người có thể nằm ở 6 bảng (`users`, `trainees`, `lecturers`, `external_reviewers`, `topic_members`, `seminar_participants`). Nay mỗi bảng có cột `person_id` trỏ về một bản ghi `persons`.
-  - Bảng nguồn vẫn là nguồn dữ liệu gốc. Sau mỗi lệnh ghi thành công, gọi `personService.syncPerson(source, id, { actorId })` (hoặc `syncPersons` khi import hàng loạt). Hàm này không bao giờ ném lỗi nên không chặn thao tác của người dùng. **Khi viết đường ghi mới vào 6 bảng trên, phải gọi hàm này.**
-  - Thứ tự quy tắc ghép: `user_id` → CCCD → `staff_number` + tên → email + tên → SĐT chuẩn hoá + tên → tên + ngày sinh. Mỗi quy tắc chỉ áp dụng khi khớp đúng một person. Trùng **tên** đơn thuần không bao giờ tự gộp mà được đưa vào hàng đợi `person_merge_candidates`, duyệt tại `/admin/person-merge`.
-  - Gộp hồ sơ ghi `person_merge_log` đủ để khôi phục thủ công. Không thể gộp hai hồ sơ đều đã có tài khoản.
-  - Job 03:00 hằng đêm gắn nốt các bản ghi còn `person_id IS NULL`.
-
----
-
-## Tác vụ nền, cache & logging
-
-**Cron job** (`backend/src/jobs`, múi giờ `CRON_TZ`, mặc định `Asia/Ho_Chi_Minh`):
-
-| Giờ | Job |
-|---|---|
-| 01:00 | Bảo trì tài khoản: vô hiệu hoá tài khoản hết hạn, cảnh báo mật khẩu cũ |
-| 02:00 | Nhắc deadline sắp tới hoặc đã quá hạn (thông báo + email) |
-| 03:00 | Gắn `person_id` cho các bản ghi còn thiếu |
-
-**Redis cache**: cache-aside cho số liệu dashboard và danh mục (khoa, vai trò, loại, cấp độ…). Nếu mất kết nối Redis, server đọc thẳng từ DB.
-
-**Logging**:
-- Pino ghi file JSON xoay theo ngày tại `LOG_DIR/audit-*.log` (mặc định `backend/logs/`), giữ tối đa `LOG_RETENTION_FILES` file.
-- Middleware `activityLogger` ghi lại request, lọc theo `AUDIT_LOG_METHODS`. Trang **Nhật ký hoạt động** (`/admin/activity-logs`) đọc trực tiếp từ file log, không dùng SQL.
-- `LOG_STDOUT=1` để ghi ra stdout khi đã có hệ thống thu gom log riêng.
-- Bản Docker dev có sẵn Promtail đọc `backend/logs` và đẩy vào Loki (`http://localhost:3100`), bật bằng `docker compose --profile logs up -d`.
-
----
-
-## Quy ước phát triển
-
-### CI (GitHub Actions)
-`.github/workflows/ci.yml` chạy ở mỗi push / pull request vào `main` và mỗi thứ Hai (bắt lỗ hổng thư viện mới công bố). Không cần DB thật / Redis — test dùng CSDL giả; riêng job `backend-postgres` chạy test tích hợp với PostgreSQL thật.
-
-| Job | Kiểm tra |
-|---|---|
-| Backend | `npm test`, `check:routes` (route mới phải khai báo quyền), `typecheck`, `npm audit --audit-level=high` |
-| Frontend | `tsc -b`, `lint`, `build`, `npm audit --audit-level=high` |
-| Không commit bí mật | Không có file `.env`, `secrets/`, khoá, file danh sách mật khẩu tạm; không có hash bcrypt thật / khoá riêng / chuỗi kết nối có mật khẩu trong mã |
-
-Nên bật **branch protection** cho `main` (Settings → Branches) và bắt buộc 3 job trên xanh trước khi merge.
-
-### Kiểm tra quyền theo bản ghi (chống IDOR)
-`authorizePermission` ở route chỉ biết người gọi **có** quyền `resource:action`, không biết bản ghi cụ thể có thuộc phạm vi của họ không. API nhận mã đối tượng (`:id`, danh sách mã trong body) phải kiểm tra thêm theo phạm vi (`scopeOf`):
-- Đề tài: `topicService.assertTopicInScope` / `idsInScope` — `modules/topics/topics.routes.js` gắn sẵn qua `router.param('id' | 'topic_id')`, nên route mới trong router này tự được kiểm tra.
-- Khoá học: `courseService.assertCourseInScope` / `assertCourseChildInScope` — `modules/training/courses/courses.routes.js` gắn qua `router.param` cho `:id` và mọi mã bản ghi con (`sessionId`, `enrollmentId`, `docId`, `gradeId`, `certId`, `linkId`, `assignmentId`). **Route mới dùng tham số mã con khác phải thêm vào `CHILD_COURSE_SQL`** (có test tự phát hiện).
-- Người dùng: `privilegeGuard.assertCanManageUser`; phạm vi khoa không chuyển được tài khoản sang khoa khác.
-- Cổng hội đồng: kiểm tra ghế **trước** khi multer ghi file. Tiến trình duyệt (`/workflows/status`): đề tài phải trong phạm vi.
-- Danh sách mã trong body (xuất dữ liệu, duyệt hàng loạt) không đi qua `router.param` — phải tự lọc / kiểm tra từng mã.
-- Tài nguyên không có phạm vi (học viên, hội thảo, hội đồng, giảng viên, CME, chương trình đào tạo): quyền là toàn viện theo thiết kế — muốn giới hạn theo khoa thì thêm vào `permissions/scopes.js` rồi áp dụng như trên.
-- Test mẫu: `backend/test/permissions/topicObjectAccess.test.js`, `courseObjectAccess.test.js`.
-
-### Cảnh báo bảo mật qua email
-`securityEventService.log` tự gọi `securityAlertService.notify`. Gửi ngay khi: refresh token bị dùng lại, chặn file mã độc, đổi / sao chép phân quyền vai trò, tắt 2FA, thu hồi thiết bị quen, quản trị đặt lại mật khẩu. Gửi khi dồn dập: ≥5 tài khoản bị khoá hoặc ≥10 lần sai mã 2FA trong 15 phút. Mỗi loại tối đa 1 email / 30 phút. Người nhận: `ALERT_EMAILS`, không đặt thì mọi superuser có email. Cần bật kênh email (`MAIL_ENABLED`).
-
-### Realtime: một kết nối SSE cho mỗi tab
-Luôn dùng `useRealtimeUpdate(entities, callback)` ([`frontend/src/layouts/hooks/useRealtime.ts`](frontend/src/layouts/hooks/useRealtime.ts)). Hook này đăng ký vào **một** `EventSource` dùng chung tới `GET /api/v1/events?ticket=<vé>` (vé sống 60 giây, dùng 1 lần, xin qua `POST /api/v1/events/ticket` — không đưa access token lên URL vì URL bị ghi vào access log). Không tự tạo `EventSource`: mỗi panel mở một kết nối riêng sẽ vượt giới hạn 6 kết nối HTTP/1.1 mỗi origin của trình duyệt và làm treo các request khác.
-
-### UI kit dùng chung (`frontend/src/shared/components`)
-Import qua barrel: `import { Badge, EmptyState, Pagination } from '@/shared/components'`.
-
-| Thành phần | Dùng cho |
-|---|---|
-| `<Badge tone dot>` | Nhãn trạng thái. `tone`: `green \| blue \| amber \| gray \| red \| pink \| purple \| teal`. Config trạng thái của feature khai báo `tone: BadgeTone` thay vì tên class. |
-| `<EmptyState>` / `<TableEmpty colSpan>` | Khối "chưa có dữ liệu" (`TableEmpty` đã bọc sẵn `<tr><td>`) |
-| `<Card>` + `Card.Header` / `Card.Body` | Khung card có header icon |
-| `<Pagination>` | Phân trang (`hideSizeSelect`, `infoText`) |
-| `Table.module.css` | Style gốc cho bảng. Feature dùng `composes: … from '@/shared/components/Table/Table.module.css'`, không tự định nghĩa lại `.tableWrap/.th/.td/.tr/.emptyState` |
-| `Modal`, `Button`, `Input/*`, `Loading` / `Skeleton`, `FileViewerModal`, `QrScanner` | Có sẵn |
-
-- Không tự viết lại Badge, phân trang hay empty-state trong feature. Nếu cần biến thể, truyền `className`/`style` vào component dùng chung.
-- `docx-preview` và `RichTextEditor` nặng nên import trực tiếp theo đường dẫn, không import qua barrel.
-- `animation: spin` không dùng được trong CSS Module (keyframe bị scope hoá). Dùng `Loading` / `InlineLoading` có sẵn.
-
-### Bảo mật upload
-Mọi route upload dùng middleware trong `backend/src/middlewares/` (`upload`, `uploadImage`, `uploadTraining`, `uploadExcel`), đều bọc bởi `secureUpload`. **Route upload mới phải dùng các middleware này, không tự khai `multer`.** Mỗi file qua các lớp:
-
-1. **Đuôi file** do admin chọn ở *Cấu hình hệ thống → Tải lên* (`UPLOAD_ALLOWED_EXTENSIONS`, mặc định PDF/Word/Excel/PowerPoint/RAR/ZIP), chỉ trong tập an toàn `fileTypeAllowlist.js` (`utils/uploadPolicy.js`); ảnh nhận xét chỉ PNG/JPEG/GIF/WEBP; import chỉ `.xlsx`.
-2. **Dung lượng mỗi file**: `UPLOAD_MAX_MB` ở Cấu hình hệ thống (mặc định 50) cho mọi file tài liệu kể cả cổng công khai; video bài giảng `TRAINING_MEDIA_MAX_MB` (300), Excel 10MB.
-3. **Nội dung khớp đuôi** (magic bytes, `utils/fileSignature.js`) — file đổi đuôi (exe → pdf, HTML → png) bị từ chối và xoá ngay.
-4. **Quét virus** bằng ClamAV nếu bật `CLAMAV_HOST` (`utils/clamav.js`, service `clamav` chạy mặc định trong cả 2 file compose). File nhiễm bị xoá và ghi sự kiện bảo mật `upload_malware_blocked`. ClamAV lỗi thì từ chối upload, trừ khi đặt `CLAMAV_FAIL_OPEN=true`. File lớn hơn `CLAMAV_MAX_MB` (25) không quét.
-5. **Hạn mức/ngày** mỗi tài khoản `UPLOAD_DAILY_QUOTA_MB` (2048; `0` = không giới hạn).
-
-Khi tải về (`/uploads`): chỉ ảnh, PDF, video, audio được mở trên trình duyệt; còn lại luôn tải xuống (`Content-Disposition: attachment`). Mọi file trừ PDF kèm `Content-Security-Policy: sandbox`, nên không file nào chạy được như trang web.
-
-### Dữ liệu nhạy cảm
-Các script trong `scripts/` dùng để import dữ liệu từ hệ thống cũ. Báo cáo chúng sinh ra (`*_CHUA_MAT_KHAU.csv`, `staff_license_import_unmatched.csv`) chứa thông tin cá nhân thật hoặc mật khẩu tạm và đã được `.gitignore`. **Không bao giờ commit các file này.**
+| Đào tạo | `/trainees`, `/lecturers`, `/courses`, `/training-programs`, `/exams`, `/surveys`, `/staff-attendance` |
+| Tổng hợp | `/dashboard`, `/me`, `/my-tasks`, `/notifications`, `/events` (SSE) |
+| Hệ thống | `/users`, `/roles`, `/permissions`, `/activity-logs`, `/security-events`, `/system-settings`, `/form-configs`, `/persons` |
+| Công khai | `/public`: captcha, khoá học mở, đăng ký, tra cứu, đề tài tiêu biểu |
+| Danh mục | `/departments`, `/categories`, `/levels`, `/round-types`… (CRUD chuẩn) |

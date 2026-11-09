@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Chuyển dữ liệu SQL Server → PostgreSQL (POSTGRESQL_MIGRATION_PLAN.md mục 6.5).
+// Chuyển dữ liệu SQL Server → PostgreSQL (runbook: infra/chuyen-du-lieu-sang-postgresql.md).
 //   npm run pg:transfer restore <file.bak> [--replace]
 //                                  nạp file backup vào SQL Server nguồn (tạm)
 //   npm run pg:transfer precheck   kiểm tra dữ liệu nguồn, không ghi gì

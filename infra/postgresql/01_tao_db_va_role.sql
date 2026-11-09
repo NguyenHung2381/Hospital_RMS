@@ -1,5 +1,5 @@
 -- Tạo role và database cho Hospital RMS trên PostgreSQL 18 cài thẳng trên server.
--- Chạy 1 lần bằng superuser postgres (xem infra/cai-dat-postgresql.md mục 5):
+-- Chạy 1 lần bằng superuser postgres (xem infra/cai-dat-may-ao-ubuntu.md mục 6.5):
 --   sudo -u postgres psql -v ON_ERROR_STOP=1 \
 --     -v migrate_password="$MIGRATE_PW" -v app_password="$APP_PW" \
 --     -f infra/postgresql/01_tao_db_va_role.sql
@@ -23,7 +23,7 @@ SELECT 'CREATE DATABASE rms_hospital OWNER rms_migrate TEMPLATE template0 ENCODI
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'rms_hospital') \gexec
 
 -- Giờ VN: LOCALTIMESTAMP trả giờ VN như GETDATE() của SQL Server (quy ước lưu
--- giờ VN không múi giờ — POSTGRESQL_MIGRATION_PLAN.md mục 4.3).
+-- giờ VN không múi giờ — backend/README.md, mục Viết SQL).
 ALTER DATABASE rms_hospital SET timezone = 'Asia/Ho_Chi_Minh';
 -- Câu chạy quá lâu / phiên treo giữa transaction thì tự huỷ, không giữ khoá mãi.
 ALTER ROLE rms_app SET statement_timeout = '60s';

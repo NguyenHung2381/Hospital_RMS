@@ -64,7 +64,7 @@
 // File dump / .tar.gz nạp thành công thì bị XOÁ (cả khi đưa bằng --dump / --uploads /
 // --secrets) — chứa toàn bộ dữ liệu + khoá 2FA. Giữ lại: --keep-files.
 //
-// PostgreSQL 18 phải cài sẵn trên máy (infra/cai-dat-postgresql.md, mục "Máy dev
+// PostgreSQL 18 phải cài sẵn trên máy (README.md gốc, mục "PostgreSQL trên máy dev
 // Windows"). Backend trong Docker kết nối qua host.docker.internal nên pg_hba.conf
 // phải cho dải mạng Docker 172.16.0.0/12 (xem infra/postgresql/pg_hba.rms.conf).
 //

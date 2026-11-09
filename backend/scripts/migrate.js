@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Migration CSDL (database/migrations/*.sql) — xem database/README.md.
+// Migration CSDL (database/migrations/*.sql) — xem backend/README.md, mục Cơ sở dữ liệu.
 // Một lệnh duy nhất, việc chọn bằng lệnh con (xem USAGE). Cờ cũ --dry-run /
 // --baseline / --init vẫn nhận (= status / baseline / init).
 // MIGRATION_BACKUP_DIR: có file mới thì pg_dump -Fc ra thư mục này (ở máy chạy

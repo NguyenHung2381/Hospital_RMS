@@ -4,8 +4,8 @@ const { markOnce } = require('./dedupe');
 const { todayVN, todayKeyVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
 
-// Dọn dữ liệu nhật ký cũ để bảng không phình mãi (database/DB_SCALING_PLAN.md
-// mục 6, giai đoạn 1). Mỗi ngày chạy 1 lần dù nhiều worker (markOnce).
+// Dọn dữ liệu nhật ký cũ để bảng không phình mãi (backend/README.md,
+// mục Tăng trưởng dữ liệu). Mỗi ngày chạy 1 lần dù nhiều worker (markOnce).
 //
 //  1. security_events cũ hơn SECURITY_EVENTS_RETENTION_MONTHS tháng (mặc định
 //     24). Không cho đặt dưới 12 tháng: code đang đọc lại bảng này trong cửa sổ

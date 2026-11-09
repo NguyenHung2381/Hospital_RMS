@@ -1,5 +1,5 @@
-// pg:transfer load — dựng DB PG từ DB SQL Server (POSTGRESQL_MIGRATION_PLAN.md
-// mục 6.5.3). DB đích phải RỖNG (tạo bằng infra/postgresql/01_tao_db_va_role.sql).
+// pg:transfer load — dựng DB PG từ DB SQL Server (runbook:
+// infra/chuyen-du-lieu-sang-postgresql.md). DB đích phải RỖNG (tạo bằng infra/postgresql/01_tao_db_va_role.sql).
 //   00 → 01 (bảng + khoá chính) → COPY từng bảng → 02 (UNIQUE/CHECK/FK, index)
 //   → 03 → setval → 04 (trigger, SAU khi nạp để không ghi đè updated_at/by)
 //   → bảng schema_migrations → VACUUM ANALYZE.

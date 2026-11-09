@@ -28,7 +28,7 @@ Deploy (deploy.yml → scripts/deploy.sh, chạy trên runner đặt tại serve
 | `.github/workflows/deploy.yml` | Deploy 1 SHA lên 1 môi trường. Chạy tay = **rollback** |
 | `.github/prerelease-allowlist.json` | Gói **gián tiếp** là bản tiền phát hành tạm chấp nhận, kèm lý do. Phụ thuộc trực tiếp không bao giờ được vào đây |
 | `scripts/deploy.sh` | Logic deploy/backup/smoke test/rollback (bash). GitHub sự cố vẫn chạy tay được trên server |
-| `backend/scripts/migrate.js` | Chạy migration mới theo thứ tự, ghi bảng `schema_migrations` (xem `backend/database/README.md`) |
+| `backend/scripts/migrate.js` | Chạy migration mới theo thứ tự, ghi bảng `schema_migrations` (xem `backend/README.md`, mục Cơ sở dữ liệu) |
 | `.github/dependabot.yml`, `.github/CODEOWNERS`, `.gitleaksignore` | Cập nhật thư viện, người review, báo nhầm của gitleaks |
 
 ## Cài đặt 1 lần
