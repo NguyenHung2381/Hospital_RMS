@@ -114,7 +114,18 @@ const bindInsert = (req, idVar, seminarId, data) => {
        @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id);`;
 };
 
-const add = async (seminarId, data, actorId) => {
+// Trường CME chỉ người có seminars:cme_manage được ghi trực tiếp (số quyết định, năm, trạng thái,
+// ngày cấp phải đi qua issueCme — sổ cấp tuần tự + kiểm tra đủ điều kiện). Số tín chỉ
+// (cme_credits) vẫn nhập được trên dòng CHƯA có số CME (form người tham dự), xem update().
+const CME_ONLY_FIELDS = ['cme_year', 'cme_seq', 'cme_status', 'cme_issued_date'];
+const withoutCmeFields = (data) => {
+	const out = { ...data };
+	for (const k of CME_ONLY_FIELDS) delete out[k];
+	return out;
+};
+
+const add = async (seminarId, rawData, actorId, { canCme = false } = {}) => {
+	const data = canCme ? rawData : withoutCmeFields(rawData);
 	const pool = await getPool();
 	await ensureSeminar(pool, seminarId);
 	if (!data.full_name || !String(data.full_name).trim()) {
@@ -273,7 +284,44 @@ const UPDATABLE = {
 	notes: sql.NVarChar(255),
 };
 
-const update = async (seminarId, pid, data, actorId) => {
+const sameCredits = (a, b) => {
+	const x = a === '' || a === undefined ? null : a;
+	const y = b === '' || b === undefined ? null : b;
+	if (x === null || y === null) return x === y;
+	return Number(x) === Number(y);
+};
+
+const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {}) => {
+	let data = rawData;
+	if (!canCme) {
+		data = withoutCmeFields(rawData);
+		// Dòng đã có số CME: không đổi số tín chỉ hay chuyển sang người khác (form gửi lại cả
+		// giá trị cũ ⇒ chỉ chặn khi giá trị thật sự thay đổi)
+		const cur = (
+			await (
+				await getPool()
+			)
+				.request()
+				.input('sid', sql.VarChar(20), seminarId)
+				.input('pid', sql.VarChar(24), pid)
+				.query(
+					'SELECT cme_seq, cme_credits, user_id FROM seminar_participants WHERE id = @pid AND seminar_id = @sid',
+				)
+		).recordset[0];
+		if (cur && cur.cme_seq != null) {
+			const { cme_credits, user_id, ...rest } = data;
+			if (
+				(cme_credits !== undefined && !sameCredits(cme_credits, cur.cme_credits)) ||
+				(user_id !== undefined && (user_id || null) !== (cur.user_id || null))
+			) {
+				throw httpError(
+					403,
+					'Người tham dự đã có số CME: cần quyền cấp CME để đổi số tín chỉ hoặc người nhận.',
+				);
+			}
+			data = rest;
+		}
+	}
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('sid', sql.VarChar(20), seminarId)

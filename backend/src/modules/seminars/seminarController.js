@@ -13,6 +13,7 @@ const detailExcelService = require('./seminarDetailExcelService');
 const { createCrudController } = require('../../shared/crudController');
 const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { hasPermission } = require('../../permissions/authz');
 
 const base = createCrudController(seminarService);
 
@@ -46,7 +47,9 @@ const listParticipants = asyncHandler(async (req, res) => {
 const addParticipant = asyncHandler(async (req, res) => {
 	return created(
 		res,
-		await seminarParticipantService.add(req.params.id, req.body, req.user.id),
+		await seminarParticipantService.add(req.params.id, req.body, req.user.id, {
+			canCme: hasPermission(req.user, 'seminars', 'cme_manage'),
+		}),
 		'Đã thêm người tham dự',
 	);
 });
@@ -57,6 +60,7 @@ const updateParticipant = asyncHandler(async (req, res) => {
 		req.params.pid,
 		req.body,
 		req.user.id,
+		{ canCme: hasPermission(req.user, 'seminars', 'cme_manage') },
 	);
 	if (!p) return notFound(res);
 	return success(res, p, 'Đã cập nhật');
