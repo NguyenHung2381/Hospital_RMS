@@ -187,7 +187,7 @@ const incrementLessonDocumentDownload = asyncHandler(async (req, res) => {
 });
 
 const listProgramResults = asyncHandler(async (req, res) => {
-	return success(res, await trainingProgramService.listProgramResults(req.params.id));
+	return success(res, await trainingProgramService.listProgramResults(req.params.id, req.user));
 });
 
 module.exports = {

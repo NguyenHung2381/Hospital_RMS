@@ -8,7 +8,9 @@
 const { getPool, sql, jsonValues, nowSql, withTransaction } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
+const { scopeOf } = require('../../../permissions/authz');
 const programClassService = require('./programClassService');
+const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
 
 const { APPLIES_SQL, roomOf } = programClassService;
 
@@ -29,15 +31,20 @@ const CANDIDATE_SQL = `
                     WHERE d.course_id = @course_id AND d.trainee_id = e.trainee_id AND d.program_id = e.program_id)`;
 
 /** Lớp của khóa áp dụng sĩ số + người chờ ở đợt trước của từng lớp. */
-const listCandidates = async (courseId) => {
+const listCandidates = async (courseId, actor = null) => {
 	const classes = (await programClassService.classesOf(courseId)).filter((k) => k.class_rule);
 	if (!classes.length) return [];
 	const pool = await getPool();
+	const req = pool.request().input('course_id', sql.VarChar(20), courseId);
+	// router.param chỉ kiểm khóa đích; khóa NGUỒN (alias c) của hồ sơ chờ cũng phải
+	// thuộc phạm vi 'assigned' — nếu không lộ họ tên / SĐT / email học viên khóa khác.
+	let scopeSql = '';
+	if (actor && scopeOf(actor, 'courses') === 'assigned') {
+		scopeSql = ` AND ${ASSIGNED_EXISTS_SQL}`;
+		req.input('actor_id', sql.VarChar(20), actor.id);
+	}
 	const rows = (
-		await pool
-			.request()
-			.input('course_id', sql.VarChar(20), courseId)
-			.query(`${CANDIDATE_SQL} ORDER BY e.decided_at, e.registered_at, e.id`)
+		await req.query(`${CANDIDATE_SQL}${scopeSql} ORDER BY e.decided_at, e.registered_at, e.id`)
 	).recordset;
 	return classes
 		.map((k) => {

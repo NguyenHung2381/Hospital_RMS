@@ -31,14 +31,27 @@ const loadRules = async () => {
 const SESSION_KIND_SQL = `COALESCE(s.session_kind, CASE WHEN pl.lesson_kind = 'rotation' THEN 'practice' ELSE 'theory' END)`;
 
 // Đề mà tài khoản @uid được chấm: có trong exam_paper_graders, hoặc đề chưa đặt
-// người chấm và @uid là GV được phân công bài học của đề.
+// người chấm và @uid là GV được phân công bài học của đề. Chỉ tính giảng viên còn
+// hoạt động (lec.is_active) — xóa mềm / ngừng hoạt động thu hồi quyền chấm.
 const PAPER_GRADER_SQL = (p) => `(
     EXISTS (SELECT 1 FROM exam_paper_graders g JOIN lecturers lec ON lec.id = g.lecturer_id
-            WHERE g.paper_id = ${p}.id AND lec.user_id = @uid)
+            WHERE g.paper_id = ${p}.id AND lec.user_id = @uid AND lec.is_active = 'true')
     OR (NOT EXISTS (SELECT 1 FROM exam_paper_graders g WHERE g.paper_id = ${p}.id)
         AND ${p}.subject_id IS NOT NULL
         AND EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
-                    WHERE la.course_id = ${p}.course_id AND la.subject_id = ${p}.subject_id AND lec.user_id = @uid))
+                    WHERE la.course_id = ${p}.course_id AND la.subject_id = ${p}.subject_id
+                      AND lec.user_id = @uid AND lec.is_active = 'true'))
+  )`;
+
+// Lượt ghi danh (biểu thức mã `enrollmentExpr`) là của CHÍNH tài khoản @uid: hồ sơ học
+// viên gắn user_id / staff_user_id = @uid, hoặc cùng hồ sơ người (person_id) với một
+// hồ sơ giảng viên của @uid. Người dạy / chấm không được tự nhập điểm, tự chấm bài của mình.
+const SELF_ENROLLMENT_SQL = (enrollmentExpr) => `EXISTS (
+    SELECT 1 FROM course_enrollments oe JOIN trainees ot ON ot.id = oe.trainee_id
+    WHERE oe.id = ${enrollmentExpr}
+      AND (ot.user_id = @uid OR ot.staff_user_id = @uid
+           OR EXISTS (SELECT 1 FROM lecturers ol WHERE ol.user_id = @uid
+                      AND ol.person_id IS NOT NULL AND ol.person_id = ot.person_id))
   )`;
 
 // Phần GV (theo tài khoản) được nhập điểm trong khóa:
@@ -55,12 +68,12 @@ const teachingAccess = async (courseId, userId) => {
 			.input('uid', sql.VarChar(20), userId).query(`
       SELECT
         CASE WHEN EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
-                          WHERE la.course_id = @course_id AND lec.user_id = @uid) THEN 1 ELSE 0 END AS assigned,
+                          WHERE la.course_id = @course_id AND lec.user_id = @uid AND lec.is_active = 'true') THEN 1 ELSE 0 END AS assigned,
         CASE WHEN EXISTS (SELECT 1 FROM exam_papers p WHERE p.course_id = @course_id AND p.exam_part = 'theory'
                           AND ${PAPER_GRADER_SQL('p')}) THEN 1 ELSE 0 END AS theory,
         CASE WHEN EXISTS (SELECT 1 FROM lecturer_assignments la JOIN lecturers lec ON lec.id = la.lecturer_id
                           LEFT JOIN program_lessons pl ON pl.id = la.subject_id
-                          WHERE la.course_id = @course_id AND lec.user_id = @uid
+                          WHERE la.course_id = @course_id AND lec.user_id = @uid AND lec.is_active = 'true'
                             AND (la.subject_id IS NULL OR pl.lesson_kind = 'rotation' OR COALESCE(pl.practice_hours, 0) > 0))
                OR EXISTS (SELECT 1 FROM exam_papers p WHERE p.course_id = @course_id AND p.exam_part = 'practice'
                           AND ${PAPER_GRADER_SQL('p')}) THEN 1 ELSE 0 END AS practice
@@ -282,6 +295,20 @@ const saveBulk = async (
 	if (!Array.isArray(rows) || !rows.length) return { saved: 0 };
 	const current = new Map((await loadRows(courseId)).map((r) => [r.enrollment_id, r]));
 	const changed = [];
+	// GV (access ≠ FULL_ACCESS, từ teachingAccess) không được sửa điểm của chính mình.
+	const ownEnrollments = new Set();
+	if (access !== FULL_ACCESS) {
+		const own = await (
+			await getPool()
+		)
+			.request()
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('uid', sql.VarChar(20), actorId)
+			.query(
+				`SELECT e.id FROM course_enrollments e WHERE e.course_id = @course_id AND ${SELF_ENROLLMENT_SQL('e.id')}`,
+			);
+		for (const o of own.recordset) ownEnrollments.add(o.id);
+	}
 
 	await withTransaction(async (tx) => {
 		for (const input of rows) {
@@ -314,6 +341,8 @@ const saveBulk = async (
 			}
 			const noteChanged = input.note !== undefined && (input.note || null) !== (row.note || null);
 			if (!edits.length && !noteChanged) continue;
+			if (ownEnrollments.has(row.enrollment_id))
+				throw httpError(403, 'Không được nhập điểm cho chính mình.');
 			if (row.locked_at)
 				throw httpError(409, `Điểm của ${row.trainee_name} đã khóa, cần mở khóa trước khi sửa.`);
 
@@ -486,6 +515,7 @@ const issueCertificatesForPassed = async (courseId, actorId, expiryDate) => {
 
 module.exports = {
 	PAPER_GRADER_SQL,
+	SELF_ENROLLMENT_SQL,
 	teachingAccess,
 	getGradebook,
 	saveBulk,

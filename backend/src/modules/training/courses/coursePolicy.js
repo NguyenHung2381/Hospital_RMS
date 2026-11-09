@@ -3,11 +3,12 @@ const { scopeOf } = require('../../../permissions/authz');
 const { httpError } = require('../../../utils/httpError');
 
 // EXISTS: khóa có giảng viên = actor được phân công dạy hay không (điều kiện
-// dùng chung cho cả getAll và getById khi scope === 'assigned').
+// dùng chung cho cả getAll và getById khi scope === 'assigned'). Giảng viên đã
+// ngừng hoạt động / xóa mềm (lec.is_active) không còn quyền theo phân công cũ.
 const ASSIGNED_EXISTS_SQL = `EXISTS (
     SELECT 1 FROM lecturer_assignments la
     INNER JOIN lecturers lec ON lec.id = la.lecturer_id
-    WHERE la.course_id = c.id AND lec.user_id = @actor_id
+    WHERE la.course_id = c.id AND lec.user_id = @actor_id AND lec.is_active = 'true'
   )`;
 
 // ─── Kiểm tra theo bản ghi (chống IDOR) ─────────────────────────────────────
