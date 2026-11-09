@@ -1,0 +1,364 @@
+/* Danh sách chương trình trong khóa — tầng đầu của trang chi tiết khóa nhiều chương trình */
+.head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+	flex-wrap: wrap;
+}
+.title {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin: 0;
+	font-family: var(--font-body);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.count {
+	min-width: 22px;
+	padding: 1px 7px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+	text-align: center;
+}
+.hint {
+	margin: var(--space-1) 0 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+
+.notice {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--tone-amber-border);
+	border-radius: var(--radius-md);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-sm);
+}
+.noticeBtn {
+	flex-shrink: 0;
+	border: none;
+	background: none;
+	padding: 0;
+	color: inherit;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+/* ── Danh sách: máy tính = bảng phẳng trong khung bước (không viền lồng), điện thoại = thẻ ── */
+.list {
+	display: flex;
+	flex-direction: column;
+	margin: 0 calc(-1 * var(--space-5));
+	border-top: 1px solid var(--color-gray-100);
+}
+.listHead,
+.row {
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr) 110px 90px 230px 20px;
+	align-items: center;
+	column-gap: var(--space-5);
+	padding-left: var(--space-5);
+	padding-right: var(--space-5);
+}
+.listHead {
+	padding-top: 10px;
+	padding-bottom: 10px;
+	background: var(--color-gray-50);
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+}
+.center {
+	text-align: center;
+}
+.row {
+	width: 100%;
+	min-height: 68px;
+	padding-top: var(--space-3);
+	padding-bottom: var(--space-3);
+	border: none;
+	border-bottom: 1px solid var(--color-gray-100);
+	border-radius: 0;
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	text-align: left;
+	color: var(--color-gray-700);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast),
+		box-shadow var(--transition-fast);
+}
+.row:last-child {
+	border-bottom: none;
+}
+/* Rê chuột giống các bảng khác trong app: nền xanh nhạt + vạch xanh bên trái */
+.row:hover {
+	background: var(--tone-green-bg);
+	box-shadow: inset 3px 0 0 var(--color-primary);
+}
+.row:hover .name {
+	color: var(--color-primary-dark);
+}
+.row:hover .cGo {
+	color: var(--color-primary-dark);
+	transform: translateX(2px);
+}
+.row:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: -2px;
+}
+
+/* Cột số thứ tự — cùng kiểu .tdIdx của bảng chung */
+.cIdx {
+	text-align: center;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Cột chương trình: ô biểu tượng + tên + dòng phụ (mã · thời lượng · ngày học) */
+.cMain {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	min-width: 0;
+}
+.icon {
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-md);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+}
+.icon svg {
+	width: 18px;
+	height: 18px;
+}
+.text {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+.name {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+	transition: color var(--transition-fast);
+}
+.meta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	row-gap: 2px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+/* Dấu chấm ngăn giữa các mục của dòng phụ */
+.meta > span + span::before {
+	content: '·';
+	margin: 0 6px;
+	color: var(--color-gray-300);
+}
+.code {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+}
+.dates {
+	display: inline-flex;
+	align-items: center;
+}
+.dates svg {
+	width: 12px;
+	height: 12px;
+	margin-right: 4px;
+}
+
+/* Cột số */
+.cEnrolled,
+.cLessons {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+}
+.stat {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	font-variant-numeric: tabular-nums;
+}
+.stat strong {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+/* Đơn vị chỉ cần ở dạng thẻ (máy tính đã có tiêu đề cột) */
+.unit {
+	display: none;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+/* Đăng ký chờ duyệt = việc đang chờ bạn xử lý ⇒ magenta */
+.pending {
+	padding: 1px 8px;
+	border-radius: var(--radius-full);
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	white-space: nowrap;
+}
+
+/* Cột tình trạng lớp: chấm màu + nhãn, dòng phụ sĩ số */
+.cStatus {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.statusLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: var(--font-weight-semibold);
+}
+.statusLabel::before {
+	content: '';
+	flex-shrink: 0;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: currentColor;
+}
+.statusDetail {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.tone_green {
+	color: var(--tone-green-fg);
+}
+.tone_amber {
+	color: var(--tone-amber-fg);
+}
+.tone_gray {
+	color: var(--color-gray-500);
+}
+
+.cGo {
+	display: flex;
+	justify-content: flex-end;
+	color: var(--color-gray-300);
+	transition:
+		color var(--transition-fast),
+		transform var(--transition-fast);
+}
+.cGo svg {
+	width: 16px;
+	height: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+	.row:hover .cGo {
+		transform: none;
+	}
+}
+
+/* Khung bước (.stepPanel) giảm padding còn space-3 dưới 1024px — bảng tràn mép theo đúng mức đó */
+@media (max-width: 1024px) {
+	.list {
+		margin: 0 calc(-1 * var(--space-3));
+	}
+	.listHead,
+	.row {
+		grid-template-columns: 28px minmax(0, 1fr) 84px 68px 180px 16px;
+		column-gap: var(--space-3);
+		padding-left: var(--space-3);
+		padding-right: var(--space-3);
+	}
+}
+
+/* Điện thoại: mỗi chương trình 1 thẻ */
+@media (max-width: 768px) {
+	.list {
+		gap: var(--space-3);
+		margin: 0;
+		border-top: none;
+	}
+	.listHead,
+	.cIdx {
+		display: none;
+	}
+	.row {
+		grid-template-columns: 1fr 1fr;
+		grid-template-areas:
+			'main main'
+			'status status'
+			'enr les';
+		gap: var(--space-3);
+		padding: var(--space-4);
+		border: 1px solid var(--color-gray-100);
+		border-radius: var(--radius-lg);
+		background: var(--color-white);
+	}
+	.row:last-child {
+		border-bottom: 1px solid var(--color-gray-100);
+	}
+	.row:hover {
+		box-shadow: none;
+		border-color: var(--color-primary);
+	}
+	.cMain {
+		grid-area: main;
+		align-items: flex-start;
+	}
+	.cStatus {
+		grid-area: status;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 2px 8px;
+	}
+	.cEnrolled,
+	.cLessons {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--color-gray-100);
+	}
+	.cEnrolled {
+		grid-area: enr;
+		gap: 4px 8px;
+	}
+	.cLessons {
+		grid-area: les;
+		justify-content: flex-end;
+	}
+	.unit {
+		display: inline;
+	}
+	.cGo {
+		display: none;
+	}
+}

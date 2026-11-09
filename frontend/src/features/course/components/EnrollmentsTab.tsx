@@ -103,7 +103,8 @@ const classState = (l: CourseProgramLink) => {
 };
 
 export function EnrollmentsTab({
-  enrollments,
+  enrollments: allEnrollments,
+  scopeProgramId,
   trainees,
   course,
   programLinks,
@@ -115,6 +116,9 @@ export function EnrollmentsTab({
   onSaved,
 }: {
   enrollments: Enrollment[];
+  /** Đang làm việc trong 1 chương trình (trang chi tiết khóa → chọn chương trình): danh sách, số đếm
+   *  và ghi danh chỉ trong chương trình này; ẩn bộ lọc chương trình. */
+  scopeProgramId?: string;
   trainees: EnrollCandidate[];
   course: Course | null;
   /** Chương trình của khóa — học viên chọn 1 khi ghi danh. */
@@ -135,6 +139,13 @@ export function EnrollmentsTab({
   /** Gọi sau khi sửa hồ sơ ghi danh — nạp lại danh sách. */
   onSaved: () => void;
 }) {
+  const enrollments = useMemo(
+    () =>
+      scopeProgramId
+        ? allEnrollments.filter((e) => e.program_id === scopeProgramId)
+        : allEnrollments,
+    [allEnrollments, scopeProgramId],
+  );
   const [detailId, setDetailId] = useState<string | null>(null);
   // Mở hồ sơ thẳng vào tab Vòng thực hành (nút "Xếp lịch" trên dòng chưa xếp)
   const [detailTab, setDetailTab] = useState<"rotations" | undefined>();
@@ -178,7 +189,8 @@ export function EnrollmentsTab({
   // null = mọi chương trình; "" = chưa chọn chương trình (URL: _none)
   const programParam = params.get("program");
   const programFilter =
-    programParam === null ? null : programParam === "_none" ? "" : programParam;
+    scopeProgramId ??
+    (programParam === null ? null : programParam === "_none" ? "" : programParam);
   const setUrlParam = (key: string, value: string | null) =>
     setParams(
       (p) => {
@@ -188,8 +200,9 @@ export function EnrollmentsTab({
       },
       { replace: true },
     );
-  const setProgramFilter = (v: string | null) =>
-    setUrlParam("program", v === "" ? "_none" : v);
+  const setProgramFilter = (v: string | null) => {
+    if (!scopeProgramId) setUrlParam("program", v === "" ? "_none" : v);
+  };
   // Lọc nội / ngoại viện (?origin=internal|external)
   const originParam = params.get("origin");
   // Trả về chuỗi hằng (không trả lại originParam) để React Compiler biết đây là giá trị nguyên thủy —
@@ -272,11 +285,13 @@ export function EnrollmentsTab({
   // Chương trình có học viên lên trước.
   const sortedChips = [...chips].sort((a, b) => +(b.count > 0) - +(a.count > 0));
   const selectedChip = chips.find((c) => c.key === programFilter);
-  const showPrograms = chips.length > 1;
+  const showPrograms = chips.length > 1 && !scopeProgramId;
+  // Chương trình cố định (scopeProgramId) không tính là "đang lọc".
+  const programFiltered = programFilter !== null && !scopeProgramId;
   const filterActive =
-    !!search.trim() || programFilter !== null || originFilter !== null;
+    !!search.trim() || programFiltered || originFilter !== null;
   const onlyProgramFilter =
-    programFilter !== null && !search.trim() && originFilter === null;
+    programFiltered && !search.trim() && originFilter === null;
   // Nhóm chỉ có 1 trạng thái thì cột Trạng thái thừa — chỉ giữ ở "Danh sách chờ" (vị trí chờ) và "Tất cả".
   const showStatusCol = view === "waitlisted" || view === "all";
   // Đang lọc 1 chương trình (hoặc khóa chỉ 1 chương trình) thì bỏ cột Chương trình — tiến độ dời xuống dưới tên.
@@ -697,8 +712,12 @@ export function EnrollmentsTab({
         <div ref={panelRef}>
           <AddEnrollmentPanel
             candidates={trainees}
-            enrollments={enrollments}
-            programLinks={programLinks}
+            enrollments={allEnrollments}
+            programLinks={
+              scopeProgramId
+                ? programLinks.filter((l) => l.program_id === scopeProgramId)
+                : programLinks
+            }
             programId={programId}
             onProgramChange={(id) => {
               setProgramFilter(id);
@@ -896,7 +915,7 @@ export function EnrollmentsTab({
                   setSearch("");
                   setParams(
                     (p) => {
-                      p.delete("program");
+                      if (!scopeProgramId) p.delete("program");
                       p.delete("origin");
                       return p;
                     },
@@ -988,7 +1007,7 @@ export function EnrollmentsTab({
                   }
                   desc={
                     enrollments.length === 0
-                      ? "Bấm “Thêm học viên” để ghi danh học viên vào khóa."
+                      ? `Bấm “Thêm học viên” để ghi danh học viên vào ${scopeProgramId ? "chương trình" : "khóa"}.`
                       : filterActive && !onlyProgramFilter
                         ? "Thử đổi từ khóa hoặc bộ lọc."
                         : view === "approved" && counts.pending

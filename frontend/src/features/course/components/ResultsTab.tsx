@@ -47,8 +47,18 @@ const SOURCE_LABEL: Record<GradeHistoryItem['source'], string> = {
 	unlock: 'Mở khóa',
 };
 
-/** Bước cuối: nhập điểm Lý thuyết + Thực hành → khóa điểm → cấp giấy chứng nhận cho người Đạt. */
-export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<typeof useCourseDetail> }) {
+/** Bước cuối: nhập điểm Lý thuyết + Thực hành → khóa điểm → cấp giấy chứng nhận cho người Đạt.
+ *  `programId`: đang làm việc trong 1 chương trình — bảng điểm chỉ học viên của chương trình đó;
+ *  khóa điểm / cấp giấy chứng nhận / ghi CME vẫn áp dụng cả khóa (backend tính theo khóa). */
+export function ResultsTab({
+	courseId,
+	d,
+	programId,
+}: {
+	courseId: string;
+	d: ReturnType<typeof useCourseDetail>;
+	programId?: string;
+}) {
 	const { has } = usePermission();
 	const [book, setBook] = useState<Gradebook | null>(null);
 	const [error, setError] = useState('');
@@ -95,8 +105,10 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 	if (error) return <div className={styles.errorBanner}>{error}</div>;
 	if (!book) return <div className={styles.subEmpty}>Đang tải bảng điểm…</div>;
 
-	const passed = book.rows.filter((r) => r.computed.result === 'pass');
-	const toIssue = passed.filter((r) => !r.certificate_id).length;
+	// Khóa điểm / cấp GCN tính trên cả khóa; bảng + số liệu hiển thị theo chương trình đang chọn.
+	const toIssue = book.rows.filter((r) => r.computed.result === 'pass' && !r.certificate_id).length;
+	const shown = programId ? { ...book, rows: book.rows.filter((r) => r.program_id === programId) } : book;
+	const passed = shown.rows.filter((r) => r.computed.result === 'pass');
 	const certOf = (row: GradebookRow) => d.certificates.find((c) => c.enrollment_id === row.enrollment_id);
 
 	const toolbar = (
@@ -148,7 +160,7 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 							)
 						}
 					>
-						<BadgeSvg /> Cấp giấy chứng nhận ({toIssue} người đạt)
+						<BadgeSvg /> Cấp giấy chứng nhận ({toIssue} người đạt{programId ? ' cả khóa' : ''})
 					</button>
 				</>
 			)}
@@ -247,13 +259,14 @@ export function ResultsTab({ courseId, d }: { courseId: string; d: ReturnType<ty
 				className={styles.subRowMeta}
 				style={{ marginBottom: 10 }}
 			>
-				{book.rows.length} học viên · Đạt {passed.length} · Chưa đạt{' '}
-				{book.rows.filter((r) => r.computed.result === 'fail').length} · Chưa đủ điểm{' '}
-				{book.rows.filter((r) => r.computed.result == null).length}. Điểm bài thi trên hệ thống tự điền vào cột LT/TH
+				{shown.rows.length} học viên · Đạt {passed.length} · Chưa đạt{' '}
+				{shown.rows.filter((r) => r.computed.result === 'fail').length} · Chưa đủ điểm{' '}
+				{shown.rows.filter((r) => r.computed.result == null).length}. Điểm bài thi trên hệ thống tự điền vào cột LT/TH
 				(quy về thang 10). Giảng viên nhập phần mình được phân ở cổng cá nhân.
+				{programId && ' Khóa điểm và cấp giấy chứng nhận áp dụng cho cả khóa (mọi chương trình).'}
 			</div>
 			<GradebookTable
-				book={book}
+				book={shown}
 				fileName='bang-diem'
 				toolbar={toolbar}
 				rowActions={rowActions}

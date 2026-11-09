@@ -80,7 +80,8 @@ function toDraft(q: ExamPaperQuestion): DraftQuestion {
 
 type View = 'list' | 'builder' | 'attempts' | 'grading';
 
-export function ExamsTab({ courseId }: { courseId: string }) {
+/** `programId`: đang làm việc trong 1 chương trình — chỉ hiện đề của lớp đó + đề chung cả khóa; đề mới chọn sẵn lớp. */
+export function ExamsTab({ courseId, programId }: { courseId: string; programId?: string }) {
 	const [view, setView] = useState<View>('list');
 	const [papers, setPapers] = useState<ExamPaper[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -142,6 +143,7 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 			<ExamBuilder
 				courseId={courseId}
 				paper={editingPaper}
+				defaultProgramId={programId}
 				onCancel={() => setView('list')}
 				onSaved={() => {
 					setView('list');
@@ -198,6 +200,8 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 		);
 	}
 
+	const shownPapers = programId ? papers.filter((p) => !p.program_id || p.program_id === programId) : papers;
+
 	if (view === 'grading' && gradingAttempt) {
 		return (
 			<GradingPanel
@@ -221,11 +225,11 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 			{error && <div className={styles.errorBanner}>{error}</div>}
 			{loading ? (
 				<div className={styles.subEmpty}>Đang tải...</div>
-			) : papers.length === 0 ? (
-				<div className={styles.subEmpty}>Chưa có đề thi nào cho khóa học này.</div>
+			) : shownPapers.length === 0 ? (
+				<div className={styles.subEmpty}>Chưa có đề thi nào cho {programId ? 'chương trình' : 'khóa học'} này.</div>
 			) : (
 				<div className={styles.subList}>
-					{papers.map((p) => (
+					{shownPapers.map((p) => (
 						<div
 							key={p.id}
 							className={styles.subRow}
@@ -285,11 +289,14 @@ export function ExamsTab({ courseId }: { courseId: string }) {
 function ExamBuilder({
 	courseId,
 	paper,
+	defaultProgramId,
 	onCancel,
 	onSaved,
 }: {
 	courseId: string;
 	paper: ExamPaper | null;
+	/** Lớp chọn sẵn cho đề mới (đang làm việc trong 1 chương trình). */
+	defaultProgramId?: string;
 	onCancel: () => void;
 	onSaved: () => void;
 }) {
@@ -302,7 +309,7 @@ function ExamBuilder({
 	const [examPart, setExamPart] = useState<ExamPart>(paper?.exam_part ?? 'theory');
 	// Đề đầu vào (chỉ tham khảo) / cuối khóa; lớp = chương trình trong khóa (lấy ngân hàng của chương trình đó)
 	const [purpose, setPurpose] = useState<QuestionPool>(paper?.purpose ?? 'final');
-	const [programId, setProgramId] = useState(paper?.program_id ?? '');
+	const [programId, setProgramId] = useState(paper ? (paper.program_id ?? '') : (defaultProgramId ?? ''));
 	const [links, setLinks] = useState<CourseProgramLink[]>([]);
 	useEffect(() => {
 		getProgramLinks(courseId)

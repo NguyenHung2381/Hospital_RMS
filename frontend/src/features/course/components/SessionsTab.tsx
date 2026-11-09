@@ -583,8 +583,9 @@ function SessionFormModal({
 	);
 }
 
-/** Bước "Lịch học & giảng viên": 1 bảng theo bài học — ngày học (buổi học, điểm danh) và giảng viên cùng chỗ. */
-export function SessionsTab({ d }: { d: Detail }) {
+/** Bước "Bài học & lịch học": 1 bảng theo bài học — ngày học (buổi học, điểm danh) và giảng viên cùng chỗ.
+ *  `scopeProgramId`: đang làm việc trong 1 chương trình — chỉ bài của chương trình đó, ẩn bộ lọc chương trình. */
+export function SessionsTab({ d, scopeProgramId }: { d: Detail; scopeProgramId?: string }) {
 	const [newLecturerId, setNewLecturerId] = useState('');
 	const [form, setForm] = useState<FormState | null>(null);
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
@@ -593,7 +594,8 @@ export function SessionsTab({ d }: { d: Detail }) {
 	const multiProgram = d.programLinks.length > 1;
 	const programParam = params.get('program');
 	const programFilter =
-		multiProgram && d.programLinks.some((l) => l.program_id === programParam) ? programParam : null;
+		scopeProgramId ??
+		(multiProgram && d.programLinks.some((l) => l.program_id === programParam) ? programParam : null);
 	const programsOf = (l: CourseLesson) => (l.program_ids ?? '').split(',');
 	const lessons =
 		programFilter === null ? d.courseLessons : d.courseLessons.filter((l) => programsOf(l).includes(programFilter));
@@ -747,7 +749,7 @@ export function SessionsTab({ d }: { d: Detail }) {
 							))}
 						</div>
 					)}
-					{multiProgram && (
+					{multiProgram && !scopeProgramId && (
 						<div className={tbl.tableControls}>
 							<ProgramFilter
 								options={programOptions}
@@ -812,7 +814,8 @@ export function SessionsTab({ d }: { d: Detail }) {
 			{(looseSessions.length > 0 || d.courseLessons.length === 0) && (
 				<>
 					<div className={styles.sectionTitle}>
-						{d.courseLessons.length ? 'Buổi học chưa gắn bài' : 'Buổi học'}{' '}
+						{d.courseLessons.length ? 'Buổi học chưa gắn bài' : 'Buổi học'}
+						{scopeProgramId && d.courseLessons.length ? ' (chung cả khóa)' : ''}{' '}
 						<span className={styles.sectionCount}>{looseSessions.length}</span>
 					</div>
 					{looseSessions.length === 0 ? (
