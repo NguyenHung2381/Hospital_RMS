@@ -120,6 +120,28 @@ async function isRegistrationOpen(roundId) {
 	});
 }
 
+/**
+ * Đợt `roundId` đã CẤU HÌNH mốc "Đăng ký đề tài" và mốc đó đã qua hẳn (mọi mốc có
+ * hạn < hôm nay theo giờ VN)? Chưa cấu hình mốc ⇒ false (đăng ký coi như còn mở).
+ * Dùng cho nhập bổ sung đề tài đã hoàn thành (topicLegacyService): tài khoản bị
+ * ràng buộc hạn chỉ nhập được vào đợt đã qua hạn đăng ký, không dùng đường này để
+ * đăng ký muộn vào đợt đang diễn ra.
+ */
+async function isRegistrationPassed(roundId) {
+	if (!roundId) return false;
+	const pool = await getPool();
+	const rows = (
+		await pool.request().input('rid', sql.VarChar(10), roundId).query(`
+			SELECT start_date, deadline_date
+			FROM round_deadlines
+			WHERE round_id = @rid AND deadline_type = 'topic_registration'
+		`)
+	).recordset;
+	if (rows.length === 0) return false;
+	const today = todayVN();
+	return rows.every((r) => r.deadline_date && today > new Date(r.deadline_date));
+}
+
 /** Ném lỗi 403 nếu ngoài thời gian đăng ký đề tài của đợt. */
 async function assertRegistrationOpen(roundId) {
 	if (await isRegistrationOpen(roundId)) return;
@@ -130,5 +152,6 @@ module.exports = {
 	assertTopicActionWindow,
 	isTopicActionAllowed,
 	isRegistrationOpen,
+	isRegistrationPassed,
 	assertRegistrationOpen,
 };
