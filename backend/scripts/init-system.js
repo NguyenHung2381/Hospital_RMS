@@ -7,6 +7,8 @@
 //        admin      (vai trò admin)      — chỉ NCKH, đào tạo / CME, người dùng
 //      Bắt đổi mật khẩu ở lần đăng nhập đầu; mật khẩu tạm hết hạn sau
 //      TEMP_PASSWORD_TTL_DAYS ngày (mặc định 7).
+// Id vai trò lấy theo seed; id đó đã thuộc vai trò khác (DB cũ có vai trò tự tạo) thì
+// lấy id VTxx trống tiếp theo.
 // Chạy lại an toàn: vai trò đã có (cùng mã) thì không đụng tới quyền của nó; vai trò
 // đã có tài khoản đang hoạt động (superadmin: bất kỳ vai trò toàn quyền nào) thì
 // không tạo thêm; tên đăng nhập đã bị dùng thì bỏ qua tài khoản đó kèm cảnh báo.
@@ -38,6 +40,7 @@ const { findSchemaProblems } = require('../src/permissions');
 const { syncPermissions } = require('../src/permissions/sync');
 const { RESOURCE_SCOPES, isScoped, nullScopeFill } = require('../src/permissions/scopes');
 const { checkPassword } = require('../src/utils/passwordPolicy');
+const { genSeq2Id } = require('../src/utils/idGenerator');
 const TEMPLATES = require('../database/seed/system-roles.json');
 
 const arg = (name, def) => {
@@ -112,10 +115,6 @@ const seedRoles = async (pool) => {
 			console.log(`• Vai trò ${code} đã có (${byCode.get(code)}), giữ nguyên quyền`);
 			continue;
 		}
-		if (ids.has(t.id)) {
-			console.warn(`⚠️  Mã vai trò ${t.id} đã dùng cho vai trò khác, bỏ qua ${code}`);
-			continue;
-		}
 		const grants = [];
 		for (const [key, scope] of Object.entries(t.grants)) {
 			const permId = permIdByKey.get(key);
@@ -125,10 +124,14 @@ const seedRoles = async (pool) => {
 			}
 			grants.push({ permId, scope: scopeOf(key.split(':')[0], scope) });
 		}
+		let id = t.id;
 		await withActorTransaction(null, async (tx) => {
+			// Id trong seed đã bị vai trò khác chiếm (DB cũ có vai trò tự tạo) → lấy
+			// id trống tiếp theo như màn Vai trò (MAX+1, có khoá).
+			if (ids.has(id)) id = await genSeq2Id(tx, 'roles', 'VT', 'Đã đạt giới hạn 99 vai trò');
 			await tx
 				.request()
-				.input('id', sql.VarChar(6), t.id)
+				.input('id', sql.VarChar(6), id)
 				.input('name', sql.NVarChar(100), t.name)
 				.input('code', sql.VarChar(30), code)
 				.input('superuser', sql.Bit, !!t.superuser).query(`
@@ -138,7 +141,7 @@ const seedRoles = async (pool) => {
 			for (const g of grants) {
 				await tx
 					.request()
-					.input('role_id', sql.VarChar(6), t.id)
+					.input('role_id', sql.VarChar(6), id)
 					.input('perm_id', sql.VarChar(20), g.permId)
 					.input('scope', sql.VarChar(20), g.scope)
 					.query(
@@ -146,8 +149,11 @@ const seedRoles = async (pool) => {
 					);
 			}
 		});
-		byCode.set(code, t.id);
-		console.log(`✓ Tạo vai trò ${t.id} ${t.name} (${code}), ${grants.length} quyền`);
+		byCode.set(code, id);
+		ids.add(id);
+		if (id !== t.id)
+			console.warn(`⚠️  Mã vai trò ${t.id} đã dùng cho vai trò khác, ${code} lấy mã ${id}`);
+		console.log(`✓ Tạo vai trò ${id} ${t.name} (${code}), ${grants.length} quyền`);
 	}
 	return byCode;
 };
