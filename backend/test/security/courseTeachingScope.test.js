@@ -39,8 +39,22 @@ const world = {
 	},
 	attempts: { EA_OWN: 'E_OWN', EA_OTHER: 'E_OTHER' }, // lượt thi → đăng ký
 	waitlist: [
-		{ id: 'W2', course_id: 'KH2', program_id: 'P1', trainee_name: 'HV Hai', trainee_phone: '0900000002', trainee_email: 'hai@example.invalid' },
-		{ id: 'W3', course_id: 'KH3', program_id: 'P1', trainee_name: 'HV Ba', trainee_phone: '0900000003', trainee_email: 'ba@example.invalid' },
+		{
+			id: 'W2',
+			course_id: 'KH2',
+			program_id: 'P1',
+			trainee_name: 'HV Hai',
+			trainee_phone: '0900000002',
+			trainee_email: 'hai@example.invalid',
+		},
+		{
+			id: 'W3',
+			course_id: 'KH3',
+			program_id: 'P1',
+			trainee_name: 'HV Ba',
+			trainee_phone: '0900000003',
+			trainee_email: 'ba@example.invalid',
+		},
 	],
 	programResults: [
 		{ id: 'G1', course_id: 'KH1', course_name: 'Khóa 1', trainee_name: 'HV Một', score: 8 },
@@ -54,7 +68,10 @@ const activeOk = (text, uid) =>
 const isAssigned = (uid, courseId, text) =>
 	!!world.assigned[uid]?.has(courseId) && activeOk(text, uid);
 const ownTrainee = (uid, t) =>
-	t && (t.user_id === uid || t.staff_user_id === uid || (world.lecturer.user_id === uid && t.person_id === world.lecturer.person_id));
+	t &&
+	(t.user_id === uid ||
+		t.staff_user_id === uid ||
+		(world.lecturer.user_id === uid && t.person_id === world.lecturer.person_id));
 
 install(async (text, inputs) => {
 	sqlLog.push({ text, inputs: { ...inputs } });
@@ -67,7 +84,11 @@ install(async (text, inputs) => {
 	}
 	// certificateRepository (đã thay hàm) — không có SQL
 	// trainingProgramService.listProgramResults
-	if (/FROM grades g\s+JOIN course_enrollments e ON e\.id = g\.enrollment_id\s+JOIN trainees t/.test(text)) {
+	if (
+		/FROM grades g\s+JOIN course_enrollments e ON e\.id = g\.enrollment_id\s+JOIN trainees t/.test(
+			text,
+		)
+	) {
 		const scoped = /la\.course_id = c\.id/.test(text) && 'actor_id' in inputs;
 		return world.programResults.filter(
 			(r) => !scoped || isAssigned(inputs.actor_id, r.course_id, text),
@@ -75,16 +96,38 @@ install(async (text, inputs) => {
 	}
 	// waitlistTransferService.listCandidates
 	if (/FROM courses c\s+JOIN course_programs cp/.test(text))
-		return [{ program_id: 'P1', program_code: 'P1', program_name: 'CT 1', started: 0, class_rule: 1, class_max: null, class_approved: 0, class_min: 1 }];
+		return [
+			{
+				program_id: 'P1',
+				program_code: 'P1',
+				program_name: 'CT 1',
+				started: 0,
+				class_rule: 1,
+				class_max: null,
+				class_approved: 0,
+				class_min: 1,
+			},
+		];
 	if (/e\.course_id <> @course_id/.test(text)) {
 		const scoped = /la\.course_id = c\.id/.test(text) && 'actor_id' in inputs;
 		return world.waitlist
 			.filter((w) => w.course_id !== inputs.course_id)
 			.filter((w) => !scoped || isAssigned(inputs.actor_id, w.course_id, text))
-			.map((w) => ({ ...w, from_course_id: w.course_id, from_course_name: `Khóa ${w.course_id}`, waitlist_position: 1, decided_at: null, registered_at: null }));
+			.map((w) => ({
+				...w,
+				from_course_id: w.course_id,
+				from_course_name: `Khóa ${w.course_id}`,
+				waitlist_position: 1,
+				decided_at: null,
+				registered_at: null,
+			}));
 	}
 	// courseEnrollmentService.assertNotLecturerOfCourse
-	if (/FROM lecturer_assignments la\s+JOIN lecturers l ON l\.id = la\.lecturer_id\s+JOIN trainees t ON t\.id = @trainee_id/.test(text)) {
+	if (
+		/FROM lecturer_assignments la\s+JOIN lecturers l ON l\.id = la\.lecturer_id\s+JOIN trainees t ON t\.id = @trainee_id/.test(
+			text,
+		)
+	) {
 		const t = world.trainees[inputs.trainee_id];
 		const l = world.lecturer;
 		const hit =
@@ -106,21 +149,48 @@ install(async (text, inputs) => {
 		return [{ assigned: ok, theory: ok, practice: ok }];
 	}
 	// gradebookService.saveBulk — hồ sơ của chính người gọi trong khóa
-	if (/SELECT e\.id FROM course_enrollments e WHERE e\.course_id = @course_id AND EXISTS/.test(text)) {
+	if (
+		/SELECT e\.id FROM course_enrollments e WHERE e\.course_id = @course_id AND EXISTS/.test(text)
+	) {
 		if (!/ot\.user_id = @uid OR ot\.staff_user_id = @uid/.test(text)) return [];
 		return Object.entries(world.enrollments)
-			.filter(([, e]) => e.course_id === inputs.course_id && ownTrainee(inputs.uid, world.trainees[e.trainee_id]))
+			.filter(
+				([, e]) =>
+					e.course_id === inputs.course_id && ownTrainee(inputs.uid, world.trainees[e.trainee_id]),
+			)
 			.map(([id]) => ({ id }));
 	}
 	if (/FROM course_enrollments e\s+JOIN trainees t/.test(text) && /theory_hours/.test(text))
 		return ['E_OWN', 'E_OTHER'].map((id) => ({
-			enrollment_id: id, trainee_id: world.enrollments[id].trainee_id, trainee_name: `HV ${id}`,
-			program_id: 'P1', program_name: 'CT', theory_hours: 10, practice_hours: 10, exam_parts: null,
-			grade_id: `G_${id}`, theory_score: null, practice_score: null, theory_flag: null, practice_flag: null,
-			theory_attempt: 1, practice_attempt: 1, note: null, locked_at: null,
+			enrollment_id: id,
+			trainee_id: world.enrollments[id].trainee_id,
+			trainee_name: `HV ${id}`,
+			program_id: 'P1',
+			program_name: 'CT',
+			theory_hours: 10,
+			practice_hours: 10,
+			exam_parts: null,
+			grade_id: `G_${id}`,
+			theory_score: null,
+			practice_score: null,
+			theory_flag: null,
+			practice_flag: null,
+			theory_attempt: 1,
+			practice_attempt: 1,
+			note: null,
+			locked_at: null,
 		}));
 	if (/FROM grades g WHERE g\.enrollment_id/.test(text))
-		return [{ id: 'G1', locked_at: null, theory_score: null, practice_score: null, theory_attempt: 1, practice_attempt: 1 }];
+		return [
+			{
+				id: 'G1',
+				locked_at: null,
+				theory_score: null,
+				practice_score: null,
+				theory_attempt: 1,
+				practice_attempt: 1,
+			},
+		];
 	// examGradingService.assertGrader
 	if (/SELECT p\.blind_grading FROM exam_attempts/.test(text)) {
 		const enr = world.attempts[inputs.id];
@@ -129,7 +199,8 @@ install(async (text, inputs) => {
 		const own = ownTrainee(inputs.uid, world.trainees[world.enrollments[enr].trainee_id]);
 		return excludesSelf && own ? [] : [{ blind_grading: false }];
 	}
-	if (/SELECT q\.question_type, q\.points, a\.status/.test(text)) return [{ question_type: 'essay', points: 5, status: 'submitted' }];
+	if (/SELECT q\.question_type, q\.points, a\.status/.test(text))
+		return [{ question_type: 'essay', points: 5, status: 'submitted' }];
 	if (/SUM\(CASE WHEN score_awarded IS NULL/.test(text)) return [{ pending: 1, total: 0 }];
 	return [];
 });
@@ -237,10 +308,7 @@ test('M-09: ứng viên chờ chỉ gồm khóa nguồn được phân công (kh
 test('M-09 đối chứng: phạm vi all (hoặc nội bộ không actor) thấy cả hai khóa nguồn', async () => {
 	for (const a of [MANAGER, undefined]) {
 		const groups = await waitlistTransferService.listCandidates('KH1', a);
-		assert.deepEqual(
-			groups.flatMap((g) => g.candidates.map((c) => c.id)).sort(),
-			['W2', 'W3'],
-		);
+		assert.deepEqual(groups.flatMap((g) => g.candidates.map((c) => c.id)).sort(), ['W2', 'W3']);
 	}
 });
 
@@ -260,9 +328,13 @@ test('M-02: chặn cả khi chỉ trùng hồ sơ người (person_id), không c
 });
 
 test('M-02 đối chứng: học viên khác, hoặc khóa khác của giảng viên, vẫn ghi danh được', async () => {
-	assert.deepEqual(await courseEnrollmentService.registerTrainee('KH1', 'HV1', 'QL1'), { id: 'DK_NEW' });
+	assert.deepEqual(await courseEnrollmentService.registerTrainee('KH1', 'HV1', 'QL1'), {
+		id: 'DK_NEW',
+	});
 	// GV1 chỉ được phân công KH1 — đăng ký học KH2 là hợp lệ
-	assert.deepEqual(await courseEnrollmentService.registerTrainee('KH2', 'HV_U1', 'U1'), { id: 'DK_NEW' });
+	assert.deepEqual(await courseEnrollmentService.registerTrainee('KH2', 'HV_U1', 'U1'), {
+		id: 'DK_NEW',
+	});
 });
 
 test('M-02: duyệt hồ sơ đăng ký của giảng viên bị chặn; từ chối vẫn được', async () => {
@@ -284,7 +356,9 @@ test('M-02: GV không nhập điểm cho chính mình qua saveBulk (không UPDAT
 	const access = { theory: false, practice: true };
 	const before = sqlLog.length;
 	await denied(
-		gradebookService.saveBulk('KH1', [{ enrollment_id: 'E_OWN', practice_score: 10 }], 'U1', { access }),
+		gradebookService.saveBulk('KH1', [{ enrollment_id: 'E_OWN', practice_score: 10 }], 'U1', {
+			access,
+		}),
 	);
 	assert.ok(!sqlLog.slice(before).some((l) => /UPDATE grades SET practice_score/.test(l.text)));
 });
@@ -299,7 +373,11 @@ test('M-02 đối chứng: GV vẫn nhập điểm cho học viên khác; cán b
 	);
 	assert.deepEqual(r, { saved: 1 });
 	// Đường quản lý (courseController.saveGradesBulk) không truyền access ⇒ không kiểm hồ sơ của chính mình
-	const mgr = await gradebookService.saveBulk('KH1', [{ enrollment_id: 'E_OWN', practice_score: 7 }], 'QL1');
+	const mgr = await gradebookService.saveBulk(
+		'KH1',
+		[{ enrollment_id: 'E_OWN', practice_score: 7 }],
+		'QL1',
+	);
 	assert.deepEqual(mgr, { saved: 1 });
 });
 
@@ -307,10 +385,16 @@ test('M-02: người chấm không chấm được bài thi của chính mình; 
 	await denied(examService.gradeEssayAsGrader('EA_OWN', 'Q1', 5, 'U1'));
 	await examService.gradeEssayAsGrader('EA_OTHER', 'Q1', 5, 'U1');
 	assert.ok(
-		sqlLog.some((l) => /UPDATE exam_answers SET score_awarded/.test(l.text) && l.inputs.attempt_id === 'EA_OTHER'),
+		sqlLog.some(
+			(l) =>
+				/UPDATE exam_answers SET score_awarded/.test(l.text) && l.inputs.attempt_id === 'EA_OTHER',
+		),
 	);
 	assert.ok(
-		!sqlLog.some((l) => /UPDATE exam_answers SET score_awarded/.test(l.text) && l.inputs.attempt_id === 'EA_OWN'),
+		!sqlLog.some(
+			(l) =>
+				/UPDATE exam_answers SET score_awarded/.test(l.text) && l.inputs.attempt_id === 'EA_OWN',
+		),
 	);
 });
 
@@ -336,7 +420,10 @@ test('L-14: mọi truy vấn phân quyền theo giảng viên đều kèm lec.is
 
 test('L-14: teachingAccess — GV đang hoạt động qua, đã ngừng hoạt động bị 403', async () => {
 	world.inactiveUsers.clear();
-	assert.deepEqual(await gradebookService.teachingAccess('KH1', 'U1'), { theory: true, practice: true });
+	assert.deepEqual(await gradebookService.teachingAccess('KH1', 'U1'), {
+		theory: true,
+		practice: true,
+	});
 	const sqlOf = sqlLog.filter((l) => /AS assigned/.test(l.text)).at(-1).text;
 	everyLecturerCheckIsActive(sqlOf, 'uid');
 	world.inactiveUsers.add('U1');

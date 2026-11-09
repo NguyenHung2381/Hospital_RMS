@@ -224,7 +224,8 @@ const matchExisting = async (tx, source, id, row, scope = 'any') => {
 	const phone = cleanPhone(row.phone);
 	const nationalId = clean(row.national_id);
 	const excl = notClaimedByOtherUser(source);
-	const scopeSql = scope === 'unprotected' ? UNPROTECTED_ONLY : scope === 'protected' ? PROTECTED_ONLY : '';
+	const scopeSql =
+		scope === 'unprotected' ? UNPROTECTED_ONLY : scope === 'protected' ? PROTECTED_ONLY : '';
 	const base = `SELECT p.id AS pid FROM persons p WHERE p.status = 'ACTIVE'${excl}${scopeSql}`;
 	const bind = (req) => bindPerson(req.input('id', sql.VarChar(30), id), row);
 
@@ -430,7 +431,8 @@ const resolveOne = async (tx, source, id, actorId, depth = 0) => {
 	}
 	if (!personId) {
 		personId = await createPerson(tx, source, id, row, actorId);
-		if (heldBack) await queueMergeCandidate(tx, personId, heldBack.pid, heldBack.rule, source, actorId);
+		if (heldBack)
+			await queueMergeCandidate(tx, personId, heldBack.pid, heldBack.rule, source, actorId);
 	}
 	await setSourcePerson(tx, source, id, personId);
 	// nếu match vào person có sẵn thì bổ sung thông tin còn thiếu

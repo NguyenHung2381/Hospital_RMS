@@ -59,7 +59,9 @@ const portal = require('../../src/modules/public/publicPortalService');
 const controller = require('../../src/modules/public/publicPortalController');
 const { httpError } = require('../../src/utils/httpError');
 
-const FILE = [{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' }];
+const FILE = [
+	{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' },
+];
 const reset = () => {
 	created.length = 0;
 	enrolled.length = 0;
@@ -86,7 +88,11 @@ test('M-03: giấy tờ đính kèm khi đăng ký công khai luôn là pending 
 	assert.equal(docs.length, 1);
 	assert.equal(docs[0].inputs.status, 'pending');
 	assert.equal(docs[0].inputs.trainee_id, 'HV1');
-	assert.match(docs[0].text, /status/, 'INSERT phải ghi status tường minh, không dựa vào mặc định của bảng');
+	assert.match(
+		docs[0].text,
+		/status/,
+		'INSERT phải ghi status tường minh, không dựa vào mặc định của bảng',
+	);
 });
 
 test('M-03: CCCD chưa có hồ sơ → hồ sơ mới, giấy tờ vẫn pending', async () => {
@@ -173,7 +179,10 @@ test('L-06: sai ngày sinh / sai họ tên / hồ sơ cũ thiếu ngày sinh ⇒
 	]) {
 		reset();
 		await portal.register(base(CASES[name]), FILE, ['national_id']);
-		assert.ok(!enrolled.includes('HV1') && !enrolled.includes('HV2'), `${name}: ghi danh vào hồ sơ có sẵn`);
+		assert.ok(
+			!enrolled.includes('HV1') && !enrolled.includes('HV2'),
+			`${name}: ghi danh vào hồ sơ có sẵn`,
+		);
 		assert.equal(created.length, 1, name);
 		assert.equal(created[0].national_id, null, `${name}: không chiếm CCCD của hồ sơ có sẵn`);
 		assert.match(created[0].notes, /chưa xác minh/);
@@ -196,7 +205,10 @@ test('L-06: ghi danh hồ sơ khớp bị 409 ⇒ không lộ lỗi, chuyển th
 test('L-06: lỗi không phụ thuộc hồ sơ (khóa đóng đăng ký) vẫn báo như cũ', async () => {
 	reset();
 	courseService.getById = async () => null;
-	await assert.rejects(portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên'])), (e) => e.statusCode === 404);
+	await assert.rejects(
+		portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên'])),
+		(e) => e.statusCode === 404,
+	);
 	courseService.getById = async () => ({
 		id: 'KH1',
 		status: 'draft',
