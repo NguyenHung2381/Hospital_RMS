@@ -413,6 +413,8 @@ const listCertificates = asyncHandler(async (req, res) => {
 });
 
 const issueCertificate = asyncHandler(async (req, res) => {
+	// router.param không áp cho mã trong body — kiểm phạm vi khóa của đăng ký ('assigned')
+	await coursePolicy.assertCourseChildInScope('enrollmentId', req.body.enrollment_id, req.user);
 	return created(
 		res,
 		await certificateService.issueCertificate(

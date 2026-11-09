@@ -92,6 +92,30 @@ const assertSingleProgram = async (traineeId, programId) => {
 		);
 };
 
+// Giảng viên của khóa không được là học viên của chính khóa đó (cùng quy tắc với
+// lecturerAssignmentService.assertAssignable, nhưng kiểm ở chiều ngược lại: khi ghi
+// danh / duyệt). Khớp theo hồ sơ người (person_id) hoặc tài khoản (user_id / staff_user_id).
+// Tính cả giảng viên đã ngừng hoạt động: phân công cũ vẫn là lịch sử dạy khóa này.
+const assertNotLecturerOfCourse = async (courseId, traineeId) => {
+	const pool = await getPool();
+	const conflict = (
+		await pool
+			.request()
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('trainee_id', sql.VarChar(20), traineeId).query(`
+      SELECT 1 AS conflict
+      FROM lecturer_assignments la
+      JOIN lecturers l ON l.id = la.lecturer_id
+      JOIN trainees t ON t.id = @trainee_id
+      WHERE la.course_id = @course_id
+        AND ((l.person_id IS NOT NULL AND l.person_id = t.person_id)
+          OR (l.user_id IS NOT NULL AND (l.user_id = t.user_id OR l.user_id = t.staff_user_id)))
+      OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
+	).recordset[0];
+	if (conflict)
+		throw httpError(400, 'Giảng viên của khóa học không thể ghi danh làm học viên của khóa này.');
+};
+
 // Thêm học viên vào khóa học. Chặn nếu khóa học đang đóng cửa sổ đăng ký, trừ
 // khi options.bypassWindow (admin / quản lý đào tạo ghi danh hộ — xem
 // courseController.registerTrainee). options.programId: chương trình học viên
@@ -109,6 +133,7 @@ const registerTrainee = async (
 	if (!course.enrollment_open && !bypassWindow) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
+	await assertNotLecturerOfCourse(courseId, traineeId);
 	// Khóa có chương trình ⇒ mỗi lượt ghi danh theo đúng 1 chương trình (khóa chỉ
 	// có 1 thì tự chọn). Khóa chưa gán chương trình nào thì ghi danh trơn như cũ.
 	if (!programId && course.program_ids.length === 1) programId = course.program_ids[0];
@@ -251,8 +276,11 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
+	// Duyệt hồ sơ cũ (ghi danh trước khi người đó được phân công giảng dạy) cũng phải chặn.
+	if (decision === 'approved') await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
+
 	const course = await getById(row.course_id);
-	const classRule = !!row.program_id && programClassService.appliesTo(course);
+	const classRule =!!row.program_id && programClassService.appliesTo(course);
 	let finalStatus = decision;
 	// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
 	if (decision === 'approved' && classRule && row.status !== 'approved')

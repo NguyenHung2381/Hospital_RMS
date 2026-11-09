@@ -6,7 +6,7 @@ const coursePolicy = require('./coursePolicy');
 const waitlistTransferService = require('./waitlistTransferService');
 
 const listCandidates = asyncHandler(async (req, res) =>
-	success(res, await waitlistTransferService.listCandidates(req.params.id)),
+	success(res, await waitlistTransferService.listCandidates(req.params.id, req.user)),
 );
 
 const transfer = asyncHandler(async (req, res) => {

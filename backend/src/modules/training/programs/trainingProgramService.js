@@ -16,6 +16,8 @@ const { isUniqueViolation } = require('../../../utils/dbErrors');
 const { broadcast } = require('../../events/eventService');
 const { paging } = require('../../../utils/paging');
 const { httpError } = require('../../../utils/httpError');
+const { scopeOf } = require('../../../permissions/authz');
+const { ASSIGNED_EXISTS_SQL } = require('../courses/coursePolicy');
 const { emptyToNull, withDurationText } = require('./programShared');
 const {
 	setLessonDepartments,
@@ -296,9 +298,16 @@ const remove = async (id, actorId) => {
 // (course_programs), mỗi khóa lại có học viên/điểm riêng (grades.program_id,
 // xem 2026-09-17_grades_program). Sửa điểm vẫn thực hiện ở courseService, đây
 // chỉ đọc lại theo góc nhìn chương trình.
-const listProgramResults = async (programId) => {
+const listProgramResults = async (programId, actor = null) => {
 	const pool = await getPool();
-	const r = await pool.request().input('program_id', sql.VarChar(20), programId).query(`
+	const req = pool.request().input('program_id', sql.VarChar(20), programId);
+	// Phạm vi 'assigned': chỉ điểm của khóa học mình được phân công (c = khóa của hồ sơ).
+	let scopeSql = '';
+	if (actor && scopeOf(actor, 'courses') === 'assigned') {
+		scopeSql = ` AND ${ASSIGNED_EXISTS_SQL}`;
+		req.input('actor_id', sql.VarChar(20), actor.id);
+	}
+	const r = await req.query(`
     SELECT g.id, t.id AS trainee_id, t.full_name AS trainee_name,
            c.id AS course_id, c.name AS course_name,
            g.regular_score, g.midterm_score, g.final_score, g.score, g.classification, g.result, g.note
@@ -306,7 +315,7 @@ const listProgramResults = async (programId) => {
     JOIN course_enrollments e ON e.id = g.enrollment_id
     JOIN trainees t ON t.id = e.trainee_id
     JOIN courses c ON c.id = e.course_id
-    WHERE g.program_id = @program_id
+    WHERE g.program_id = @program_id${scopeSql}
     ORDER BY c.start_date DESC, t.full_name ASC
   `);
 	return r.recordset;
