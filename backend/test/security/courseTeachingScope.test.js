@@ -48,7 +48,6 @@ const world = {
 	],
 };
 const sqlLog = [];
-const normalize = (t) => t.replace(/\s+/g, ' ').trim();
 // Câu SQL có áp điều kiện còn hoạt động cho giảng viên? (nếu không, DB giả coi như bỏ qua)
 const activeOk = (text, uid) =>
 	!/lec\.is_active = 'true'/.test(text) || !world.inactiveUsers.has(uid);

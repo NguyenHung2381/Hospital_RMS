@@ -25,12 +25,11 @@ const createOne = asyncHandler(async (req, res) => {
 	// topicLegacyService.create) — nếu không đề tài 'submitted' chui vào danh sách /
 	// hàng chờ duyệt của khoa khác, rồi chính người tạo bị chặn xem lại.
 	if (topicPolicy.topicScope(req.user) === 'department') {
-		if (
-			!req.user.department_id ||
-			(req.body.department_id && req.body.department_id !== req.user.department_id)
-		)
+		const ownDept = req.user.department_id;
+		const requestedDept = req.body.department_id;
+		if (!ownDept || (requestedDept && requestedDept !== ownDept))
 			throw httpError(403, 'Chỉ tạo được đề tài của khoa/phòng mình.');
-		req.body.department_id = req.user.department_id;
+		req.body.department_id = ownDept;
 	}
 	if (isDeadlineBound(req.user)) await assertRegistrationOpen(req.body.round_id);
 	// is_legacy chỉ đặt qua createLegacy — chặn tự gán để né mốc thời gian (deadlineGuard)
