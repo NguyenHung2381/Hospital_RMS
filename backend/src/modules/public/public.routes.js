@@ -10,6 +10,15 @@ const ctrl = require('./publicPortalController');
 const { publicUpload } = require('../../middlewares/uploadPublic');
 const uploadPolicy = require('../../utils/uploadPolicy');
 const { success } = require('../../utils/response');
+const { requireModule } = require('../../middlewares/moduleGuard');
+
+// Công tắc module (MODULE_<KEY>) áp dụng cho từng route thuộc module, không theo mount:
+// tắt module thì trả 403 MODULE_DISABLED TRƯỚC captcha, giới hạn tốc độ và multer
+// (không lưu hồ sơ đính kèm của module đã tắt). Route dùng chung (captcha, khoa,
+// loại học viên, định dạng upload) không gắn công tắc.
+const training = requireModule('TRAINING');
+const research = requireModule('RESEARCH');
+const seminar = requireModule('SEMINAR');
 
 // Cổng công khai không đăng nhập — mọi endpoint ở đây PHẢI được rate-limit
 // theo IP, mirror loginLimiter ở modules/auth/auth.routes.js.
@@ -53,7 +62,7 @@ const codeLookupLimiter = rateLimit({
 });
 
 router.get('/captcha', captchaLimiter, ctrl.getCaptcha);
-router.get('/courses', ctrl.getOpenCourses);
+router.get('/courses', training, ctrl.getOpenCourses);
 router.get('/trainee-types', ctrl.getTraineeTypes);
 // Định dạng & dung lượng file được nhận (Cấu hình hệ thống) — dùng cho cả trang nội bộ
 router.get(
@@ -65,6 +74,7 @@ router.get(
 
 router.get(
 	'/lookup',
+	training,
 	lookupLimiter,
 	[
 		query('national_id').trim().notEmpty().withMessage('Vui lòng nhập số CCCD/CMND'),
@@ -82,6 +92,7 @@ router.get(
 
 router.post(
 	'/course-registration',
+	training,
 	registerLimiter,
 	publicUpload,
 	[
@@ -109,22 +120,24 @@ router.post(
 );
 
 // ─── Đăng ký đề tài công khai (rút gọn, không cần đăng nhập) ────────────────
-router.get('/topic-rounds', ctrl.getOpenTopicRounds);
+router.get('/topic-rounds', research, ctrl.getOpenTopicRounds);
 // Tra đợt theo public_token (link đăng ký gửi cho khoa/phòng) — rate-limit như
 // tra cứu theo mã để chặn dò quét token.
 router.get(
 	'/topic-rounds/by-token/:token',
+	research,
 	codeLookupLimiter,
 	[param('token').isString().trim().isLength({ min: 8, max: 255 })],
 	validate,
 	ctrl.getTopicRoundByToken,
 );
-router.get('/categories', ctrl.getPublicCategories);
+router.get('/categories', research, ctrl.getPublicCategories);
 router.get('/departments', ctrl.getPublicDepartments);
-router.get('/levels', ctrl.getPublicLevels);
+router.get('/levels', research, ctrl.getPublicLevels);
 
 router.post(
 	'/topic-registration',
+	research,
 	registerLimiter,
 	publicUpload,
 	[
@@ -188,6 +201,7 @@ router.post(
 // ─── Tra cứu hồ sơ đề tài theo mã ────────────────────────────────────────────
 router.get(
 	'/topics/:id/status',
+	research,
 	codeLookupLimiter,
 	[
 		param('id').isString().isLength({ min: 1, max: 15 }),
@@ -217,9 +231,10 @@ const ticketCode = param('code')
 	.matches(/^[a-f0-9]{32}$/)
 	.withMessage('Mã vé không đúng');
 
-router.get('/seminars/:token', seminarLimiter, [seminarToken], validate, ctrl.getSeminar);
+router.get('/seminars/:token', seminar, seminarLimiter, [seminarToken], validate, ctrl.getSeminar);
 router.post(
 	'/seminars/:token/staff-lookup',
+	seminar,
 	seminarLimiter,
 	[
 		seminarToken,
@@ -231,6 +246,7 @@ router.post(
 );
 router.post(
 	'/seminars/:token/register',
+	seminar,
 	seminarLimiter,
 	[
 		seminarToken,
@@ -270,9 +286,17 @@ router.post(
 	formConfigGuard('seminar_participant', { variant: 'public', mode: 'create' }),
 	ctrl.registerSeminar,
 );
-router.get('/seminar-tickets/:code', seminarLimiter, [ticketCode], validate, ctrl.getSeminarTicket);
+router.get(
+	'/seminar-tickets/:code',
+	seminar,
+	seminarLimiter,
+	[ticketCode],
+	validate,
+	ctrl.getSeminarTicket,
+);
 router.post(
 	'/seminar-tickets/:code/test/start',
+	seminar,
 	seminarLimiter,
 	[ticketCode],
 	validate,
@@ -280,6 +304,7 @@ router.post(
 );
 router.post(
 	'/seminar-tickets/:code/test',
+	seminar,
 	seminarLimiter,
 	[ticketCode, body('answers').isArray({ max: 200 })],
 	validate,
@@ -287,6 +312,6 @@ router.post(
 );
 
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────
-router.get('/featured-topics', ctrl.getFeaturedTopics);
+router.get('/featured-topics', research, ctrl.getFeaturedTopics);
 
 module.exports = router;
