@@ -175,6 +175,28 @@
 	font-weight: var(--font-weight-bold);
 	flex-shrink: 0;
 	letter-spacing: 0.02em;
+	line-height: 1;
+	user-select: none;
+	/* Viền trắng tách avatar khỏi nền dòng — dòng được chọn cũng nền xanh nhạt
+	   nên avatar xanh sẽ chìm mất nếu không có viền. */
+	box-shadow: 0 0 0 2px var(--color-white);
+}
+
+/* Kích thước — Avatar ghép class `avatar{Sm|Md|Lg}` theo prop size */
+.avatarSm {
+	width: 28px;
+	height: 28px;
+	font-size: var(--font-size-2xs);
+}
+.avatarMd {
+	width: 36px;
+	height: 36px;
+	font-size: var(--font-size-compact);
+}
+.avatarLg {
+	width: 48px;
+	height: 48px;
+	font-size: var(--font-size-base);
 }
 
 .avatarGreen {

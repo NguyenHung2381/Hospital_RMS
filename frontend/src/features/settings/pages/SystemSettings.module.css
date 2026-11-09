@@ -76,6 +76,8 @@ textarea.input { resize: vertical; min-height: 64px; }
 .input:focus, .numInput:focus { outline: 2px solid rgba(0, 135, 70, 0.25); border-color: var(--color-primary); }
 .inputWrap { position: relative; display: flex; }
 .inputWrap .input { padding-right: 40px; }
+/* Ẩn nút mắt có sẵn của Edge — đã có .eyeBtn riêng, tránh hiện 2 nút. */
+.inputWrap .input::-ms-reveal, .inputWrap .input::-ms-clear { display: none; }
 .eyeBtn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: 0; background: transparent; color: var(--color-gray-500); border-radius: var(--radius-md, 6px); cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .eyeBtn:hover { background: var(--color-gray-100); color: var(--color-gray-700); }
 .eyeBtn svg { width: 16px; height: 16px; }

@@ -476,7 +476,7 @@ export default function Login() {
 							<input
 								id='password'
 								type={showPassword ? 'text' : 'password'}
-								className={`${styles.inputField} ${errors.password ? styles.hasError : ''}`}
+								className={`${styles.inputField} ${styles.withToggle} ${errors.password ? styles.hasError : ''}`}
 								placeholder='Nhập mật khẩu...'
 								value={form.password}
 								onChange={handleChange('password')}
