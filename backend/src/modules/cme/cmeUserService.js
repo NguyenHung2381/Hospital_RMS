@@ -69,9 +69,9 @@ const getUserCme = async (userId, year) => {
 	};
 };
 
-// CME toàn bộ các năm của học viên (theo tài khoản gắn với học viên).
-// Học viên chưa có tài khoản → null.
-const getTraineeCme = async (traineeId) => {
+// Tài khoản gắn với học viên: không có học viên → 404; chưa có tài khoản → null.
+/** @returns {Promise<string|null>} */
+const getTraineeUserId = async (traineeId) => {
 	const pool = await getPool();
 	const t = (
 		await pool
@@ -80,8 +80,14 @@ const getTraineeCme = async (traineeId) => {
 			.query('SELECT user_id FROM trainees WHERE id = @id')
 	).recordset[0];
 	if (!t) throw httpError(404, 'Không tìm thấy học viên.');
-	if (!t.user_id) return null;
-	return getUserCme(t.user_id, null);
+	return t.user_id ?? null;
 };
 
-module.exports = { getUserCme, getTraineeCme };
+// CME toàn bộ các năm của học viên (theo tài khoản gắn với học viên).
+// Học viên chưa có tài khoản → null.
+const getTraineeCme = async (traineeId) => {
+	const userId = await getTraineeUserId(traineeId);
+	return userId ? getUserCme(userId, null) : null;
+};
+
+module.exports = { getUserCme, getTraineeCme, getTraineeUserId };

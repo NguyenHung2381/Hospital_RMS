@@ -133,6 +133,9 @@ export const traineeRecordApi = {
 	grades: (traineeId: string) => apiClient.get<TraineeCourseResult[]>(`/trainees/${traineeId}/grades`),
 	/** null = học viên chưa có tài khoản */
 	cme: (traineeId: string) => apiClient.get<MyCme | null>(`/trainees/${traineeId}/cme`),
+	/** Phiếu CME (Excel) của học viên: 1 năm, hoặc 'all' = tất cả các năm. */
+	exportCme: (traineeId: string, year: number | 'all') =>
+		apiClient.postBlob(`/trainees/${traineeId}/cme/export-excel`, { year }),
 	/** Lịch học riêng (cùng dạng lịch toàn hệ thống) — buổi kèm điểm danh. */
 	schedule: (traineeId: string, from: string, to: string) =>
 		apiClient.get<ClassCalendarResponse>(`/trainees/${traineeId}/schedule?${new URLSearchParams({ from, to })}`),

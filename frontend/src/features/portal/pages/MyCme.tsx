@@ -111,11 +111,10 @@ export default function MyCme() {
 	};
 
 	const handleExport = async () => {
-		if (year === 'all') return;
 		setExporting(true);
 		setExportError('');
 		try {
-			saveBlob(await exportMyCmeExcel(year), `bao-cao-cme-${year}.xlsx`);
+			saveBlob(await exportMyCmeExcel(year), `bao-cao-cme-${year === 'all' ? 'tat-ca-nam' : year}.xlsx`);
 		} catch (err) {
 			setExportError(err instanceof Error ? err.message : 'Xuất Excel thất bại');
 		} finally {
@@ -156,9 +155,9 @@ export default function MyCme() {
 						variant='secondary'
 						icon={<DownloadSvg />}
 						loading={exporting}
-						disabled={!data || allYears}
+						disabled={!data}
 						onClick={handleExport}
-						title={allYears ? 'Chọn 1 năm để xuất phiếu' : 'Phiếu theo dõi CME năm đang chọn, kèm tổng hợp 5 năm gần nhất'}
+						title={allYears ? 'Phiếu CME tất cả các năm, mỗi năm thêm 1 sheet riêng' : 'Phiếu CME của năm đang chọn'}
 					>
 						Xuất Excel
 					</Button>

@@ -253,8 +253,8 @@ export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
 export const registerMyCourse = (courseId: string, programId?: string) =>
 	apiClient.post(`/me/courses/${courseId}/register`, { program_id: programId || null });
 export const getMyCme = (year: number | 'all') => apiClient.get<MyCme>(`/me/cme?year=${year}`);
-/** Phiếu theo dõi CME cá nhân (Excel): năm được chọn + tổng hợp 5 năm. */
-export const exportMyCmeExcel = (year: number) => apiClient.postBlob('/me/cme/export-excel', { year });
+/** Phiếu CME cá nhân (Excel): 1 năm, hoặc 'all' = tất cả các năm (mỗi năm thêm 1 sheet). */
+export const exportMyCmeExcel = (year: number | 'all') => apiClient.postBlob('/me/cme/export-excel', { year });
 
 export interface MyCmeRecordForm {
 	category_id: string;

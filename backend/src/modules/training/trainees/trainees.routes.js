@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { body, query } = require('express-validator');
 const ctrl = require('./traineeController');
 const cmeCtrl = require('../../cme/cmeRecordController');
+const cmePersonalExport = require('../../cme/cmePersonalExportController');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
 const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
@@ -119,6 +120,11 @@ router.get(
 );
 router.get('/:id/grades', authorizePermission(['trainees', 'read']), ctrl.getGrades);
 router.get('/:id/cme', authorizePermission(['trainees', 'read']), cmeCtrl.getTraineeCme);
+router.post(
+	'/:id/cme/export-excel',
+	authorizePermission(['trainees', 'read']),
+	cmePersonalExport.exportTrainee,
+);
 router.delete(
 	'/documents/:docId',
 	authorizePermission(['trainees', 'update']),

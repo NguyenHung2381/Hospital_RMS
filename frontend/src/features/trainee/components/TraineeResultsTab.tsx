@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import { DownloadSvg } from '@/assets/icons';
+import { Button } from '@/shared/components';
+import { showToast } from '@/shared/utils/feedback';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { GRADE_FLAG_LABEL, type GradeFlag } from '../../course/types/course.type';
 import type { MyCme } from '../../portal/api/meApi';
@@ -149,6 +153,8 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 	const [courses, setCourses] = useState<TraineeCourseResult[] | null>(null);
 	const [cme, setCme] = useState<MyCme | null | undefined>(undefined);
 	const [error, setError] = useState('');
+	const [exportYear, setExportYear] = useState<number | 'all'>('all');
+	const [exporting, setExporting] = useState(false);
 
 	useEffect(() => {
 		Promise.all([traineeRecordApi.grades(traineeId), traineeRecordApi.cme(traineeId)])
@@ -162,6 +168,27 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 	if (error) return <div className={styles.errorBanner}>{error}</div>;
 	if (!courses) return <div className={styles.subEmpty}>Đang tải...</div>;
 	const certs = courses.filter((c) => c.cert_no);
+	const hasCme = !!cme && (cme.seminars.length > 0 || cme.records.length > 0);
+	// Các năm có hoạt động CME (mới nhất trước) — để chọn xuất 1 năm
+	const cmeYears = cme
+		? [...new Set([...cme.seminars.map((s) => s.cme_year), ...cme.records.map((r) => r.year)])]
+				.filter((y): y is number => y != null)
+				.sort((a, b) => b - a)
+		: [];
+
+	const handleExportCme = async () => {
+		setExporting(true);
+		try {
+			saveBlob(
+				await traineeRecordApi.exportCme(traineeId, exportYear),
+				`cme-hoc-vien-${exportYear === 'all' ? 'tat-ca-nam' : exportYear}.xlsx`,
+			);
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Xuất Excel thất bại');
+		} finally {
+			setExporting(false);
+		}
+	};
 
 	return (
 		<>
@@ -215,10 +242,44 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 						{cme.records.length} ghi nhận khác)
 					</span>
 				)}
+				{hasCme && (
+					<span className={ds.cmeExport}>
+						<select
+							className={ds.yearSelect}
+							value={exportYear}
+							onChange={(e) => setExportYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+							aria-label='Năm xuất phiếu CME'
+						>
+							<option value='all'>Tất cả các năm</option>
+							{cmeYears.map((y) => (
+								<option
+									key={y}
+									value={y}
+								>
+									Năm {y}
+								</option>
+							))}
+						</select>
+						<Button
+							size='sm'
+							variant='secondary'
+							icon={<DownloadSvg />}
+							loading={exporting}
+							onClick={handleExportCme}
+							title={
+								exportYear === 'all'
+									? 'Phiếu CME tất cả các năm, mỗi năm thêm 1 sheet riêng'
+									: `Phiếu CME năm ${exportYear}`
+							}
+						>
+							Xuất Excel
+						</Button>
+					</span>
+				)}
 			</div>
 			{cme === null ? (
 				<div className={styles.subEmpty}>Học viên chưa có tài khoản nên chưa có sổ CME.</div>
-			) : cme && (cme.seminars.length > 0 || cme.records.length > 0) ? (
+			) : hasCme ? (
 				<div className={ds.tableWrap}>
 					<table className={ds.miniTable}>
 						<thead>

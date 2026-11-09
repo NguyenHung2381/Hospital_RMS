@@ -116,7 +116,10 @@ export default function CmeCompliance() {
 	// Xuất phiếu CME cá nhân: exportingId = user đang xuất; modal chọn nhân sự bất kỳ
 	const [exportingId, setExportingId] = useState<string | null>(null);
 	const [personModal, setPersonModal] = useState(false);
-	const [personForm, setPersonForm] = useState({ user_id: '', year: CURRENT_YEAR });
+	const [personForm, setPersonForm] = useState<{ user_id: string; year: number | 'all' }>({
+		user_id: '',
+		year: CURRENT_YEAR,
+	});
 	const [users, setUsers] = useState<SimpleItem[]>([]);
 
 	const load = useCallback(() => {
@@ -190,10 +193,13 @@ export default function CmeCompliance() {
 		</select>
 	);
 
-	const exportPerson = async (userId: string, fullName: string, y: number) => {
+	const exportPerson = async (userId: string, fullName: string, y: number | 'all') => {
 		setExportingId(userId);
 		try {
-			saveBlob(await exportPersonalCmeExcel(userId, y), `cme-${y}-${fileSlug(fullName) || userId}.xlsx`);
+			saveBlob(
+				await exportPersonalCmeExcel(userId, y),
+				`cme-${y === 'all' ? 'tat-ca-nam' : y}-${fileSlug(fullName) || userId}.xlsx`,
+			);
 			return true;
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Xuất Excel thất bại');
@@ -683,8 +689,11 @@ export default function CmeCompliance() {
 						<select
 							className={styles.formInput}
 							value={personForm.year}
-							onChange={(e) => setPersonForm((f) => ({ ...f, year: Number(e.target.value) }))}
+							onChange={(e) =>
+								setPersonForm((f) => ({ ...f, year: e.target.value === 'all' ? 'all' : Number(e.target.value) }))
+							}
 						>
+							<option value='all'>Tất cả các năm</option>
 							{YEAR_OPTIONS.map((y) => (
 								<option
 									key={y}
@@ -700,7 +709,7 @@ export default function CmeCompliance() {
 					className={styles.muted}
 					style={{ marginTop: 12, fontSize: 13 }}
 				>
-					File gồm 2 sheet: BC tổng (tổng số tiết của năm) và BC chi tiết (số tiết theo từng hình thức CME).
+					File gồm BC tổng (tổng số tiết), BC chi tiết (số tiết theo từng hình thức CME) và danh sách hoạt động; chọn tất cả các năm thì thêm sheet theo năm và mỗi năm 1 sheet riêng.
 				</div>
 			</Modal>
 
