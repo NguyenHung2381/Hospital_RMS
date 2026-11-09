@@ -2,7 +2,7 @@
 // được chuyển ghi danh (kèm chứng chỉ, điểm, kết quả luân khoa) sang học viên khác theo CCCD của
 // dòng — việc đó vượt quyền courses:approve. Dòng có CCCD không khớp chủ ghi danh bị bỏ qua và
 // cảnh báo ở bản xem trước; writeRecord không còn ghi trainee_id và ràng buộc đúng chủ.
-process.env.JWT_SECRET = 'test-secret-m08-0123456789abcdef';
+process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');

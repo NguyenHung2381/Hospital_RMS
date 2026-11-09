@@ -2,7 +2,7 @@
 // được ghi trực tiếp số quyết định / năm / trạng thái / ngày cấp CME, đổi số tín chỉ hay chuyển
 // người nhận trên dòng đã có số CME, hoặc đổi trạng thái CME hàng loạt (bulk-cme).
 // Chạy router + authorizePermission + controller + service thật trên CSDL giả.
-process.env.JWT_SECRET = 'test-secret-m04-0123456789abcdef';
+process.env.JWT_SECRET = 'test-secret';
 require('../../scripts/lib/static-check-env');
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -6,7 +6,7 @@
 //     không xóa được dòng đã duyệt của GV khác;
 //   - số tiết giảng bị chặn trên theo số tiết của bài / chương trình.
 // Chạy cả ứng dụng (router + authorizePermission + controller + service) trên CSDL giả.
-process.env.JWT_SECRET = 'test-secret-m07-0123456789abcdef';
+process.env.JWT_SECRET = 'test-secret';
 require('../../scripts/lib/static-check-env');
 const test = require('node:test');
 const assert = require('node:assert/strict');

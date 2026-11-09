@@ -1,3 +1,7 @@
 # Báo nhầm của gitleaks (fingerprint = commit:file:rule:dòng). Mỗi dòng phải kèm lý do.
 # PASSWORD_CHARS: bảng ký tự để sinh mật khẩu tạm, không phải secret
 5a7d1cea1ca62de7a0f2546d41a0fbe7bfaa8d47:scripts/create_users_from_legacy_nhan_vien.js:generic-api-key:58
+# JWT_SECRET giả trong test hồi quy audit run-4 ('test-secret-m0X-0123…'), không phải secret thật
+13d1b446927cbd03acfb7ed49681edda4f905262:backend/test/security/courseLecturerCme.test.js:generic-api-key:9
+25134a85d24aadf2ae6fefb366142d8c158002d6:backend/test/security/seminarParticipantCme.test.js:generic-api-key:5
+cb8e8ff062c56d17bda8449b1fa80188827e39c9:backend/test/security/practiceBookOwner.test.js:generic-api-key:5
