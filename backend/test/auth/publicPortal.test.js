@@ -44,7 +44,9 @@ require('../../src/modules/training/trainees/traineeService').create = async () 
 
 // giấy tờ đính kèm: không di chuyển file thật / không lưu file thật
 require('../../src/utils/uploadPaths').moveUploadedFiles = async (files) => files;
-require('../../src/modules/training/trainingFileService').saveUploadedFile = async () => ({ id: 'F1' });
+require('../../src/modules/training/trainingFileService').saveUploadedFile = async () => ({
+	id: 'F1',
+});
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
 const portal = require('../../src/modules/public/publicPortalService');
 const attempts = require('../../src/utils/attemptLimiter');
@@ -147,7 +149,11 @@ test('đăng ký: hồ sơ cũ không có ngày sinh — không gắn và không
 	);
 	assert.deepEqual(r, { submitted: true });
 	assert.ok(
-		!log.slice(before).some((q) => /INSERT INTO trainee_documents/i.test(q.text) && q.inputs.trainee_id === NO_DOB.id),
+		!log
+			.slice(before)
+			.some(
+				(q) => /INSERT INTO trainee_documents/i.test(q.text) && q.inputs.trainee_id === NO_DOB.id,
+			),
 		'không ghi giấy tờ vào hồ sơ cũ',
 	);
 });

@@ -280,7 +280,7 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	if (decision === 'approved') await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
 
 	const course = await getById(row.course_id);
-	const classRule =!!row.program_id && programClassService.appliesTo(course);
+	const classRule = !!row.program_id && programClassService.appliesTo(course);
 	let finalStatus = decision;
 	// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
 	if (decision === 'approved' && classRule && row.status !== 'approved')

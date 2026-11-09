@@ -42,7 +42,11 @@ const TRAINEES = {
 };
 
 const digits = (v) => String(v ?? '').replace(/\D/g, '');
-const key = (v) => String(v ?? '').replace(/ +/g, ' ').trim().toLowerCase();
+const key = (v) =>
+	String(v ?? '')
+		.replace(/ +/g, ' ')
+		.trim()
+		.toLowerCase();
 
 const log = install(async (text, inputs) => {
 	if (/information_schema\.tables/.test(text))
@@ -75,7 +79,8 @@ const log = install(async (text, inputs) => {
 		if (onlyUnprotected) rows = rows.filter((p) => !p.verified && !p.hasAccount);
 		const nameOk = (p) => p.name_key === key(inputs.name);
 		let pred;
-		if (/p\.national_id = @national_id/.test(text)) pred = (p) => p.national_id === inputs.national_id;
+		if (/p\.national_id = @national_id/.test(text))
+			pred = (p) => p.national_id === inputs.national_id;
 		else if (/p\.email = @email/.test(text)) pred = (p) => nameOk(p) && p.email === inputs.email;
 		else if (/fn_normalize_phone/.test(text))
 			pred = (p) => nameOk(p) && digits(p.phone) === digits(inputs.phone);
@@ -120,7 +125,10 @@ for (const [id, rule, reason] of [
 		const staffPid = 'PS00000500';
 		assert.equal(r.linked, 'PS00000100', 'phải gắn vào person MỚI của chính dòng ẩn danh');
 		assert.ok(r.createdPerson);
-		assert.ok(!r.touched.includes(staffPid), 'không điền dữ liệu của người ngoài vào person nhân viên');
+		assert.ok(
+			!r.touched.includes(staffPid),
+			'không điền dữ liệu của người ngoài vào person nhân viên',
+		);
 		assert.ok(r.candidate, 'phải xếp hàng chờ duyệt gộp');
 		assert.equal(r.candidate.reason, reason);
 		assert.deepEqual([r.candidate.a, r.candidate.b], ['PS00000100', 'PS00000500'].sort());
@@ -176,7 +184,8 @@ test('L-05: assertAssignable — ghi danh pending (cổng công khai) không ch�
 					: [];
 			return [{ full_name: 'GV Bình', is_active: true, role_id: 'VT07', enrolled: counted.length }];
 		}
-		if (/SELECT id, code FROM roles|FROM roles/.test(text)) return [{ id: 'VT09', code: 'trainee' }];
+		if (/SELECT id, code FROM roles|FROM roles/.test(text))
+			return [{ id: 'VT09', code: 'trainee' }];
 		return [];
 	});
 	void lecLog;
@@ -191,7 +200,10 @@ test('L-05: assertAssignable — ghi danh pending (cổng công khai) không ch�
 		}
 	};
 	enrollments.splice(0, enrollments.length, 'pending');
-	assert.ok(!blocked(await attempt()), 'ghi danh pending ẩn danh không được chặn phân công giảng viên');
+	assert.ok(
+		!blocked(await attempt()),
+		'ghi danh pending ẩn danh không được chặn phân công giảng viên',
+	);
 	enrollments.splice(0, enrollments.length, 'approved');
 	assert.ok(blocked(await attempt()), 'học viên đã duyệt vẫn bị chặn');
 	enrollments.splice(0, enrollments.length, 'waitlisted');

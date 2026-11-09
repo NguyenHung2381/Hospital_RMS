@@ -141,9 +141,14 @@ const traineeFields = (data) => ({
 
 // Ghi danh + giấy tờ cho 1 hồ sơ học viên. Giấy tờ luôn ở trạng thái 'pending'.
 const enrollTrainee = async (data, traineeId, files, custom) => {
-	const enrollment = await courseEnrollmentService.registerTrainee(data.course_id, traineeId, null, {
-		programId: data.program_id || null,
-	});
+	const enrollment = await courseEnrollmentService.registerTrainee(
+		data.course_id,
+		traineeId,
+		null,
+		{
+			programId: data.program_id || null,
+		},
+	);
 	await formCustomValueService.save('course_registration', enrollment.id, custom);
 	if (hasFiles(files)) await attachTraineeDocuments(traineeId, files, data.doc_types);
 };
@@ -301,7 +306,9 @@ const attachTraineeDocuments = async (traineeId, files, docTypes) => {
 	const moved = await moveUploadedFiles(files, dir);
 	const types = Array.isArray(docTypes) ? docTypes : [];
 	for (const [i, f] of moved.entries()) {
-		await traineeService.addDocument(traineeId, types[i] || 'other', f, null, { status: 'pending' });
+		await traineeService.addDocument(traineeId, types[i] || 'other', f, null, {
+			status: 'pending',
+		});
 	}
 };
 
