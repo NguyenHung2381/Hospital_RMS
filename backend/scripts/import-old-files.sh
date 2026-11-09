@@ -67,7 +67,17 @@ if [ -z "$REST" ]; then
 fi
 
 mkdir -p "$DEST"
-if [ "$KIND" = secrets ] && [ -n "$(ls -A "$DEST" 2>/dev/null | grep -v '^\.truoc-import-' || true)" ]; then
+# Khoá đang có (bỏ qua các bản .truoc-import-* của lần trước)
+HAS_KEYS=0
+if [ "$KIND" = secrets ]; then
+	for f in "$DEST"/* "$DEST"/.[!.]*; do
+		[ -e "$f" ] || continue
+		case "$(basename "$f")" in .truoc-import-*) continue ;; esac
+		HAS_KEYS=1
+		break
+	done
+fi
+if [ "$HAS_KEYS" = 1 ]; then
 	BACKUP="$DEST/.truoc-import-$(date +%Y%m%d-%H%M%S)"
 	mkdir -p "$BACKUP"
 	for f in "$DEST"/* "$DEST"/.[!.]*; do
