@@ -361,7 +361,8 @@ const setPartFromExam = async (enrollmentId, part, score10, actorId) => {
 };
 
 // ─── Khóa điểm / mở khóa ───────────────────────────────────────────────────
-const lock = async (courseId, actorId) => {
+// canApproveCme: người khóa có cme_records:manage ⇒ CME giảng viên tự duyệt; không thì 'pending'
+const lock = async (courseId, actorId, { canApproveCme = false } = {}) => {
 	const rows = await loadRows(courseId);
 	if (!rows.length) throw httpError(400, 'Khóa học chưa có học viên được duyệt.');
 	await withTransaction(async (tx) => {
@@ -378,7 +379,7 @@ const lock = async (courseId, actorId) => {
 	broadcast('update', { entity: 'grade' });
 	// Khóa điểm ⇒ tự cộng CME giảng viên (công tắc CME_AUTO_LECTURER); lỗi chỉ ghi log
 	await courseCmeService
-		.syncLecturers(courseId, actorId)
+		.syncLecturers(courseId, actorId, { canApprove: canApproveCme })
 		.catch((err) => logger.error(`[course-cme] khóa điểm ${courseId}: ${err.message}`));
 	return getGradebook(courseId);
 };
