@@ -39,7 +39,9 @@ const deactivateExpired = async (tx) => {
 	);
 	if (n > 0)
 		await req().query(
-			`UPDATE users SET is_active = @off, updated_at = CURRENT_TIMESTAMP WHERE ${cond}`,
+			// deactivated_reason = 'expired': chỉ khóa do hết hạn mới được mở lại khi cấp
+			// tài khoản đề tài (topicMemberService.grantAccounts); khóa tay của quản trị thì không.
+			`UPDATE users SET is_active = @off, deactivated_reason = 'expired', updated_at = CURRENT_TIMESTAMP WHERE ${cond}`,
 		);
 	return n;
 };

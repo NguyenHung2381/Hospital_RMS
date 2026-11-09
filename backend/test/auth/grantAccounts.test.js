@@ -28,6 +28,7 @@ const EXISTING = {
 		role_code: 'member',
 		is_active: 0,
 		account_expires_at: new Date('2020-01-01'),
+		deactivated_reason: 'expired', // job hết hạn khóa — được mở lại
 	},
 	300: {
 		id: 'NVK1_0300',

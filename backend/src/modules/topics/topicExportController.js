@@ -3,6 +3,7 @@ const topicService = require('./topicService');
 const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { httpError } = require('../../utils/httpError');
+const { maskExportTopics } = require('./memberEmailMask');
 const { buildDefenseScheduleWorkbook } = require('./exports/topicDefenseScheduleWorkbook');
 const { buildTopicReportWorkbook } = require('./exports/topicReportWorkbook');
 
@@ -14,7 +15,11 @@ const safeFileName = (name, fallback) =>
 
 const loadTopics = async (ids, user) => {
 	if (!Array.isArray(ids) || ids.length === 0) throw httpError(400, 'Danh sách đề tài trống');
-	return topicService.getForExport(await topicPolicy.idsInScope(ids, user));
+	// Email thành viên chỉ đầy đủ với người có users:read (xem memberEmailMask)
+	return maskExportTopics(
+		await topicService.getForExport(await topicPolicy.idsInScope(ids, user)),
+		user,
+	);
 };
 
 // POST /topics/export-excel — lịch bảo vệ đề cương (1 sheet)

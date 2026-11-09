@@ -19,6 +19,7 @@ const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 const logger = require('../../config/logger');
 const { httpError } = require('../../utils/httpError');
+const { isMaskedEmail } = require('./memberEmailMask');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -59,7 +60,12 @@ const addMember = async (topicId, memberData, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('topic_id', sql.VarChar(15), topicId)
 				.input('ho_ten', sql.NVarChar(200), memberData.ho_ten)
-				.input('email', sql.VarChar(100), memberData.email || null)
+				.input(
+					'email',
+					sql.VarChar(100),
+					// không lưu email đã che (client gửi lại giá trị nhận từ API)
+					memberData.email && !isMaskedEmail(memberData.email) ? memberData.email : null,
+				)
 				.input('so_dien_thoai', sql.VarChar(20), memberData.so_dien_thoai || null)
 				.input('chuc_vu', sql.NVarChar(200), memberData.chuc_vu || null)
 				.input(
@@ -205,7 +211,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				.input('staff_number', sql.Int, staffNumber)
 				.input('email', sql.VarChar(255), member.email || null).query(`
 					SELECT u.id, u.username, u.role_id, u.is_active, u.account_expires_at,
-					       r.code AS role_code
+					       u.deactivated_reason, r.code AS role_code
 					FROM users u
 					LEFT JOIN roles r ON r.id = u.role_id
 					WHERE u.topic_member_id = @member_id
@@ -269,13 +275,17 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 				// hết hiệu lực được cho BẤT KỲ tài khoản nào, kể cả quản trị. Giờ:
 				//   - Không bao giờ đổi mật khẩu, username, khoa, họ tên, email.
 				//   - Chỉ tài khoản đề tài (member / topic_leader) mới được nâng lên chủ
-				//     nhiệm (không hạ), gia hạn (chỉ kéo dài) và mở lại khi đã HẾT HẠN.
-				//     Tài khoản bị quản trị khóa tay thì giữ nguyên — cần quản trị mở.
+				//     nhiệm (không hạ), gia hạn (chỉ kéo dài) và mở lại khi bị khóa vì HẾT HẠN
+				//     (users.deactivated_reason = 'expired', do job đặt) và nay đã quá hạn.
+				//     Tài khoản bị quản trị khóa tay (lý do khác / không có) thì giữ nguyên —
+				//     cần quản trị mở; trước đây chỉ xét "đang khóa + quá hạn" nên khóa tay
+				//     của quản trị cũng bị mở lại.
 				//   - Vai trò khác (quản trị, trưởng khoa, hội đồng...): chỉ liên kết.
 				const isTopicAccount = [ROLE.MEMBER, ROLE.TOPIC_LEADER].includes(existingUser.role_code);
 				const expired =
 					!!existingUser.account_expires_at &&
 					new Date(existingUser.account_expires_at) < new Date();
+				const reopenable = expired && existingUser.deactivated_reason === 'expired';
 				const req = new sql.Request(tx)
 					.input('uid', sql.VarChar(20), userId)
 					.input('topic_member_id', sql.VarChar(22), member.id)
@@ -292,8 +302,13 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						UPDATE users
 						SET role_id = @role_id,
 						    is_active = CASE
-						        WHEN is_active = 'false' AND account_expires_at < CAST(${nowSql} AS DATE) THEN 'true'
+						        WHEN is_active = 'false' AND deactivated_reason = 'expired'
+						             AND account_expires_at < CAST(${nowSql} AS DATE) THEN 'true'
 						        ELSE is_active END,
+						    deactivated_reason = CASE
+						        WHEN is_active = 'false' AND deactivated_reason = 'expired'
+						             AND account_expires_at < CAST(${nowSql} AS DATE) THEN NULL
+						        ELSE deactivated_reason END,
 						    account_expires_at = CASE
 						        WHEN account_expires_at IS NULL OR @expires_at IS NULL THEN account_expires_at
 						        WHEN @expires_at > account_expires_at THEN @expires_at
@@ -306,7 +321,7 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 						    updated_by = @actor_id
 						WHERE id = @uid
 					`);
-					if (!existingUser.is_active && !expired)
+					if (!existingUser.is_active && !reopenable)
 						note = 'Tài khoản đang bị khóa — cần quản trị kích hoạt lại';
 				} else {
 					await req.query(`
@@ -447,7 +462,8 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 		sets.push('name = @ho_ten');
 		req.input('ho_ten', sql.NVarChar(200), data.ho_ten);
 	}
-	if (data.email !== undefined) {
+	// Email đã che (client gửi lại giá trị nhận từ API) ⇒ giữ nguyên email đang lưu
+	if (data.email !== undefined && !isMaskedEmail(data.email)) {
 		sets.push('email = @email');
 		req.input('email', sql.VarChar(100), data.email || null);
 	}
@@ -494,8 +510,9 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 	return result.recordset[0] || null;
 };
 
+// Trả true nếu đã xóa 1 dòng thuộc ĐÚNG đề tài trên URL, false nếu member_id không thuộc đề tài đó.
 const deleteMember = async (topicId, memberId, actorId) => {
-	await withActorTransaction(actorId, async (tx) => {
+	const deleted = await withActorTransaction(actorId, async (tx) => {
 		const req = () =>
 			tx
 				.request()
@@ -506,9 +523,13 @@ const deleteMember = async (topicId, memberId, actorId) => {
 		// thuộc đúng đề tài trên URL (không gỡ liên kết tài khoản của đề tài khác).
 		await req().query(`UPDATE users SET topic_member_id = NULL WHERE topic_member_id = @id
           AND EXISTS (SELECT 1 FROM topic_members WHERE id = @id AND topic_id = @topic_id)`);
-		await req().query(`DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`);
+		const del = await req().query(
+			`DELETE FROM topic_members WHERE id = @id AND topic_id = @topic_id`,
+		);
+		return del.rowsAffected[0] > 0;
 	});
-	broadcast('update', { entity: 'topic' });
+	if (deleted) broadcast('update', { entity: 'topic' });
+	return deleted;
 };
 
 module.exports = {

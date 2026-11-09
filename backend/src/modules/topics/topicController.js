@@ -14,18 +14,30 @@ const topicLegacyService = require('./topicLegacyService');
 const formCustomValueService = require('../forms/formCustomValueService');
 const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { maskMembers, maskTopicMembers, maskExportTopics } = require('./memberEmailMask');
 
 const base = createCrudController(topicService);
 
 // Tài khoản khoa/phòng (phạm vi 'own') chỉ đăng ký được đề tài khi mốc
 // "Đăng ký đề tài" của đợt đang mở. Đơn vị/superuser không bị chặn.
 const createOne = asyncHandler(async (req, res) => {
+	// Phạm vi khoa chỉ tạo đề tài của khoa mình (như topicService.update và
+	// topicLegacyService.create) — nếu không đề tài 'submitted' chui vào danh sách /
+	// hàng chờ duyệt của khoa khác, rồi chính người tạo bị chặn xem lại.
+	if (topicPolicy.topicScope(req.user) === 'department') {
+		if (
+			!req.user.department_id ||
+			(req.body.department_id && req.body.department_id !== req.user.department_id)
+		)
+			throw httpError(403, 'Chỉ tạo được đề tài của khoa/phòng mình.');
+		req.body.department_id = req.user.department_id;
+	}
 	if (isDeadlineBound(req.user)) await assertRegistrationOpen(req.body.round_id);
 	// is_legacy chỉ đặt qua createLegacy — chặn tự gán để né mốc thời gian (deadlineGuard)
 	const item = await topicService.create({ ...req.body, is_legacy: false }, req.user.id);
 	await formCustomValueService.save('topic', item.id, req.formCustom, req.user.id);
 	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
-	return created(res, item);
+	return created(res, maskTopicMembers(item, req.user));
 });
 
 // Nhập bổ sung đề tài đã hoàn thành (đợt cũ) — không xét mốc đăng ký, vào hàng chờ duyệt
@@ -33,7 +45,11 @@ const createLegacy = asyncHandler(async (req, res) => {
 	const item = await topicLegacyService.create(req.body, req.user);
 	await formCustomValueService.save('topic', item.id, req.formCustom, req.user.id);
 	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
-	return created(res, item, 'Đã gửi đề tài — chờ quản lý NCKH xác nhận');
+	return created(
+		res,
+		maskTopicMembers(item, req.user),
+		'Đã gửi đề tài — chờ quản lý NCKH xác nhận',
+	);
 });
 
 // Tài khoản thành viên (chủ nhiệm/thư ký) chỉ được sửa thành viên khi có mốc
@@ -52,7 +68,7 @@ const getAll = asyncHandler(async (req, res) => {
 const getById = asyncHandler(async (req, res) => {
 	const item = await topicService.getById(req.params.id, req.user);
 	if (!item) return notFound(res);
-	return success(res, item);
+	return success(res, maskTopicMembers(item, req.user));
 });
 
 const getMembers = asyncHandler(async (req, res) => {
@@ -64,7 +80,10 @@ const getMembers = asyncHandler(async (req, res) => {
 	);
 	return success(
 		res,
-		members.map((m) => ({ ...m, custom: custom.get(m.id) || {} })),
+		maskMembers(
+			members.map((m) => ({ ...m, custom: custom.get(m.id) || {} })),
+			req.user,
+		),
 	);
 });
 
@@ -78,7 +97,7 @@ const addMember = asyncHandler(async (req, res) => {
 			req.formCustom,
 			req.user.id,
 		);
-	return created(res, member, 'Thêm thành viên thành công');
+	return created(res, maskMembers([member], req.user)[0], 'Thêm thành viên thành công');
 });
 
 const updateMember = asyncHandler(async (req, res) => {
@@ -97,12 +116,19 @@ const updateMember = asyncHandler(async (req, res) => {
 			req.formCustom,
 			req.user.id,
 		);
-	return success(res, member, 'Cập nhật thành viên thành công');
+	return success(res, maskMembers([member], req.user)[0], 'Cập nhật thành viên thành công');
 });
 
 const deleteMember = asyncHandler(async (req, res) => {
 	await guardMemberEdit(req);
-	await topicMemberService.deleteMember(req.params.id, req.params.member_id, req.user.id);
+	const deleted = await topicMemberService.deleteMember(
+		req.params.id,
+		req.params.member_id,
+		req.user.id,
+	);
+	// Thành viên không thuộc đề tài trên URL (quyền xét theo đề tài đó) ⇒ 404 và KHÔNG
+	// xóa giá trị trường tùy chỉnh của member_id lạ (form_custom_values không ràng buộc theo đề tài).
+	if (!deleted) return notFound(res);
 	await formCustomValueService.remove('topic_member', req.params.member_id);
 	return success(res, null, 'Xóa thành viên thành công');
 });
@@ -135,6 +161,8 @@ const approve = asyncHandler(async (req, res) => {
 		// Engine mới chỉ xử lý approved/rejected — 'supplement' (yêu cầu bổ
 		// sung) vẫn đi đường cũ vì workflow_tasks không có trạng thái tương ứng.
 		if (req.body.status === 'supplement') {
+			// Không đi qua advance() nên phải kiểm đúng người được phân công bước hiện tại
+			await workflowEngineService.assertActorMayDecide('topics', req.params.id, req.user);
 			const result = await topicApprovalService.approve(
 				req.params.id,
 				req.body.status,
@@ -171,7 +199,7 @@ const exportData = asyncHandler(async (req, res) => {
 	if (!Array.isArray(ids) || ids.length === 0) return success(res, []);
 	// Chỉ xuất đề tài trong phạm vi người gọi (danh sách mã do client gửi lên)
 	const data = await topicService.getForExport(await topicPolicy.idsInScope(ids, req.user));
-	return success(res, data);
+	return success(res, maskExportTopics(data, req.user));
 });
 
 const updateOne = asyncHandler(async (req, res) => {
@@ -180,14 +208,24 @@ const updateOne = asyncHandler(async (req, res) => {
 	// Sau update(): service đã kiểm phạm vi + mốc thời gian của người sửa
 	await formCustomValueService.save('topic', req.params.id, req.formCustom, req.user.id);
 	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
-	return success(res, item, 'Cập nhật thành công');
+	return success(res, maskTopicMembers(item, req.user), 'Cập nhật thành công');
 });
 
 const getAuthors = asyncHandler(async (req, res) => {
 	return success(res, await topicAuthorService.listAuthors(req.params.id));
 });
 
+// Đồng tác giả là nội dung đề tài như thành viên/tiêu đề: phạm vi 'own' phải là
+// chủ nhiệm/thư ký và trong mốc sửa/bổ sung đang mở (guardMemberEdit); phạm vi khoa
+// chỉ sửa khi đề tài đang chờ duyệt / bổ sung (như topicService.update).
 const setAuthors = asyncHandler(async (req, res) => {
+	await guardMemberEdit(req);
+	if (scopeOf(req.user, 'topics') === 'department') {
+		const topic = await topicService.getById(req.params.id, req.user);
+		if (!topic) return notFound(res);
+		if (topic.status !== 'submitted' && topic.status !== 'supplement')
+			throw httpError(403, 'Chỉ có thể chỉnh sửa đề tài ở trạng thái "Chờ duyệt" hoặc "Bổ sung".');
+	}
 	const authors = await topicAuthorService.setAuthors(req.params.id, req.body.authors, req.user.id);
 	return success(res, authors, 'Đã cập nhật danh sách đồng tác giả');
 });
