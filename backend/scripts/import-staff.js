@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 // Nhập danh sách nhân viên từ Excel: tạo tài khoản cho người chưa có MNV trong hệ
 // thống (cùng quy ước userService.createStaffAccount: mã 'NV' + mã khoa + NNNN,
-// username = chữ cái đầu họ tên + "_" + MNV, mật khẩu ban đầu = username, bắt đổi
+// username = chữ cái đầu họ tên + "_" + MNV, mật khẩu tạm ngẫu nhiên, bắt đổi
 // ở lần đăng nhập đầu, vai trò Thành viên), kèm ngày sinh + trình độ.
 // Người đã có (trùng MNV, cùng họ tên) chỉ được bổ sung ô còn trống (khoa, ngày sinh,
 // trình độ). Trùng MNV nhưng khác họ tên → bỏ qua, in ra để kiểm tra.
 // Cột nhận theo tiêu đề dòng 1: MNV, Họ và tên, K/P/TT (Khoa/Phòng), Văn bằng
-// chuyên môn, Ngày tháng năm sinh (ô ngày hoặc chuỗi dd/mm/yyyy).
+// chuyên môn, Ngày tháng năm sinh (ô ngày hoặc chuỗi dd/mm/yyyy). Nhận luôn file
+// xuất từ Odoo (hr.employee): Mã nhân viên, Tên nhân viên, Phòng/Ban, Ngày sinh.
 // Khoa/phòng khớp theo tên hoặc mã trong bảng departments (+ DEPT_ALIAS bên dưới);
 // không khớp → để trống, bổ sung sau ở màn Người dùng (hoặc thêm vào DEPT_ALIAS).
 // Mặc định CHỈ XEM TRƯỚC; thêm --apply để ghi DB. Khi --apply, xuất file Excel danh
-// sách tài khoản mới (--out=<đường dẫn>, mặc định tai-khoan-moi-<ngày>.xlsx).
+// sách tài khoản mới kèm mật khẩu tạm (--out=<đường dẫn>, mặc định
+// tai-khoan-moi-<ngày>.xlsx) — file duy nhất có mật khẩu, mất là phải đặt lại.
 //   npm run import:staff -- "D:/ds.xlsx"                  # xem trước
 //   npm run import:staff -- "D:/ds.xlsx" --verbose        # xem trước từng dòng
 //   npm run import:staff -- "D:/ds.xlsx" --apply          # thực hiện
@@ -20,7 +22,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const ExcelJS = require('exceljs');
 const { getPool, sql, withActorTransaction, nowSql, jsonValues } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
-const { ROLE, requireRoleId } = require('../src/modules/access/roleCodes');
+const { findAdminActor } = require('./lib/findAdminActor');
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
@@ -32,18 +34,22 @@ const outPath =
 
 // Tên khoa trong file (sau normDept) → departments.code, khi tên không khớp trực tiếp
 const DEPT_ALIAS = {
-	duoc: 'KHOA01',
-	'cong nghe thong tin': 'PCNTT',
-	'co so ha tang va trang thiet bi': 'PVT',
-	'dao tao va chi dao tuyen': 'DTCDT',
-	'giai phau benh trung tam xet nghiem': 'K42',
-	'di truyen va sinh hoc phan tu trung tam xet nghiem': 'K46',
-	xquang: 'K39',
-	'phau thuat than kinh cot song': 'K20',
-	'noi ho hap': 'K50',
-	'hoi suc tich cuc ngoai khoa': 'K482',
-	'to hanh chinh quan tri': 'HCQT',
-	'to cong tac xa hoi': 'CTXH',
+	'cong nghe thong tin': 'PCN8',
+	'co so ha tang va trang thiet bi': 'PCN7',
+	'dao tao va chi dao tuyen': 'PCN4',
+	'giai phau benh trung tam xet nghiem': 'CLS9',
+	'di truyen va sinh hoc phan tu trung tam xet nghiem': 'CLS3',
+	'hoa sinh trung tam xet nghiem': 'CLS7',
+	'huyet hoc trung tam xet nghiem': 'CLS6',
+	'vi sinh trung tam xet nghiem': 'CLS5',
+	'vi rut ky sinh trung': 'CLS51',
+	xquang: 'CLS2',
+	'huyet hoc lam sang': 'CLS39',
+	'noi tiet': 'CLS37',
+	'noi ho hap': 'CLS35',
+	'phau thuat tim mach long nguc': 'CLS40',
+	'ngoai tong hop 1': 'CLS17',
+	'phau thuat than kinh cot song': 'CLS20',
 };
 
 // Văn bằng chuyên môn (sau norm) → qualifications.id; xét lần lượt, khớp đầu tiên thắng.
@@ -74,8 +80,12 @@ const QUAL_RULES = [
 // Tiêu đề cột (sau norm) → khóa
 const COLUMNS = [
 	['mnv', (h) => h === 'mnv' || h === 'ma nv' || h === 'ma nhan vien'],
-	['full_name', (h) => h === 'ho va ten' || h === 'ho ten'],
-	['department', (h) => h === 'k p tt' || h === 'khoa phong' || h === 'khoa' || h === 'don vi'],
+	['full_name', (h) => h === 'ho va ten' || h === 'ho ten' || h === 'ten nhan vien'],
+	[
+		'department',
+		(h) =>
+			h === 'k p tt' || h === 'khoa phong' || h === 'khoa' || h === 'don vi' || h === 'phong ban',
+	],
 	['qualification', (h) => h.startsWith('van bang') || h === 'trinh do'],
 	['dob', (h) => h.startsWith('ngay thang nam sinh') || h === 'ngay sinh'],
 ];
@@ -132,7 +142,8 @@ const readRows = async () => {
 			mnv: /^\d+$/.test(mnvText) ? parseInt(mnvText, 10) : null,
 			mnvText,
 			full_name,
-			deptRaw: cellText(get('department')),
+			// Odoo ghi cả cấp cha: "Trung tâm xét nghiệm / Khoa Vi sinh - …" → lấy cấp cuối
+			deptRaw: cellText(get('department')).split('/').pop().trim(),
 			qualRaw: cellText(get('qualification')),
 			dob: parseDob(get('dob') instanceof Date ? get('dob') : cellText(get('dob'))),
 		});
@@ -237,16 +248,7 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 	// require muộn: các service nạp redis/event bus, không cần khi chỉ xem trước
 	const { createStaffAccount } = require('../src/modules/users/userService');
 	const personService = require('../src/modules/persons/personService');
-	const adminRoleId = await requireRoleId(ROLE.ADMIN);
-	const actorId = (
-		await pool
-			.request()
-			.input('role', sql.VarChar(20), adminRoleId)
-			.query(
-				"SELECT id FROM users WHERE role_id = @role AND is_active = 'true' ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY",
-			)
-	).recordset[0]?.id;
-	if (!actorId) throw new Error('Không tìm thấy tài khoản quản trị để ghi người thực hiện');
+	const actorId = await findAdminActor(pool, sql);
 
 	const created = [];
 	const failed = [];
@@ -323,7 +325,8 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 			{ header: 'Họ và tên', key: 'full_name', width: 28 },
 			{ header: 'Khoa/Phòng', key: 'dept', width: 34 },
 			{ header: 'Mã người dùng', key: 'id', width: 14 },
-			{ header: 'Tên đăng nhập (mật khẩu ban đầu = tên đăng nhập)', key: 'username', width: 44 },
+			{ header: 'Tên đăng nhập', key: 'username', width: 18 },
+			{ header: 'Mật khẩu tạm (bắt đổi khi đăng nhập lần đầu)', key: 'password', width: 40 },
 		];
 		ws.getRow(1).font = { bold: true };
 		for (const c of created)
@@ -333,9 +336,12 @@ const ymd = (d) => (d ? d.toISOString().slice(0, 10) : '—');
 				dept: c.dept?.name || c.deptRaw,
 				id: c.id,
 				username: c.username,
+				password: c.temporary_password,
 			});
 		await out.xlsx.writeFile(outPath);
-		console.log(`Danh sách tài khoản mới: ${path.resolve(outPath)}`);
+		console.log(
+			`Danh sách tài khoản mới (CHỨA MẬT KHẨU TẠM — giao xong thì xoá): ${path.resolve(outPath)}`,
+		);
 	}
 	process.exit(failed.length ? 1 : 0);
 })().catch((err) => {
