@@ -7,8 +7,10 @@
 //  2) Thư mục "Bài học ĐTLT" (mỗi file 1 lớp: TT | Tên bài | Tổng số tiết | LT | TH) →
 //     tạo bài học (lesson_kind theory, mã <mã CT>_NN) và gắn vào chương trình theo tên
 //     file (LESSON_FILES). Chương trình ĐÃ có bài học thì bỏ qua → chạy lại an toàn.
+// Không có file Chi tiết → chỉ chạy bước 2 (chương trình giữ nguyên).
 // Mặc định CHỈ XEM TRƯỚC; thêm --apply để ghi DB.
 //   node scripts/import-dtlt-lessons.js "<Chi tiết…xlsx>" "<thư mục Bài học>" [--apply]
+//   node scripts/import-dtlt-lessons.js "<thư mục Bài học>" [--apply]
 require('../src/config/loadEnv');
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +24,14 @@ const programService = require('../src/modules/training/programs/trainingProgram
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
-const [detailFile, lessonDir] = args.filter((a) => !a.startsWith('--'));
+const positional = args.filter((a) => !a.startsWith('--'));
+// 1 tham số là thư mục → chỉ nhập bài học.
+const [detailFile, lessonDir] =
+	positional.length === 1 &&
+	fs.existsSync(positional[0]) &&
+	fs.statSync(positional[0]).isDirectory()
+		? [null, positional[0]]
+		: positional;
 const ACTOR = 'SYSTEM';
 const DTLT_TYPE = 'TRNTP-DTLT';
 // Khóa viết dễ đọc như trong file; so khớp theo norm (bỏ dấu, dấu câu).
@@ -142,31 +151,32 @@ const readDetail = async (file) => {
 const readLessonFile = async (file) => {
 	const rows = await firstSheetRows(file);
 	const h = rows.findIndex((r) => norm(r[1]) === 'ten bai');
-	const lessons = rows
-		.slice(h + 1)
-		.filter((r) => r[1] && norm(r[1]) !== 'tong')
-		.map((r) => ({
-			title: cleanTitle(r[1]),
-			theory_hours: intOrNull(r[3]) ?? 0,
-			practice_hours: intOrNull(r[4]) ?? 0,
-		}));
-	return [
+	const body = rows.slice(h + 1).filter((r) => r[1] && norm(r[1]) !== 'tong');
+	const lessons = body.map((r) => ({
+		title: cleanTitle(r[1]),
+		theory_hours: intOrNull(r[3]) ?? 0,
+		practice_hours: intOrNull(r[4]) ?? 0,
+	}));
+	const out = [
 		...lessons.filter((l) => isOpening(l.title)),
 		...lessons.filter((l) => !isOpening(l.title)),
 	];
+	// Bản file chỉ có cột "Tổng số tiết" (không tách LT/TH) → không tự chia được, chỉ báo.
+	out.fileTotal = body.reduce((s, r) => s + (intOrNull(r[2]) ?? 0), 0);
+	return out;
 };
 
 (async () => {
-	if (!detailFile || !lessonDir) {
+	if (!lessonDir) {
 		console.error(
-			'Cách dùng: node scripts/import-dtlt-lessons.js "<Chi tiết.xlsx>" "<thư mục bài học>" [--apply]',
+			'Cách dùng: node scripts/import-dtlt-lessons.js ["<Chi tiết.xlsx>"] "<thư mục bài học>" [--apply]',
 		);
 		process.exit(1);
 	}
 	const pool = await getPool();
 	const [progRs, deptRs] = await Promise.all([
 		pool.request().query(`
-			SELECT p.id, p.code, p.name, p.department_id,
+			SELECT p.id, p.code, p.name, p.department_id, p.theory_hours, p.practice_hours,
 			       (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count
 			FROM training_programs p WHERE p.code IS NOT NULL`),
 		pool.request().query('SELECT id, name FROM departments'),
@@ -176,9 +186,9 @@ const readLessonFile = async (file) => {
 	const deptName = new Map(deptRs.recordset.map((d) => [d.id, d.name]));
 	const matchDept = createDepartmentMatcher(deptRs.recordset);
 
-	console.log(`=== Chương trình (${path.basename(detailFile)}) ===`);
 	const hoursByCode = new Map();
-	for (const d of await readDetail(detailFile)) {
+	if (detailFile) console.log(`=== Chương trình (${path.basename(detailFile)}) ===`);
+	for (const d of detailFile ? await readDetail(detailFile) : []) {
 		const p = byName.get(norm(d.name)) || byCode.get(PROGRAM_ALIAS[norm(d.name)]);
 		if (!p) {
 			console.log(`  ! KHÔNG KHỚP: "${d.name}" — thêm vào PROGRAM_ALIAS`);
@@ -236,8 +246,10 @@ const readLessonFile = async (file) => {
 			continue;
 		}
 		const lessons = await readLessonFile(path.join(lessonDir, f));
-		// Lớp chỉ 1 bài, file không ghi số tiết → lấy số tiết chương trình.
-		const prog = hoursByCode.get(code);
+		// Lớp chỉ 1 bài, file không ghi số tiết → lấy số tiết chương trình (file Chi tiết,
+		// không có thì lấy từ DB).
+		const prog =
+			hoursByCode.get(code) ?? (p.theory_hours != null || p.practice_hours != null ? p : undefined);
 		if (lessons.length === 1 && !lessons[0].theory_hours && !lessons[0].practice_hours && prog) {
 			lessons[0].theory_hours = prog.theory_hours ?? 0;
 			lessons[0].practice_hours = prog.practice_hours ?? 0;
@@ -249,6 +261,12 @@ const readLessonFile = async (file) => {
 				? ` (≠ chương trình ${prog.theory_hours}+${prog.practice_hours})`
 				: '';
 		console.log(`  + ${code} ${p.name}: ${lessons.length} bài, ${sumT}+${sumP} tiết${diff}`);
+		if (!sumT && !sumP)
+			console.log(
+				lessons.fileTotal
+					? `      ⚠ file chỉ ghi tổng ${lessons.fileTotal} tiết, chưa tách LT/TH — bài học sẽ có 0 tiết`
+					: '      ⚠ file không ghi số tiết — bài học sẽ có 0 tiết',
+			);
 		const dupes = lessons.map((l) => l.title).filter((t, i, a) => a.indexOf(t) !== i);
 		if (dupes.length) console.log(`      ⚠ tên bài trùng: ${[...new Set(dupes)].join(' | ')}`);
 		if (!apply) continue;
