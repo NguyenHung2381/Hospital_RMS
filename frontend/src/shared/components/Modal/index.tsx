@@ -1,5 +1,6 @@
 import { CheckSvg, TrashSvg, XSvg } from '@/assets/icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cx } from '../../utils/cx';
 import styles from './Modal.module.css';
 
@@ -42,10 +43,15 @@ export function Modal({
 	bodyClassName,
 	iconStyle,
 }: ModalProps) {
+	const backdropRef = useRef<HTMLDivElement>(null);
+
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') onClose();
+			if (e.key !== 'Escape') return;
+			// Modal chồng nhau: Esc chỉ đóng modal trên cùng (portal mở sau ⇒ nằm cuối body)
+			const all = document.querySelectorAll(`.${styles.modalBackdrop}`);
+			if (all[all.length - 1] === backdropRef.current) onClose();
 		};
 		document.addEventListener('keydown', onKey);
 		return () => document.removeEventListener('keydown', onKey);
@@ -53,8 +59,12 @@ export function Modal({
 
 	if (!open) return null;
 
-	return (
+	// Render ra document.body: modal mở từ trong modal khác (vd "Thêm bài học" trong
+	// chi tiết chương trình) không bị khung cha — có transform của animation pop-in,
+	// overflow: hidden — giữ position: fixed lại và cắt mất header / footer.
+	return createPortal(
 		<div
+			ref={backdropRef}
 			className={`${styles.modalBackdrop} ${styles.top}`}
 			onClick={(e) => closeOnBackdrop && e.target === e.currentTarget && onClose()}
 		>
@@ -90,7 +100,8 @@ export function Modal({
 				<div className={cx(styles.body, bodyClassName)}>{children}</div>
 				{footer && <div className={`${styles.modalFooter} ${styles.footerEnd}`}>{footer}</div>}
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }
 

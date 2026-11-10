@@ -4,8 +4,10 @@ import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shar
 import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 import { Modal, ModalActions } from '@/shared/components';
 import { notify } from '../../../shared/utils/feedback';
-import { useEffect, useMemo, useState } from 'react';
-import { ListSvg, XSvg } from '@/assets/icons';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevDSvg, ListSvg, XSvg } from '@/assets/icons';
+import { removeDiacritics } from '@/shared/utils/helper';
 import { apiClient } from '@/shared/api/axios';
 import {
 	createLesson,
@@ -29,12 +31,20 @@ interface Department {
 	name: string;
 }
 
+/** Tìm không phân biệt hoa thường / dấu: "dieu duong" khớp "Điều dưỡng". */
+const fold = (s: string) => removeDiacritics(s).toLowerCase();
+
+const MENU_GAP = 4;
+const MENU_MAX_H = 280;
+
 // Ô chọn nhiều có gợi ý (gõ để tìm, bấm × để bỏ) — dùng cho chương trình áp dụng
-// và khoa được chọn của vòng thực hành.
+// và khoa được chọn của vòng thực hành. Menu render qua portal (position: fixed)
+// để không bị modal (overflow cuộn) cắt mất, tự lật lên trên khi phía dưới thiếu chỗ.
 export function TagPicker<T extends { id: string }>({
 	items,
 	selectedIds,
 	label,
+	code,
 	placeholder,
 	emptyText,
 	onAdd,
@@ -43,6 +53,8 @@ export function TagPicker<T extends { id: string }>({
 	items: T[];
 	selectedIds: string[];
 	label: (item: T) => string;
+	/** Mã (nếu có) — hiện tách riêng trước tên, cũng dùng để tìm. */
+	code?: (item: T) => string | null | undefined;
 	placeholder: string;
 	emptyText: string;
 	onAdd: (id: string) => void;
@@ -50,69 +62,198 @@ export function TagPicker<T extends { id: string }>({
 }) {
 	const [query, setQuery] = useState('');
 	const [open, setOpen] = useState(false);
+	// Dòng đang tô bằng phím ↑/↓ (Enter để chọn)
+	const [active, setActive] = useState(0);
+	const [pos, setPos] = useState<{
+		left: number;
+		width: number;
+		maxHeight: number;
+		top?: number;
+		bottom?: number;
+	} | null>(null);
+	const boxRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const menuRef = useRef<HTMLDivElement>(null);
+
 	const selected = selectedIds.map((id) => items.find((x) => x.id === id)).filter((x): x is T => !!x);
 	const suggestions = useMemo(() => {
-		const q = query.trim().toLowerCase();
+		const q = fold(query.trim());
 		const rest = items.filter((x) => !selectedIds.includes(x.id));
-		// Chưa gõ gì → hiện toàn bộ để chọn như select (dropdown có cuộn)
-		return q ? rest.filter((x) => label(x).toLowerCase().includes(q)).slice(0, 20) : rest;
-	}, [query, items, selectedIds, label]);
+		// Chưa gõ gì → hiện toàn bộ để chọn như select (menu có cuộn)
+		return q ? rest.filter((x) => fold(`${code?.(x) ?? ''} ${label(x)}`).includes(q)) : rest;
+	}, [query, items, selectedIds, label, code]);
+	const activeIdx = Math.min(active, suggestions.length - 1);
+
+	const place = useCallback(() => {
+		const r = boxRef.current?.getBoundingClientRect();
+		if (!r) return;
+		const below = window.innerHeight - r.bottom - MENU_GAP - 8;
+		const above = r.top - MENU_GAP - 8;
+		const up = below < MENU_MAX_H && above > below;
+		setPos({
+			left: r.left,
+			width: r.width,
+			maxHeight: Math.max(120, Math.min(MENU_MAX_H, up ? above : below)),
+			...(up ? { bottom: window.innerHeight - r.top + MENU_GAP } : { top: r.bottom + MENU_GAP }),
+		});
+	}, []);
+
+	// Thêm / bỏ chip làm ô cao lên / thấp xuống → đặt lại vị trí menu
+	useLayoutEffect(() => {
+		if (open) place();
+	}, [open, place, selectedIds.length]);
+
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (e: MouseEvent) => {
+			const t = e.target as Node;
+			if (boxRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+			setOpen(false);
+		};
+		document.addEventListener('mousedown', onDown);
+		window.addEventListener('scroll', place, true);
+		window.addEventListener('resize', place);
+		return () => {
+			document.removeEventListener('mousedown', onDown);
+			window.removeEventListener('scroll', place, true);
+			window.removeEventListener('resize', place);
+		};
+	}, [open, place]);
+
+	// Dòng đang tô luôn nằm trong vùng nhìn thấy khi di bằng phím
+	useEffect(() => {
+		menuRef.current?.querySelector<HTMLElement>(`[data-idx="${activeIdx}"]`)?.scrollIntoView({ block: 'nearest' });
+	}, [activeIdx, pos]);
+
+	const add = (x: T) => {
+		onAdd(x.id);
+		setQuery('');
+		inputRef.current?.focus();
+	};
+
+	const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+			e.preventDefault();
+			if (!open) return setOpen(true);
+			const n = suggestions.length;
+			if (n) setActive((activeIdx + (e.key === 'ArrowDown' ? 1 : -1) + n) % n);
+		} else if (e.key === 'Enter') {
+			// Không để Enter submit form / đóng modal
+			e.preventDefault();
+			if (open && suggestions[activeIdx]) add(suggestions[activeIdx]);
+		} else if (e.key === 'Escape' && open) {
+			e.stopPropagation();
+			setOpen(false);
+		} else if (e.key === 'Backspace' && !query && selected.length) {
+			onRemove(selected[selected.length - 1].id);
+		} else if (e.key === 'Tab') setOpen(false);
+	};
 
 	return (
-		<div className={styles.tagBox}>
-			{selected.map((x) => (
-				<span
-					key={x.id}
-					className={styles.tagPill}
-				>
-					{label(x)}
-					<button
-						type='button'
-						className={styles.tagRemove}
-						onClick={() => onRemove(x.id)}
+		<div
+			ref={boxRef}
+			className={`${styles.tagBox} ${open ? styles.tagBoxOpen : ''}`}
+			onMouseDown={(e) => {
+				// Bấm vào khoảng trống trong ô → focus ô gõ + mở menu
+				if (e.target === e.currentTarget) {
+					e.preventDefault();
+					inputRef.current?.focus();
+					setOpen(true);
+				}
+			}}
+		>
+			{selected.map((x) => {
+				const c = code?.(x);
+				const full = c ? `${c} - ${label(x)}` : label(x);
+				return (
+					<span
+						key={x.id}
+						className={styles.tagChip}
+						title={full}
 					>
-						<XSvg style={{ width: 10, height: 10 }} />
-					</button>
-				</span>
-			))}
+						<span className={styles.tagChipText}>
+							{c && <b className={styles.tagChipCode}>{c}</b>}
+							{label(x)}
+						</span>
+						<button
+							type='button'
+							className={styles.tagRemove}
+							aria-label={`Bỏ ${full}`}
+							onClick={() => onRemove(x.id)}
+						>
+							<XSvg style={{ width: 10, height: 10 }} />
+						</button>
+					</span>
+				);
+			})}
 			<input
+				ref={inputRef}
 				className={styles.tagInput}
-				placeholder={placeholder}
+				placeholder={selected.length ? 'Thêm...' : placeholder}
 				value={query}
+				role='combobox'
+				aria-expanded={open}
 				onChange={(e) => {
 					setQuery(e.target.value);
+					setActive(0);
 					setOpen(true);
 				}}
 				onFocus={() => setOpen(true)}
-				onClick={() => setOpen(true)}				onBlur={() => setTimeout(() => setOpen(false), 150)}
+				onClick={() => setOpen(true)}
+				onKeyDown={onKeyDown}
 			/>
-			{open && (
-				<div className={styles.tagSuggestions}>
-					{suggestions.length === 0 ? (
-						<div className={styles.tagSuggestionEmpty}>{emptyText}</div>
-					) : (
-						suggestions.map((x) => (
-							<div
-								key={x.id}
-								className={styles.tagSuggestionItem}
-								onMouseDown={(e) => {
-									// giữ focus + dropdown mở để chọn liên tiếp nhiều mục
-									e.preventDefault();
-									onAdd(x.id);
-									setQuery('');
-								}}
-							>
-								{label(x)}
+			<ChevDSvg
+				className={styles.tagChevron}
+				aria-hidden
+				onMouseDown={(e) => {
+					e.preventDefault();
+					inputRef.current?.focus();
+					setOpen((o) => !o);
+				}}
+			/>
+			{open &&
+				pos &&
+				createPortal(
+					<div
+						ref={menuRef}
+						className={styles.tagMenu}
+						role='listbox'
+						style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
+						// giữ focus ở ô gõ để chọn liên tiếp nhiều mục
+						onMouseDown={(e) => e.preventDefault()}
+					>
+						{suggestions.length === 0 ? (
+							<div className={styles.tagMenuEmpty}>
+								{items.length && items.length === selected.length ? 'Đã chọn hết' : emptyText}
 							</div>
-						))
-					)}
-				</div>
-			)}
+						) : (
+							suggestions.map((x, i) => {
+								const c = code?.(x);
+								return (
+									<div
+										key={x.id}
+										data-idx={i}
+										role='option'
+										aria-selected={i === activeIdx}
+										className={`${styles.tagOption} ${i === activeIdx ? styles.tagOptionActive : ''}`}
+										onMouseEnter={() => setActive(i)}
+										onClick={() => add(x)}
+									>
+										{c && <span className={styles.tagOptionCode}>{c}</span>}
+										<span className={styles.tagOptionName}>{label(x)}</span>
+									</div>
+								);
+							})
+						)}
+					</div>,
+					document.body,
+				)}
 		</div>
 	);
 }
 
-const programLabel = (p: TrainingProgram) => (p.code ? `${p.code} - ${p.name}` : p.name);
+const programName = (p: TrainingProgram) => p.name;
+const programCode = (p: TrainingProgram) => p.code;
 const deptLabel = (d: Department) => d.name;
 
 // Chấp nhận cả ProgramLessonLink (1 lượt gắn, có lesson_id) lẫn Lesson thuần
@@ -339,7 +480,7 @@ export function LessonFormModal({
 							disabled
 							style={{ opacity: 0.7 }}
 						/>
-						<div className={styles.hint}>Tự tính từ lý thuyết + thực hành</div>
+						<div className={styles.hint}>= Lý thuyết + thực hành</div>
 					</div>
 				</div>
 
@@ -443,11 +584,15 @@ export function LessonFormModal({
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<label className={styles.formLabel}>Thuộc chương trình đào tạo (gõ để tìm, 1 bài có thể thuộc nhiều CTĐT)</label>
+					<label className={styles.formLabel}>
+						Thuộc chương trình đào tạo
+						{form.program_ids.length > 0 && <span className={styles.labelCount}>{form.program_ids.length}</span>}
+					</label>
 					<TagPicker
 						items={programs}
 						selectedIds={form.program_ids}
-						label={programLabel}
+						label={programName}
+						code={programCode}
 						placeholder='Gõ mã hoặc tên chương trình...'
 						emptyText='Không tìm thấy chương trình phù hợp'
 						onAdd={(id) => toggleId('program_ids', id, true)}
@@ -456,7 +601,7 @@ export function LessonFormModal({
 					<div className={styles.hint}>
 						{loadingPrograms
 							? 'Đang tải danh sách chương trình đã gắn...'
-							: 'Gõ vào ô trên rồi chọn chương trình từ danh sách gợi ý. Bấm × để bỏ.'}
+							: 'Một bài học có thể thuộc nhiều chương trình. Dùng ↑ ↓ và Enter để chọn nhanh.'}
 					</div>
 				</div>
 
