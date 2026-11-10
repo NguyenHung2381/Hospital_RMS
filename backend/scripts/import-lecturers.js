@@ -21,7 +21,8 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const ExcelJS = require('exceljs');
 const { getPool, sql } = require('../src/config/db');
 const { norm, normDept } = require('../src/utils/vietnameseText');
-const { ROLE, roleIdOf, requireRoleId } = require('../src/modules/access/roleCodes');
+const { ROLE, roleIdOf } = require('../src/modules/access/roleCodes');
+const { findAdminActor } = require('./lib/findAdminActor');
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');
@@ -479,16 +480,7 @@ COMMIT;
 
 	// require muộn: service nạp redis/event bus, không cần khi chỉ xem trước
 	const lecturerService = require('../src/modules/training/lecturers/lecturerService');
-	const adminRoleId = await requireRoleId(ROLE.ADMIN);
-	const actorId = (
-		await pool
-			.request()
-			.input('role', sql.VarChar(20), adminRoleId)
-			.query(
-				"SELECT id FROM users WHERE role_id = @role AND is_active = 'true' ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY",
-			)
-	).recordset[0]?.id;
-	if (!actorId) throw new Error('Không tìm thấy tài khoản quản trị để ghi người thực hiện');
+	const actorId = await findAdminActor(pool, sql);
 
 	let created = 0;
 	let filled = 0;
