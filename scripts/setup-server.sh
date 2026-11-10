@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dựng Hospital RMS bản production trên 1 máy Ubuntu 24.04 / 26.04 MỚI CÀI, bằng 1 lệnh.
 # Gộp các bước 4 → 15 của infra/cai-dat-may-ao-ubuntu.md:
-#   hệ thống (gói, múi giờ, swap, tự vá) → firewall → ổ dữ liệu /data → Docker
+#   DNS → hệ thống (gói, múi giờ, swap, tự vá) → firewall → ổ dữ liệu /data → Docker
 #   → source code → file cấu hình → PostgreSQL 18 → build image → dựng DB
 #   → khởi động → HTTPS (tuỳ chọn) → chặn cổng Docker → sao lưu hằng đêm → lịch đổi JWT secret
 #   → khoá SSH bằng mật khẩu (tuỳ chọn).
@@ -18,6 +18,7 @@
 #
 #   bash setup-server.sh                 # chạy mọi bước
 #   bash setup-server.sh postgres start  # chỉ chạy các bước được nêu tên
+#   DNS_SERVERS="1.1.1.1 8.8.8.8" bash setup-server.sh dns   # thêm DNS cho máy
 #   bash setup-server.sh --list          # xem tên các bước
 #   REBUILD=1 bash setup-server.sh build start   # build lại image dù đã có
 #
@@ -70,6 +71,10 @@
 #                   Không đặt 2 biến này thì (DB_MODE=transfer | restore) chọn trong IMPORT_DIR,
 #                   không có thì bỏ qua. Mỗi loại chỉ giải nén 1 lần — nạp lại / gói khác: bước import
 #   HARDEN_SSH      yes | no — tắt đăng nhập SSH bằng mật khẩu, chặn root
+#   DNS_SERVERS     IP máy chủ DNS thêm cho máy này, cách nhau bằng dấu cách (vd "1.1.1.1 8.8.8.8",
+#                   mạng viện chặn DNS ngoài thì dùng IP DNS nội bộ). Bỏ trống = giữ DNS đang
+#                   có; chỉ hỏi khi máy không phân giải được tên miền (apt báo
+#                   "Temporary failure resolving")
 #   ADMIN_USERNAME  tên đăng nhập tài khoản Super Admin — toàn quyền (mặc định superadmin)
 #   LIMITED_ADMIN_USERNAME
 #                   tài khoản Admin — chỉ NCKH, đào tạo / CME, người dùng (mặc định admin).
@@ -98,7 +103,10 @@ DEFAULT_REPO_URL="git@github.com:NguyenHung2381/Hospital_RMS.git"
 HBA_MARK_BEGIN="# >>> Hospital RMS (scripts/setup-server.sh)"
 HBA_MARK_END="# <<< Hospital RMS"
 
-STEPS=(system firewall disk docker repo config postgres build database files start https ports backup jwt ssh)
+RESOLVED_DROPIN="/etc/systemd/resolved.conf.d/rms-dns.conf"
+DNS_TEST_HOST="archive.ubuntu.com"
+
+STEPS=(dns system firewall disk docker repo config postgres build database files start https ports backup jwt ssh)
 # Bước chỉ chạy khi gọi tên (bash setup-server.sh import)
 EXTRA_STEPS=(import)
 IMPORT_DIR="${IMPORT_DIR:-/data/backup/import}"
@@ -120,7 +128,8 @@ usage() {
 }
 
 apt_get() {
-	sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q \
+	# Acquire::Retries: mạng / DNS chập chờn giữa lúc tải thì tự thử lại, không hỏng cả bước
+	sudo DEBIAN_FRONTEND=noninteractive apt-get -y -q -o Acquire::Retries=3 \
 		-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "$@"
 }
 pkg_installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'; }
@@ -184,8 +193,8 @@ save_conf() {
 	{
 		echo "# Câu trả lời của scripts/setup-server.sh — sửa tay được, xoá dòng để được hỏi lại"
 		for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
-			ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH REPO_URL APP_DIR \
-			ADMIN_USERNAME LIMITED_ADMIN_USERNAME; do
+			ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH DNS_SERVERS \
+			REPO_URL APP_DIR ADMIN_USERNAME LIMITED_ADMIN_USERNAME; do
 			[ -n "${!k:-}" ] && printf '%s=%q\n' "$k" "${!k}"
 		done
 	} >"$CONF_FILE"
@@ -243,7 +252,7 @@ collect_answers() {
 	if [ -f "$CONF_FILE" ]; then . "$CONF_FILE"; fi
 	local k
 	for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
-		ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH REPO_URL; do
+		ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH DNS_SERVERS REPO_URL; do
 		printf -v "$k" '%s' "${!k:-}"
 	done
 	APP_DIR="${APP_DIR:-/data/code/Hospital_RMS}"
@@ -385,6 +394,66 @@ derive_settings() {
 	FRONTEND_BIND=8081
 	[ "$ACCESS_MODE" = letsencrypt ] && FRONTEND_BIND=127.0.0.1:8081
 	return 0
+}
+
+# ─── 0b. DNS ─────────────────────────────────────────────────────────────────
+# Thử 3 lần: DNS chập chờn (hay gặp với NAT của VMware) vẫn có lúc trả lời được
+dns_ok() {
+	local i
+	for i in 1 2 3; do
+		timeout 10 getent ahosts "$DNS_TEST_HOST" >/dev/null 2>&1 && return 0
+		sleep 2
+	done
+	return 1
+}
+
+# Mọi bước sau đều tải từ Internet (apt, Docker, GitHub, npm). DNS của mạng hỏng thì
+# apt chết giữa chừng với "Temporary failure resolving". Thêm DNS vào phần [Resolve]
+# chung của systemd-resolved: dùng SONG SONG với DNS nhận từ DHCP / netplan (không
+# thay thế), nên không đụng tới cấu hình mạng đang có và Docker cũng thấy DNS này.
+step_dns() {
+	log "DNS"
+	local servers s tmp
+	read -ra servers <<<"${DNS_SERVERS//,/ }"
+	if [ "${#servers[@]}" -eq 0 ]; then
+		if dns_ok; then
+			ok "Phân giải được $DNS_TEST_HOST bằng DNS đang có"
+			return 0
+		fi
+		s="$(awk '/^nameserver/ { printf "%s ", $2 }' /run/systemd/resolve/resolv.conf 2>/dev/null || true)"
+		warn "Không phân giải được $DNS_TEST_HOST (DNS đang có: ${s:-không có})"
+		[ -n "$(server_ip)" ] ||
+			die "Máy chưa ra được mạng (không có default route), không phải lỗi DNS. Kiểm tra card mạng của máy ảo: ip -br addr; ip route"
+		info "Thêm DNS cho máy này. Mạng viện chặn DNS ngoài thì nhập IP DNS nội bộ."
+		if [ "${ASSUME_YES:-}" = 1 ]; then
+			DNS_SERVERS="1.1.1.1 8.8.8.8"
+		else
+			ask DNS_SERVERS "DNS thêm vào (cách nhau bằng dấu cách)" "1.1.1.1 8.8.8.8"
+		fi
+		read -ra servers <<<"${DNS_SERVERS//,/ }"
+		[ "${#servers[@]}" -gt 0 ] || die "Chưa nhập DNS nào"
+		save_conf
+	fi
+
+	for s in "${servers[@]}"; do
+		[[ "$s" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ || "$s" =~ ^[0-9A-Fa-f:]*:[0-9A-Fa-f:]*$ ]] ||
+			die "DNS_SERVERS phải là địa chỉ IP, cách nhau bằng dấu cách (sai: '$s'). Sửa trong $CONF_FILE"
+	done
+	systemctl is-active -q systemd-resolved ||
+		die "Máy không dùng systemd-resolved: tự thêm DNS (${servers[*]}) vào netplan (mục 4.2 tài liệu) rồi chạy lại"
+
+	tmp="$(mktemp)"
+	printf '# Tạo bởi scripts/setup-server.sh (bước dns). Gỡ: xoá file này rồi\n# sudo systemctl restart systemd-resolved\n[Resolve]\nDNS=%s\n' \
+		"${servers[*]}" >"$tmp"
+	sudo mkdir -p "$(dirname "$RESOLVED_DROPIN")"
+	if install_if_changed "$tmp" "$RESOLVED_DROPIN"; then
+		sudo systemctl restart systemd-resolved
+	fi
+	rm -f "$tmp"
+
+	dns_ok ||
+		die "Đã thêm DNS (${servers[*]}) nhưng vẫn không phân giải được $DNS_TEST_HOST. Mạng chặn DNS ngoài? Đặt IP DNS nội bộ: DNS_SERVERS=\"<IP>\" bash $SELF dns (xem: resolvectl status)"
+	ok "DNS: ${servers[*]} ($RESOLVED_DROPIN)"
 }
 
 # ─── 1. Hệ thống ─────────────────────────────────────────────────────────────

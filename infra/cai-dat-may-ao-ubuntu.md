@@ -25,7 +25,7 @@ PostgreSQL 18 có bản chính thức cho cả Ubuntu 24.04 và 26.04 (kho PGDG)
 
 ## Cài bằng 1 lệnh
 
-`scripts/setup-server.sh` làm tự động các bước **4 → 15** dưới đây. Bạn chỉ cần làm tay bước 1–3 (tạo máy ảo, cài Ubuntu, SSH bằng khoá).
+`scripts/setup-server.sh` làm tự động các bước **4 → 15** dưới đây (trước đó kiểm tra DNS của máy). Bạn chỉ cần làm tay bước 1–3 (tạo máy ảo, cài Ubuntu, SSH bằng khoá).
 
 **Trên máy của bạn**, chép script lên máy ảo (repo private nên chưa clone được trên máy ảo):
 
@@ -56,6 +56,7 @@ scp rms_hospital_<ngày>.dump uploads.tar.gz secrets.tar.gz rms:/data/backup/imp
 ```
 
 | Khoá SSH bằng mật khẩu | Chỉ hỏi khi `~/.ssh/authorized_keys` đã có khoá (bước 3.5) |
+| DNS thêm vào | Chỉ hỏi khi máy **không phân giải được tên miền** (bước `dns`, chạy đầu tiên). Mặc định `1.1.1.1 8.8.8.8`; mạng viện chặn DNS ngoài thì nhập IP DNS nội bộ (mục 4.1) |
 
 Giữa chừng script dừng chờ 1 lần: in **deploy key** để bạn thêm vào GitHub (bước 10), thêm xong nhấn Enter.
 
@@ -279,6 +280,23 @@ Trên Windows có thể dùng **WinSCP** (giao thức SFTP, cùng khoá SSH) n�
 sudo apt update && sudo apt -y full-upgrade
 sudo apt install -y curl wget gnupg ca-certificates git ufw tmux htop unzip parted nano
 ```
+
+**`apt` báo `Temporary failure resolving 'archive.ubuntu.com'`?** Máy không phân giải được tên miền. Xem máy đang dùng DNS nào:
+
+```bash
+resolvectl status
+```
+
+Không thấy dòng `DNS Servers` nào (card mạng ghi `Current Scopes: none`) là máy **chưa có DNS**, hay gặp khi đặt IP tĩnh mà thiếu phần `nameservers` (4.2). Thêm DNS cho cả máy (dùng song song với DNS của card mạng, không thay thế; mạng viện chặn DNS ngoài thì đổi thành IP DNS nội bộ):
+
+```bash
+sudo mkdir -p /etc/systemd/resolved.conf.d
+printf '[Resolve]\nDNS=1.1.1.1 8.8.8.8\n' | sudo tee /etc/systemd/resolved.conf.d/rms-dns.conf
+sudo systemctl restart systemd-resolved
+resolvectl query archive.ubuntu.com      # phải in ra địa chỉ IP
+```
+
+`setup-server.sh` làm việc này ở bước `dns`: `DNS_SERVERS="1.1.1.1 8.8.8.8" bash ~/setup-server.sh dns`.
 
 ### 4.2. Đặt IP tĩnh
 
@@ -1319,6 +1337,7 @@ Script ghi secret mới vào đúng nơi đang giữ: `backend/.env.production`,
 | Hiện tượng | Kiểm tra / cách xử lý |
 |---|---|
 | `ssh: connect to host ... Connection refused` | Trên console máy ảo: `systemctl status ssh`, `sudo ufw status` (phải có `OpenSSH ALLOW`). |
+| `apt` báo `Temporary failure resolving ...` | Máy chưa có DNS hoặc DNS của mạng hỏng: `resolvectl status`, thêm DNS theo mục 4.1 (hoặc `bash ~/setup-server.sh dns`). `ping -c 3 1.1.1.1` cũng không được thì là mất mạng, không phải DNS: `ip -br addr`, `ip route`. |
 | `Permission denied (publickey)` | Khoá chưa lên máy ảo hoặc sai file khoá. Vào bằng console, kiểm tra `~/.ssh/authorized_keys` (quyền thư mục `700`, file `600`). |
 | `/data` không có sau reboot | `cat /etc/fstab`, `sudo mount -a` xem lỗi. So UUID bằng `sudo blkid`. |
 | PostgreSQL không khởi động | `sudo journalctl -u postgresql@18-main -n 50 --no-pager`, `sudo tail -50 /var/log/postgresql/postgresql-18-main.log`. Thường do quyền thư mục (`/data/pgsql` phải thuộc `postgres`, quyền `700`) hoặc `shared_buffers` quá lớn so với RAM. |
