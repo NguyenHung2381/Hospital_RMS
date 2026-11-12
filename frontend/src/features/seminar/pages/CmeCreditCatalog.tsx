@@ -54,7 +54,7 @@ export default function CmeCreditCatalog() {
 	const [loading, setLoading] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
 
-	useRealtimeUpdate(['cme_credit_group', 'cme_credit_categorie'], () => setRefreshKey((k) => k + 1));
+	useRealtimeUpdate(['cme_credit_group', 'cme_credit_category'], () => setRefreshKey((k) => k + 1));
 
 	useEffect(() => {
 		Promise.all([cmeCatalogApi.listGroups(), cmeCatalogApi.listCategories()])

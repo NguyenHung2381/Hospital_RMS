@@ -134,6 +134,8 @@ export interface Enrollment {
 	trainee_email: string | null;
 	/** Học viên gắn tài khoản nhân viên bệnh viện (trainees.staff_user_id) = nội viện; còn lại ngoại viện. */
 	is_internal: boolean;
+	/** Hồ sơ PDF của học viên: đã nộp (đã duyệt) / chờ duyệt / chưa nộp */
+	trainee_doc_state?: 'done' | 'pending' | 'missing';
 	status: EnrollmentStatus;
 	registered_at: string;
 	decided_by: string | null;

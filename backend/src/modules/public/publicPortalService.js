@@ -16,6 +16,7 @@ const path = require('path');
 const fs = require('fs');
 const { moveUploadedFiles, UPLOADS_ROOT } = require('../../utils/uploadPaths');
 const { httpError, badRequest } = require('../../utils/httpError');
+const { isPdf } = require('../training/trainees/traineeProfilePdf');
 
 const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 
@@ -150,7 +151,7 @@ const enrollTrainee = async (data, traineeId, files, custom) => {
 		},
 	);
 	await formCustomValueService.save('course_registration', enrollment.id, custom);
-	if (hasFiles(files)) await attachTraineeDocuments(traineeId, files, data.doc_types);
+	if (hasFiles(files)) await attachTraineeDocuments(traineeId, files);
 };
 
 // Đăng ký không chứng minh được là chủ hồ sơ đã có (CCCD trùng nhưng sai ngày sinh /
@@ -186,6 +187,11 @@ const register = async (data, files, custom = null) => {
 	}
 	if (!course.enrollment_open) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
+	}
+	// Kiểm trước khi tạo hồ sơ / ghi danh — tránh ghi danh xong mới báo sai file
+	if (hasFiles(files)) {
+		if (files.length > 1) throw badRequest('Chỉ đính kèm 1 file PDF hồ sơ học viên.');
+		if (!files.every(isPdf)) throw badRequest('Hồ sơ học viên chỉ nhận file PDF.');
 	}
 
 	let existing = null;
@@ -297,18 +303,14 @@ const getPublicLevels = async (roundId) => {
 	return ids.length ? all.recordset.filter((l) => ids.includes(l.id)) : all.recordset;
 };
 
-// Hồ sơ học viên đính kèm khi đăng ký khóa học (CCCD, bằng cấp...) — cùng chỗ
+// Hồ sơ học viên (1 file PDF đầy đủ thông tin) đính kèm khi đăng ký khóa học — cùng chỗ
 // lưu với tab "Hồ sơ" của học viên (traineeService.addDocument). Người gửi không
-// đăng nhập ⇒ luôn 'pending' (chờ phòng Đào tạo duyệt qua reviewDocument), không
-// được tính vào checklist hồ sơ bắt buộc như giấy tờ nhân viên tải lên.
-const attachTraineeDocuments = async (traineeId, files, docTypes) => {
+// đăng nhập ⇒ luôn 'pending' (chờ phòng Đào tạo duyệt qua reviewDocument).
+const attachTraineeDocuments = async (traineeId, files) => {
 	const dir = path.join(UPLOADS_ROOT, 'training', 'trainee_document', traineeId);
 	const moved = await moveUploadedFiles(files, dir);
-	const types = Array.isArray(docTypes) ? docTypes : [];
-	for (const [i, f] of moved.entries()) {
-		await traineeService.addDocument(traineeId, types[i] || 'other', f, null, {
-			status: 'pending',
-		});
+	for (const f of moved) {
+		await traineeService.addDocument(traineeId, f, null, { status: 'pending' });
 	}
 };
 

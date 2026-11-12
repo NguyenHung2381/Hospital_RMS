@@ -23,7 +23,7 @@ interface Props {
 	onSaved: () => void;
 }
 
-/** Người dùng tự khai CME — lưu xong ở trạng thái "Chờ duyệt"; người quản lý nhập số tín chỉ khi duyệt. */
+/** Người dùng tự khai CME (kèm số giờ tín chỉ đề xuất) — lưu xong ở trạng thái "Chờ duyệt"; người quản lý xác nhận số tín chỉ khi duyệt. */
 export default function MyCmeRecordModal({ record, categories, defaultYear, onClose, onSaved }: Props) {
 	const [form, setForm] = useState<MyCmeRecordForm>({
 		category_id: record?.category_id ?? '',
@@ -33,6 +33,8 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 		year: String(record?.year ?? defaultYear),
 		role: record?.role ?? '',
 		quantity: record?.quantity == null ? '' : String(record.quantity),
+		// 0 = chưa khai
+		credits: Number(record?.credits) > 0 ? String(record!.credits) : '',
 		note: record?.note ?? '',
 		custom: record?.custom ?? {},
 	});
@@ -140,6 +142,17 @@ export default function MyCmeRecordModal({ record, categories, defaultYear, onCl
 				</CfgField>
 				<CfgField cfg={cfg} name='quantity' label='Số buổi tham gia' error={fieldErrors.quantity} classes={SELF_FIELD}>
 					<input type='number' step='0.1' min='0' value={form.quantity} onChange={set('quantity')} />
+				</CfgField>
+				<CfgField cfg={cfg} name='credits' label='Số giờ tín chỉ' error={fieldErrors.credits} classes={SELF_FIELD}>
+					<input
+						type='number'
+						step='0.1'
+						min='0'
+						value={form.credits}
+						onChange={set('credits')}
+						placeholder='VD: 8'
+						title='Số giờ tín chỉ đề xuất — người quản lý xác nhận khi duyệt'
+					/>
 				</CfgField>
 				<CfgField cfg={cfg} name='activity_date' label='Từ ngày' error={fieldErrors.activity_date} classes={SELF_FIELD}>
 					<DatePicker

@@ -108,11 +108,6 @@ router.post(
 			.if(body('national_id').trim().notEmpty())
 			.notEmpty()
 			.withMessage('Vui lòng nhập ngày sinh kèm số CCCD/CMND'),
-		// Loại hồ sơ của từng file đính kèm (cùng thứ tự với `files`)
-		body('doc_types').optional().isArray({ max: 10 }),
-		body('doc_types.*')
-			.isIn(['national_id', 'degree', 'other'])
-			.withMessage('Loại hồ sơ không hợp lệ'),
 	],
 	validate,
 	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),

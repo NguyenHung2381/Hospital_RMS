@@ -2,7 +2,7 @@ import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
+import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg, UserPlusSvg } from '@/assets/icons';
 import { Badge, TableEmpty } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -14,6 +14,10 @@ import { GrantedAccountsModal } from '../components/GrantedAccountsModal';
 import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeImportModal } from '../components/TraineeImportModal';
+import { QuickAddExternalTraineeModal } from '../components/QuickAddExternalTraineeModal';
+import { TraineeDocStateBadge, TraineeDocStateLegend } from '../components/TraineeDocState';
+import { DOC_STATE_META, DOC_STATE_ORDER, docStateRowClass } from '../utils/docState';
+import type { TraineeDocState } from '../api/traineeRecordApi';
 import { useTrainees } from '../hooks/useTrainees';
 import { formatDate } from '../../../shared/utils/formatDate';
 import styles from './Trainees.module.css';
@@ -43,6 +47,7 @@ const EXCEL_COLS: ExcelColumn<Trainee>[] = [
 	{ header: 'Chức vụ', value: (x) => x.position },
 	{ header: 'Ghi chú', value: (x) => x.notes },
 	{ header: 'Tài khoản', value: (x) => (x.account_granted ? 'Đã cấp' : '') },
+	{ header: 'Hồ sơ PDF', value: (x) => DOC_STATE_META[x.doc_state ?? 'missing'].label },
 ];
 
 const TYPE_NAME: Record<string, string> = {
@@ -66,6 +71,7 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [showImport, setShowImport] = useState(false);
+	const [showQuickAdd, setShowQuickAdd] = useState(false);
 
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -89,6 +95,13 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 						onClick={() => d.setModal('add')}
 					>
 						<PlusSvg /> Thêm học viên
+					</button>
+					<button
+						className={styles.btnAddHeader}
+						onClick={() => setShowQuickAdd(true)}
+						title='Nhập nhanh thông tin cơ bản của học viên ngoài bệnh viện'
+					>
+						<UserPlusSvg /> Thêm nhanh ngoại viện
 					</button>
 				</>
 			)}
@@ -140,21 +153,27 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 						)}
 					</div>
 					<div className={styles.tableControls}>
-						<label
-							className={styles.tableCount}
-							style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
-							title='Học viên còn thiếu giấy tờ bắt buộc theo loại khóa đã ghi danh'
+						<TraineeDocStateLegend />
+						<select
+							className={styles.filterSelect}
+							value={d.docFilter}
+							onChange={(e) => {
+								d.setDocFilter(e.target.value as TraineeDocState | '');
+								d.setPage(1);
+							}}
+							aria-label='Lọc theo hồ sơ PDF'
+							title='Lọc theo trạng thái file hồ sơ PDF'
 						>
-							<input
-								type='checkbox'
-								checked={d.missingDocsOnly}
-								onChange={(e) => {
-									d.setMissingDocsOnly(e.target.checked);
-									d.setPage(1);
-								}}
-							/>
-							Thiếu hồ sơ
-						</label>
+							<option value=''>Hồ sơ: tất cả ({d.trainees.length})</option>
+							{DOC_STATE_ORDER.map((st) => (
+								<option
+									key={st}
+									value={st}
+								>
+									{DOC_STATE_META[st].label} ({d.docCounts[st]})
+								</option>
+							))}
+						</select>
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
@@ -196,7 +215,7 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 									<th className={styles.th}>Khoa / Phòng</th>
 								</>
 							)}
-							<th className={styles.th}>Hồ sơ</th>
+							<th className={styles.th}>Hồ sơ PDF</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
 					</thead>
@@ -219,7 +238,7 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 								return (
 									<tr
 										key={t.id}
-										className={`${styles.tr} ${rowSel.isSelected(t.id) ? sel.rowSelected : ''}`}
+										className={`${styles.tr} ${docStateRowClass(t.doc_state)} ${rowSel.isSelected(t.id) ? sel.rowSelected : ''}`}
 									>
 										<td className={sel.checkCol}>
 											<SelectCheckbox
@@ -320,22 +339,10 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 											</>
 										)}
 										<td className={styles.td}>
-											{t.doc_required ? (
-												<span
-													className={styles.badge}
-													style={
-														(t.doc_done ?? 0) < t.doc_required
-															? { background: '#fcebeb', color: '#791f1f', cursor: 'pointer' }
-															: { background: '#e1f5ea', color: '#085028', cursor: 'pointer' }
-													}
-													title='Giấy tờ bắt buộc đã nộp / cần nộp — bấm để xem'
-													onClick={() => openDetail(t, 'documents')}
-												>
-													{t.doc_done ?? 0}/{t.doc_required}
-												</span>
-											) : (
-												<span className={styles.descText}>—</span>
-											)}
+											<TraineeDocStateBadge
+												state={t.doc_state}
+												onClick={() => openDetail(t, 'documents')}
+											/>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<RowActions
@@ -398,6 +405,13 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 				<TraineeImportModal
 					onClose={() => setShowImport(false)}
 					onDone={d.refreshData}
+				/>
+			)}
+
+			{showQuickAdd && (
+				<QuickAddExternalTraineeModal
+					onClose={() => setShowQuickAdd(false)}
+					onCreated={d.prependTrainee}
 				/>
 			)}
 

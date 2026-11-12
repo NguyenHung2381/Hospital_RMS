@@ -1,9 +1,9 @@
 import { apiClient } from '../../../shared/api/axios';
 
-export const addTraineeDocument = (traineeId: string, file: File, docType: string) => {
+/** Tải lên hồ sơ PDF của học viên (cán bộ tải = duyệt sẵn) */
+export const addTraineeDocument = (traineeId: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	form.append('doc_type', docType);
 	return apiClient.postForm<{ id: string }>(`/trainees/${traineeId}/documents`, form);
 };
 

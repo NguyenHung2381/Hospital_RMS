@@ -114,7 +114,7 @@ export const CATALOG_GROUPS: Record<CatalogGroup, { title: string; tabs: Catalog
 			'practice-forms',
 			'sending-units',
 			'hospital-training-topics',
-			'trainee-document-types',
+			// 'trainee-document-types' ẩn: hồ sơ học viên giờ chỉ là 1 file PDF, không chia loại giấy tờ
 		],
 		breadcrumb: 'Đào tạo',
 	},

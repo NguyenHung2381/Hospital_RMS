@@ -12,7 +12,9 @@ const formCustomValueService = require('../forms/formCustomValueService');
 // cmeRequirementService.getComplianceReport (tham dự hội thảo + ghi nhận độc lập),
 // ngưỡng ưu tiên theo khoa rồi toàn viện.
 // year = null → toàn bộ các năm (không có ngưỡng yêu cầu).
-const getUserCme = async (userId, year) => {
+// withTicket: kèm mã vé QR (ticket_code) — CHỈ cho chính chủ (cổng "của tôi"):
+// vé = điểm danh + làm bài test lấy CME đứng tên người đó, không lộ qua hồ sơ học viên.
+const getUserCme = async (userId, year, { withTicket = false } = {}) => {
 	const pool = await getPool();
 	const sets = await queryAll(
 		pool.request().input('uid', sql.VarChar(20), userId).input('year', sql.Int, year),
@@ -20,7 +22,8 @@ const getUserCme = async (userId, year) => {
 			`
     SELECT p.id, p.seminar_id, s.title AS seminar_title, s.event_type, s.scope, s.location,
            s.start_date, s.end_date, s.date_text, p.participation_type,
-           p.cme_year, p.cme_certificate_no, p.cme_credits, p.cme_status, p.cme_issued_date
+           p.cme_year, p.cme_certificate_no, p.cme_credits, p.cme_status, p.cme_issued_date,
+           p.ticket_code, p.checked_in_at
     FROM seminar_participants p
     JOIN seminars s ON s.id = p.seminar_id
     WHERE p.user_id = @uid
@@ -49,7 +52,8 @@ const getUserCme = async (userId, year) => {
 		`,
 		],
 	);
-	const [seminars, records, req] = sets;
+	const [rawSeminars, records, req] = sets;
+	const seminars = withTicket ? rawSeminars : rawSeminars.map(({ ticket_code: _t, ...p }) => p);
 	const sum = (rows, key) => rows.reduce((t, x) => t + Number(x[key] || 0), 0);
 	const earned =
 		sum(

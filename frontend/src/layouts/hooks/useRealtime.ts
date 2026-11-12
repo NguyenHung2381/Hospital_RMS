@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { BASE_URL, invalidateApiCache } from '../../shared/api/axios';
 import { refreshQueued } from '../../shared/api/interceptors';
-import { getToken } from '../../shared/utils/storage';
+import { getStoredUser, getToken, type StoredUser } from '../../shared/utils/storage';
 
 /**
  * Hook để lắng nghe các sự kiện cập nhật thời gian thực từ server (SSE).
@@ -23,7 +23,16 @@ type Subscriber = {
 const subscribers = new Set<Subscriber>();
 
 let source: EventSource | null = null;
-let sourceToken: string | null = null;
+// Kết nối thuộc về tài khoản nào. Trước đây so theo access token — token làm
+// mới mỗi 15 phút nên lần điều hướng kế tiếp lại đóng/mở SSE vô ích (và lỡ sự
+// kiện trong lúc đó). Luồng SSE đã mở không phụ thuộc access token nữa.
+let sourceUser: string | null = null;
+// Tài khoản của kết nối đã mở gần nhất, và kết nối đó đã từng onopen chưa —
+// lần mở tiếp theo cho cùng tài khoản là NỐI LẠI sau khi đứt, cần tải bù.
+let lastUser: string | null = null;
+let hadConnection = false;
+
+const currentUserId = () => getStoredUser<StoredUser>()?.id ?? null;
 
 function handleUpdate(e: MessageEvent) {
 	let entity: string;
@@ -57,11 +66,13 @@ function flush() {
 	for (const sub of subs) if (subscribers.has(sub)) sub.notify();
 }
 
-// Nối lại khi kết nối bị đóng hẳn (401 token hết hạn, 502 lúc backend khởi
-// động lại...) — EventSource chỉ tự nối lại khi mạng rớt, còn response lỗi thì
-// nó bỏ cuộc luôn. Backoff tăng dần để không dội request vào server.
-const RECONNECT_MIN_MS = 5_000;
-const RECONNECT_MAX_MS = 60_000;
+// Nối lại khi kết nối đứt — LUÔN do code này làm, không để EventSource tự nối:
+// vé trên URL chỉ dùng được 1 lần, trình duyệt tự nối lại bằng vé cũ thì chắc
+// chắn 401 (sau khi đã chờ `retry` 10s), mỗi lần đứt (backend khởi động lại,
+// proxy cắt...) realtime chết thêm 15s+ vô ích. Backoff tăng dần (có jitter để
+// các tab không cùng dội vào server vừa khởi động lại).
+const RECONNECT_MIN_MS = 1_000;
+const RECONNECT_MAX_MS = 30_000;
 let reconnectDelay = RECONNECT_MIN_MS;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -76,7 +87,7 @@ function scheduleReconnect() {
 		reconnectTimer = null;
 		closeConnection();
 		void ensureConnection();
-	}, reconnectDelay);
+	}, reconnectDelay * (0.75 + Math.random() * 0.5));
 	reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
 }
 
@@ -86,7 +97,15 @@ function closeConnection() {
 	source.removeEventListener('update', handleUpdate as EventListener);
 	source.close();
 	source = null;
-	sourceToken = null;
+	sourceUser = null;
+}
+
+// Vừa nối lại sau khi đứt: sự kiện phát trong khoảng đứt đã mất — coi như mọi
+// thứ đã đổi, mọi trang đang mở tải lại 1 lần.
+function catchUp() {
+	invalidateApiCache();
+	for (const sub of subscribers) dirty.add(sub);
+	if (dirty.size && !flushTimer) flushTimer = setTimeout(flush, NOTIFY_COALESCE_MS);
 }
 
 // Xin vé mở kết nối (POST /events/ticket, sống 60s, dùng 1 lần). EventSource
@@ -113,12 +132,13 @@ let connecting = false;
 
 /** Mở kết nối SSE chia sẻ nếu chưa có, hoặc mở lại khi phiên đã đổi. */
 async function ensureConnection() {
-	const token = getToken();
-	if (!token) {
+	const user = currentUserId();
+	if (!getToken() || !user) {
 		closeConnection();
+		hadConnection = false;
 		return;
 	}
-	if ((source && sourceToken === token) || connecting) return;
+	if ((source && sourceUser === user) || connecting) return;
 
 	closeConnection();
 	connecting = true;
@@ -137,17 +157,26 @@ async function ensureConnection() {
 		return;
 	}
 
-	source = new EventSource(`${BASE_URL}/api/v1/events?ticket=${encodeURIComponent(ticket)}`);
-	// Nhận diện phiên theo access token hiện tại (có thể vừa được làm mới)
-	sourceToken = getToken();
-	source.addEventListener('update', handleUpdate as EventListener);
-	source.onopen = () => {
+	const es = new EventSource(`${BASE_URL}/api/v1/events?ticket=${encodeURIComponent(ticket)}`);
+	source = es;
+	sourceUser = currentUserId();
+	if (lastUser !== sourceUser) hadConnection = false; // đổi tài khoản: không phải nối lại
+	lastUser = sourceUser;
+	es.addEventListener('update', handleUpdate as EventListener);
+	es.onopen = () => {
 		reconnectDelay = RECONNECT_MIN_MS;
+		if (hadConnection) catchUp();
+		hadConnection = true;
 	};
-	source.onerror = () => {
-		// CONNECTING: trình duyệt tự nối lại (chờ theo `retry:` server gửi).
-		// CLOSED: server trả lỗi → tự lên lịch nối lại với token mới nhất.
-		if (source?.readyState === EventSource.CLOSED) scheduleReconnect();
+	es.onerror = () => {
+		if (source !== es) return; // kết nối cũ đã bị thay
+		// Đứt luồng hay server trả lỗi đều phải xin vé mới (vé cũ đã dùng) —
+		// đóng ngay để trình duyệt không tự nối lại bằng vé cũ.
+		es.removeEventListener('update', handleUpdate as EventListener);
+		es.close();
+		source = null;
+		sourceUser = null;
+		scheduleReconnect();
 	};
 }
 

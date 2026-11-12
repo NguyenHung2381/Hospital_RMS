@@ -10,6 +10,8 @@ export type TraineeDocStatus = 'approved' | 'pending' | 'rejected';
 export interface ChecklistDocument {
 	id: string;
 	doc_type: string;
+	/** Tên loại giấy tờ — chỉ có ở file cũ nộp theo từng loại (trước khi gộp 1 file PDF) */
+	doc_type_name: string | null;
 	status: TraineeDocStatus;
 	review_note: string | null;
 	created_at: string;
@@ -21,17 +23,13 @@ export interface ChecklistDocument {
 	file_size: number | null;
 }
 
+/** Trạng thái hồ sơ PDF: đã nộp (đã duyệt) / chờ duyệt / chưa nộp */
+export type TraineeDocState = 'done' | 'pending' | 'missing';
+
+/** Hồ sơ học viên: 1 file PDF đầy đủ thông tin (file mới nhất đứng đầu) */
 export interface DocumentChecklist {
-	items: {
-		id: string;
-		name: string;
-		/** Bắt buộc theo loại khóa học viên đã ghi danh */
-		required: boolean;
-		state: 'done' | 'pending' | 'missing';
-		documents: ChecklistDocument[];
-	}[];
-	required_total: number;
-	required_done: number;
+	state: TraineeDocState;
+	documents: ChecklistDocument[];
 }
 
 interface AttendanceSummary {
@@ -149,9 +147,8 @@ export const traineeRecordApi = {
 // Học viên tự nộp ở cổng /me
 export const myTraineeDocumentsApi = {
 	get: () => apiClient.get<DocumentChecklist>('/me/trainee-documents'),
-	upload: (file: File, docType: string) => {
+	upload: (file: File) => {
 		const form = new FormData();
-		form.append('doc_type', docType);
 		form.append('file', file);
 		return apiClient.postForm<DocumentChecklist>('/me/trainee-documents', form);
 	},

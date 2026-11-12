@@ -8,6 +8,8 @@ import {
 	type EnrollmentStatus,
 } from '../types/course.type';
 import styles from './AddEnrollmentPanel.module.css';
+import { usePermission } from '@/shared/hooks/usePermission';
+import { QuickAddExternalTraineeModal } from '../../trainee/components/QuickAddExternalTraineeModal';
 
 /** Bỏ dấu + chữ thường để tìm "nguyen van" khớp "Nguyễn Văn". */
 const normalize = (s: string) =>
@@ -75,6 +77,9 @@ export function AddEnrollmentPanel({
 }) {
 	const [query, setQuery] = useState('');
 	const [origin, setOrigin] = useState<OriginTab>('all');
+	// Thêm nhanh học viên ngoại viện chưa có hồ sơ — tạo xong ghi danh luôn vào lớp đang chọn
+	const [quickAdd, setQuickAdd] = useState(false);
+	const canCreateTrainee = usePermission().has('trainees:create');
 	const [active, setActive] = useState(0);
 	// Người đang ghi danh — nạp lại danh sách mất vài giây, hiện "Đang ghi danh…" trên đúng dòng đó.
 	const [pendingId, setPendingId] = useState<string | null>(null);
@@ -369,13 +374,30 @@ export function AddEnrollmentPanel({
 					{needProgram && (
 						<div className={styles.warn}>Chọn chương trình / lớp ở bước 1 trước khi ghi danh.</div>
 					)}
+					{canCreateTrainee && (
+						<button
+							type='button'
+							className={styles.quickAddBtn}
+							disabled={busy || !!pendingId || needProgram}
+							title={
+								needProgram
+									? 'Chọn chương trình / lớp trước'
+									: 'Tạo hồ sơ học viên ngoại viện mới (thông tin cơ bản) rồi ghi danh luôn'
+							}
+							onClick={() => setQuickAdd(true)}
+						>
+							<UserPlusSvg /> Thêm nhanh học viên ngoại viện chưa có hồ sơ
+						</button>
+					)}
 
 					<div className={styles.results} ref={listRef} role='listbox' aria-label='Kết quả tìm kiếm'>
 						{shown.length === 0 ? (
 							<div className={styles.empty}>
 								{candidates.length === 0
 									? 'Đang tải danh sách học viên…'
-									: 'Không tìm thấy — thêm hồ sơ ở mục Học viên trước rồi quay lại ghi danh.'}
+									: canCreateTrainee
+										? 'Không tìm thấy — bấm "Thêm nhanh học viên ngoại viện" ở trên để tạo hồ sơ và ghi danh.'
+										: 'Không tìm thấy — thêm hồ sơ ở mục Học viên trước rồi quay lại ghi danh.'}
 							</div>
 						) : (
 							shown.map((c, i) => {
@@ -501,6 +523,22 @@ export function AddEnrollmentPanel({
 					)}
 				</aside>
 			</div>
+			{quickAdd && (
+				<QuickAddExternalTraineeModal
+					onClose={() => setQuickAdd(false)}
+					onCreated={(t) => {
+						setPendingId(t.id);
+						void onAdd({
+							id: t.id,
+							name: t.full_name,
+							full_name: t.full_name,
+							is_internal: false,
+							sub: [t.phone, t.email].filter(Boolean).join(' · '),
+							is_staff: false,
+						}).finally(() => setPendingId(null));
+					}}
+				/>
+			)}
 		</section>
 	);
 }

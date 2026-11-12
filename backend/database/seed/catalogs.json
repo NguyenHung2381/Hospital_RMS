@@ -139,6 +139,13 @@
 		],
 		"trainee_document_types": [
 			{
+				"id": "profile",
+				"name": "Hồ sơ học viên (PDF)",
+				"description": "Một file PDF gộp đủ thông tin học viên",
+				"required_for_types": null,
+				"display_order": 0
+			},
+			{
 				"id": "application",
 				"name": "Đơn đề nghị",
 				"description": null,

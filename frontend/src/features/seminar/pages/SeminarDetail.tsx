@@ -37,6 +37,7 @@ import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
+import { SeminarTicketQrModal } from '../components/SeminarTicketQrModal';
 import { RequiredAbsenteesCard } from '../components/RequiredAbsenteesCard';
 import { SeminarTestModal } from '../components/SeminarTestModal';
 import { useSeminarDetail } from '../hooks/useSeminarDetail';
@@ -150,6 +151,8 @@ export default function SeminarDetail() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
 	const [presentOpen, setPresentOpen] = useState(false);
+	// Vé QR của người tự đăng ký — mở lại khi người tham dự mất vé (SeminarTicketQrModal)
+	const [ticketOf, setTicketOf] = useState<(SeminarParticipant & { ticket_code: string }) | null>(null);
 	const [testOpen, setTestOpen] = useState(false);
 	const [agendaOpen, setAgendaOpen] = useState(false);
 	const [exporting, setExporting] = useState(false);
@@ -678,6 +681,15 @@ export default function SeminarDetail() {
 												)}
 												<td className={styles.tdRight}>
 													<div className={styles.actionBtns}>
+														{p.ticket_code && (
+															<button
+																className={styles.actionBtn}
+																title='Vé QR điểm danh'
+																onClick={() => setTicketOf({ ...p, ticket_code: p.ticket_code! })}
+															>
+																<QrSvg />
+															</button>
+														)}
 														{perms.canUpdate && (
 															<button
 																className={styles.actionBtn}
@@ -760,6 +772,13 @@ export default function SeminarDetail() {
 				/>
 			)}
 
+			{ticketOf && sem && (
+				<SeminarTicketQrModal
+					seminar={sem}
+					participant={ticketOf}
+					onClose={() => setTicketOf(null)}
+				/>
+			)}
 			{regQrOpen && sem && (
 				<SeminarRegistrationQrModal
 					seminar={sem}

@@ -7,20 +7,19 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { myTraineeDocumentsApi, type DocumentChecklist } from '../../trainee/api/traineeRecordApi';
 import styles from '../pages/SelfService.module.css';
 
-const STATE: Record<DocumentChecklist['items'][number]['state'], { label: string; tone: 'green' | 'amber' | 'red' }> = {
+const STATE: Record<DocumentChecklist['state'], { label: string; tone: 'green' | 'amber' | 'red' }> = {
 	done: { label: 'Đã nộp', tone: 'green' },
 	pending: { label: 'Chờ duyệt', tone: 'amber' },
-	missing: { label: 'Còn thiếu', tone: 'red' },
+	missing: { label: 'Chưa nộp', tone: 'red' },
 };
 
 /**
- * Hồ sơ học viên của tôi (giai đoạn 3): checklist giấy tờ bắt buộc theo khóa đã ghi danh,
- * tự nộp file còn thiếu — chờ phòng Đào tạo duyệt. Tài khoản không gắn hồ sơ học viên thì ẩn.
+ * Hồ sơ học viên của tôi: nộp 1 file PDF đầy đủ thông tin — chờ phòng Đào tạo duyệt.
+ * Tài khoản không gắn hồ sơ học viên thì ẩn.
  */
 export function MyTraineeDocumentsCard({ empty = null }: { empty?: ReactNode } = {}) {
 	const uploadPolicy = useUploadPolicy();
 	const [data, setData] = useState<DocumentChecklist | null | undefined>(undefined);
-	const [docType, setDocType] = useState('');
 	const [file, setFile] = useState<File | null>(null);
 	const [busy, setBusy] = useState(false);
 
@@ -35,18 +34,14 @@ export function MyTraineeDocumentsCard({ empty = null }: { empty?: ReactNode } =
 
 	if (data === undefined) return null;
 	if (!data) return <>{empty}</>;
-	const required = data.items.filter((i) => i.required);
-	const missing = required.filter((i) => i.state === 'missing');
-	const ownDocs = data.items.flatMap((i) => i.documents.map((d) => ({ ...d, type_name: i.name })));
-	const selected = docType || missing[0]?.id || data.items[0]?.id || '';
+	const state = STATE[data.state];
 
 	const upload = async () => {
-		if (!file || !selected) return;
+		if (!file) return;
 		setBusy(true);
 		try {
-			setData(await myTraineeDocumentsApi.upload(file, selected));
+			setData(await myTraineeDocumentsApi.upload(file));
 			setFile(null);
-			setDocType('');
 			notify.success('Đã nộp, chờ phòng Đào tạo duyệt');
 		} catch (err) {
 			notify.error(err instanceof Error ? err.message : 'Nộp hồ sơ thất bại');
@@ -71,49 +66,23 @@ export function MyTraineeDocumentsCard({ empty = null }: { empty?: ReactNode } =
 			<Card.Header
 				icon={<FileTextSvg />}
 				title='Hồ sơ học viên'
-				sub={
-					required.length
-						? `${data.required_done}/${data.required_total} giấy tờ bắt buộc đã nộp`
-						: 'Nộp giấy tờ cho phòng Đào tạo'
+				sub='Nộp 1 file PDF gộp đủ thông tin (CCCD, bằng cấp, ảnh thẻ...)'
+				actions={
+					<Badge
+						tone={state.tone}
+						dot
+					>
+						{state.label}
+					</Badge>
 				}
 			/>
 			<Card.Body>
-				{required.length > 0 && (
-					<div
-						className={styles.meta}
-						style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}
-					>
-						{required.map((i) => (
-							<Badge
-								key={i.id}
-								tone={STATE[i.state].tone}
-							>
-								{i.name}: {STATE[i.state].label}
-							</Badge>
-						))}
-					</div>
-				)}
 				<div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-					<select
-						value={selected}
-						onChange={(e) => setDocType(e.target.value)}
-						title='Loại giấy tờ'
-						style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--color-gray-200)' }}
-					>
-						{data.items.map((i) => (
-							<option
-								key={i.id}
-								value={i.id}
-							>
-								{i.name}
-								{i.required && i.state === 'missing' ? ' (còn thiếu)' : ''}
-							</option>
-						))}
-					</select>
 					<div style={{ flex: 1, minWidth: 200 }}>
 						<FileDropzone
 							compact
-							accept={uploadPolicy.accept}
+							accept='.pdf,application/pdf'
+							hint='Chỉ nhận file PDF'
 							maxSizeMB={uploadPolicy.maxSizeMB}
 							value={file}
 							onChange={setFile}
@@ -126,22 +95,23 @@ export function MyTraineeDocumentsCard({ empty = null }: { empty?: ReactNode } =
 						disabled={!file}
 						onClick={() => void upload()}
 					>
-						Nộp
+						{data.documents.length ? 'Nộp bản mới' : 'Nộp'}
 					</Button>
 				</div>
-				{ownDocs.length > 0 && (
+				{data.documents.length > 0 && (
 					<div
 						className={styles.list}
 						style={{ marginTop: 12 }}
 					>
-						{ownDocs.map((d) => (
+						{data.documents.map((d) => (
 							<div
 								key={d.id}
 								className={styles.meta}
 								style={{ alignItems: 'center' }}
 							>
 								<span>
-									<b>{d.type_name}</b> · {d.file_name}
+									{d.doc_type_name && <b>{d.doc_type_name} · </b>}
+									{d.file_name}
 								</span>
 								<Badge tone={d.status === 'approved' ? 'green' : d.status === 'pending' ? 'amber' : 'red'}>
 									{d.status === 'approved' ? 'Đã duyệt' : d.status === 'pending' ? 'Chờ duyệt' : 'Bị từ chối'}

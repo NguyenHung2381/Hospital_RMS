@@ -271,8 +271,9 @@ const registerCourse = async (courseId, actor, programId = null) => {
 	return courseEnrollmentService.registerStaff(courseId, actor.id, actor.id, { programId });
 };
 
-// CME của tôi trong 1 năm (cmeUserService.getUserCme)
-const getMyCme = (actor, year) => getUserCme(actor.id, year);
+// CME của tôi trong 1 năm (cmeUserService.getUserCme). Kèm vé QR hội nghị đã tự đăng
+// ký ở cổng công khai — mở lại vé khi lỡ đóng trang / mất ảnh QR (đã đăng nhập = chính chủ).
+const getMyCme = (actor, year) => getUserCme(actor.id, year, { withTicket: true });
 
 // Danh mục quy đổi để người dùng chọn khi tự khai CME
 const getCmeCategories = async () => {

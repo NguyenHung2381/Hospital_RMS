@@ -201,8 +201,67 @@
 	grid-template-columns: 1fr 1fr;
 	gap: var(--space-3) var(--space-4);
 }
-.formGroup { display: flex; flex-direction: column; gap: 4px; }
+.formGroup { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .full { grid-column: 1 / -1; }
+
+/* Tiêu đề nhóm trường trong form */
+.formSection {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	margin-top: var(--space-3);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.formSection:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.formSectionHead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+/* Nút gạt nhỏ trên dòng tiêu đề nhóm (dùng lại .testSwitchTrack) */
+.inlineSwitch {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	user-select: none;
+}
+.inlineSwitch input { position: absolute; opacity: 0; pointer-events: none; }
+.inlineSwitch input:checked + .testSwitchTrack { background: var(--color-primary); }
+.inlineSwitch input:checked + .testSwitchTrack::after { transform: translateX(16px); }
+.inlineSwitch input:focus-visible + .testSwitchTrack { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.formSectionHint {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-gray-500);
+}
+/* Ngày + giờ trên cùng 1 hàng */
+.dateTimeRow {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 116px;
+	gap: var(--space-2);
+}
+.timeCell { min-width: 0; }
+/* Tổng / nội viện / ngoại viện / nước ngoài: 4 ô ngang */
+.countGrid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--space-3) var(--space-4);
+}
+@media (max-width: 640px) {
+	.formGrid { grid-template-columns: 1fr; }
+	.countGrid { grid-template-columns: 1fr 1fr; }
+}
 /* Hộp thoại nhập CME: Năm / Nhóm / Loại 3 cột, hẹp thì tự xuống hàng */
 .importDefaults {
 	display: grid;

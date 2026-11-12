@@ -19,6 +19,7 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTrainee, updateTrainee } from '../api/traineeApi';
 import { TraineeAttendanceTab } from '../components/TraineeAttendanceTab';
 import { TraineeDocumentsTab } from '../components/TraineeDocumentsTab';
+import { TraineeDocStateBadge } from '../components/TraineeDocState';
 import { TraineeEnrollmentsTab } from '../components/TraineeEnrollmentsTab';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeInfoTab } from '../components/TraineeInfoTab';
@@ -33,7 +34,7 @@ export type TraineeDetailTab = 'info' | 'documents' | 'courses' | 'schedule' | '
 
 const TABS: { key: TraineeDetailTab; label: string; icon: ReactNode }[] = [
 	{ key: 'info', label: 'Thông tin cá nhân', icon: <UserCheckSvg /> },
-	{ key: 'documents', label: 'Hồ sơ & file scan', icon: <FileTextSvg /> },
+	{ key: 'documents', label: 'Hồ sơ PDF', icon: <FileTextSvg /> },
 	{ key: 'courses', label: 'Khóa học / chương trình', icon: <BookOpenSvg /> },
 	{ key: 'schedule', label: 'Lịch học', icon: <CalendarSvg /> },
 	{ key: 'attendance', label: 'Điểm danh', icon: <CalendarSvg /> },
@@ -207,8 +208,6 @@ function TraineeSummary({
 }) {
 	const c = avatarColor(trainee.id);
 	const unit = trainee.department_name ?? trainee.workplace;
-	const docRequired = trainee.doc_required ?? 0;
-	const docMissing = docRequired - (trainee.doc_done ?? 0);
 	return (
 		<div className={ds.summaryCard}>
 			<div className={ds.identity}>
@@ -251,21 +250,10 @@ function TraineeSummary({
 				</Fact>
 				{showDocs && (
 					<Fact
-						label='Giấy tờ bắt buộc'
+						label='Hồ sơ PDF'
 						onClick={() => onOpen('documents')}
 					>
-						{docRequired ? (
-							<>
-								{trainee.doc_done ?? 0}/{docRequired}{' '}
-								{docMissing > 0 ? (
-									<span className={ds.chipMissing}>Thiếu {docMissing}</span>
-								) : (
-									<span className={ds.chipDone}>Đủ</span>
-								)}
-							</>
-						) : (
-							'Không yêu cầu'
-						)}
+						<TraineeDocStateBadge state={trainee.doc_state} />
 					</Fact>
 				)}
 			</div>

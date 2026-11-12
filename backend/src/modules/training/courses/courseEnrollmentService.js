@@ -18,12 +18,14 @@ const enrollmentProgramService = require('./enrollmentProgramService');
 const programClassService = require('./programClassService');
 const systemSettingService = require('../../settings/systemSettingService');
 const formCustomValueService = require('../../forms/formCustomValueService');
+const { DOC_STATE_SQL } = require('../trainees/traineeDocumentSql');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 // 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
 const enrollmentSelect = (whereSql) => `
     SELECT e.*, t.full_name AS trainee_name, t.phone AS trainee_phone, t.email AS trainee_email,
            ${boolExpr(`t.staff_user_id IS NOT NULL`)} AS is_internal,
+           ${DOC_STATE_SQL('t')} AS trainee_doc_state,
            u.full_name AS decided_by_name,
            tp.code AS program_code, tp.name AS program_name, mm.full_name AS main_mentor_name,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,

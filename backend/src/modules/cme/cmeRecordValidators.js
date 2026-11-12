@@ -22,8 +22,10 @@ const updateRules = [
 		.optional({ values: 'null' })
 		.custom((v) => String(v).length <= 500)
 		.withMessage('Ghi chú tối đa 500 ký tự'),
+	// null = bỏ qua (người dùng tự khai xóa số giờ tín chỉ → updateMine đưa về 0;
+	// admin gửi null thì fieldSets giữ giá trị cũ vì cột NOT NULL)
 	body('credits')
-		.optional()
+		.optional({ values: 'null' })
 		.custom((v) => !isEmpty(v) && Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) < 10000)
 		.withMessage('Số tín chỉ không hợp lệ'),
 	body('quantity')

@@ -23,8 +23,14 @@ const createCrudService = (
 	extraFields = [],
 	options = {},
 ) => {
-	// Thực thể để phát tín hiệu (vd: roles -> role)
-	const entity = tableName.endsWith('s') ? tableName.slice(0, -1) : tableName;
+	// Thực thể để phát tín hiệu (vd: roles -> role, categories -> category).
+	// Trước đây chỉ cắt 's' cuối → categories thành 'categorie', trang danh mục
+	// nghe 'category' nên sửa/xóa lĩnh vực không tự cập nhật.
+	const entity = tableName.endsWith('ies')
+		? `${tableName.slice(0, -3)}y`
+		: tableName.endsWith('s')
+			? tableName.slice(0, -1)
+			: tableName;
 	// Prefix cache riêng theo bảng — invalidate(cachePrefix) sau mỗi lần ghi sẽ
 	// xóa sạch mọi key getAll (mọi trang/search) lẫn getById của bảng này.
 	const cachePrefix = `lookup:${tableName}:`;

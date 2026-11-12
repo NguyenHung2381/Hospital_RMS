@@ -5,7 +5,7 @@ const { createTrainingUpload } = require('../../middlewares/uploadTraining');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
-// Học viên tự nộp giấy tờ còn thiếu (/me/trainee-documents) — giai đoạn 3. Mọi thao
+// Học viên tự nộp hồ sơ PDF (/me/trainee-documents) — giai đoạn 3. Mọi thao
 // tác theo hồ sơ học viên gắn với tài khoản đăng nhập (trainees.user_id), file nộp
 // ở trạng thái 'pending' chờ cán bộ duyệt (PUT /trainees/documents/:docId/review).
 const uploadDoc = createTrainingUpload('trainee_document');
@@ -35,7 +35,7 @@ router.post(
 		}
 		return created(
 			res,
-			await traineeRecordService.addMyDocument(req.user.id, req.body.doc_type, req.file),
+			await traineeRecordService.addMyDocument(req.user.id, req.file),
 			'Đã nộp, chờ phòng Đào tạo duyệt',
 		);
 	}),

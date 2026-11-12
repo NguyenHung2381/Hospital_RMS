@@ -59,10 +59,7 @@ const addDocument = asyncHandler(async (req, res) => {
 	if (!req.file) {
 		return res.status(400).json({ success: false, message: 'Vui lòng chọn file để tải lên' });
 	}
-	return created(
-		res,
-		await traineeService.addDocument(req.params.id, req.body.doc_type, req.file, req.user.id),
-	);
+	return created(res, await traineeService.addDocument(req.params.id, req.file, req.user.id));
 });
 
 const removeDocument = asyncHandler(async (req, res) => {

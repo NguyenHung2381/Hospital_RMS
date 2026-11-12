@@ -11,7 +11,6 @@ import {
 	getTraineeTypes,
 	registerCourse,
 	type PublicCourse,
-	type TraineeDocType,
 	type TraineeTypeOption,
 } from '../api/publicApi';
 import { AttachmentPicker, type Attachment } from '../components/AttachmentPicker';
@@ -29,12 +28,6 @@ import s from './CourseRegisterPublic.module.css';
 
 // Trang này có class ghi chú / lỗi riêng
 const COURSE_FIELD = { ...PUBLIC_FIELD, hint: s.hint, error: s.fieldError, inputError: s.inputError };
-
-const DOC_TYPE_OPTIONS: { value: TraineeDocType; label: string }[] = [
-	{ value: 'national_id', label: 'CCCD/CMND' },
-	{ value: 'degree', label: 'Bằng cấp/Chứng chỉ' },
-	{ value: 'other', label: 'Khác' },
-];
 
 const EMPTY_FORM = {
 	full_name: '',
@@ -111,7 +104,7 @@ export default function CourseRegisterPublic() {
 	const [courseId, setCourseId] = useState('');
 	const [programId, setProgramId] = useState('');
 	const [courseQuery, setCourseQuery] = useState('');
-	const [attachments, setAttachments] = useState<Attachment<TraineeDocType>[]>([]);
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const captcha = useCaptcha();
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [loading, setLoading] = useState(true);
@@ -241,7 +234,6 @@ export default function CourseRegisterPublic() {
 					...form,
 					course_id: courseId,
 					program_id: programId || undefined,
-					doc_types: attachments.map((a) => a.type ?? 'other'),
 					custom,
 					...captcha.payload,
 				},
@@ -342,7 +334,7 @@ export default function CourseRegisterPublic() {
 		{ label: 'Chọn khóa học', ok: !!course },
 		...(course?.programs.length ? [{ label: 'Chọn chương trình', ok: !!program }] : []),
 		{ label: 'Nhập họ và tên', ok: !!form.full_name.trim() },
-		{ label: 'Hồ sơ đính kèm (tùy chọn)', ok: attachments.length > 0 },
+		{ label: 'Hồ sơ PDF (tùy chọn)', ok: attachments.length > 0 },
 		{ label: 'Xác nhận không phải người máy', ok: !!captcha.payload },
 	];
 
@@ -663,16 +655,16 @@ export default function CourseRegisterPublic() {
 
 					<FormSection
 						step={3}
-						title='Hồ sơ đính kèm'
+						title='Hồ sơ học viên (PDF)'
 						optional
-						description='Ảnh/bản scan CCCD, văn bằng, chứng chỉ liên quan... Chọn loại hồ sơ cho từng file.'
+						description='Gộp CCCD, văn bằng, chứng chỉ, ảnh thẻ... vào 1 file PDF duy nhất rồi đính kèm.'
 					>
 						<AttachmentPicker
 							value={attachments}
 							onChange={setAttachments}
-							typeOptions={DOC_TYPE_OPTIONS}
-							defaultType='other'
-							hint='CCCD, bằng cấp...'
+							maxFiles={1}
+							extensions={['.pdf']}
+							hint='1 file PDF đầy đủ thông tin'
 						/>
 					</FormSection>
 

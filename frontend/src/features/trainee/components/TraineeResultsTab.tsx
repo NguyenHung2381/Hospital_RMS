@@ -6,6 +6,7 @@ import { saveBlob } from '@/shared/utils/saveBlob';
 import { formatDate } from '../../../shared/utils/formatDate';
 import { GRADE_FLAG_LABEL, type GradeFlag } from '../../course/types/course.type';
 import type { MyCme } from '../../portal/api/meApi';
+import { CME_STATUS_LABELS } from '../../seminar/types/seminar.type';
 import { programLabel, traineeRecordApi, type TraineeCourseResult } from '../api/traineeRecordApi';
 import { RotationTable } from './TraineeAttendanceTab';
 import styles from '../pages/Trainees.module.css';
@@ -238,8 +239,9 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 				<b>Tín chỉ CME</b>
 				{cme && (
 					<span>
-						· Tích lũy <b>{fmt(cme.earned_credits)}</b> giờ tín chỉ ({cme.seminars.length} hội thảo/tập huấn,{' '}
-						{cme.records.length} ghi nhận khác)
+						· Tích lũy <b>{fmt(cme.earned_credits)}</b> giờ tín chỉ (
+						{cme.seminars.filter((s) => s.cme_year != null).length} hội thảo/tập huấn đã cấp CME,{' '}
+						{cme.records.filter((r) => r.approval_status === 'approved').length} ghi nhận khác đã duyệt)
 					</span>
 				)}
 				{hasCme && (
@@ -295,15 +297,16 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 								<tr key={s.id}>
 									<td>{s.seminar_title}</td>
 									<td>{s.cme_year ?? '—'}</td>
-									<td>{fmt(s.cme_credits)}</td>
-									<td>{s.cme_certificate_no ?? s.cme_status}</td>
+									{/* Chỉ lượt đã cấp số CME mới được tính vào tổng (cmeUserService) */}
+									<td>{s.cme_year != null ? fmt(s.cme_credits) : '—'}</td>
+									<td>{s.cme_certificate_no ? `SQĐ ${s.cme_certificate_no}` : CME_STATUS_LABELS[s.cme_status]}</td>
 								</tr>
 							))}
 							{cme.records.map((r) => (
 								<tr key={r.id}>
 									<td>{r.title}</td>
 									<td>{r.year ?? '—'}</td>
-									<td>{fmt(r.credits)}</td>
+									<td>{r.approval_status === 'approved' ? fmt(r.credits) : '—'}</td>
 									<td>
 										{r.approval_status === 'approved'
 											? 'Đã duyệt'

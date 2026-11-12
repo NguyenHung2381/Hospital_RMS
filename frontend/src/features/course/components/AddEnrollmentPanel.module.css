@@ -593,3 +593,36 @@
 		flex-basis: 100%;
 	}
 }
+
+/* Thêm nhanh học viên ngoại viện chưa có hồ sơ (tạo + ghi danh luôn) */
+.quickAddBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	margin: 6px 0;
+	padding: 6px 12px;
+	border: 1px dashed var(--color-primary);
+	border-radius: var(--radius-lg);
+	background: transparent;
+	color: var(--color-primary-dark);
+	font: inherit;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.quickAddBtn svg {
+	width: 16px;
+	height: 16px;
+}
+.quickAddBtn:hover:not(:disabled) {
+	background: var(--tone-green-bg);
+}
+.quickAddBtn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.quickAddBtn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}

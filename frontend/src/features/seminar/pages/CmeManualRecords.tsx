@@ -1921,7 +1921,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 		setApproveCredits(Number(r.credits) > 0 ? String(r.credits) : (calcCredits(cat, qty) ?? ''));
 	};
 	const approveCreditsOk =
-		approveCredits.trim() !== '' && Number.isFinite(Number(approveCredits)) && Number(approveCredits) >= 0;
+		approveCredits.trim() !== '' && Number.isFinite(Number(approveCredits)) && Number(approveCredits) > 0;
 	const handleApprove = async () => {
 		if (!approving || !approveCreditsOk) return;
 		try {
@@ -2370,12 +2370,19 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							className={styles.formInput}
 							type='number'
 							step='0.1'
-							min='0'
+							min='0.1'
 							value={approveCredits}
 							onChange={(e) => setApproveCredits(e.target.value)}
 							onKeyDown={(e) => e.key === 'Enter' && handleApprove()}
 							autoFocus
 						/>
+						{approveCredits.trim() !== '' && !approveCreditsOk ? (
+							<div className={styles.fieldError}>
+								Số tín chỉ phải lớn hơn 0 — không đủ điều kiện thì từ chối ghi nhận.
+							</div>
+						) : (
+							<div className={styles.hint}>Chỉ được tính vào tổng CME với số tín chỉ lớn hơn 0.</div>
+						)}
 					</>
 				)}
 			</Modal>

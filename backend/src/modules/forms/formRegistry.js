@@ -405,6 +405,13 @@ const FORMS = [
 				type: 'number',
 				base: { min: 0, max: 999999 },
 			},
+			// Người dùng tự khai — người quản lý xem / sửa lại khi duyệt
+			{
+				key: 'credits',
+				label: 'Số giờ tín chỉ',
+				type: 'number',
+				base: { min: 0, max: 9999 },
+			},
 			{ key: 'activity_date', label: 'Từ ngày', type: 'date' },
 			{ key: 'end_date', label: 'Đến ngày', type: 'date' },
 			{

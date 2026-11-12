@@ -1,41 +1,26 @@
-// SQL dùng chung cho checklist giấy tờ học viên (giai đoạn 3) — file riêng không phụ
-// thuộc service nào để traineeService và traineeRecordService cùng dùng mà không vòng require.
-const { outerApply, strPos } = require('../../../config/db');
+// SQL dùng chung cho hồ sơ học viên — file riêng không phụ thuộc service nào để
+// traineeService, traineeRecordService và courseEnrollmentService cùng dùng mà không vòng require.
+//
+// Mỗi học viên chỉ cần nộp 1 file PDF hồ sơ đầy đủ (không còn chia theo loại giấy tờ).
+// Trạng thái hồ sơ của học viên t:
+//   'done'    — có ít nhất 1 file đã duyệt (cán bộ tải lên = duyệt sẵn)
+//   'pending' — chỉ có file học viên tự nộp / nộp kèm khi đăng ký, chờ duyệt
+//   'missing' — chưa có file nào (hoặc toàn bộ bị từ chối)
+// File cũ nộp theo từng loại giấy tờ (trước khi gộp) vẫn tính — học viên đã nộp rồi.
 
-// Loại giấy tờ dt bắt buộc với học viên t: t có ghi danh (chưa bị từ chối) vào khóa
-// mang loại nằm trong dt.required_for_types (danh sách id cách nhau dấu phẩy).
-const DOC_REQUIRED_SQL = (t, dt) => `EXISTS (
-    SELECT 1 FROM course_enrollments re JOIN courses rc ON rc.id = re.course_id
-    WHERE re.trainee_id = ${t}.id AND re.status <> 'rejected' AND rc.training_type_id IS NOT NULL
-      AND ${dt}.required_for_types IS NOT NULL
-      AND ${strPos(`CONCAT(',', REPLACE(${dt}.required_for_types, ' ', ''), ',')`, "CONCAT(',', rc.training_type_id, ',')")} > 0
-  )`;
-const DOC_SUBMITTED_SQL = (t, dt) => `EXISTS (
+const docExists = (t, status) => `EXISTS (
     SELECT 1 FROM trainee_documents sd JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
-    WHERE sd.trainee_id = ${t}.id AND sd.doc_type = ${dt}.id AND sd.status = 'approved'
-  )`;
-// Cột "Hồ sơ x/y" + lọc "thiếu hồ sơ" ở danh sách học viên (traineeService.getAll)
-// (SQL Server không cho subquery trong SUM ⇒ đếm qua outerApply; PG: LEFT JOIN LATERAL)
-const DOC_COUNT_APPLY = outerApply(
-	`
-    SELECT COUNT(*) AS doc_required, COUNT(ok.x) AS doc_done
-    FROM trainee_document_types dt
-    ${outerApply(
-			`
-      SELECT 1 AS x FROM trainee_documents sd
-      JOIN training_files sf ON sf.id = sd.file_id AND sf.is_deleted = 'false'
-      WHERE sd.trainee_id = t.id AND sd.doc_type = dt.id AND sd.status = 'approved'
-      ORDER BY sd.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-    `,
-			'ok',
-		)}
-    WHERE ${DOC_REQUIRED_SQL('t', 'dt')}
-  `,
-	'dc',
-);
-const DOC_MISSING_SQL = `EXISTS (
-    SELECT 1 FROM trainee_document_types dt
-    WHERE ${DOC_REQUIRED_SQL('t', 'dt')} AND NOT ${DOC_SUBMITTED_SQL('t', 'dt')}
+    WHERE sd.trainee_id = ${t}.id AND sd.status = '${status}'
   )`;
 
-module.exports = { DOC_REQUIRED_SQL, DOC_SUBMITTED_SQL, DOC_COUNT_APPLY, DOC_MISSING_SQL };
+const DOC_STATE_SQL = (t) =>
+	`CASE WHEN ${docExists(t, 'approved')} THEN 'done' WHEN ${docExists(t, 'pending')} THEN 'pending' ELSE 'missing' END`;
+
+// Lọc danh sách học viên theo trạng thái hồ sơ (?doc_state=done|pending|missing)
+const DOC_STATE_WHERE = {
+	done: (t) => docExists(t, 'approved'),
+	pending: (t) => `NOT ${docExists(t, 'approved')} AND ${docExists(t, 'pending')}`,
+	missing: (t) => `NOT ${docExists(t, 'approved')} AND NOT ${docExists(t, 'pending')}`,
+};
+
+module.exports = { DOC_STATE_SQL, DOC_STATE_WHERE };

@@ -104,6 +104,9 @@ export interface MyCmeSeminar {
 	cme_certificate_no: string | null;
 	cme_credits: number | null;
 	cme_status: CmeStatus;
+	/** Có = tự đăng ký qua QR — mở vé (/hoi-nghi/ve/<mã>) để điểm danh + làm bài kiểm tra */
+	ticket_code?: string | null;
+	checked_in_at?: string | null;
 }
 
 export type CmeApprovalStatus = 'pending' | 'approved' | 'rejected';
@@ -264,12 +267,14 @@ export interface MyCmeRecordForm {
 	year: string;
 	role: string;
 	quantity: string;
+	/** Số giờ tín chỉ tự khai — người quản lý xem / sửa khi duyệt */
+	credits: string;
 	note: string;
 	/** Trường tùy chỉnh (Cấu hình form 'cme_record') */
 	custom: CustomValues;
 }
 
-// Không gửi tín chỉ — người quản lý nhập khi duyệt
+// Tín chỉ tự khai chỉ là đề xuất — chỉ tính vào tổng sau khi người quản lý duyệt
 const toPayload = (f: MyCmeRecordForm) => ({
 	category_id: f.category_id || null,
 	title: f.title,
@@ -278,6 +283,7 @@ const toPayload = (f: MyCmeRecordForm) => ({
 	year: Number(f.year) || null,
 	role: f.role || null,
 	quantity: f.quantity === '' ? null : Number(f.quantity),
+	credits: f.credits === '' ? null : Number(f.credits),
 	note: f.note || null,
 	custom: f.custom,
 });

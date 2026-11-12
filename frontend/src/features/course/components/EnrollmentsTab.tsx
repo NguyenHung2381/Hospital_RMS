@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { TraineeDocStateBadge } from "../../trainee/components/TraineeDocState";
+import { docStateRowClass } from "../../trainee/utils/docState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarSvg, CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
 import {
@@ -550,7 +552,7 @@ export function EnrollmentsTab({
       <tr
         key={en.id}
         data-enrollment-id={en.id}
-        className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""} ${flash?.id === en.id ? styles.rowFlash : ""}`}
+        className={`${tbl.tr} ${docStateRowClass(en.trainee_doc_state)} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""} ${flash?.id === en.id ? styles.rowFlash : ""}`}
       >
         <td className={sel.checkCol}>
           <SelectCheckbox
@@ -578,6 +580,9 @@ export function EnrollmentsTab({
             }
           >
             {en.is_internal ? "Nội viện" : "Ngoại viện"}
+          </span>
+          <span className={styles.docStateTag}>
+            <TraineeDocStateBadge state={en.trainee_doc_state} />
           </span>
           {en.practice_code && (
             <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>

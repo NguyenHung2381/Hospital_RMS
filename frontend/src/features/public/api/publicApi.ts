@@ -111,14 +111,10 @@ export interface RegisterPayload {
 	custom?: CustomValues;
 	course_id: string;
 	program_id?: string;
-	/** Loại hồ sơ của từng file đính kèm, cùng thứ tự với `files` */
-	doc_types?: TraineeDocType[];
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot — luôn để trống, ẩn khỏi người dùng thật bằng CSS
 }
-
-export type TraineeDocType = 'national_id' | 'degree' | 'other';
 
 export const registerCourse = (data: RegisterPayload, files?: File[]) =>
 	request<{ submitted: boolean }>('/course-registration', {
@@ -329,7 +325,7 @@ export const lookupSeminarStaff = (token: string, full_name: string, staff_numbe
 		body: JSON.stringify({ full_name, staff_number }),
 	});
 export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
-	request<{ ticket_code: string | null; ticket_delivery?: 'email' | 'organizer'; email_hint?: string }>(`/seminars/${encodeURIComponent(token)}/register`, {
+	request<{ ticket_code: string }>(`/seminars/${encodeURIComponent(token)}/register`, {
 		method: 'POST',
 		body: JSON.stringify(data),
 	});

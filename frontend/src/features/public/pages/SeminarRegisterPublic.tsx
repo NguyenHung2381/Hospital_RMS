@@ -56,10 +56,6 @@ export default function SeminarRegisterPublic() {
 	const [form, setForm] = useState(EMPTY_FORM);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
-	// Nội viện: vé không trả về trình duyệt — gửi email hồ sơ nhân sự / nhận tại ban tổ chức
-	const [delivered, setDelivered] = useState<{ ticket_delivery?: string; email_hint?: string } | null>(
-		null,
-	);
 	// Nhân viên nội viện tìm thấy theo họ tên + mã NV (null = chưa tra / không khớp)
 	const [staff, setStaff] = useState<SeminarStaff | null>(null);
 	const [lookingUp, setLookingUp] = useState(false);
@@ -147,8 +143,8 @@ export default function SeminarRegisterPublic() {
 				custom,
 				...captcha.payload,
 			});
-			if (res.ticket_code) navigate(`/hoi-nghi/ve/${res.ticket_code}`, { state: { justRegistered: true } });
-			else if (res.ticket_delivery) setDelivered(res);
+			// Nội viện + ngoại viện: sang trang vé hiện QR ngay (tự lưu ảnh QR 1 lần)
+			navigate(`/hoi-nghi/ve/${res.ticket_code}`, { state: { justRegistered: true } });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
 		} finally {
@@ -196,13 +192,7 @@ export default function SeminarRegisterPublic() {
 				</div>
 			</div>
 
-			{delivered ? (
-				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
-					{delivered.ticket_delivery === 'email'
-						? `Đăng ký thành công. Thẻ đại biểu kèm mã QR đã được gửi tới email ${delivered.email_hint ?? 'trong hồ sơ nhân sự'} — dùng mã QR đó để điểm danh và làm bài kiểm tra.`
-						: 'Đăng ký thành công. Vui lòng nhận thẻ đại biểu (mã QR điểm danh) tại bàn ban tổ chức.'}
-				</div>
-			) : !seminar.registration_open ? (
+			{!seminar.registration_open ? (
 				<div className={`${styles.alertBox} ${styles.alertError}`}>
 					<AlertSvg /> Hội nghị đã kết thúc, không nhận đăng ký.
 				</div>

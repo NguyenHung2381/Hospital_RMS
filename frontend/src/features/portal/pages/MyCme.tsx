@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, QrSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
@@ -40,6 +40,7 @@ export default function MyCme() {
 	const cmeCfg = useFormConfig('cme_record', 'portal');
 	// Tab giữ trên URL (?tab=) — tải lại / quay lại vẫn đúng tab đang xem.
 	const [params, setParams] = useSearchParams();
+	const navigate = useNavigate();
 	const tab: Tab = params.get('tab') === 'records' ? 'records' : 'seminars';
 	const setTab = (t: Tab) => setParams({ tab: t }, { replace: true });
 	const [year, setYear] = useState<number | 'all'>('all');
@@ -255,11 +256,27 @@ export default function MyCme() {
 																{EVENT_TYPE_LABELS[s.event_type]}
 																{s.location && ` · ${s.location}`}
 															</div>
+															{/* Tự đăng ký ở cổng công khai: mở lại vé QR (lỡ đóng trang / mất ảnh QR) */}
+															{s.ticket_code && (
+																<Button
+																	size='sm'
+																	variant={s.checked_in_at ? 'secondary' : 'primary'}
+																	icon={<QrSvg />}
+																	onClick={() => navigate(`/hoi-nghi/ve/${s.ticket_code}`)}
+																	title='Đưa mã QR cho ban tổ chức quét để điểm danh, sau đó làm bài kiểm tra trên vé'
+																	style={{ marginTop: 6 }}
+																>
+																	{s.checked_in_at ? 'Mở vé' : 'Vé QR điểm danh'}
+																</Button>
+															)}
 														</td>
 														<td>{s.date_text || formatDateVN(s.start_date) || '—'}</td>
 														<td>{PARTICIPATION_LABELS[s.participation_type]}</td>
 														<td>{s.cme_certificate_no ?? '—'}</td>
-														<td>{s.cme_credits ?? '—'}</td>
+														{/* Chỉ lượt đã cấp số CME mới được tính vào tổng (cmeUserService) */}
+														<td title={s.cme_year == null ? 'Chưa cấp số CME — chưa tính vào tổng' : undefined}>
+															{s.cme_year != null ? (s.cme_credits ?? '—') : '—'}
+														</td>
 														<td>
 															<Badge tone={s.cme_status === 'none' ? 'gray' : s.cme_status === 'pending' ? 'amber' : 'green'}>
 																{CME_STATUS_LABELS[s.cme_status]}
@@ -339,8 +356,19 @@ export default function MyCme() {
 														</td>
 														<td>{r.activity_date ? formatDateVN(r.activity_date) : `Năm ${r.year}`}</td>
 														<td>{r.category_name ?? '—'}</td>
-														{/* Tín chỉ do người quản lý nhập khi duyệt */}
-														<td>{r.approval_status === 'approved' ? r.credits : '—'}</td>
+														{/* Đã duyệt: tín chỉ người quản lý xác nhận. Chưa duyệt: số giờ tự khai (chưa tính vào tổng) */}
+														<td>
+															{r.approval_status === 'approved' ? (
+																r.credits
+															) : Number(r.credits) > 0 ? (
+																<span title='Số giờ tín chỉ tự khai — chưa tính vào tổng cho tới khi được duyệt'>
+																	{r.credits}
+																	<div className={tbl.dateText}>tự khai</div>
+																</span>
+															) : (
+																'—'
+															)}
+														</td>
 														<td>
 															<Badge tone={APPROVAL_TONE[r.approval_status]}>{APPROVAL_LABEL[r.approval_status]}</Badge>
 															{r.approval_status === 'rejected' && r.reject_reason && (

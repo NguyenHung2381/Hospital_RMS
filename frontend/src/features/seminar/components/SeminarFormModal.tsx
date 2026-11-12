@@ -145,6 +145,7 @@ export function SeminarFormModal({
 						: 'Chỉnh sửa hội thảo / hội nghị'
 			}
 			subtitle='Thông tin sự kiện — người tham dự quản lý ở trang chi tiết'
+			size='lg'
 			className={styles.modal}
 			bodyClassName={styles.modalBody}
 			footer={
@@ -168,6 +169,92 @@ export function SeminarFormModal({
 			}
 		>
 			<div className={styles.formGrid}>
+				{/* ── CME & số liệu tổng hợp ── */}
+				<div className={styles.formSection}>
+					<div className={styles.formSectionHead}>
+						CME &amp; số liệu tổng hợp
+						<label className={styles.inlineSwitch}>
+							<input
+								type='checkbox'
+								role='switch'
+								checked={form.grants_cme}
+								onChange={set('grants_cme')}
+							/>
+							<span className={styles.testSwitchTrack} />
+							Cấp CME
+						</label>
+					</div>
+					<span className={styles.formSectionHint}>
+						Số nhập tay sẽ thay cho số đếm tự động
+					</span>
+				</div>
+				{form.grants_cme && !ht && (
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Tín chỉ CME / người</label>
+						<input
+							className={styles.formInput}
+							value={form.cme_default_credits}
+							onChange={set('cme_default_credits')}
+							placeholder='VD: 3 hoặc 3.5'
+							inputMode='decimal'
+						/>
+						<span className={styles.hint}>Số tín chỉ mỗi đại biểu, không phải tổng số chứng chỉ</span>
+					</div>
+				)}
+				{form.grants_cme && (
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Số lượng chứng chỉ CME</label>
+						<input
+							className={styles.formInput}
+							value={form.manual_cme_count}
+							onChange={set('manual_cme_count')}
+							inputMode='numeric'
+							placeholder='VD: 330'
+						/>
+					</div>
+				)}
+				<div className={`${styles.full} ${styles.countGrid}`}>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Tổng người tham dự</label>
+						<input
+							className={styles.formInput}
+							value={form.manual_participant_count}
+							onChange={set('manual_participant_count')}
+							inputMode='numeric'
+							placeholder='VD: 260'
+						/>
+					</div>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Nội viện</label>
+						<input
+							className={styles.formInput}
+							value={form.manual_internal_count}
+							onChange={set('manual_internal_count')}
+							inputMode='numeric'
+						/>
+					</div>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Ngoại viện</label>
+						<input
+							className={styles.formInput}
+							value={form.manual_external_count}
+							onChange={set('manual_external_count')}
+							inputMode='numeric'
+						/>
+					</div>
+					<div className={styles.formGroup}>
+						<label className={styles.formLabel}>Nước ngoài</label>
+						<input
+							className={styles.formInput}
+							value={form.manual_foreign_count}
+							onChange={set('manual_foreign_count')}
+							inputMode='numeric'
+						/>
+					</div>
+				</div>
+
+				{/* ── Thông tin chung ── */}
+				<div className={styles.formSection}>Thông tin chung</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
 					<label className={styles.formLabel}>
 						Tên / Nội dung <span className={styles.required}>*</span>
@@ -252,7 +339,6 @@ export function SeminarFormModal({
 								))}
 							</select>
 						</div>
-
 						<div className={styles.formGroup}>
 							<label className={styles.formLabel}>Phạm vi</label>
 							<select
@@ -266,10 +352,12 @@ export function SeminarFormModal({
 									</option>
 								))}
 							</select>
-							{form.event_type === 'training' && form.scope === 'hosted' && (
-								<span className={styles.hint}>Tập huấn BV tổ chức sẽ chuyển sang mục "Tập huấn bệnh viện"</span>
-							)}
 						</div>
+						{form.event_type === 'training' && form.scope === 'hosted' && (
+							<span className={`${styles.hint} ${styles.full}`}>
+								Tập huấn BV tổ chức sẽ chuyển sang mục "Tập huấn bệnh viện"
+							</span>
+						)}
 					</>
 				)}
 
@@ -279,44 +367,50 @@ export function SeminarFormModal({
 						className={styles.formInput}
 						value={form.location}
 						onChange={set('location')}
+						placeholder='VD: Hội trường A, tầng 3'
 					/>
 				</div>
 
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngày bắt đầu</label>
-					<DatePicker
-						value={form.start_date}
-						onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
-						max={form.end_date || undefined}
-					/>
+				{/* ── Thời gian ── */}
+				<div className={styles.formSection}>
+					Thời gian
+					<span className={styles.formSectionHint}>
+						Giờ kết thúc tính vào ngày kết thúc (trống thì tính ngày bắt đầu)
+					</span>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngày kết thúc</label>
-					<DatePicker
-						value={form.end_date}
-						onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
-						min={form.start_date || undefined}
-					/>
+					<label className={styles.formLabel}>Bắt đầu</label>
+					<div className={styles.dateTimeRow}>
+						<DatePicker
+							value={form.start_date}
+							onChange={(val) => setForm((f) => ({ ...f, start_date: val }))}
+							max={form.end_date || undefined}
+							placeholder='DD/MM/YYYY'
+						/>
+						<TimePicker
+							value={form.start_time}
+							onChange={setTime('start_time')}
+							className={styles.timeCell}
+						/>
+					</div>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Giờ bắt đầu</label>
-					<TimePicker
-						value={form.start_time}
-						onChange={setTime('start_time')}
-					/>
-				</div>
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Giờ kết thúc</label>
-					<TimePicker
-						value={form.end_time}
-						onChange={setTime('end_time')}
-						hasError={!!timeErr}
-					/>
-					{timeErr ? (
-						<div className={styles.fieldError}>{timeErr}</div>
-					) : (
-						<span className={styles.hint}>Vào ngày kết thúc (trống thì tính ngày bắt đầu)</span>
-					)}
+					<label className={styles.formLabel}>Kết thúc</label>
+					<div className={styles.dateTimeRow}>
+						<DatePicker
+							value={form.end_date}
+							onChange={(val) => setForm((f) => ({ ...f, end_date: val }))}
+							min={form.start_date || undefined}
+							placeholder='DD/MM/YYYY'
+						/>
+						<TimePicker
+							value={form.end_time}
+							onChange={setTime('end_time')}
+							hasError={!!timeErr}
+							className={styles.timeCell}
+						/>
+					</div>
+					{timeErr && <div className={styles.fieldError}>{timeErr}</div>}
 				</div>
 
 				<div className={styles.formGroup}>
@@ -327,9 +421,7 @@ export function SeminarFormModal({
 						onChange={set('date_text')}
 						placeholder='VD: 05-06/06/2026'
 					/>
-					<span className={styles.hint}>
-						Giữ nguyên chuỗi gốc khi ngày không theo chuẩn
-					</span>
+					<span className={styles.hint}>Giữ nguyên chuỗi gốc khi ngày không theo chuẩn</span>
 				</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Năm sự kiện</label>
@@ -340,11 +432,11 @@ export function SeminarFormModal({
 						placeholder='2026'
 						inputMode='numeric'
 					/>
-					<span className={styles.hint}>
-						Dùng cho chu trình cấp số CME theo năm
-					</span>
+					<span className={styles.hint}>Dùng cho chu trình cấp số CME theo năm</span>
 				</div>
 
+				{/* ── Tổ chức & nhân sự ── */}
+				<div className={styles.formSection}>Tổ chức &amp; nhân sự</div>
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Người điều phối</label>
 					<input
@@ -361,7 +453,6 @@ export function SeminarFormModal({
 						onChange={set('host_chair')}
 					/>
 				</div>
-
 				<div className={`${styles.formGroup} ${styles.full}`}>
 					<label className={styles.formLabel}>Báo cáo viên</label>
 					<input
@@ -370,7 +461,6 @@ export function SeminarFormModal({
 						onChange={set('speakers')}
 					/>
 				</div>
-
 				<div className={styles.formGroup}>
 					<label className={styles.formLabel}>Công văn cấp phép của Sở</label>
 					<input
@@ -388,99 +478,15 @@ export function SeminarFormModal({
 					/>
 				</div>
 
-				<div className={styles.formGroup}>
-					<label className={styles.checkFilter}>
-						<input
-							type='checkbox'
-							checked={form.grants_cme}
-							onChange={set('grants_cme')}
-						/>
-						Có cấp CME
-					</label>
-				</div>
-				{form.grants_cme && !ht && (
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Tín chỉ CME / người</label>
-						<input
-							className={styles.formInput}
-							value={form.cme_default_credits}
-							onChange={set('cme_default_credits')}
-							placeholder='VD: 3 hoặc 3.5'
-							inputMode='decimal'
-						/>
-						<span className={styles.hint}>
-							Số tín chỉ mỗi đại biểu, không phải tổng số chứng chỉ
-						</span>
-					</div>
-				)}
-
-				{/* ── Số liệu tổng hợp (khi chưa nhập từng người) ── */}
+				{/* ── Ghi chú ── */}
+				<div className={styles.formSection}>Ghi chú</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel} style={{ fontWeight: 700 }}>
-						Số liệu tổng hợp
-					</label>
-					<span className={styles.hint}>
-						Nhập nhanh số lượng ở đây nếu chưa cần danh sách từng người. Khi
-						có số nhập tay, hệ thống hiển thị số này thay cho số đếm tự động.
-					</span>
-				</div>
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số lượng người tham dự</label>
-					<input
-						className={styles.formInput}
-						value={form.manual_participant_count}
-						onChange={set('manual_participant_count')}
-						inputMode='numeric'
-						placeholder='VD: 260'
-					/>
-				</div>
-				{form.grants_cme && (
-					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Số lượng chứng chỉ CME</label>
-						<input
-							className={styles.formInput}
-							value={form.manual_cme_count}
-							onChange={set('manual_cme_count')}
-							inputMode='numeric'
-							placeholder='VD: 330'
-						/>
-					</div>
-				)}
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Trong đó: nội viện</label>
-					<input
-						className={styles.formInput}
-						value={form.manual_internal_count}
-						onChange={set('manual_internal_count')}
-						inputMode='numeric'
-					/>
-				</div>
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngoại viện</label>
-					<input
-						className={styles.formInput}
-						value={form.manual_external_count}
-						onChange={set('manual_external_count')}
-						inputMode='numeric'
-					/>
-				</div>
-				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Nước ngoài</label>
-					<input
-						className={styles.formInput}
-						value={form.manual_foreign_count}
-						onChange={set('manual_foreign_count')}
-						inputMode='numeric'
-					/>
-				</div>
-
-				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Ghi chú</label>
 					<textarea
 						className={styles.formTextarea}
 						rows={2}
 						value={form.notes}
 						onChange={set('notes')}
+						aria-label='Ghi chú'
 					/>
 				</div>
 			</div>

@@ -75,26 +75,26 @@ const { assertCanManageUser } = require('../../src/modules/access/privilegeGuard
 
 const since = (n) => log.slice(n).map((q) => q.text);
 
-test('M6: nội viện đăng ký hội nghị — vé gửi email hồ sơ, không trả mã vé', async () => {
+// M6 (đã thay đổi theo yêu cầu nghiệp vụ): nội viện cũng nhận vé ngay sau đăng ký
+// để hiện QR luôn — xem đánh đổi ở seminarPublicService.registerPublic.
+test('M6: nội viện đăng ký hội nghị — nhận vé ngay (khớp hồ sơ nhân sự)', async () => {
 	const r = await seminarPublic.registerPublic('tok', {
 		source: 'internal',
 		full_name: 'nguyen van binh',
 		staff_number: '123',
 	});
-	assert.equal(r.ticket_code, null);
-	assert.equal(r.ticket_delivery, 'email');
-	assert.equal(r.email_hint, 'b***@bv.vn');
+	assert.match(r.ticket_code, /^[0-9a-f]{32}$/);
 
-	mailService.isEnabled = async () => false; // tắt email thẻ đại biểu ⇒ nhận tại ban tổ chức
+	mailService.isEnabled = async () => false; // tắt email thẻ đại biểu vẫn có vé trên màn hình
 	const r2 = await seminarPublic.registerPublic('tok', {
 		source: 'internal',
 		full_name: 'Nguyễn Văn Bình',
 		staff_number: '123',
 	});
-	assert.deepEqual(r2, { ticket_code: null, ticket_delivery: 'organizer' });
+	assert.match(r2.ticket_code, /^[0-9a-f]{32}$/);
 });
 
-test('M6: ngoại viện vẫn nhận vé ngay (tự nhập thông tin của mình)', async () => {
+test('M6: ngoại viện nhận vé ngay (tự nhập thông tin của mình)', async () => {
 	const r = await seminarPublic.registerPublic('tok', {
 		source: 'external',
 		full_name: 'Khách',

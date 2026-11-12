@@ -336,9 +336,16 @@ const assertEditableMine = async (id, userId) => {
 	return rec;
 };
 
-// Người dùng không tự nhập tín chỉ — lưu 0, người quản lý nhập khi duyệt (review)
+// Số giờ tín chỉ người dùng tự khai: > 0 thì lưu, bỏ trống / 0 = chưa khai (lưu 0).
+// Bản 'pending' không được cộng vào tổng (mọi chỗ cộng đều lọc 'approved'); người
+// quản lý xem / sửa số này khi duyệt (review).
+const selfCredits = (v) => (Number(v) > 0 && Number(v) < 10000 ? Number(v) : 0);
+
 const createMine = async (data, userId) => {
-	const rec = await create({ ...data, user_id: userId, credits: 0 }, userId);
+	const rec = await create(
+		{ ...data, user_id: userId, credits: selfCredits(data.credits) },
+		userId,
+	);
 	// create() luôn để mặc định 'approved' → chuyển về chờ duyệt
 	const pool = await getPool();
 	await pool
@@ -351,7 +358,9 @@ const createMine = async (data, userId) => {
 // Sửa xong → quay lại 'pending' (kể cả bản đã bị từ chối = nộp lại)
 const updateMine = async (id, data, userId) => {
 	await assertEditableMine(id, userId);
-	const { user_id: _ignored, credits: _credits, ...safe } = data;
+	const { user_id: _ignored, credits, ...safe } = data;
+	// Không gửi credits = giữ nguyên; gửi rỗng / null = xóa số đã khai (về 0)
+	if (credits !== undefined) safe.credits = selfCredits(credits);
 	return update(id, safe, userId, {
 		extraSets: [
 			"approval_status = 'pending'",
@@ -400,6 +409,9 @@ const removeResultFileMine = async (id, fileId, userId) => {
 
 // Admin duyệt / từ chối. Duyệt kèm credits = số tín chỉ người quản lý nhập cho
 // bản ghi (người dùng tự khai không nhập); không gửi thì giữ tín chỉ hiện có.
+// Duyệt phải ra số tín chỉ > 0: bản tự khai lưu 0 (createMine), trước đây duyệt mà
+// không nhập (gọi API thẳng / duyệt đồng loạt) thì thành "đã duyệt" 0 tín chỉ.
+// Không đủ điều kiện tính tín chỉ thì từ chối, không duyệt 0.
 const review = async (id, approve, reason, actorId, credits) => {
 	if (!approve && !String(reason || '').trim()) throw httpErr('Vui lòng nhập lý do từ chối', 400);
 	const hasCredits = approve && credits !== undefined && credits !== null && credits !== '';
@@ -408,7 +420,20 @@ const review = async (id, approve, reason, actorId, credits) => {
 		!(Number.isFinite(Number(credits)) && Number(credits) >= 0 && Number(credits) < 10000)
 	)
 		throw httpErr('Số tín chỉ không hợp lệ', 400);
+	if (hasCredits && Number(credits) === 0)
+		throw httpErr('Số tín chỉ phải lớn hơn 0 — không đủ điều kiện thì từ chối ghi nhận', 400);
 	const pool = await getPool();
+	if (approve && !hasCredits) {
+		const cur = (
+			await pool
+				.request()
+				.input('id', sql.VarChar(20), id)
+				.query('SELECT credits FROM cme_records WHERE id = @id')
+		).recordset[0];
+		if (!cur) return null;
+		if (!(Number(cur.credits) > 0))
+			throw httpErr('Ghi nhận chưa có số tín chỉ — vui lòng nhập số tín chỉ khi duyệt', 400);
+	}
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)

@@ -1,0 +1,60 @@
+/* Vạch màu đầu dòng theo trạng thái hồ sơ PDF (xanh = đã nộp, vàng = chờ duyệt, đỏ = chưa nộp) */
+.row_done > td:first-child {
+	box-shadow: inset 4px 0 0 var(--color-success);
+}
+
+.row_pending > td:first-child {
+	box-shadow: inset 4px 0 0 var(--color-warning);
+}
+
+.row_missing > td:first-child {
+	box-shadow: inset 4px 0 0 var(--color-error);
+}
+
+.badgeBtn {
+	display: inline-flex;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	border-radius: 999px;
+}
+
+.badgeBtn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.legend {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 12px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.legendItem {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+}
+
+.swatch {
+	width: 10px;
+	height: 10px;
+	border-radius: 3px;
+}
+
+.swatch_done {
+	background: var(--color-success);
+}
+
+.swatch_pending {
+	background: var(--color-warning);
+}
+
+.swatch_missing {
+	background: var(--color-error);
+}

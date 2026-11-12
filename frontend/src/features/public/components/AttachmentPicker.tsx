@@ -4,41 +4,45 @@ import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { PUBLIC_UPLOAD_MAX_FILES } from '../api/publicApi';
 import styles from '../pages/PublicPortal.module.css';
 
-export interface Attachment<T extends string = string> {
+export interface Attachment {
 	id: string;
 	file: File;
-	/** Loại hồ sơ — chỉ dùng khi truyền `typeOptions` */
-	type?: T;
 }
 
-interface Props<T extends string> {
-	value: Attachment<T>[];
-	onChange: (next: Attachment<T>[]) => void;
-	/** Có thì mỗi file có ô chọn loại hồ sơ (VD: CCCD, bằng cấp...) */
-	typeOptions?: { value: T; label: string }[];
-	defaultType?: T;
+interface Props {
+	value: Attachment[];
+	onChange: (next: Attachment[]) => void;
 	hint?: string;
+	/** Số file tối đa (mặc định PUBLIC_UPLOAD_MAX_FILES). 1 = chọn file mới thay file cũ. */
+	maxFiles?: number;
+	/** Chỉ nhận các đuôi này (VD ['.pdf']) — giao với định dạng cho phép của hệ thống. */
+	extensions?: string[];
 }
 
 const formatSize = (bytes: number) =>
 	bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
-export function AttachmentPicker<T extends string>({ value, onChange, typeOptions, defaultType, hint }: Props<T>) {
+export function AttachmentPicker({ value, onChange, hint, maxFiles = PUBLIC_UPLOAD_MAX_FILES, extensions }: Props) {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [dragging, setDragging] = useState(false);
 	const [warn, setWarn] = useState('');
 	const policy = useUploadPolicy();
+	const exts = extensions ?? policy.extensions;
+	const accept = extensions ? extensions.join(',') : policy.accept;
 
 	const addFiles = (list: FileList | null) => {
 		if (!list?.length) return;
 		const problems: string[] = [];
-		const next = [...value];
+		// 1 file: chọn file mới thay file cũ
+		const next = maxFiles === 1 ? [] : [...value];
 		for (const file of Array.from(list)) {
-			if (next.length >= PUBLIC_UPLOAD_MAX_FILES) {
-				problems.push(`Chỉ đính kèm tối đa ${PUBLIC_UPLOAD_MAX_FILES} file`);
+			if (next.length >= maxFiles) {
+				problems.push(maxFiles === 1 ? 'Chỉ đính kèm 1 file' : `Chỉ đính kèm tối đa ${maxFiles} file`);
 				break;
 			}
-			const problem = policy.check(file);
+			const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+			const problem =
+				extensions && !extensions.includes(ext) ? `"${file.name}": chỉ nhận ${extensions.join(', ')}` : policy.check(file);
 			if (problem) {
 				problems.push(problem);
 				continue;
@@ -47,7 +51,6 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 			next.push({
 				id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
 				file,
-				type: defaultType,
 			});
 		}
 		setWarn(problems.join(' · '));
@@ -86,15 +89,15 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 				</div>
 				<div className={styles.dropzoneHint}>
 					{hint && `${hint} · `}
-					{policy.extensions.join(', ')} · Tối đa {PUBLIC_UPLOAD_MAX_FILES} file, mỗi file ≤{' '}
+					{exts.join(', ')} · {maxFiles === 1 ? '1 file' : `Tối đa ${maxFiles} file`}, mỗi file ≤{' '}
 					{policy.maxSizeMB}MB
 				</div>
 				<input
 					ref={inputRef}
 					type='file'
-					multiple
+					multiple={maxFiles > 1}
 					hidden
-					accept={policy.accept}
+					accept={accept}
 					onChange={(e) => {
 						addFiles(e.target.files);
 						e.target.value = '';
@@ -122,25 +125,6 @@ export function AttachmentPicker<T extends string>({ value, onChange, typeOption
 								</div>
 								<div className={styles.fileSize}>{formatSize(a.file.size)}</div>
 							</div>
-							{typeOptions && (
-								<select
-									className={`${styles.select} ${styles.fileType}`}
-									value={a.type ?? ''}
-									aria-label='Loại hồ sơ'
-									onChange={(e) =>
-										onChange(value.map((x) => (x.id === a.id ? { ...x, type: e.target.value as T } : x)))
-									}
-								>
-									{typeOptions.map((o) => (
-										<option
-											key={o.value}
-											value={o.value}
-										>
-											{o.label}
-										</option>
-									))}
-								</select>
-							)}
 							<button
 								type='button'
 								className={styles.fileRemove}

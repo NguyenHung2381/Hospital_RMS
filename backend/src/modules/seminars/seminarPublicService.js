@@ -107,12 +107,6 @@ const lookupStaff = async (token, fullName, staffNumber) => {
 	};
 };
 
-// a***@bv.vn — đủ để người đăng ký biết vé gửi về hộp thư nào, không lộ địa chỉ
-const maskEmail = (e) => {
-	const [name, domain] = String(e).split('@');
-	return `${name.slice(0, 1)}***@${domain}`;
-};
-
 // Email tài khoản tự sinh (`...@member.local`) không nhận được thư
 const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
 
@@ -185,18 +179,12 @@ const registerPublic = async (token, data, custom = null) => {
 	if (person.email) {
 		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, person, ticketCode));
 	}
-	// Nội viện: chỉ cần họ tên + mã NV (dễ biết) là đăng ký được thay người khác
-	// ⇒ KHÔNG trả vé cho người gọi (vé = điểm danh + làm bài test lấy CME đứng
-	// tên nhân viên đó). Vé gửi tới email trong hồ sơ nhân sự; không gửi được thì
-	// nhân viên nhận vé tại ban tổ chức (trang chi tiết hội nghị có mã vé).
-	if (data.source === 'internal') {
-		const byEmail = Boolean(person.email) && (await mailService.isEnabled('SEMINAR_BADGE'));
-		return {
-			ticket_code: null,
-			ticket_delivery: byEmail ? 'email' : 'organizer',
-			...(byEmail ? { email_hint: maskEmail(person.email) } : {}),
-		};
-	}
+	// Trả vé ngay cho cả nội viện (quyết định nghiệp vụ: đăng ký xong hiện QR luôn).
+	// Đánh đổi: nội viện chỉ cần họ tên + mã NV nên ai biết 2 thông tin đó có thể
+	// đăng ký thay và cầm vé (điểm danh + làm bài test lấy CME đứng tên người kia).
+	// Chặn trùng user_id ở trên ⇒ chính chủ đăng ký sau sẽ thấy "đã đăng ký" và báo
+	// ban tổ chức. Mất vé: đăng nhập → "Tín chỉ CME của tôi" (portalService.getMyCme)
+	// hoặc ban tổ chức mở vé QR ở danh sách người tham dự (SeminarTicketQrModal).
 	return { ticket_code: ticketCode };
 };
 

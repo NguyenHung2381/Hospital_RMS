@@ -8,10 +8,11 @@ const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
 const { TRAINEE_OF_USER_SQL } = require('./traineeOfUser');
 
 // ─── Hồ sơ học viên đầy đủ (giai đoạn 3, docs/ke-hoach-nang-cap-dao-tao.md) ─────
-// Chỉ đọc: điểm danh, kết quả & điểm, checklist giấy tờ theo loại khóa đã ghi danh.
+// Chỉ đọc: điểm danh, kết quả & điểm, hồ sơ PDF của học viên.
 // Ghi: duyệt file học viên tự nộp; học viên tự nộp file ở cổng /me (status 'pending').
 
-const { DOC_REQUIRED_SQL } = require('./traineeDocumentSql');
+const { DOC_STATE_SQL } = require('./traineeDocumentSql');
+const { PROFILE_DOC_TYPE, assertPdf } = require('./traineeProfilePdf');
 
 const assertTrainee = async (pool, traineeId) => {
 	const t = (
@@ -24,42 +25,33 @@ const assertTrainee = async (pool, traineeId) => {
 	return t;
 };
 
-// ─── Checklist giấy tờ ─────────────────────────────────────────────────────
+// ─── Hồ sơ PDF ─────────────────────────────────────────────────────────────
+// Mỗi học viên nộp 1 file PDF đầy đủ thông tin. state: done | pending | missing
+// (xem traineeDocumentSql.js). File cũ nộp theo loại giấy tờ vẫn liệt kê kèm tên loại.
 const documentChecklist = async (traineeId) => {
 	const pool = await getPool();
 	await assertTrainee(pool, traineeId);
 	const sets = await queryAll(pool.request().input('trainee_id', sql.VarChar(20), traineeId), [
+		`SELECT ${DOC_STATE_SQL('t')} AS state FROM (SELECT @trainee_id AS id) t`,
 		`
-    SELECT dt.id, dt.name, dt.display_order,
-           CASE WHEN ${DOC_REQUIRED_SQL('t', 'dt')} THEN 1 ELSE 0 END AS required
-    FROM trainee_document_types dt CROSS JOIN (SELECT @trainee_id AS id) t
-    ORDER BY dt.display_order, dt.name
-		`,
-		`
-    SELECT d.id, d.doc_type, d.status, d.review_note, d.created_at, d.reviewed_at,
+    SELECT d.id, d.doc_type, dt.name AS doc_type_name, d.status, d.review_note, d.created_at, d.reviewed_at,
            ru.full_name AS reviewed_by_name, f.file_name, f.file_url, f.mime_type, f.file_size
     FROM trainee_documents d
     JOIN training_files f ON f.id = d.file_id AND f.is_deleted = 'false'
+    LEFT JOIN trainee_document_types dt ON dt.id = d.doc_type
     LEFT JOIN users ru ON ru.id = d.reviewed_by
     WHERE d.trainee_id = @trainee_id
     ORDER BY d.created_at DESC
 		`,
 	]);
-	const [types, docs] = sets;
-	const items = types.map((ty) => {
-		const own = docs.filter((d) => d.doc_type === ty.id);
-		const state = own.some((d) => d.status === 'approved')
-			? 'done'
-			: own.some((d) => d.status === 'pending')
-				? 'pending'
-				: 'missing';
-		return { id: ty.id, name: ty.name, required: !!ty.required, state, documents: own };
-	});
-	const required = items.filter((i) => i.required);
+	const [[head], docs] = sets;
 	return {
-		items,
-		required_total: required.length,
-		required_done: required.filter((i) => i.state === 'done').length,
+		state: head?.state ?? 'missing',
+		documents: docs.map((d) => ({
+			...d,
+			// Chỉ ghi tên loại cho file cũ (trước khi gộp 1 file PDF)
+			doc_type_name: d.doc_type === PROFILE_DOC_TYPE ? null : d.doc_type_name,
+		})),
 	};
 };
 
@@ -115,16 +107,10 @@ const myTraineeId = async (userId) => {
 const myChecklist = async (userId) =>
 	documentChecklist(await traineeOfUser(await getPool(), userId));
 
-const addMyDocument = async (userId, docType, file) => {
+const addMyDocument = async (userId, file) => {
+	await assertPdf(file);
 	const pool = await getPool();
 	const traineeId = await traineeOfUser(pool, userId);
-	const type = (
-		await pool
-			.request()
-			.input('id', sql.VarChar(30), docType || '')
-			.query('SELECT id FROM trainee_document_types WHERE id = @id')
-	).recordset[0];
-	if (!type) throw httpError(400, 'Vui lòng chọn loại giấy tờ.');
 	const saved = await trainingFileService.saveUploadedFile(
 		'trainee_document',
 		traineeId,
@@ -135,7 +121,7 @@ const addMyDocument = async (userId, docType, file) => {
 	await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
-		.input('doc_type', sql.VarChar(30), type.id)
+		.input('doc_type', sql.VarChar(30), PROFILE_DOC_TYPE)
 		.input('file_id', sql.VarChar(20), saved.id)
 		.input('actor_id', sql.VarChar(20), userId)
 		.input('new_id', sql.VarChar(20), newId).query(`

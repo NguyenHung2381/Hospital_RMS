@@ -1033,6 +1033,12 @@
 	border-color: var(--color-warning);
 }
 /* Nhãn nội viện / ngoại viện cạnh tên học viên */
+/* Trạng thái hồ sơ PDF cạnh nhãn nội / ngoại viện */
+.docStateTag {
+	display: inline-flex;
+	margin-left: var(--space-2);
+	vertical-align: middle;
+}
 .originTag {
 	display: inline-block;
 	margin-left: var(--space-2);

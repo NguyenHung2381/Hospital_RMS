@@ -1,4 +1,5 @@
 import type { CustomValues } from '@/shared/formConfig';
+import type { TraineeDocState } from '../api/traineeRecordApi';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 
@@ -47,9 +48,8 @@ export interface Trainee {
 	enrollment_end_date?: string | null;
 	current_department?: string | null;
 	type_enrollment_count?: number;
-	/** Giấy tờ bắt buộc theo loại khóa đã ghi danh / số đã nộp (đã duyệt) — giai đoạn 3 */
-	doc_required?: number;
-	doc_done?: number;
+	/** Hồ sơ PDF: đã nộp (đã duyệt) / chờ duyệt / chưa nộp */
+	doc_state?: TraineeDocState;
 	/** Chỉ có ở GET /trainees/:id — số lượt ghi danh (trừ bị từ chối). */
 	enrollment_count?: number;
 	/** Trường tùy chỉnh (Cấu hình form 'trainee') */

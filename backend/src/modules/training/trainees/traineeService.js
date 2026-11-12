@@ -17,7 +17,8 @@ const trainingFileService = require('../trainingFileService');
 const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
 const { hasPermission } = require('../../../permissions/authz');
-const { DOC_COUNT_APPLY, DOC_MISSING_SQL } = require('./traineeDocumentSql');
+const { DOC_STATE_SQL, DOC_STATE_WHERE } = require('./traineeDocumentSql');
+const { PROFILE_DOC_TYPE, assertPdf } = require('./traineeProfilePdf');
 const { lockAccountOf } = require('./traineeAccountService');
 
 // extraCols/extraJoins: cột & outerApply thêm cho danh sách lọc theo loại khóa.
@@ -50,6 +51,7 @@ const getAll = async (
 		trainee_type_id = undefined,
 		department_id = undefined,
 		training_type_id = undefined,
+		doc_state = undefined,
 		missing_docs = undefined,
 	} = {},
 	actor = null,
@@ -78,8 +80,9 @@ const getAll = async (
 	}
 	// Loại học viên (GPHN / ĐTLT / CTCV) suy ra từ khóa đã ghi danh — 1 người có
 	// thể thuộc nhiều loại. Đếm cho tab dùng mọi bộ lọc trừ chính loại này.
-	// Thiếu giấy tờ bắt buộc theo loại khóa đã ghi danh (giai đoạn 3)
-	if (missing_docs === '1' || missing_docs === true) where.push(DOC_MISSING_SQL);
+	// Trạng thái hồ sơ PDF: done | pending | missing (missing_docs=1 — tham số cũ = missing)
+	const docState = missing_docs === '1' || missing_docs === true ? 'missing' : doc_state;
+	if (Object.hasOwn(DOC_STATE_WHERE, docState ?? '')) where.push(DOC_STATE_WHERE[docState]('t'));
 	const countWhereSql = `WHERE ${where.join(' AND ')}`;
 	if (training_type_id) {
 		where.push(`EXISTS (SELECT 1 FROM course_enrollments e JOIN courses c ON c.id = e.course_id
@@ -113,8 +116,8 @@ const getAll = async (
 	const sets = await queryAll(req, [
 		`
     ${traineeSelectWith(
-			`, dc.doc_required, COALESCE(dc.doc_done, 0) AS doc_done${training_type_id ? ', le.*' : ''}`,
-			`${latestEnrollment} ${DOC_COUNT_APPLY}`,
+			`, ${DOC_STATE_SQL('t')} AS doc_state${training_type_id ? ', le.*' : ''}`,
+			latestEnrollment,
 		)} ${whereSql}
     ORDER BY t.created_at DESC
     ${pg.fetchClause}
@@ -151,12 +154,11 @@ const getById = async (id, actor = null) => {
 	const result = await pool
 		.request()
 		.input('id', sql.VarChar(20), id)
-		// Kèm số giấy tờ bắt buộc + số lượt ghi danh cho thẻ tóm tắt ở trang hồ sơ học viên
+		// Kèm trạng thái hồ sơ PDF + số lượt ghi danh cho thẻ tóm tắt ở trang hồ sơ học viên
 		.query(
 			`${traineeSelectWith(
-				`, dc.doc_required, COALESCE(dc.doc_done, 0) AS doc_done,
+				`, ${DOC_STATE_SQL('t')} AS doc_state,
 				  (SELECT COUNT(*) FROM course_enrollments ce WHERE ce.trainee_id = t.id AND ce.status <> 'rejected') AS enrollment_count`,
-				DOC_COUNT_APPLY,
 			)} WHERE t.id = @id`,
 		);
 	const row = result.recordset[0];
@@ -347,11 +349,13 @@ const listDocuments = async (traineeId) => {
 	return r.recordset;
 };
 
-// status: 'approved' chỉ dành cho nhân viên đã đăng nhập tải lên (mặc định giữ nguyên hành vi cũ);
-// mọi nguồn không xác thực (đăng ký công khai...) phải truyền 'pending' để chờ phòng Đào tạo duyệt.
+// Hồ sơ học viên = 1 file PDF (doc_type 'profile'). status: 'approved' chỉ dành cho nhân
+// viên đã đăng nhập tải lên; mọi nguồn không xác thực (đăng ký công khai...) phải truyền
+// 'pending' để chờ phòng Đào tạo duyệt.
 const DOC_STATUSES = ['approved', 'pending'];
-const addDocument = async (traineeId, docType, file, actorId, { status = 'approved' } = {}) => {
+const addDocument = async (traineeId, file, actorId, { status = 'approved' } = {}) => {
 	if (!DOC_STATUSES.includes(status)) throw new Error(`Trạng thái giấy tờ không hợp lệ: ${status}`);
+	await assertPdf(file);
 	const pool = await getPool();
 	const savedFile = await trainingFileService.saveUploadedFile(
 		'trainee_document',
@@ -363,7 +367,7 @@ const addDocument = async (traineeId, docType, file, actorId, { status = 'approv
 	await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
-		.input('doc_type', sql.VarChar(30), docType || 'other')
+		.input('doc_type', sql.VarChar(30), PROFILE_DOC_TYPE)
 		.input('file_id', sql.VarChar(20), savedFile.id)
 		.input('status', sql.VarChar(10), status)
 		.input('actor_id', sql.VarChar(20), actorId)

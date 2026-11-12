@@ -83,6 +83,7 @@
 #                   database, bắt đổi khi đăng nhập lần đầu
 #   REPO_URL        mặc định git@github.com:NguyenHung2381/Hospital_RMS.git
 #   APP_DIR         mặc định /data/code/Hospital_RMS
+#   WEB_PORT        cổng web publish trên máy này (mặc định 8081; bận thì đặt vd 8082)
 #   ASSUME_YES=1    không hỏi xác nhận "Tiếp tục?"
 #
 # Mật khẩu DB tự sinh, KHÔNG in ra màn hình:
@@ -194,7 +195,7 @@ save_conf() {
 		echo "# Câu trả lời của scripts/setup-server.sh — sửa tay được, xoá dòng để được hỏi lại"
 		for k in DATA_DISK ACCESS_MODE DOMAIN LE_EMAIL TRUSTED_PROXIES WEB_CONCURRENCY \
 			ENABLE_CLAMAV DB_MODE BAK_FILE DUMP_FILE UPLOADS_FILE SECRETS_FILE HARDEN_SSH DNS_SERVERS \
-			REPO_URL APP_DIR ADMIN_USERNAME LIMITED_ADMIN_USERNAME; do
+			REPO_URL APP_DIR WEB_PORT ADMIN_USERNAME LIMITED_ADMIN_USERNAME; do
 			[ -n "${!k:-}" ] && printf '%s=%q\n' "$k" "${!k}"
 		done
 	} >"$CONF_FILE"
@@ -256,6 +257,7 @@ collect_answers() {
 		printf -v "$k" '%s' "${!k:-}"
 	done
 	APP_DIR="${APP_DIR:-/data/code/Hospital_RMS}"
+	WEB_PORT="${WEB_PORT:-8081}"
 	ADMIN_USERNAME="${ADMIN_USERNAME:-superadmin}"
 	LIMITED_ADMIN_USERNAME="${LIMITED_ADMIN_USERNAME:-admin}"
 
@@ -298,7 +300,7 @@ collect_answers() {
 
 	# Truy cập web
 	info "Cách truy cập web:"
-	info "  ip          — thử bằng http://$(server_ip):8081, chưa có HTTPS"
+	info "  ip          — thử bằng http://$(server_ip):${WEB_PORT}, chưa có HTTPS"
 	info "  proxy       — reverse proxy HTTPS của bệnh viện (máy khác) trỏ về máy này"
 	info "  letsencrypt — dựng HTTPS ngay trên máy này (domain đã trỏ về, mở 80/443 từ Internet)"
 	ask_choice ACCESS_MODE "Chọn" ip ip proxy letsencrypt
@@ -373,14 +375,16 @@ collect_answers() {
 	esac
 	[ "$DB_MODE" = new ] || info "File cần nạp   : chọn trong $IMPORT_DIR"
 	info "Khoá SSH m.khẩu: $HARDEN_SSH"
+	info "Cổng web       : $WEB_PORT"
 	info "Source code    : $APP_DIR"
 	confirm "Tiếp tục?" Y || die "Đã huỷ. Không có gì bị thay đổi."
 	save_conf
 }
 
 derive_settings() {
+	WEB_PORT="${WEB_PORT:-8081}"
 	case "$ACCESS_MODE" in
-	ip) PUBLIC_URL="http://$(server_ip):8081" ;;
+	ip) PUBLIC_URL="http://$(server_ip):${WEB_PORT}" ;;
 	proxy | letsencrypt)
 		[ -n "$DOMAIN" ] || die "ACCESS_MODE=$ACCESS_MODE cần DOMAIN"
 		PUBLIC_URL="https://$DOMAIN"
@@ -391,8 +395,9 @@ derive_settings() {
 	case "$DB_MODE" in new | transfer | restore) ;; *) die "DB_MODE không hợp lệ: $DB_MODE (new | transfer | restore)" ;; esac
 	[ "$DB_MODE" != transfer ] || [ -n "$BAK_FILE" ] || die "DB_MODE=transfer cần BAK_FILE"
 	[[ "$WEB_CONCURRENCY" =~ ^[1-9][0-9]?$ ]] || die "WEB_CONCURRENCY phải là số ≥ 1"
-	FRONTEND_BIND=8081
-	[ "$ACCESS_MODE" = letsencrypt ] && FRONTEND_BIND=127.0.0.1:8081
+	if ! [[ "$WEB_PORT" =~ ^[1-9][0-9]{0,4}$ ]] || [ "$WEB_PORT" -gt 65535 ]; then die "WEB_PORT không hợp lệ: $WEB_PORT"; fi
+	FRONTEND_BIND=${WEB_PORT}
+	[ "$ACCESS_MODE" = letsencrypt ] && FRONTEND_BIND=127.0.0.1:${WEB_PORT}
 	return 0
 }
 
@@ -510,7 +515,7 @@ step_firewall() {
 	sudo ufw deny 5432/tcp >/dev/null
 	sudo ufw --force enable >/dev/null
 	ok "Mở SSH, chỉ cho mạng Docker vào 5432"
-	info "Cổng web 8081 do Docker mở, không qua UFW — bước 'ports' giới hạn riêng"
+	info "Cổng web ${WEB_PORT} do Docker mở, không qua UFW — bước 'ports' giới hạn riêng"
 }
 
 # ─── 3. Ổ dữ liệu /data ──────────────────────────────────────────────────────
@@ -1263,7 +1268,7 @@ step_start() {
 	local i
 	for i in $(seq 1 60); do
 		if curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:3001/health/db 2>/dev/null &&
-			curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:8081 2>/dev/null; then
+			curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:${WEB_PORT} 2>/dev/null; then
 			compose ps
 			ok "Backend nối được PostgreSQL, frontend trả 200"
 			return 0
@@ -1288,7 +1293,7 @@ server {
     client_max_body_size 300m;
 
     location / {
-        proxy_pass http://127.0.0.1:8081;
+        proxy_pass http://127.0.0.1:${WEB_PORT};
         proxy_http_version 1.1;
         proxy_set_header Host              \$host;
         proxy_set_header X-Forwarded-For   \$remote_addr;
@@ -1317,24 +1322,24 @@ EOF
 }
 
 # ─── 11b. Cổng Docker publish ────────────────────────────────────────────────
-# Docker mở 8081 bằng iptables riêng, bỏ qua UFW → chặn ở DOCKER-USER, chỉ cho
+# Docker mở cổng web (WEB_PORT) bằng iptables riêng, bỏ qua UFW → chặn ở DOCKER-USER, chỉ cho
 # nguồn cần thiết (scripts/firewall-ports.sh, mục 13.2 tài liệu).
 step_ports() {
-	log "Giới hạn nguồn vào cổng Docker publish (8081)"
+	log "Giới hạn nguồn vào cổng Docker publish (${WEB_PORT})"
 	local allow="" p
 	case "$ACCESS_MODE" in
-	ip) allow="8081@any" ;;
+	ip) allow="${WEB_PORT}@any" ;;
 	proxy)
-		for p in ${TRUSTED_PROXIES//,/ }; do allow+=" 8081@$p"; done
+		for p in ${TRUSTED_PROXIES//,/ }; do allow+=" ${WEB_PORT}@$p"; done
 		allow="${allow# }"
-		[ -n "$allow" ] || allow="8081@any"
+		[ -n "$allow" ] || allow="${WEB_PORT}@any"
 		;;
-	letsencrypt) allow="" ;; # FRONTEND_BIND=127.0.0.1:8081, nginx trên máy gọi qua loopback
+	letsencrypt) allow="" ;; # FRONTEND_BIND=127.0.0.1:${WEB_PORT}, nginx trên máy gọi qua loopback
 	esac
 	sudo bash "$APP_DIR/scripts/firewall-ports.sh" apply --allow "$allow" | sed 's/^/   /' || true
 	case "$ACCESS_MODE" in
-	ip) warn "8081 đang mở cho mọi máy (đang thử bằng http://IP:8081). Có reverse proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"8081@<IP proxy>\"" ;;
-	proxy) [ -n "${TRUSTED_PROXIES:-}" ] || warn "Chưa khai TRUSTED_PROXIES → 8081 mở cho mọi máy. Biết IP proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"8081@<IP proxy>\"" ;;
+	ip) warn "${WEB_PORT} đang mở cho mọi máy (đang thử bằng http://IP:${WEB_PORT}). Có reverse proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"${WEB_PORT}@<IP proxy>\"" ;;
+	proxy) [ -n "${TRUSTED_PROXIES:-}" ] || warn "Chưa khai TRUSTED_PROXIES → ${WEB_PORT} mở cho mọi máy. Biết IP proxy rồi: sudo bash $APP_DIR/scripts/firewall-ports.sh apply --allow \"${WEB_PORT}@<IP proxy>\"" ;;
 	esac
 	return 0
 }
@@ -1420,7 +1425,7 @@ summary() {
 	echo
 	info "Còn làm tay:"
 	[ "$ACCESS_MODE" = proxy ] &&
-		info "• Trỏ reverse proxy HTTPS về http://$(server_ip):8081 (kèm X-Forwarded-For, X-Forwarded-Proto: https)"
+		info "• Trỏ reverse proxy HTTPS về http://$(server_ip):${WEB_PORT} (kèm X-Forwarded-For, X-Forwarded-Proto: https)"
 	[ "$ACCESS_MODE" = ip ] &&
 		info "• Có HTTPS rồi: xoá COOKIE_SECURE=false trong backend/.env.production, sửa CORS_ORIGIN trong .env, up -d"
 	info "• IP tĩnh (nếu DHCP chưa giữ cố định IP): mục 4.2"

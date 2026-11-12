@@ -13,6 +13,7 @@ import {
 } from '../api/traineeApi';
 import { EMPTY_FORM, type ModalType, type Trainee, type TraineeFormData } from '../types/trainee.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
+import type { TraineeDocState } from '../api/traineeRecordApi';
 
 export interface SimpleItem {
 	id: string;
@@ -29,8 +30,8 @@ export function useTrainees(trainingTypeId = '') {
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingTrainee, setEditingTrainee] = useState<Trainee | null>(null);
 	const [deletingTrainee, setDeletingTrainee] = useState<Trainee | null>(null);
-	// Chỉ học viên còn thiếu giấy tờ bắt buộc (doc_done < doc_required)
-	const [missingDocsOnly, setMissingDocsOnly] = useState(false);
+	// Lọc theo trạng thái hồ sơ PDF ('' = tất cả)
+	const [docFilter, setDocFilter] = useState<TraineeDocState | ''>('');
 	const [loading, setLoading] = useState(false);
 	const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 	const [page, setPage] = useState(1);
@@ -40,6 +41,8 @@ export function useTrainees(trainingTypeId = '') {
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('trainee', refreshData);
+	// Nộp / duyệt / xóa file hồ sơ đổi màu trạng thái ở danh sách
+	useRealtimeUpdate('trainee_document', refreshData);
 
 	useEffect(() => {
 		let stale = false;
@@ -72,7 +75,7 @@ export function useTrainees(trainingTypeId = '') {
 	}, []);
 
 	const filtered = useMemo(() => {
-		const base = missingDocsOnly ? trainees.filter((t) => (t.doc_done ?? 0) < (t.doc_required ?? 0)) : trainees;
+		const base = docFilter ? trainees.filter((t) => (t.doc_state ?? 'missing') === docFilter) : trainees;
 		if (!search.trim()) return base;
 		const q = search.toLowerCase();
 		return base.filter(
@@ -82,7 +85,14 @@ export function useTrainees(trainingTypeId = '') {
 				(t.phone ?? '').toLowerCase().includes(q) ||
 				(t.email ?? '').toLowerCase().includes(q),
 		);
-	}, [trainees, search, missingDocsOnly]);
+	}, [trainees, search, docFilter]);
+
+	// Số học viên theo trạng thái hồ sơ (trên toàn danh sách, chưa lọc từ khóa)
+	const docCounts = useMemo(() => {
+		const c: Record<TraineeDocState, number> = { done: 0, pending: 0, missing: 0 };
+		for (const t of trainees) c[t.doc_state ?? 'missing'] += 1;
+		return c;
+	}, [trainees]);
 
 	const totalPages = pageSize === 0 ? 1 : Math.ceil(filtered.length / pageSize);
 	const safePage = Math.min(page, totalPages || 1);
@@ -217,8 +227,11 @@ export function useTrainees(trainingTypeId = '') {
 		modal,
 		editingTrainee,
 		deletingTrainee,
-		missingDocsOnly,
-		setMissingDocsOnly,
+		docFilter,
+		setDocFilter,
+		docCounts,
+		/** Thêm vào đầu danh sách học viên vừa tạo ở nơi khác (vd modal thêm nhanh) */
+		prependTrainee: (t: Trainee) => setTrainees((prev) => [t, ...prev.filter((x) => x.id !== t.id)]),
 		loading,
 		pageSize,
 		page,

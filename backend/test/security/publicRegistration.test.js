@@ -79,7 +79,6 @@ test('M-03: giấy tờ đính kèm khi đăng ký công khai luôn là pending 
 			full_name: 'nguyen van an',
 			national_id: OWNER.national_id,
 			dob: '2000-05-15',
-			doc_types: ['degree'],
 		}),
 		FILE,
 		null,
@@ -110,13 +109,28 @@ test('M-03: CCCD chưa có hồ sơ → hồ sơ mới, giấy tờ vẫn pendin
 
 test('M-03: nhân viên đã đăng nhập tải giấy tờ (addDocument mặc định) vẫn approved; status lạ bị từ chối', async () => {
 	reset();
-	await traineeService.addDocument('HV1', 'degree', { originalname: 'a.pdf' }, 'U1');
+	await traineeService.addDocument('HV1', { originalname: 'a.pdf' }, 'U1');
 	assert.equal(docInserts()[0].inputs.status, 'approved');
+	assert.equal(docInserts()[0].inputs.doc_type, 'profile');
 	await assert.rejects(
-		traineeService.addDocument('HV1', 'degree', { originalname: 'a.pdf' }, null, {
+		traineeService.addDocument('HV1', { originalname: 'a.pdf' }, null, {
 			status: "approved'; --",
 		}),
 	);
+});
+
+test('Hồ sơ học viên chỉ nhận 1 file PDF: file khác PDF / nhiều file bị từ chối trước khi tạo hồ sơ', async () => {
+	reset();
+	await assert.rejects(traineeService.addDocument('HV1', { originalname: 'cccd.jpg' }, 'U1'), {
+		statusCode: 400,
+	});
+	const form = base({ full_name: 'Người Mới', national_id: '000000000777', dob: '1990-01-01' });
+	await assert.rejects(portal.register(form, [{ ...FILE[0], originalname: 'anh.png' }], null), {
+		statusCode: 400,
+	});
+	await assert.rejects(portal.register(form, [FILE[0], FILE[0]], null), { statusCode: 400 });
+	assert.equal(created.length, 0, 'không được tạo hồ sơ khi file sai');
+	assert.equal(docInserts().length, 0);
 });
 
 // ─── L-06 ────────────────────────────────────────────────────────────────────
