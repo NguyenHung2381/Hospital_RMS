@@ -1,9 +1,28 @@
 import type { Seminar, SeminarParticipant } from '../../types/seminar.type';
 
-// Điểm bài kiểm tra — bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm
-export const testScore = (p: SeminarParticipant) => p.test_score ?? p.test_correct;
+// Làm tròn 2 chữ số kiểu thập phân (khớp ROUND của SQL và utils/seminarTest.scaledScore ở backend)
+const round2 = (n: number) => Number(`${Math.round(Number(`${n.toFixed(9)}e2`))}e-2`);
+
+/** Điểm tối đa của bài người này đã làm — bài cũ chưa có điểm từng câu: tổng số câu */
+const rawMax = (p: SeminarParticipant) => p.test_max_score ?? p.test_total;
+
+/**
+ * Điểm bài kiểm tra ĐÃ quy về thang của hội nghị (test_score_scale): điểm thô ÷ điểm tối đa
+ * của bài × thang. Chưa đặt thang = điểm thô như cũ. Bài nộp trước khi có điểm từng câu:
+ * mỗi câu đúng 1 điểm. Khớp utils/seminarTest.participantScore ở backend.
+ */
+export const testScore = (s: Seminar, p: SeminarParticipant): number | null => {
+	const raw = p.test_score ?? p.test_correct;
+	if (raw == null) return null;
+	const max = Number(rawMax(p));
+	if (!s.test_score_scale || !(max > 0)) return round2(Number(raw));
+	return round2((Number(raw) * Number(s.test_score_scale)) / max);
+};
+/** Mẫu số khi hiện "điểm / tối đa": thang của hội nghị nếu đặt, không thì điểm tối đa của bài */
+export const testMax = (s: Seminar, p: SeminarParticipant) =>
+	s.test_score_scale != null ? Number(s.test_score_scale) : rawMax(p);
 export const testPassed = (s: Seminar, p: SeminarParticipant) =>
-	s.test_pass_score == null || (testScore(p) ?? -1) >= s.test_pass_score;
+	s.test_pass_score == null || (testScore(s, p) ?? -1) >= s.test_pass_score;
 
 // Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài kiểm tra (nếu có, và đạt
 // điểm đạt nếu đặt) mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.

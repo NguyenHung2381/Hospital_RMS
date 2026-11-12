@@ -21,7 +21,7 @@ import {
 } from '../../types/seminar.type';
 import s from './Detail.module.css';
 import { CmeStatusBadge } from './ParticipantDrawer';
-import { cmeEligible, fullName, testPassed, testScore, unitOf } from './detailUtils';
+import { cmeEligible, fullName, testMax, testPassed, testScore, unitOf } from './detailUtils';
 import type { TabProps } from './types';
 
 const ROLES: { key: 'all' | ParticipationType; label: string }[] = [
@@ -366,7 +366,7 @@ export function TestCell({ s: sm, p }: { s: Seminar; p: SeminarParticipant }) {
 				className={s.score}
 				title={`Đúng ${p.test_correct}/${p.test_total} câu`}
 			>
-				<b>{testScore(p)}</b>/{p.test_max_score ?? p.test_total}
+				<b>{testScore(sm, p)}</b>/{testMax(sm, p)}
 				{sm.test_pass_score != null && (
 					<span
 						className={ok ? sem.okText : sem.badText}

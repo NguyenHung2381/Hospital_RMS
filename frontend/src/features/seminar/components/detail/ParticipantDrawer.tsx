@@ -26,7 +26,7 @@ import {
 	type SeminarParticipant,
 } from '../../types/seminar.type';
 import s from './Detail.module.css';
-import { cmeBlockReason, cmeEligible, fmtDate, fullName, testPassed, testScore } from './detailUtils';
+import { cmeBlockReason, cmeEligible, fmtDate, fullName, testMax, testPassed, testScore } from './detailUtils';
 import type { DetailActions, SeminarPerms } from './types';
 
 export function CmeStatusBadge({ p }: { p: SeminarParticipant }) {
@@ -187,7 +187,7 @@ export function ParticipantDrawer({
 								[
 									'Điểm',
 									<span className={s.score}>
-										<b>{testScore(p)}</b>/{p.test_max_score ?? p.test_total}
+										<b>{testScore(sm, p)}</b>/{testMax(sm, p)}
 									</span>,
 								],
 								['Số câu đúng', `${p.test_correct ?? 0}/${p.test_total ?? 0} câu`],

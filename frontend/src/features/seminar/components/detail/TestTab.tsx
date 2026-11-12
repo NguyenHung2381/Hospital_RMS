@@ -14,16 +14,18 @@ export function TestTab({ seminar: sm, participants, counts, perms, actions }: T
 	const questions = parseTestQuestions(sm);
 	const points = Math.round(questions.reduce((n, q) => n + (q.points && q.points > 0 ? q.points : 1), 0) * 100) / 100;
 	const has = questions.length > 0;
+	// Thang điểm hiển thị: thang đặt riêng, không thì tổng điểm các câu
+	const scale = sm.test_score_scale != null ? Number(sm.test_score_scale) : points;
 
 	const submitted = useMemo(
 		() =>
 			participants
 				.filter((p) => p.test_submitted_at)
-				.sort((a, b) => (testScore(b) ?? 0) - (testScore(a) ?? 0)),
-		[participants],
+				.sort((a, b) => (testScore(sm, b) ?? 0) - (testScore(sm, a) ?? 0)),
+		[participants, sm],
 	);
 	const avg = submitted.length
-		? Math.round((submitted.reduce((n, p) => n + (testScore(p) ?? 0), 0) / submitted.length) * 10) / 10
+		? Math.round((submitted.reduce((n, p) => n + (testScore(sm, p) ?? 0), 0) / submitted.length) * 10) / 10
 		: null;
 
 	const status = !has ? (
@@ -78,6 +80,14 @@ export function TestTab({ seminar: sm, participants, counts, perms, actions }: T
 							</dd>
 						</div>
 						<div>
+							<dt>Thang điểm</dt>
+							<dd>
+								{sm.test_score_scale != null
+									? `Quy về thang ${scale} điểm`
+									: `Theo tổng điểm câu hỏi (${points})`}
+							</dd>
+						</div>
+						<div>
 							<dt>Thời gian làm bài</dt>
 							<dd>{sm.test_duration_minutes ? `${sm.test_duration_minutes} phút` : 'Không giới hạn'}</dd>
 						</div>
@@ -87,7 +97,7 @@ export function TestTab({ seminar: sm, participants, counts, perms, actions }: T
 						</div>
 						<div>
 							<dt>Điểm đạt</dt>
-							<dd>{sm.test_pass_score != null ? `${sm.test_pass_score} điểm` : 'Chỉ cần nộp bài'}</dd>
+							<dd>{sm.test_pass_score != null ? `${sm.test_pass_score}/${scale} điểm` : 'Chỉ cần nộp bài'}</dd>
 						</div>
 						<div>
 							<dt>Xáo trộn</dt>
@@ -126,7 +136,7 @@ export function TestTab({ seminar: sm, participants, counts, perms, actions }: T
 						<Kpi
 							label='Điểm trung bình'
 							value={avg ?? '—'}
-							sub={avg != null ? `trên ${points} điểm` : undefined}
+							sub={avg != null ? `trên ${scale} điểm` : undefined}
 						/>
 					</div>
 

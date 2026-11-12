@@ -325,6 +325,15 @@ const update = async (id, input, actorId) => {
 		sets.push('test_pass_score = @test_pass_score');
 		req.input('test_pass_score', sql.Decimal(7, 2), passScore);
 	}
+	// Thang điểm tối đa (vd 10, 100): điểm bài làm được quy về thang này trước khi so điểm đạt.
+	// Trống = thang là tổng điểm các câu (cách cũ).
+	const scale = optionalNumber(data.test_score_scale, 'Thang điểm tối đa', { min: 1, max: 10000 });
+	if (scale !== undefined) {
+		sets.push('test_score_scale = @test_score_scale');
+		req.input('test_score_scale', sql.Decimal(7, 2), scale);
+		if (scale != null && passScore != null && passScore > scale)
+			throw badRequest(`Điểm đạt (${passScore}) lớn hơn thang điểm tối đa (${scale}).`);
+	}
 	for (const key of ['test_shuffle_questions', 'test_shuffle_options']) {
 		if (data[key] === undefined) continue;
 		sets.push(`${key} = @${key}`);
@@ -354,7 +363,7 @@ const update = async (id, input, actorId) => {
 	if (data.test_questions !== undefined) {
 		const next = normalizeTestQuestions(data.test_questions, id);
 		const max = maxScore(JSON.parse(next || '[]'));
-		if (passScore != null && next && passScore > max)
+		if (passScore != null && next && !scale && passScore > max)
 			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài kiểm tra (${max}).`);
 		const prev = (
 			await pool

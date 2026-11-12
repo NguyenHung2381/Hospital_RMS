@@ -102,7 +102,41 @@ const attemptDeadline = (s, elapsedSec, now = Date.now()) => {
 	return ends.length ? Math.min(...ends) : null;
 };
 
-/** Đạt điểm tối thiểu để được cấp CME (chưa đặt điểm đạt = nộp bài là đạt) */
+/**
+ * Quy điểm thô (tổng điểm các câu đúng) sang thang điểm của hội nghị — vd thang 10:
+ * 7/9 điểm → 7.78. Chưa đặt thang (test_score_scale NULL) hoặc không biết điểm tối đa
+ * của bài thì giữ điểm thô (cách cũ). Khớp SCALED_SCORE_SQL bên dưới.
+ */
+const scaledScore = (s, raw, rawMax) => {
+	if (raw == null) return null;
+	const scale = s?.test_score_scale == null ? null : Number(s.test_score_scale);
+	const max = Number(rawMax);
+	if (!scale || !(max > 0)) return roundScore(Number(raw));
+	// Làm tròn 2 chữ số kiểu thập phân như ROUND của SQL: toFixed(9) bỏ sai số dấu phẩy động,
+	// dịch dấu phẩy bằng số mũ chuỗi (1.005 → "1.005e2" = 100.5 → 101) thay vì nhân 100
+	const x = ((Number(raw) * scale) / max).toFixed(9);
+	return Number(`${Math.round(Number(`${x}e2`))}e-2`);
+};
+
+/** Điểm tối đa để hiển thị "điểm / tối đa": thang của hội nghị nếu đặt, không thì điểm tối đa của bài */
+const scaleMax = (s, rawMax) => (s?.test_score_scale != null ? Number(s.test_score_scale) : rawMax);
+
+/** Điểm đã quy đổi của 1 người tham dự — bài nộp trước khi có điểm từng câu: mỗi câu đúng 1 điểm */
+const participantScore = (s, p) =>
+	scaledScore(s, p.test_score ?? p.test_correct, p.test_max_score ?? p.test_total);
+
+/**
+ * Bản SQL của participantScore (p = seminar_participants, s = seminars) — dùng trong điều
+ * kiện cấp CME. Phép chia trên NUMERIC rồi ROUND 2 chữ số, khớp scaledScore.
+ */
+const SCALED_SCORE_SQL = `CASE
+    WHEN s.test_score_scale IS NULL OR COALESCE(p.test_max_score, p.test_total, 0) <= 0
+      THEN COALESCE(p.test_score, p.test_correct)
+    ELSE ROUND(COALESCE(p.test_score, p.test_correct) * s.test_score_scale
+      / COALESCE(p.test_max_score, p.test_total), 2)
+  END`;
+
+/** Đạt điểm tối thiểu để được cấp CME (chưa đặt điểm đạt = nộp bài là đạt). `score` là điểm ĐÃ quy đổi. */
 const isPassed = (s, score) =>
 	s?.test_pass_score == null || (score != null && Number(score) >= Number(s.test_pass_score));
 
@@ -114,5 +148,9 @@ module.exports = {
 	publicQuestions,
 	gradeTest,
 	attemptDeadline,
+	scaledScore,
+	scaleMax,
+	participantScore,
+	SCALED_SCORE_SQL,
 	isPassed,
 };
