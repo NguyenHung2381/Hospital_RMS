@@ -9,7 +9,9 @@ const { validate } = require('../../middlewares/errorHandler');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
+const certificateService = require('./seminarCertificateService');
 const uploadExcel = require('../../middlewares/uploadExcel');
+const uploadPdf = require('../../middlewares/uploadPdf');
 const { makeImageUpload, safeParam } = require('../../middlewares/uploadImage');
 
 // Ảnh minh họa câu hỏi bài test cuối buổi — uploads/seminars/<id>/test/
@@ -291,6 +293,150 @@ router.post(
 	[body('participant_ids').isArray({ min: 1 }), body('status').isIn(['issued', 'signed'])],
 	validate,
 	ctrl.bulkCmeStatus,
+);
+
+// ─── Giấy chứng nhận CME: mẫu PDF của hội nghị + xuất ZIP mỗi người 1 file ─────
+
+router.get(
+	'/:id/certificate-template',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) =>
+		success(res, await certificateService.getTemplate(req.params.id)),
+	),
+);
+router.post(
+	'/:id/certificate-template',
+	authenticate,
+	canCme,
+	uploadPdf.single('file'),
+	asyncHandler(async (req, res) => {
+		if (!req.file)
+			return res.status(400).json({ success: false, message: 'Chưa chọn file PDF mẫu.' });
+		const info = await certificateService.saveTemplate(req.params.id, req.file, req.user.id);
+		return success(res, info, 'Đã lưu mẫu giấy chứng nhận');
+	}),
+);
+router.delete(
+	'/:id/certificate-template',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) => {
+		await certificateService.deleteTemplate(req.params.id);
+		return success(res, null, 'Đã xóa mẫu giấy chứng nhận');
+	}),
+);
+// Vị trí các ô trên mẫu (màn chỉnh tay): đọc / lưu / khôi phục bản dò tự động
+router.get(
+	'/:id/certificate-template/layout',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) => success(res, await certificateService.getLayout(req.params.id))),
+);
+router.put(
+	'/:id/certificate-template/layout',
+	authenticate,
+	canCme,
+	[
+		body('slots').optional().isObject().withMessage('Dữ liệu vị trí các ô không hợp lệ'),
+		body('texts').optional().isObject().withMessage('Dữ liệu chữ trên mẫu không hợp lệ'),
+	],
+	validate,
+	asyncHandler(async (req, res) =>
+		success(
+			res,
+			await certificateService.saveLayout(req.params.id, {
+				slots: req.body.slots,
+				texts: req.body.texts,
+			}),
+			'Đã lưu vị trí các ô',
+		),
+	),
+);
+router.post(
+	'/:id/certificate-template/layout/reset',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) =>
+		success(res, await certificateService.resetLayout(req.params.id), 'Đã khôi phục vị trí tự dò'),
+	),
+);
+// Thông tin hội nghị trên giấy (nội dung, đơn vị chịu trách nhiệm, thời gian, ngày ký)
+router.get(
+	'/:id/certificate-template/info',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) => success(res, await certificateService.getInfo(req.params.id))),
+);
+router.put(
+	'/:id/certificate-template/info',
+	authenticate,
+	canCme,
+	[body('values').isObject().withMessage('Thiếu thông tin cần sửa')],
+	validate,
+	asyncHandler(async (req, res) =>
+		success(
+			res,
+			await certificateService.saveInfo(req.params.id, req.body.values),
+			'Đã lưu thông tin trên giấy',
+		),
+	),
+);
+// Bản xem thử với dữ liệu mẫu
+router.post(
+	'/:id/certificate-template/preview',
+	authenticate,
+	canCme,
+	asyncHandler(async (req, res) => {
+		const pdf = await certificateService.previewPdf(req.params.id);
+		res.setHeader('Content-Type', 'application/pdf');
+		res.setHeader('Content-Disposition', 'inline; filename="giay-chung-nhan-xem-thu.pdf"');
+		res.end(pdf);
+	}),
+);
+// Người tham dự đã có số CME (participant_ids rỗng = tất cả)
+router.post(
+	'/:id/certificates',
+	authenticate,
+	canCme,
+	[body('participant_ids').optional().isArray()],
+	validate,
+	asyncHandler(async (req, res) => {
+		const people = await certificateService.peopleFromParticipants(
+			req.params.id,
+			req.body.participant_ids,
+		);
+		if (!people.length) {
+			return res.status(400).json({
+				success: false,
+				message: 'Chưa có người nào được cấp số CME để in giấy chứng nhận.',
+			});
+		}
+		await certificateService.streamZip(
+			res,
+			req.params.id,
+			people,
+			`giay-chung-nhan-cme-${req.params.id}.zip`,
+		);
+	}),
+);
+// Danh sách từ file Excel (mẫu "Danh sách cấp CME"), không cần có trong hội nghị
+router.post(
+	'/:id/certificates/from-excel',
+	authenticate,
+	canCme,
+	uploadExcel.single('file'),
+	asyncHandler(async (req, res) => {
+		if (!req.file)
+			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+		const people = await certificateService.peopleFromExcel(req.params.id, req.file.buffer);
+		await certificateService.streamZip(
+			res,
+			req.params.id,
+			people,
+			`giay-chung-nhan-cme-${req.params.id}.zip`,
+		);
+	}),
 );
 
 module.exports = router;

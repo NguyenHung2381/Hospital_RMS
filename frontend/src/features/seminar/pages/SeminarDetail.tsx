@@ -10,6 +10,7 @@ import {
 	ClockSvg,
 	DownloadSvg,
 	EditSvg,
+	FilePdfSvg,
 	FileTextSvg,
 	PlusSvg,
 	QrSvg,
@@ -30,6 +31,7 @@ import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { DepartmentStaffModal } from '../components/DepartmentStaffModal';
+import { CertificateModal } from '../components/CertificateModal';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
@@ -142,6 +144,7 @@ export default function SeminarDetail() {
 	const [formModal, setFormModal] = useState<'add' | 'edit' | null>(null);
 	const [editing, setEditing] = useState<SeminarParticipant | null>(null);
 	const [issueOpen, setIssueOpen] = useState(false);
+	const [certOpen, setCertOpen] = useState(false);
 	const [importOpen, setImportOpen] = useState(false);
 	// ?qr=1: vừa tạo hội nghị → mở luôn QR đăng ký để tải về
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -177,6 +180,8 @@ export default function SeminarDetail() {
 	const issuable = selected.filter((p) => p.cme_seq == null && !!d.seminar && cmeEligible(p, d.seminar));
 	const notEligible = selected.filter((p) => p.cme_seq == null).length - issuable.length;
 	const signable = selected.filter((p) => p.cme_seq != null && p.cme_status !== 'signed');
+	// Giấy chứng nhận: đang chọn thì in người đã chọn, không thì mọi người đã có số CME
+	const certTargets = (selected.length ? selected : d.participants).filter((p) => !!p.cme_certificate_no);
 	const hosted = d.seminar?.scope === 'hosted';
 
 	const counts = useMemo(
@@ -450,6 +455,22 @@ export default function SeminarDetail() {
 										onClick={() => setImportOpen(true)}
 									>
 										<UploadSvg /> Nhập Excel
+									</button>
+								)}
+								{/* Luôn hiện để dễ tìm; hội nghị chưa bật cấp CME thì mờ + nhắc chỗ bật */}
+								{perms.canCme && (
+									<button
+										className={styles.btnGhost}
+										onClick={() => setCertOpen(true)}
+										disabled={!sem.grants_cme}
+										title={
+											sem.grants_cme
+												? 'Tải mẫu PDF và xuất giấy chứng nhận CME (mỗi người 1 file)'
+												: 'Hội nghị chưa bật "Có cấp CME" — bật ở Danh sách hội thảo → Sửa'
+										}
+									>
+										<FilePdfSvg /> Giấy chứng nhận
+										{selected.length > 0 && ` (${certTargets.length})`}
 									</button>
 								)}
 								{perms.canUpdate && ht && (
@@ -781,6 +802,18 @@ export default function SeminarDetail() {
 					defaultCredits={sem.cme_default_credits}
 					onClose={() => setImportOpen(false)}
 					onDone={() => d.refresh()}
+				/>
+			)}
+
+			{certOpen && sem && (
+				<CertificateModal
+					seminarId={sem.id}
+					seminarTitle={sem.title}
+					startDate={sem.start_date}
+					endDate={sem.end_date}
+					numbered={certTargets}
+					selectedCount={selected.length}
+					onClose={() => setCertOpen(false)}
 				/>
 			)}
 

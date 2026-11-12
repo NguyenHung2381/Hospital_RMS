@@ -323,6 +323,17 @@ GET    /api/v1/seminars/  seminars:read
 DELETE /api/v1/seminars/:id  seminars:delete
 GET    /api/v1/seminars/:id  seminars:read
 PUT    /api/v1/seminars/:id  seminars:update
+GET    /api/v1/seminars/:id/certificate-template  seminars:cme_manage
+POST   /api/v1/seminars/:id/certificate-template  seminars:cme_manage
+DELETE /api/v1/seminars/:id/certificate-template  seminars:cme_manage
+GET    /api/v1/seminars/:id/certificate-template/info  seminars:cme_manage
+PUT    /api/v1/seminars/:id/certificate-template/info  seminars:cme_manage
+GET    /api/v1/seminars/:id/certificate-template/layout  seminars:cme_manage
+PUT    /api/v1/seminars/:id/certificate-template/layout  seminars:cme_manage
+POST   /api/v1/seminars/:id/certificate-template/layout/reset  seminars:cme_manage
+POST   /api/v1/seminars/:id/certificate-template/preview  seminars:cme_manage
+POST   /api/v1/seminars/:id/certificates  seminars:cme_manage
+POST   /api/v1/seminars/:id/certificates/from-excel  seminars:cme_manage
 GET    /api/v1/seminars/:id/checkin-qr  seminars:update
 POST   /api/v1/seminars/:id/checkin-ticket  seminars:update
 GET    /api/v1/seminars/:id/department-staff  seminars:update

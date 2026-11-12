@@ -13,7 +13,13 @@ const { norm, normDept, stripQualification } = require('../../utils/vietnameseTe
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('exceljs')} */
 const ExcelJS = lazyRequire('exceljs');
-const { parseDob, parseCredits, parseStaffNumber, readSheet } = require('../../utils/excelImport');
+const {
+	cellText,
+	parseDob,
+	parseCredits,
+	parseStaffNumber,
+	readSheet,
+} = require('../../utils/excelImport');
 const { normalizeGender } = require('../../utils/gender');
 const seminarCmeService = require('./seminarCmeService');
 const seminarParticipantService = require('./seminarParticipantService');
@@ -178,7 +184,14 @@ const parseWorkbook = async (buffer) => {
 		// Dòng ví dụ của file mẫu (ghi chú "Dòng ví dụ…") — bỏ qua nếu quên xóa
 		if (/^dong vi du/.test(norm(get(row, 'notes')))) continue;
 
-		const { title_prefix, full_name } = splitTitlePrefix(rawName, get(row, 'title_prefix'));
+		// File thực tế hay để cột Ông/Bà KHÔNG có tiêu đề, ngay trước "Họ và tên" → nhận
+		// ô bên trái nếu đúng là danh xưng
+		let prefixCell = get(row, 'title_prefix');
+		if (!cols.title_prefix && cols.full_name > 1) {
+			const left = cellText(row.getCell(cols.full_name - 1)).trim();
+			if (/^(ông|bà|ong|ba)\.?$/i.test(left)) prefixCell = left.replace('.', '');
+		}
+		const { title_prefix, full_name } = splitTitlePrefix(rawName, prefixCell);
 		if (!full_name) continue;
 
 		const { dob, dob_text } = parseDob(cols.dob ? row.getCell(cols.dob) : null);
@@ -516,4 +529,5 @@ const templateWorkbook = () => {
 	return wb;
 };
 
-module.exports = { importExcel, templateWorkbook };
+// parseWorkbook: dùng lại cho xuất giấy chứng nhận CME từ file Excel (seminarCertificateService)
+module.exports = { importExcel, templateWorkbook, parseWorkbook };

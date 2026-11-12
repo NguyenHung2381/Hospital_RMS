@@ -233,6 +233,133 @@ export const issueCme = (
 		{ participant_ids: participantIds, year },
 	);
 
+// ─── Giấy chứng nhận CME (mẫu PDF của hội nghị → ZIP mỗi người 1 file) ────────
+export interface CertificateTemplateInfo {
+	file_name: string;
+	uploaded_at: string;
+	uploaded_by: string;
+	size: number;
+	/** Các ô trên giấy và hệ thống có tìm thấy chỗ điền trong mẫu không */
+	fields: { key: string; label: string; found: boolean }[];
+	/** Dãy "....." không nhận ra là ô nào — giữ nguyên trên giấy */
+	unknown: string[];
+}
+
+export const getCertificateTemplate = (seminarId: string) =>
+	apiClient.get<CertificateTemplateInfo | null>(`/seminars/${seminarId}/certificate-template`);
+
+export const uploadCertificateTemplate = (seminarId: string, file: File) => {
+	const form = new FormData();
+	form.append('file', file);
+	return apiClient.postForm<CertificateTemplateInfo>(`/seminars/${seminarId}/certificate-template`, form);
+};
+
+export const deleteCertificateTemplate = (seminarId: string) =>
+	apiClient.delete<null>(`/seminars/${seminarId}/certificate-template`);
+
+// Vị trí 1 ô trên mẫu — điểm PDF, gốc trên-trái trang
+export interface CertificateSlot {
+	x0: number;
+	x1: number;
+	/** Đường chân chữ (từ mép trên trang) */
+	baseline: number;
+	size: number;
+	align: 'left' | 'center';
+	hidden: boolean;
+	color: string;
+	bold: boolean;
+	italic: boolean;
+	suffix: string;
+	serif: boolean;
+}
+export interface CertificateLayoutField {
+	key: string;
+	label: string;
+	/** Chữ minh hoạ (dữ liệu mẫu) */
+	sample: string;
+	/** Hệ thống tự dò được ô này trên mẫu */
+	auto: boolean;
+	slot: CertificateSlot | null;
+}
+/** Dòng chữ in sẵn trên mẫu (tên hội nghị, ngày tháng...) — sửa được */
+export interface CertificateText {
+	id: string;
+	/** Chữ gốc trên mẫu */
+	original: string;
+	text: string;
+	x0: number;
+	x1: number;
+	baseline: number;
+	size: number;
+	align: 'left' | 'center';
+	color: string;
+	bold: boolean;
+	italic: boolean;
+	/** Đã sửa (dòng gốc đã bị xoá khỏi ảnh nền) */
+	edited: boolean;
+	/** Ký tự font của mẫu in được; null = in được mọi ký tự (có font đầy đủ) */
+	charset: string | null;
+}
+
+/** Ký tự font của mẫu không có → in bằng font thay thế (khác kiểu chữ) */
+export const missingChars = (text: string, charset: string | null) =>
+	charset == null ? [] : [...new Set([...text.normalize('NFC')])].filter((c) => c.trim() && !charset.includes(c));
+export interface CertificateLayout {
+	page: { width: number; height: number };
+	image_url: string;
+	fields: CertificateLayoutField[];
+	texts: CertificateText[];
+}
+export type CertificateSlotEdit = Pick<CertificateSlot, 'x0' | 'x1' | 'baseline' | 'size' | 'align' | 'hidden'>;
+export type CertificateTextEdit = Pick<CertificateText, 'text' | 'x0' | 'x1' | 'baseline' | 'size' | 'align'>;
+
+export const getCertificateLayout = (seminarId: string) =>
+	apiClient.get<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout`);
+
+/** texts: TOÀN BỘ các dòng đang sửa — dòng không gửi lên trở về chữ gốc */
+export const saveCertificateLayout = (
+	seminarId: string,
+	slots: Record<string, CertificateSlotEdit>,
+	texts: Record<string, CertificateTextEdit>,
+) => apiClient.put<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout`, { slots, texts });
+
+export const resetCertificateLayout = (seminarId: string) =>
+	apiClient.post<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout/reset`, {});
+
+// Thông tin hội nghị in sẵn trên giấy — sửa nhanh không cần mở màn chỉnh mẫu
+export type CertificateInfoKey = 'content' | 'organizer' | 'time' | 'sign_date';
+export interface CertificateInfoField {
+	key: CertificateInfoKey;
+	label: string;
+	/** Tìm thấy dòng tương ứng trên mẫu */
+	found: boolean;
+	value: string;
+	original: string;
+	/** Phần giữ nguyên đứng trước (vd "4. Thời gian: ") */
+	prefix: string;
+	/** Ký tự font của mẫu in được; null = in được mọi ký tự (có font đầy đủ) */
+	charset: string | null;
+}
+
+export const getCertificateInfo = (seminarId: string) =>
+	apiClient.get<CertificateInfoField[]>(`/seminars/${seminarId}/certificate-template/info`);
+
+export const saveCertificateInfo = (seminarId: string, values: Partial<Record<CertificateInfoKey, string>>) =>
+	apiClient.put<CertificateInfoField[]>(`/seminars/${seminarId}/certificate-template/info`, { values });
+
+export const previewCertificate = (seminarId: string) =>
+	apiClient.postBlob(`/seminars/${seminarId}/certificate-template/preview`, {});
+
+/** participantIds rỗng = mọi người đã có số CME */
+export const exportCertificates = (seminarId: string, participantIds?: string[]) =>
+	apiClient.postBlob(`/seminars/${seminarId}/certificates`, { participant_ids: participantIds });
+
+export const exportCertificatesFromExcel = (seminarId: string, file: File) => {
+	const form = new FormData();
+	form.append('file', file);
+	return apiClient.postBlob(`/seminars/${seminarId}/certificates/from-excel`, form);
+};
+
 export const revokeCme = (seminarId: string, pid: string) =>
 	apiClient.post<null>(
 		`/seminars/${seminarId}/participants/${pid}/revoke-cme`,

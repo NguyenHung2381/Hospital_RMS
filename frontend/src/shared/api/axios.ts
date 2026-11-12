@@ -48,13 +48,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	return json.data as T;
 }
 
+// body là FormData (gửi kèm file) thì để trình duyệt tự đặt Content-Type multipart
 async function requestBlob(path: string, body: unknown): Promise<Blob> {
+	const isForm = body instanceof FormData;
+	const payload = isForm ? body : JSON.stringify(body);
+	const jsonType: Record<string, string> = isForm ? {} : { 'Content-Type': 'application/json' };
 	const token = getToken();
 	const res = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 		method: 'POST',
-		body: JSON.stringify(body),
+		body: payload,
 		headers: {
-			'Content-Type': 'application/json',
+			...jsonType,
 			...(token ? { Authorization: `Bearer ${token}` } : {}),
 		},
 	});
@@ -64,9 +68,9 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 		if (newToken) {
 			const retryRes = await safeFetch(`${BASE_URL}/api/v1${path}`, {
 				method: 'POST',
-				body: JSON.stringify(body),
+				body: payload,
 				headers: {
-					'Content-Type': 'application/json',
+					...jsonType,
 					Authorization: `Bearer ${newToken}`,
 				},
 			});
