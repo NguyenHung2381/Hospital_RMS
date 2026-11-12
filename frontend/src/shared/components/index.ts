@@ -10,6 +10,7 @@ export { Card } from './Card';
 
 export { Button } from './Button';
 export { Modal, ModalActions, ConfirmDeleteModal } from './Modal';
+export { Drawer, DrawerSection, DrawerFields } from './Drawer';
 export { Can } from './Can';
 
 /* Nặng (docx-preview / dompurify / html5-qrcode) — import trực tiếp theo đường dẫn, không qua barrel:
