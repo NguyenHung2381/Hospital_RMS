@@ -1,0 +1,121 @@
+/* Form tạo/sửa hội thảo — khu "Cấu hình thêm" gồm các nhóm thu gọn được.
+   Các class chung của form (formGrid, formInput...) vẫn lấy từ pages/Seminar.module.css. */
+
+.configHead {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--space-3);
+	margin-top: var(--space-3);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--color-gray-100);
+}
+.configTitle {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.configHint {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-gray-500);
+}
+.linkBtn {
+	flex-shrink: 0;
+	padding: 2px 4px;
+	border: 0;
+	border-radius: var(--radius-sm);
+	background: none;
+	font-family: inherit;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+}
+.linkBtn:hover { text-decoration: underline; }
+.linkBtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+.groups {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.group {
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+.groupOpen { border-color: var(--color-gray-300); }
+.groupError { border-color: var(--tone-red-border); }
+
+.groupHead {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border: 0;
+	border-radius: inherit;
+	background: none;
+	font-family: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.groupHead:hover { background: var(--color-gray-50); }
+.groupHead:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.groupText {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.groupTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+/* Chấm xanh: nhóm đã có dữ liệu */
+.dot {
+	width: 6px;
+	height: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-primary);
+	flex-shrink: 0;
+}
+.dotError { background: var(--tone-red-fg); }
+.groupSummary {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.groupSummarySet { color: var(--color-gray-700); }
+.chev {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	color: var(--color-gray-400);
+	transition: transform 0.15s ease;
+}
+.groupOpen .chev { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+	.chev { transition: none; }
+}
+.groupBody { padding: var(--space-1) var(--space-4) var(--space-4); }
+
+/* Tổng / nội viện / ngoại viện / nước ngoài: 2 × 2 (4 ô ngang trong nhóm bị cắt nhãn) */
+.countGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3) var(--space-4);
+}
