@@ -40,13 +40,50 @@ export default function TicketScan() {
 	return id ? <Scanner id={id} /> : <Picker />;
 }
 
+// Ngày hôm nay theo giờ VN dạng 'YYYY-MM-DD' (so chuỗi được với start_date/end_date).
+const todayVN = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
+const day = (d: string | null) => d?.slice(0, 10) ?? null;
+
+type Avail = 'ongoing' | 'upcoming' | 'undated';
+
+/** Hội nghị còn quét vé được — cùng quy tắc nhận đăng ký ở backend (REG_OPEN_SQL):
+ * ngày kết thúc (thiếu thì ngày bắt đầu) chưa qua; chưa có ngày thì coi như còn. */
+function availability(s: Seminar, today: string): Avail | null {
+	const start = day(s.start_date);
+	const end = day(s.end_date) ?? start;
+	if (!end) return 'undated';
+	if (end < today) return null;
+	return start && start > today ? 'upcoming' : 'ongoing';
+}
+
+const AVAIL_LABEL: Record<Avail, string> = {
+	ongoing: 'Đang diễn ra',
+	upcoming: 'Sắp diễn ra',
+	undated: 'Chưa có ngày',
+};
+const AVAIL_ORDER: Record<Avail, number> = { ongoing: 0, upcoming: 1, undated: 2 };
+
 function Picker() {
-	const [list, setList] = useState<Seminar[] | null>(null);
+	const [list, setList] = useState<{ s: Seminar; avail: Avail }[] | null>(null);
 	const [error, setError] = useState('');
 
 	useEffect(() => {
-		getSeminars({ scope: 'hosted', limit: 30 })
-			.then((r) => setList(r.data))
+		// API xếp theo ngày bắt đầu giảm dần → hội nghị sắp/đang diễn ra nằm đầu danh sách
+		getSeminars({ scope: 'hosted', limit: 100 })
+			.then((r) => {
+				const today = todayVN();
+				setList(
+					r.data
+						.map((s) => ({ s, avail: availability(s, today) }))
+						.filter((x): x is { s: Seminar; avail: Avail } => x.avail !== null)
+						// Đang diễn ra trước, rồi sắp diễn ra gần nhất, cuối cùng là chưa có ngày
+						.sort(
+							(a, b) =>
+								AVAIL_ORDER[a.avail] - AVAIL_ORDER[b.avail] ||
+								(day(a.s.start_date) ?? '').localeCompare(day(b.s.start_date) ?? ''),
+						),
+				);
+			})
 			.catch((e) => setError(e instanceof Error ? e.message : 'Không tải được danh sách hội nghị'));
 	}, []);
 
@@ -59,7 +96,7 @@ function Picker() {
 					</Link>
 					<div className={styles.headerText}>
 						<div className={styles.title}>Quét vé điểm danh</div>
-						<div className={styles.sub}>Chọn hội nghị đang diễn ra</div>
+						<div className={styles.sub}>Chọn hội nghị đang hoặc sắp diễn ra</div>
 					</div>
 				</div>
 			</header>
@@ -71,14 +108,23 @@ function Picker() {
 					</div>
 				)}
 				{!list && !error && <InlineLoading />}
-				{list?.length === 0 && <p className={styles.empty}>Chưa có hội nghị do bệnh viện tổ chức.</p>}
+				{list?.length === 0 && (
+					<div className={styles.emptyBox}>
+						<CalendarSvg />
+						<p className={styles.emptyTitle}>Không có hội nghị nào đang hoặc sắp diễn ra</p>
+						<p className={styles.empty}>
+							Chỉ hội nghị do bệnh viện tổ chức và chưa kết thúc mới quét vé được ở đây.
+						</p>
+					</div>
+				)}
 				<div className={styles.list}>
-					{list?.map((s) => (
+					{list?.map(({ s, avail }) => (
 						<Link key={s.id} to={`/admin/quet-ve/${s.id}`} className={styles.item}>
 							<span className={styles.itemIcon}>
 								<QrSvg />
 							</span>
 							<span className={styles.itemText}>
+								<span className={`${styles.badge} ${styles[`badge_${avail}`]}`}>{AVAIL_LABEL[avail]}</span>
 								<span className={styles.itemTitle}>{s.title}</span>
 								<span className={styles.itemSub}>
 									<CalendarSvg />
