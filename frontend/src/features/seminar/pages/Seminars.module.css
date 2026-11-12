@@ -1,0 +1,172 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Bảng danh sách hội thảo / tập huấn bệnh viện (Seminars.tsx).
+ * Ít cột: Sự kiện (tên + hình thức · phạm vi · địa điểm) · Thời gian · Trạng thái
+ * · Tham dự (người dự + CME) · thao tác (1 nút + menu "…").
+ * Hẹp dần: ≤1024px ẩn STT; ≤900px ẩn cột Trạng thái (badge chuyển vào ô Thời gian);
+ * ≤640px global.css đổi bảng thành thẻ (table[data-cards]).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+}
+.table tbody td {
+	vertical-align: top;
+}
+
+/* ── Cột ── */
+.colIdx {
+	composes: tdIdx from '../../../shared/components/Table/Table.module.css';
+}
+.thIdx {
+	composes: thIdx from '../../../shared/components/Table/Table.module.css';
+}
+.colEvent {
+	min-width: 260px;
+	width: 46%;
+}
+.colTime {
+	white-space: nowrap;
+}
+.colStatus {
+	white-space: nowrap;
+}
+.colPeople {
+	white-space: nowrap;
+}
+.colActions {
+	composes: tdActions from '../../../shared/components/Table/Table.module.css';
+	width: 1%;
+}
+.thActions {
+	composes: thRight from '../../../shared/components/Table/Table.module.css';
+}
+
+/* ── Ô "Sự kiện": tên (tối đa 2 dòng) + dòng phụ 1 dòng ── */
+.title {
+	composes: cellLink from '../../../shared/components/Table/Table.module.css';
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	line-height: 1.4;
+	text-decoration: none;
+	background: none;
+	border: none;
+	padding: 0;
+	text-align: left;
+	font-family: inherit;
+}
+.meta {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 1;
+	line-clamp: 1;
+	overflow: hidden;
+	margin-top: 3px;
+	line-height: 1.5;
+}
+.metaType {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-600);
+}
+.sep {
+	margin: 0 6px;
+	color: var(--color-gray-400);
+}
+.hostedTag {
+	color: var(--tone-teal-fg);
+	font-weight: var(--font-weight-semibold);
+}
+.loc svg {
+	width: 11px;
+	height: 11px;
+	margin-right: 3px;
+	vertical-align: -1px;
+}
+
+/* ── Ô "Thời gian" / "Tham dự": dòng chính + dòng phụ ── */
+.main {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-800);
+	line-height: 1.4;
+}
+.sub {
+	composes: cellSub from '../../../shared/components/Table/Table.module.css';
+	margin-top: 3px;
+	line-height: 1.5;
+}
+.muted {
+	color: var(--color-gray-400);
+}
+.people {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+.people svg {
+	width: 13px;
+	height: 13px;
+	color: var(--color-gray-400);
+}
+.cmeLine {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 4px;
+}
+
+/* Badge trạng thái lặp trong ô Thời gian — chỉ hiện khi cột Trạng thái bị ẩn */
+.phaseInline {
+	display: none;
+	margin-top: 4px;
+}
+
+/* ── Thao tác ── */
+.actions {
+	composes: actionBtns from '../../../shared/components/Table/Table.module.css';
+	justify-content: flex-end;
+}
+.actionBtn {
+	composes: actionBtn from '../../../shared/components/Table/Table.module.css';
+}
+.actionBtn svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+	.thIdx,
+	.colIdx {
+		display: none;
+	}
+}
+@media (max-width: 900px) {
+	.thStatus,
+	.colStatus {
+		display: none;
+	}
+	.phaseInline {
+		display: block;
+	}
+	.colEvent {
+		min-width: 220px;
+	}
+}
+/* Chế độ thẻ (≤640px): global.css hiện lại mọi ô kèm nhãn cột → bỏ STT, bỏ
+   badge lặp trong ô Thời gian (cột Trạng thái đã hiện thành dòng riêng). */
+@media (max-width: 640px) {
+	table[data-cards] td.colIdx {
+		display: none;
+	}
+	table[data-cards] .phaseInline {
+		display: none;
+	}
+	.colEvent {
+		min-width: 0;
+		width: auto;
+	}
+}
