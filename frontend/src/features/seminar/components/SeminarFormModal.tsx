@@ -13,6 +13,7 @@ import {
 } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 import cs from './SeminarFormModal.module.css';
+import { SeminarLocationField } from './SeminarLocationField';
 
 // Form gồm 2 phần:
 //  - Thông tin cơ bản: luôn hiện — tên (bắt buộc duy nhất, backend chỉ validate title),
@@ -543,12 +544,11 @@ export function SeminarFormModal({
 
 				<div className={`${styles.formGroup} ${styles.full}`}>
 					<label className={styles.formLabel} htmlFor={fid('location')}>Địa điểm</label>
-					<input
-						className={styles.formInput}
+					<SeminarLocationField
 						id={fid('location')}
 						value={form.location}
-						onChange={set('location')}
-						placeholder='VD: Hội trường A, tầng 3'
+						onChange={(location) => update({ location })}
+						hosted={form.scope === 'hosted'}
 					/>
 				</div>
 
