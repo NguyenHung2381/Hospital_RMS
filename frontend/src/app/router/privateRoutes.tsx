@@ -78,6 +78,7 @@ const AttendanceCheckIn = lazy(
 	() => import('../../features/attendance-checkin/pages/AttendanceCheckIn'),
 );
 const QuestionBank = lazy(() => import('../../features/exam/pages/QuestionBank'));
+const ExamBuilder = lazy(() => import('../../features/exam/pages/ExamBuilder'));
 const StaffAttendance = lazy(
 	() => import('../../features/staff-attendance/pages/StaffAttendance'),
 );
@@ -467,6 +468,15 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/courses/:id',
 		element: admin('Chi tiết khóa học', <CourseDetail />),
 	},
+	// Trang soạn đề thi riêng (trước đây nằm trong tab Thi & kiểm tra của chi tiết khóa học)
+	...['/admin/courses/:id/exams/new', '/admin/courses/:id/exams/:examId/edit'].map((path) => ({
+		path,
+		element: (
+			<RequirePermission perm='exams:manage'>
+				{admin(path.endsWith('/new') ? 'Tạo đề thi' : 'Sửa đề thi', <ExamBuilder />)}
+			</RequirePermission>
+		),
+	})),
 	{
 		path: '/admin/question-bank',
 		element: (
