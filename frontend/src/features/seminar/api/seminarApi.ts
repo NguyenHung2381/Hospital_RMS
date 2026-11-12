@@ -135,6 +135,8 @@ export const updateSeminarTest = (
 		test_end_time?: string | null;
 		test_duration_minutes?: number | null;
 		test_pass_score?: number | null;
+		/** Thang điểm tối đa — trống = tổng điểm các câu */
+		test_score_scale?: number | null;
 		test_shuffle_questions?: boolean;
 		test_shuffle_options?: boolean;
 	},

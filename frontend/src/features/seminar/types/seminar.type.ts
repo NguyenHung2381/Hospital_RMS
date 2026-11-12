@@ -138,6 +138,8 @@ export interface Seminar {
 	test_duration_minutes: number | null;
 	/** Điểm đạt để được cấp CME — null = chỉ cần nộp bài */
 	test_pass_score: number | null;
+	/** Thang điểm tối đa (vd 10, 100): điểm bài làm quy về thang này rồi mới so điểm đạt — null = tổng điểm các câu */
+	test_score_scale: number | null;
 	test_shuffle_questions: boolean;
 	test_shuffle_options: boolean;
 	/** JSON SeminarAgendaItem[] — chương trình / danh sách bài học */

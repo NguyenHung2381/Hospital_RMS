@@ -31,6 +31,9 @@ const {
 	gradeTest,
 	isPassed,
 	maxScore,
+	participantScore,
+	scaledScore,
+	scaleMax,
 	publicQuestions,
 	testOrder,
 } = require('../../utils/seminarTest');
@@ -56,7 +59,8 @@ const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date
   s.date_text, s.grants_cme, s.cme_default_credits, s.scope`;
 // Bài test: câu hỏi + công tắc mở + khung giờ (utils/seminarSchedule.testState) + cấu hình (utils/seminarTest)
 const SEMINAR_TEST_COLS = `s.test_questions, s.test_open, s.test_date, s.test_end_date, s.test_start_time,
-  s.test_end_time, s.test_duration_minutes, s.test_pass_score, s.test_shuffle_questions, s.test_shuffle_options`;
+  s.test_end_time, s.test_duration_minutes, s.test_pass_score, s.test_score_scale, s.test_shuffle_questions,
+  s.test_shuffle_options`;
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
 const REG_OPEN_SQL = `${boolExpr(`s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
   >= CAST(${nowSql} AS DATE)`)}`;
@@ -302,8 +306,9 @@ const getTicket = async (code) => {
 	const a = testAttempt(row, now);
 	const window = testWindow(row, now);
 	const submitted = !!row.test_submitted_at;
-	// Bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
-	const score = row.test_score ?? row.test_correct;
+	// Điểm đã quy về thang của hội nghị (nếu đặt); bài nộp trước khi có điểm theo
+	// trọng số: mỗi câu đúng 1 điểm
+	const score = participantScore(row, row);
 	return {
 		title_prefix: row.title_prefix,
 		full_name: row.full_name,
@@ -332,7 +337,7 @@ const getTicket = async (code) => {
 					}
 				: null,
 			question_count: a.questions.length,
-			max_score: submitted ? (row.test_max_score ?? row.test_total) : maxScore(a.questions),
+			max_score: scaleMax(row, submitted ? (row.test_max_score ?? row.test_total) : maxScore(a.questions)),
 			duration_minutes: row.test_duration_minutes,
 			pass_score: row.test_pass_score,
 			can_start: a.canStart,
@@ -409,9 +414,9 @@ const submitTest = async (code, answers) => {
 	return {
 		correct: g.correct,
 		total: g.total,
-		score: g.score,
-		max_score: g.max_score,
-		passed: isPassed(row, g.score),
+		score: scaledScore(row, g.score, g.max_score),
+		max_score: scaleMax(row, g.max_score),
+		passed: isPassed(row, scaledScore(row, g.score, g.max_score)),
 	};
 };
 

@@ -113,3 +113,43 @@ test('isPassed: chưa đặt điểm đạt = đạt; có thì so điểm', () =
 	assert.strictEqual(t.isPassed({ test_pass_score: 5 }, 4.5), false);
 	assert.strictEqual(t.isPassed({ test_pass_score: 5 }, null), false);
 });
+
+test('scaledScore: không đặt thang = giữ điểm thô; có thang thì quy đổi, làm tròn 2 chữ số', () => {
+	assert.strictEqual(t.scaledScore({}, 7, 9), 7);
+	assert.strictEqual(t.scaledScore({ test_score_scale: null }, 3.5, 3.5), 3.5);
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, 7, 9), 7.78);
+	assert.strictEqual(t.scaledScore({ test_score_scale: '100' }, 3.5, 3.5), 100);
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, 0, 9), 0);
+	// Sai số dấu phẩy động không làm lệch làm tròn (khớp ROUND của SQL)
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, 1.005, 10), 1.01);
+	// Không biết điểm tối đa của bài → không quy đổi được, giữ điểm thô
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, 4, null), 4);
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, 4, 0), 4);
+	assert.strictEqual(t.scaledScore({ test_score_scale: 10 }, null, 9), null);
+});
+
+test('participantScore: bài cũ chưa có điểm từng câu dùng số câu đúng / tổng số câu', () => {
+	const s = { test_score_scale: 10 };
+	assert.strictEqual(t.participantScore(s, { test_score: 3, test_max_score: 4 }), 7.5);
+	assert.strictEqual(t.participantScore(s, { test_score: null, test_correct: 4, test_total: 5 }), 8);
+	assert.strictEqual(t.participantScore({}, { test_score: null, test_correct: 4, test_total: 5 }), 4);
+});
+
+test('scaleMax: thang của hội nghị nếu đặt, không thì điểm tối đa của bài', () => {
+	assert.strictEqual(t.scaleMax({}, 9), 9);
+	assert.strictEqual(t.scaleMax({ test_score_scale: '10.00' }, 9), 10);
+});
+
+test('isPassed + scaledScore: điểm đạt tính theo thang', () => {
+	const s = { test_score_scale: 10, test_pass_score: 5 };
+	assert.strictEqual(t.isPassed(s, t.scaledScore(s, 4.5, 9)), true); // 5.00
+	assert.strictEqual(t.isPassed(s, t.scaledScore(s, 4, 9)), false); // 4.44
+	// Dữ liệu cũ (không thang): như trước
+	assert.strictEqual(t.isPassed({ test_pass_score: 5 }, t.scaledScore({}, 4.5, 9)), false);
+});
+
+test('SCALED_SCORE_SQL: dùng cột thang, giữ điểm thô khi không đặt thang', () => {
+	assert.match(t.SCALED_SCORE_SQL, /s\.test_score_scale IS NULL/);
+	assert.match(t.SCALED_SCORE_SQL, /THEN COALESCE\(p\.test_score, p\.test_correct\)/);
+	assert.match(t.SCALED_SCORE_SQL, /ROUND\(.*s\.test_score_scale/s);
+});
