@@ -126,11 +126,14 @@ function Picker() {
 							<span className={styles.itemText}>
 								<span className={`${styles.badge} ${styles[`badge_${avail}`]}`}>{AVAIL_LABEL[avail]}</span>
 								<span className={styles.itemTitle}>{s.title}</span>
-								<span className={styles.itemSub}>
-									<CalendarSvg />
-									{seminarWhen(s)}
-									{s.location ? ` · ${s.location}` : ''}
-								</span>
+								{(avail !== 'undated' || s.date_text || s.location) && (
+									<span className={styles.itemSub}>
+										<CalendarSvg />
+										{[avail !== 'undated' || s.date_text ? seminarWhen(s) : null, s.location]
+											.filter(Boolean)
+											.join(' · ')}
+									</span>
+								)}
 							</span>
 							<ChevRSvg className={styles.itemChev} />
 						</Link>
