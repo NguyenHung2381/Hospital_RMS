@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	BadgeSvg,
@@ -129,6 +129,14 @@ export default function SeminarDetail() {
 	const rawTab = searchParams.get('tab') as DetailTab | null;
 	const tab: DetailTab =
 		rawTab && TAB_KEYS.includes(rawTab) && (!sem || tabs.some((t) => t.key === rawTab)) ? rawTab : 'overview';
+
+	// Điện thoại: thanh tab cuộn ngang — đưa tab đang chọn vào khung nhìn
+	const tabBarRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		tabBarRef.current
+			?.querySelector<HTMLElement>('[aria-selected="true"]')
+			?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	}, [tab, sem]);
 
 	const openId = searchParams.get('p');
 	const openParticipant = openId ? (d.participants.find((p) => p.id === openId) ?? null) : null;
@@ -263,6 +271,7 @@ export default function SeminarDetail() {
 
 					{/* ── Thanh tab ── */}
 					<div
+						ref={tabBarRef}
 						className={d$.tabBar}
 						role='tablist'
 						aria-label='Nội dung sự kiện'

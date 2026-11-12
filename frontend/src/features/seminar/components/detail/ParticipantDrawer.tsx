@@ -163,7 +163,7 @@ export function ParticipantDrawer({
 				>
 					<ol className={s.timeline}>
 						<Step
-							done={!!p.ticket_code}
+							done
 							title={p.ticket_code ? 'Tự đăng ký qua QR' : 'Ban tổ chức thêm vào danh sách'}
 							note={p.ticket_code ? `Mã vé ${p.ticket_code}` : 'Không cần điểm danh để được cấp CME'}
 						/>
@@ -218,6 +218,9 @@ export function ParticipantDrawer({
 					title='Chứng nhận CME'
 					icon={<BadgeSvg />}
 				>
+					{p.cme_seq == null && p.cme_credits != null && (
+						<DrawerFields items={[['Số tín chỉ (khi cấp)', `${p.cme_credits} tín chỉ`]]} />
+					)}
 					{p.cme_seq != null ? (
 						<DrawerFields
 							items={[

@@ -165,7 +165,7 @@ export function ParticipantsTab({
 							setQ(v);
 							pg.setPage(1);
 						}}
-						placeholder='Tìm tên, khoa/phòng, SĐT, số CME…'
+						placeholder='Tìm tên, khoa, SĐT…'
 					/>
 				</div>
 
