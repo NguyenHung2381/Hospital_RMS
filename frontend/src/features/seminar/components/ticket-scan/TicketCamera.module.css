@@ -1,0 +1,341 @@
+/* Khung camera quét vé — lấp đầy vùng chứa. Vùng chứa PHẢI cho chiều cao
+   (flex: 1 trong cột cao cố định, hoặc aspect-ratio) vì dùng container-type: size. */
+.stage {
+	--frame: 72cqmin; /* khớp FRAME_RATIO trong TicketCamera.tsx */
+	position: relative;
+	container-type: size;
+	width: 100%;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+	border-radius: 18px;
+	background: #0f172a;
+	color: #fff;
+	isolation: isolate;
+}
+
+.viewport {
+	position: absolute !important; /* thư viện tự đặt position: relative */
+	inset: 0;
+}
+/* Thư viện đặt width (px) inline cho <video>; ép lấp đầy khung, cắt mép thừa. */
+.viewport video {
+	display: block;
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover;
+}
+.mirror .viewport video {
+	transform: scaleX(-1);
+}
+/* Bỏ lớp tô bóng mặc định của thư viện — khung ngắm vẽ riêng ở .frame */
+.viewport :global(#qr-shaded-region) {
+	display: none !important;
+}
+.viewportHidden {
+	display: none;
+}
+
+/* ---- Khung ngắm ---- */
+.frame {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: var(--frame);
+	height: var(--frame);
+	transform: translate(-50%, -50%);
+	border-radius: 20px;
+	/* làm tối phần ngoài khung */
+	box-shadow: 0 0 0 200vmax rgba(15, 23, 42, 0.38);
+	--c: #fff;
+	--l: clamp(22px, 14%, 44px);
+	--t: 4px;
+	background:
+		linear-gradient(var(--c), var(--c)) top left / var(--l) var(--t),
+		linear-gradient(var(--c), var(--c)) top left / var(--t) var(--l),
+		linear-gradient(var(--c), var(--c)) top right / var(--l) var(--t),
+		linear-gradient(var(--c), var(--c)) top right / var(--t) var(--l),
+		linear-gradient(var(--c), var(--c)) bottom left / var(--l) var(--t),
+		linear-gradient(var(--c), var(--c)) bottom left / var(--t) var(--l),
+		linear-gradient(var(--c), var(--c)) bottom right / var(--l) var(--t),
+		linear-gradient(var(--c), var(--c)) bottom right / var(--t) var(--l);
+	background-repeat: no-repeat;
+	pointer-events: none;
+	z-index: 1;
+}
+/* vạch quét chạy dọc */
+.frame span {
+	position: absolute;
+	left: 8%;
+	right: 8%;
+	height: 2px;
+	border-radius: 2px;
+	background: var(--color-primary-light, #34d399);
+	box-shadow: 0 0 12px 2px rgba(52, 211, 153, 0.6);
+	animation: sweep 2.2s ease-in-out infinite alternate;
+}
+.stage[data-phase='starting'] .frame span {
+	display: none;
+}
+@keyframes sweep {
+	from {
+		top: 8%;
+	}
+	to {
+		top: 92%;
+	}
+}
+
+/* ---- Thanh công cụ trên khung ---- */
+.topBar {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	right: 10px;
+	z-index: 2;
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+.chip,
+.hint {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 12px;
+	border-radius: 999px;
+	background: rgba(15, 23, 42, 0.62);
+	backdrop-filter: blur(6px);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+.dot,
+.dotBusy {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #34d399;
+	box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+	animation: pulse 1.6s infinite;
+}
+.dotBusy {
+	background: #fbbf24;
+	animation: none;
+}
+@keyframes pulse {
+	70% {
+		box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+	}
+}
+.tools {
+	display: flex;
+	gap: 8px;
+}
+.roundBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: rgba(15, 23, 42, 0.62);
+	backdrop-filter: blur(6px);
+	color: #fff;
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+.roundBtn svg {
+	width: 22px;
+	height: 22px;
+}
+.roundBtn:hover:not(:disabled) {
+	background: rgba(15, 23, 42, 0.8);
+}
+.roundBtn:focus-visible {
+	outline: 2px solid #fff;
+	outline-offset: 2px;
+}
+.roundBtn:disabled {
+	opacity: 0.5;
+}
+.hint {
+	position: absolute;
+	left: 12px;
+	right: 12px;
+	bottom: 12px;
+	z-index: 2;
+	width: fit-content;
+	margin: 0 auto;
+	white-space: normal;
+	text-align: center;
+}
+.chip,
+.hint {
+	color: #fff; /* style p toàn cục đặt màu xám */
+}
+
+/* ---- Nháy viền khi có kết quả ---- */
+.flash {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	border: 6px solid;
+	border-radius: inherit;
+	pointer-events: none;
+	animation: flash 1s ease-out forwards;
+}
+.ok {
+	border-color: #22c55e;
+	background: rgba(34, 197, 94, 0.18);
+}
+.warn {
+	border-color: #f59e0b;
+	background: rgba(245, 158, 11, 0.18);
+}
+.bad {
+	border-color: #ef4444;
+	background: rgba(239, 68, 68, 0.2);
+}
+@keyframes flash {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+/* ---- Màn chờ / báo lỗi ---- */
+.panel {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	padding: 20px;
+	overflow-y: auto;
+	text-align: center;
+	background: radial-gradient(circle at 50% 30%, #1e293b, #0f172a 70%);
+}
+.panelIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	width: 64px;
+	height: 64px;
+	border-radius: 18px;
+	background: rgba(52, 211, 153, 0.16);
+	color: #6ee7b7;
+}
+.panelIcon svg {
+	width: 32px;
+	height: 32px;
+}
+.iconWarn {
+	background: rgba(251, 191, 36, 0.16);
+	color: #fcd34d;
+}
+.iconBad {
+	background: rgba(248, 113, 113, 0.16);
+	color: #fca5a5;
+}
+.panelTitle {
+	margin: 4px 0 0;
+	font-size: 18px;
+	font-weight: 700;
+	line-height: 1.3;
+	color: #fff; /* style h2 toàn cục đặt màu tối */
+}
+.panelText {
+	margin: 0;
+	max-width: 380px;
+	font-size: 14px;
+	line-height: 1.55;
+	color: #cbd5e1;
+}
+.panelActions {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 100%;
+	max-width: 300px;
+	margin-top: 6px;
+}
+.btnPrimary {
+	composes: btn primary lg from '@/shared/components/Button/Button.module.css';
+	width: 100%;
+	min-height: 48px;
+}
+.btnGhost {
+	composes: btn lg from '@/shared/components/Button/Button.module.css';
+	width: 100%;
+	min-height: 48px;
+	background: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.22);
+	color: #fff;
+}
+.btnGhost:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.14);
+}
+.fileErr {
+	margin: 4px 0 0;
+	max-width: 380px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	background: rgba(248, 113, 113, 0.16);
+	color: #fecaca;
+	font-size: 13px;
+	line-height: 1.5;
+}
+.fileInput {
+	display: none;
+}
+
+/* Khung bè ngang: xếp nút dọc mép phải, khỏi đè lên góc khung ngắm. */
+@container (min-aspect-ratio: 4 / 3) {
+	.tools {
+		flex-direction: column;
+	}
+}
+
+/* Khung thấp (điện thoại xoay ngang): gọn lại để vừa nút. */
+@container (max-height: 380px) {
+	.panel {
+		gap: 6px;
+		padding: 12px;
+	}
+	.panelIcon {
+		display: none;
+	}
+	.panelTitle {
+		font-size: 16px;
+	}
+	.panelText {
+		font-size: 13px;
+	}
+	.panelActions {
+		flex-direction: row;
+		max-width: 420px;
+	}
+	.hint {
+		display: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.frame span,
+	.dot {
+		animation: none;
+	}
+}
