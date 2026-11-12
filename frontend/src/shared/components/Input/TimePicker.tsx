@@ -42,6 +42,33 @@ function parseTyped(raw: string): string | null {
 	return `${pad2(h)}:${pad2(mi)}`;
 }
 
+/**
+ * Định dạng chữ đang gõ theo khuôn HH:mm: chỉ giữ số và ':', đổi 'h' '.' ' ' thành ':',
+ * gõ đủ giờ thì tự chèn ':'. "0730" → "07:30", "730" → "7:30", "95" → "9:5".
+ */
+function maskTime(raw: string, autoColon: boolean): string {
+	const s = raw.toLowerCase().replace(/[h.\s]/g, ':').replace(/[^\d:]/g, '');
+	const ci = s.indexOf(':');
+	let hour: string;
+	let min: string;
+	let hasColon: boolean;
+	if (ci >= 0) {
+		hour = s.slice(0, ci).slice(0, 2);
+		min = s.slice(ci + 1).replace(/:/g, '');
+		hasColon = hour.length > 0;
+		if (!hasColon) min = '';
+	} else if (s.length >= 2 && Number(s.slice(0, 2)) <= 23) {
+		hour = s.slice(0, 2);
+		min = s.slice(2);
+		hasColon = min.length > 0 || autoColon;
+	} else {
+		hour = s.slice(0, 1);
+		min = s.slice(1);
+		hasColon = min.length > 0;
+	}
+	return hasColon ? `${hour}:${min.slice(0, 2)}` : hour;
+}
+
 /** Ô chọn giờ 24h thay cho <input type="time"> (bảng chọn mặc định của trình duyệt không chỉnh được giao diện). */
 export function TimePicker({
 	value = '',
@@ -117,7 +144,10 @@ export function TimePicker({
 			setIsOpen(false);
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') setIsOpen(false);
+			if (e.key === 'Escape') {
+				setDraft(null);
+				setIsOpen(false);
+			}
 		};
 		document.addEventListener('mousedown', onMouseDown);
 		document.addEventListener('keydown', onKeyDown);
@@ -158,12 +188,24 @@ export function TimePicker({
 					autoComplete='off'
 					aria-label={ariaLabel}
 					disabled={disabled}
+					maxLength={5}
 					value={draft ?? current}
 					placeholder={placeholder}
 					onFocus={() => !disabled && setIsOpen(true)}
 					onClick={() => !disabled && setIsOpen(true)}
-					onChange={(e) => setDraft(e.target.value)}
-					onBlur={commitDraft}
+					onChange={(e) => {
+						const el = e.target;
+						const prev = draft ?? current;
+						// Chỉ tự định dạng khi gõ ở cuối; sửa giữa chừng thì để nguyên vị trí con trỏ
+						const atEnd = el.selectionStart === el.value.length;
+						setDraft(atEnd ? maskTime(el.value, el.value.length > prev.length) : el.value);
+						if (!isOpen) setIsOpen(true);
+					}}
+					onBlur={() => {
+						commitDraft();
+						// Tab sang ô khác thì đóng bảng chọn
+						setIsOpen(false);
+					}}
 					onKeyDown={(e) => {
 						if (e.key === 'Enter') {
 							e.preventDefault();
