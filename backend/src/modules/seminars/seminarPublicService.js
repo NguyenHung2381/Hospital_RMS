@@ -337,7 +337,10 @@ const getTicket = async (code) => {
 					}
 				: null,
 			question_count: a.questions.length,
-			max_score: scaleMax(row, submitted ? (row.test_max_score ?? row.test_total) : maxScore(a.questions)),
+			max_score: scaleMax(
+				row,
+				submitted ? (row.test_max_score ?? row.test_total) : maxScore(a.questions),
+			),
 			duration_minutes: row.test_duration_minutes,
 			pass_score: row.test_pass_score,
 			can_start: a.canStart,

@@ -131,8 +131,14 @@ test('scaledScore: không đặt thang = giữ điểm thô; có thang thì quy 
 test('participantScore: bài cũ chưa có điểm từng câu dùng số câu đúng / tổng số câu', () => {
 	const s = { test_score_scale: 10 };
 	assert.strictEqual(t.participantScore(s, { test_score: 3, test_max_score: 4 }), 7.5);
-	assert.strictEqual(t.participantScore(s, { test_score: null, test_correct: 4, test_total: 5 }), 8);
-	assert.strictEqual(t.participantScore({}, { test_score: null, test_correct: 4, test_total: 5 }), 4);
+	assert.strictEqual(
+		t.participantScore(s, { test_score: null, test_correct: 4, test_total: 5 }),
+		8,
+	);
+	assert.strictEqual(
+		t.participantScore({}, { test_score: null, test_correct: 4, test_total: 5 }),
+		4,
+	);
 });
 
 test('scaleMax: thang của hội nghị nếu đặt, không thì điểm tối đa của bài', () => {
