@@ -73,6 +73,13 @@ logger.warnOnce = (msg, opts) => {
 	loggerWarnOnce(msg, opts);
 };
 
+// Tên file build chỉ gồm hash nội dung (xem build/worker bên dưới).
+const hashOnlyFileNames = {
+	entryFileNames: 'assets/[hash].js',
+	chunkFileNames: 'assets/[hash].js',
+	assetFileNames: 'assets/[hash][extname]',
+};
+
 const apiPort = getApiPort();
 // Host của backend — mặc định 'localhost' (chạy native cùng máy).
 // Trong Docker Compose, client và server là 2 container khác nhau nên cần
@@ -97,6 +104,26 @@ export default defineConfig({
 		alias: {
 			'@': path.resolve(import.meta.dirname, './src'),
 		},
+	},
+	// Chống dò cấu trúc mã qua DevTools (tab Sources / Network) ở bản production:
+	//   sourcemap: false — KHÔNG sinh *.map, DevTools không dựng lại được cây src/
+	//     gốc (ghi rõ dù đã là mặc định, để không ai lỡ bật lên khi debug).
+	//   Tên file chỉ còn hash — mặc định Vite đặt tên chunk theo tên module
+	//     (ActivityLogs-xxx.js, AdminLayout-xxx.js...) → nhìn danh sách file là
+	//     đoán được toàn bộ trang/màn hình. Hash vẫn đổi theo nội dung nên cache
+	//     1 năm ở nginx (location /assets/) vẫn đúng.
+	// Trình duyệt bắt buộc tải JS/CSS về mới chạy được, nên KHÔNG thể giấu hẳn
+	// file khỏi DevTools — chỉ làm nó vô nghĩa (kết hợp obfuscatorPlugin ở trên).
+	build: {
+		sourcemap: false,
+		rolldownOptions: {
+			output: hashOnlyFileNames,
+		},
+	},
+	// Web Worker (pow.worker, pdf.worker của pdfjs) được bundle riêng — cần đặt tên
+	// lại ở đây, không thì vẫn lộ tên pdf.worker.min-xxx.js / pow.worker-xxx.js.
+	worker: {
+		rolldownOptions: { output: hashOnlyFileNames },
 	},
 	server: {
 		host: true,
