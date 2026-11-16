@@ -19,7 +19,7 @@
 	gap: 8px;
 	margin: 0 -16px;
 	padding: 12px 16px;
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: #fff;
 }
 .back {
@@ -75,9 +75,11 @@
 	padding: 0;
 	font-size: 13px;
 }
-.history li { padding: 8px 0 8px 12px; border-bottom: 1px solid var(--color-gray-200); border-left: 3px solid; }
-.histOk { border-left-color: var(--color-primary); }
-.histWarn { border-left-color: var(--color-warning); }
+.history li { position: relative; padding: 8px 0 8px 18px; border-bottom: 1px solid var(--color-gray-200); }
+/* Chấm trạng thái (đi kèm chữ), không dùng sọc trái */
+.history li::before { content: ''; position: absolute; left: 2px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--hist, var(--color-gray-400)); }
+.histOk { --hist: var(--color-primary); }
+.histWarn { --hist: var(--color-warning); }
 
 .list { display: flex; flex-direction: column; gap: 8px; }
 .item {
@@ -85,7 +87,7 @@
 	padding: 12px 14px;
 	border: 1px solid var(--color-gray-200);
 	border-radius: 12px;
-	color: var(--color-gray-900, var(--color-gray-900));
+	color: var(--color-gray-900);
 	text-decoration: none;
 }
 .item .sub { opacity: 1; color: var(--color-gray-500, var(--color-gray-600)); margin-top: 2px; }

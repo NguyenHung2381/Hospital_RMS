@@ -78,7 +78,7 @@ export function ResearchReports({ year }: { year: number }) {
 			.then((r) => setRounds(r.data))
 			.catch(() => {});
 		getDepts()
-			.then((d) => setDepts(d.data))
+			.then((d) => setDepts([...d.data].sort((a, b) => a.name.localeCompare(b.name, 'vi'))))
 			.catch(() => {});
 	}, []);
 
@@ -165,7 +165,7 @@ export function ResearchReports({ year }: { year: number }) {
 	return (
 		<div className={styles.section}>
 			<div className={styles.sectionHead}>
-				<span className={styles.sectionTitle}>Đề tài NCKH năm {year}</span>
+				<h2 className={styles.sectionTitle}>Đề tài NCKH năm {year}</h2>
 				<Link
 					to='/admin/dashboard/research'
 					className={styles.sectionLink}

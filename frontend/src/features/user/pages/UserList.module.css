@@ -1,7 +1,6 @@
 /* ── GLOBAL STATS ROW — kiểu chung: shared/components/Card/StatCard.module.css ── */
 .statsRow {
 	composes: statsRow from '../../../shared/components/Card/StatCard.module.css';
-	margin-bottom: var(--space-4);
 }
 .statCard {
 	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
@@ -76,6 +75,10 @@
 /* ── Vai trò dạng tabs (chuẩn tham chiếu) ─────────────────────────────────── */
 .tabsRow {
 	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
+}
+.tabsRowWrap {
+	flex-wrap: wrap;
+	overflow-x: visible;
 }
 .tab {
 	composes: tab from '../../../shared/components/Table/Table.module.css';
@@ -249,7 +252,7 @@
 	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 560px;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: modalPopIn 220ms var(--ease-out) both;
 	overflow: hidden;
 	max-height: 90vh;
 	max-height: 90dvh;

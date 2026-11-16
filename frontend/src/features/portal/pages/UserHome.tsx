@@ -108,23 +108,22 @@ export default function UserHome() {
 							</div>
 
 							<div className={styles.roundName}>
-								{d.activeRound?.name ?? 'Đợt đăng ký 1 — 2026'}
+								{d.activeRound?.name ?? 'Hiện chưa có đợt nào mở đăng ký'}
 							</div>
 
-							<div className={styles.roundDeadlineContainer}>
-								<span className={styles.roundDeadlineText}>
-									<CalendarSvg />
-									Hạn nộp:{' '}
-									{d.activeRound?.end_date
-										? d.activeRound.end_date
-										: '31/05/2026'}
-								</span>
-								<span className={styles.daysLeftPill}>
-									{d.daysRemaining !== null
-										? `Còn ${d.daysRemaining} ngày`
-										: 'Đang mở'}
-								</span>
-							</div>
+							{d.deadline && (
+								<div className={styles.roundDeadlineContainer}>
+									<span className={styles.roundDeadlineText}>
+										<CalendarSvg />
+										{d.deadline.label}: {d.deadline.date}
+									</span>
+									{d.daysRemaining !== null && (
+										<span className={styles.daysLeftPill}>
+											{d.daysRemaining > 0 ? `Còn ${d.daysRemaining} ngày` : 'Hôm nay là hạn cuối'}
+										</span>
+									)}
+								</div>
+							)}
 
 							{d.canRegisterTopic && (
 								<button
@@ -145,29 +144,16 @@ export default function UserHome() {
 					className={styles.statsGrid}
 					aria-label='Thống kê tổng quan'
 				>
-					{/* Card 1: Tổng đề tài */}
-					<div
-						className={styles.statCard}
-						role='button'
-						tabIndex={0}
+					{/* Card 1: Đề tài tham gia */}
+					<button
+						type='button'
+						className={`${styles.statCard}`}
 						onClick={() => d.navigate('/user/my-topics')}
-						onKeyDown={(e) =>
-							e.key === 'Enter' && d.navigate('/user/my-topics')
-						}
 					>
 						<div className={styles.statTopRow}>
-							<div
-								className={styles.statIconBox}
-								style={{ background: '#e7f5ed', color: '#096b35' }}
-							>
+							<div className={`${styles.statIconBox} ${styles.iconGreen}`}>
 								<DocSvg />
 							</div>
-							<span
-								className={styles.statPill}
-								style={{ background: '#f0fdf4', color: '#15803d' }}
-							>
-								Tham gia
-							</span>
 						</div>
 						<div className={styles.statBottomRow}>
 							<div className={styles.statData}>
@@ -178,31 +164,18 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.statArrow} />
 						</div>
-					</div>
+					</button>
 
-					{/* Card 2: Chờ phê duyệt */}
-					<div
-						className={styles.statCard}
-						role='button'
-						tabIndex={0}
+					{/* Card 2: Chờ phê duyệt (người nộp chỉ chờ — không tô hồng) */}
+					<button
+						type='button'
+						className={`${styles.statCard}`}
 						onClick={() => d.navigate('/user/my-topics')}
-						onKeyDown={(e) =>
-							e.key === 'Enter' && d.navigate('/user/my-topics')
-						}
 					>
 						<div className={styles.statTopRow}>
-							<div
-								className={styles.statIconBox}
-								style={{ background: '#fef3c7', color: '#b45309' }}
-							>
+							<div className={`${styles.statIconBox} ${styles.iconAmber}`}>
 								<ClipboardCheckSvg />
 							</div>
-							<span
-								className={styles.statPill}
-								style={{ background: '#fffbeb', color: '#b45309' }}
-							>
-								Chờ xét
-							</span>
 						</div>
 						<div className={styles.statBottomRow}>
 							<div className={styles.statData}>
@@ -213,31 +186,18 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.statArrow} />
 						</div>
-					</div>
+					</button>
 
 					{/* Card 3: Đang thực hiện */}
-					<div
-						className={styles.statCard}
-						role='button'
-						tabIndex={0}
+					<button
+						type='button'
+						className={`${styles.statCard}`}
 						onClick={() => d.navigate('/user/my-topics')}
-						onKeyDown={(e) =>
-							e.key === 'Enter' && d.navigate('/user/my-topics')
-						}
 					>
 						<div className={styles.statTopRow}>
-							<div
-								className={styles.statIconBox}
-								style={{ background: '#ccfbf1', color: '#0f766e' }}
-							>
+							<div className={`${styles.statIconBox} ${styles.iconBlue}`}>
 								<ProgressSvg />
 							</div>
-							<span
-								className={styles.statPill}
-								style={{ background: '#f0fdfa', color: '#0f766e' }}
-							>
-								Tiến hành
-							</span>
 						</div>
 						<div className={styles.statBottomRow}>
 							<div className={styles.statData}>
@@ -248,35 +208,19 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.statArrow} />
 						</div>
-					</div>
+					</button>
 
-					{/* Card 4: Thông báo mới */}
-					<div
-						className={styles.statCard}
-						role='button'
-						tabIndex={0}
+					{/* Card 4: Thông báo chưa đọc — hồng chỉ khi có thông báo đang chờ bạn */}
+					<button
+						type='button'
+						className={`${styles.statCard}${d.unreadCount > 0 ? ` ${styles.statAttention}` : ''}`}
 						onClick={() => d.navigate('/user/notifications')}
-						onKeyDown={(e) =>
-							e.key === 'Enter' && d.navigate('/user/notifications')
-						}
 					>
 						<div className={styles.statTopRow}>
-							<div
-								className={styles.statIconBox}
-								style={{ background: '#fee2e2', color: '#b91c1c' }}
-							>
+							<div className={`${styles.statIconBox} ${d.unreadCount > 0 ? styles.iconAttention : styles.iconGray}`}>
 								<BellSvg />
 							</div>
-							<span
-								className={styles.statPill}
-								style={
-									d.unreadCount > 0
-										? { background: '#fef2f2', color: '#dc2626' }
-										: { background: '#f1f5f9', color: '#64748b' }
-								}
-							>
-								{d.unreadCount > 0 ? 'Chưa đọc' : 'Hộp thư'}
-							</span>
+							{d.unreadCount > 0 && <span className={styles.statPill}>Chưa đọc</span>}
 						</div>
 						<div className={styles.statBottomRow}>
 							<div className={styles.statData}>
@@ -287,7 +231,7 @@ export default function UserHome() {
 							</div>
 							<ChevRSvg className={styles.statArrow} />
 						</div>
-					</div>
+					</button>
 				</section>
 
 				{/* ── 3. CONTENT GRID (2 COLUMNS) ── */}
@@ -477,163 +421,9 @@ export default function UserHome() {
 								</div>
 							)}
 						</div>
-					</div>
 
-					{/* RIGHT COLUMN: Thao tác nhanh & Hướng dẫn hỗ trợ */}
-					<div className={styles.rightColumn}>
-						{/* Quick Actions Card */}
-						<div className={styles.card}>
-							<div className={styles.cardHeader}>
-								<h3 className={styles.cardTitle}>
-									<ActivitySvg className={styles.cardHeaderIcon} />
-									Thao tác nhanh
-								</h3>
-							</div>
-
-							<div className={styles.actionList}>
-								{d.canRegisterTopic && (
-									<button
-										type='button'
-										className={`${styles.actionBtn} ${styles.actionBtnFeatured}`}
-										onClick={() => d.navigate('/user/register-topic')}
-									>
-										<div
-											className={styles.actionIcon}
-											style={{ background: '#e7f5ed', color: '#096b35' }}
-										>
-											<DocPlusSvg />
-										</div>
-										<div className={styles.actionText}>
-											<div className={styles.actionNameRow}>
-												<span className={styles.actionName}>
-													Đăng ký đề tài
-												</span>
-												<span className={styles.actionBadge}>Mở</span>
-											</div>
-											<div className={styles.actionDesc}>
-												Tham gia đợt nghiên cứu khoa học mới
-											</div>
-										</div>
-										<ChevRSvg className={styles.actionArrow} />
-									</button>
-								)}
-
-								<button
-									type='button'
-									className={styles.actionBtn}
-									onClick={() => d.navigate('/user/my-topics')}
-								>
-									<div
-										className={styles.actionIcon}
-										style={{ background: '#e0f2fe', color: '#0369a1' }}
-									>
-										<ProgressSvg />
-									</div>
-									<div className={styles.actionText}>
-										<div className={styles.actionName}>
-											Báo cáo tiến độ
-										</div>
-										<div className={styles.actionDesc}>
-											Cập nhật tiến độ đề tài đang thực hiện
-										</div>
-									</div>
-									<ChevRSvg className={styles.actionArrow} />
-								</button>
-
-								<button
-									type='button'
-									className={styles.actionBtn}
-									onClick={() => d.navigate('/user/khoa-hoc')}
-								>
-									<div
-										className={styles.actionIcon}
-										style={{ background: '#ccfbf1', color: '#0f766e' }}
-									>
-										<BookOpenSvg />
-									</div>
-									<div className={styles.actionText}>
-										<div className={styles.actionName}>Khóa học của tôi</div>
-										<div className={styles.actionDesc}>
-											Lịch học, kết quả, chứng chỉ và đăng ký khóa mới
-										</div>
-									</div>
-									<ChevRSvg className={styles.actionArrow} />
-								</button>
-
-								<button
-									type='button'
-									className={styles.actionBtn}
-									onClick={() => d.navigate('/user/cme')}
-								>
-									<div
-										className={styles.actionIcon}
-										style={{ background: '#fee2e2', color: '#b91c1c' }}
-									>
-										<CalendarSvg />
-									</div>
-									<div className={styles.actionText}>
-										<div className={styles.actionName}>Tín chỉ CME</div>
-										<div className={styles.actionDesc}>
-											Tín chỉ tích lũy trong năm so với yêu cầu
-										</div>
-									</div>
-									<ChevRSvg className={styles.actionArrow} />
-								</button>
-
-								<button
-									type='button'
-									className={styles.actionBtn}
-									onClick={() => d.navigate('/user/notifications')}
-								>
-									<div
-										className={styles.actionIcon}
-										style={{ background: '#fef3c7', color: '#b45309' }}
-									>
-										<BellSvg />
-									</div>
-									<div className={styles.actionText}>
-										<div className={styles.actionNameRow}>
-											<span className={styles.actionName}>
-												Thông báo & nhắc nhở
-											</span>
-											{d.unreadCount > 0 && (
-												<span className={styles.actionNotifBadge}>
-													{d.unreadCount} mới
-												</span>
-											)}
-										</div>
-										<div className={styles.actionDesc}>
-											Xem thông báo từ Hội đồng & Ban QLKH
-										</div>
-									</div>
-									<ChevRSvg className={styles.actionArrow} />
-								</button>
-
-								<button
-									type='button'
-									className={styles.actionBtn}
-									onClick={() => d.navigate('/user/profile')}
-								>
-									<div
-										className={styles.actionIcon}
-										style={{ background: '#ede9fe', color: '#6d28d9' }}
-									>
-										<UserSvg />
-									</div>
-									<div className={styles.actionText}>
-										<div className={styles.actionName}>
-											Hồ sơ cá nhân
-										</div>
-										<div className={styles.actionDesc}>
-											Xem và chỉnh sửa thông tin tài khoản
-										</div>
-									</div>
-									<ChevRSvg className={styles.actionArrow} />
-								</button>
-							</div>
-						</div>
-
-						{/* Research Guide & Contact Support Card */}
+						{/* Quy trình & Hỗ trợ NCKH — đặt ở cột trái dưới "Đề tài của tôi": cân chiều cao
+						    2 cột và đọc liền mạch "đề tài của tôi → quy trình đề tài đi qua" */}
 						<div className={styles.card}>
 							<div className={styles.cardHeader}>
 								<h3 className={styles.cardTitle}>
@@ -680,6 +470,105 @@ export default function UserHome() {
 										</div>
 									</div>
 								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* RIGHT COLUMN: Thao tác nhanh */}
+					<div className={styles.rightColumn}>
+						{/* Quick Actions Card */}
+						<div className={styles.card}>
+							<div className={styles.cardHeader}>
+								<h3 className={styles.cardTitle}>
+									<ActivitySvg className={styles.cardHeaderIcon} />
+									Thao tác nhanh
+								</h3>
+							</div>
+
+							<div className={styles.actionList}>
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/my-topics')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }}
+									>
+										<ProgressSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>
+											Báo cáo tiến độ
+										</div>
+										<div className={styles.actionDesc}>
+											Cập nhật tiến độ đề tài đang thực hiện
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
+
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/khoa-hoc')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: 'var(--tone-teal-bg)', color: 'var(--tone-teal-fg)' }}
+									>
+										<BookOpenSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>Khóa học của tôi</div>
+										<div className={styles.actionDesc}>
+											Lịch học, kết quả, chứng chỉ và đăng ký khóa mới
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
+
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/cme')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }}
+									>
+										<CalendarSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>Tín chỉ CME</div>
+										<div className={styles.actionDesc}>
+											Tín chỉ tích lũy trong năm so với yêu cầu
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
+
+								<button
+									type='button'
+									className={styles.actionBtn}
+									onClick={() => d.navigate('/user/profile')}
+								>
+									<div
+										className={styles.actionIcon}
+										style={{ background: 'var(--tone-gray-bg)', color: 'var(--tone-gray-fg)' }}
+									>
+										<UserSvg />
+									</div>
+									<div className={styles.actionText}>
+										<div className={styles.actionName}>
+											Hồ sơ cá nhân
+										</div>
+										<div className={styles.actionDesc}>
+											Xem và chỉnh sửa thông tin tài khoản
+										</div>
+									</div>
+									<ChevRSvg className={styles.actionArrow} />
+								</button>
 							</div>
 						</div>
 					</div>

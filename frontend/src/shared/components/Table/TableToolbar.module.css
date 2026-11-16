@@ -47,6 +47,10 @@
 .action {
 	composes: actionBtn from './Table.module.css';
 }
+/* Tách Xóa khỏi Sửa thêm một nhịp — giảm bấm nhầm thao tác không hoàn tác được */
+.actionDanger {
+	margin-left: var(--space-2);
+}
 .actionDanger:hover {
 	background: var(--tone-red-bg);
 	border-color: var(--tone-red-border);

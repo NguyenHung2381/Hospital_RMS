@@ -36,7 +36,7 @@
 }
 
 .phone {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: 600;
 	text-decoration: none;
 }
@@ -106,7 +106,7 @@
 	background: none;
 	font: inherit;
 	font-weight: 600;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	cursor: pointer;
 }
 

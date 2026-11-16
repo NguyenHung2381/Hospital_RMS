@@ -46,7 +46,7 @@
 .roundId {
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-family: var(--font-mono);
 	background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 	padding: 2px 8px;
@@ -96,7 +96,7 @@
 }
 .addBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
@@ -115,7 +115,9 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
-	border-left: 4px solid var(--phase-color, var(--color-primary));
+	/* Màu giai đoạn: nền + viền pha nhẹ thay cho sọc trái */
+	background: color-mix(in srgb, var(--phase-color, var(--color-primary)) 7%, var(--color-white));
+	border-color: color-mix(in srgb, var(--phase-color, var(--color-primary)) 35%, var(--color-white));
 }
 
 .phaseTitle {

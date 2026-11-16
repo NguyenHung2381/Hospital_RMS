@@ -156,7 +156,7 @@
 	font-family: var(--font-body);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	cursor: pointer;
 	transition: color var(--transition-fast);
 }
@@ -244,7 +244,7 @@
 	width: 16px;
 	height: 16px;
 	border-radius: 4px;
-	border: 1.5px solid var(--color-gray-300, var(--color-gray-300));
+	border: 1.5px solid var(--color-gray-300);
 	background: var(--color-white, #ffffff);
 	display: flex;
 	align-items: center;
@@ -267,7 +267,7 @@
 .selCount {
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-normal);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 .deptTreeList {
@@ -630,7 +630,7 @@
 	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 540px;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: modalPopIn 220ms var(--ease-out) both;
 	overflow: hidden;
 }
 @keyframes modalPopIn {

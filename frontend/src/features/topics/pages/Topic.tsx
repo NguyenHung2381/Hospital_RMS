@@ -1,14 +1,12 @@
 import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import {
-	ApproveSvg,
-	CheckSvg,
 	DocSvg,
 	DownloadSvg,
 	EditSvg,
 	EyeSvg,
+	FilterSvg,
 	PlusSvg,
-	ProgressSvg,
 	SearchSvg,
 	TrashSvg,
 	UploadSvg,
@@ -23,8 +21,9 @@ import {
 	SelectCheckbox,
 } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
-import { Skeleton, SkeletonTable } from '../../../shared/components/Loading';
+import { SkeletonTable } from '../../../shared/components/Loading';
 import { Badge } from '@/shared/components';
+import { TableEmpty } from '@/shared/components/EmptyState';
 import { DeleteModal } from '../components/DeleteModal';
 import { ExportExcelModal } from '../components/ExportExcelModal';
 import { TopicBulkEditModal } from '../components/TopicBulkEditModal';
@@ -39,6 +38,9 @@ import styles from './Topic.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 
 
+// Số cột bảng (checkbox, STT, mã, tên, đợt, cấp độ, trạng thái, ngày, thao tác)
+const COL_COUNT = 9;
+
 export default function TopicPage() {
 	const d = useTopicPage();
 	const rowSel = useRowSelection(d.pageSlice.map((t) => t.id));
@@ -47,16 +49,27 @@ export default function TopicPage() {
 	const perm = usePermission();
 	// Nhập Excel tạo đề tài cho mọi khoa → chỉ phạm vi toàn viện (backend kiểm tra lại)
 	const canImport = perm.has('topics:create') && scopeOf(perm.user, 'topics') === 'all';
+	// Lọc tinh chỉnh (cấp độ, phân loại, phòng ban, loại) gói sau nút "Bộ lọc khác"
+	const refineCount = [d.levelFilters, d.catFilters, d.deptFilters, d.articleTypeFilters].filter(
+		(f) => f.size > 0,
+	).length;
+	const [filtersOpen, setFiltersOpen] = useState(false);
+	// Danh sách rỗng vì đang lọc hay vì thật sự chưa có gì — hai thông điệp khác nhau
+	const hasFilters =
+		d.search.trim() !== '' ||
+		d.activeTab !== 'all' ||
+		[
+			d.yearFilters,
+			d.roundFilters,
+			d.levelFilters,
+			d.catFilters,
+			d.deptFilters,
+			d.articleTypeFilters,
+		].some((f) => f.size > 0);
 
 	const headerActions = (
 		<>
-			<button
-				className={styles.btnSecondary}
-				onClick={() => d.setShowExport(true)}
-			>
-				<DownloadSvg style={{ width: 14, height: 14 }} />
-				Xuất Excel
-			</button>
+			{/* Thứ tự chung của trang danh sách: Nhập → Xuất → thao tác chính (cuối) */}
 			{canImport && (
 				<button
 					className={styles.btnSecondary}
@@ -66,6 +79,13 @@ export default function TopicPage() {
 					Nhập Excel
 				</button>
 			)}
+			<button
+				className={styles.btnSecondary}
+				onClick={() => d.setShowExport(true)}
+			>
+				<DownloadSvg style={{ width: 14, height: 14 }} />
+				Xuất Excel
+			</button>
 			<button
 				className={styles.btnPrimary}
 				onClick={() => d.setShowCreate(true)}
@@ -82,74 +102,8 @@ export default function TopicPage() {
 			pageSubtitle='Danh sách và theo dõi tất cả đề tài NCKH'
 			headerActions={headerActions}
 		>
-			{/* ── STATS ── */}
-			<div className={styles.statsRow}>
-				<div className={`${styles.statCard} ${styles.green}`}>
-					<div className={`${styles.statIcon} ${styles.iconGreen}`}>
-						<DocSvg />
-					</div>
-					<div className={styles.statBody}>
-						<div className={styles.statValue}>
-							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.total}
-						</div>
-						<div className={styles.statLabel}>Tổng đề tài</div>
-						<div className={`${styles.statDelta} ${styles.deltaUp}`}>
-							{d.isLoadingData ? <Skeleton width={80} height={14} /> : 'Đợt 1/2026 + lịch sử'}
-						</div>
-					</div>
-				</div>
-				<div className={`${styles.statCard} ${styles.blue}`}>
-					<div className={`${styles.statIcon} ${styles.iconBlue}`}>
-						<ProgressSvg />
-					</div>
-					<div className={styles.statBody}>
-						<div className={styles.statValue}>
-							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.approved}
-						</div>
-						<div className={styles.statLabel}>Đã được duyệt</div>
-						<div className={`${styles.statDelta} ${styles.deltaNeutral}`}>
-							{d.isLoadingData ? (
-								<Skeleton width={80} height={14} />
-							) : (
-								`${d.stats.total > 0 ? Math.round((d.stats.approved / d.stats.total) * 100) : 0}% tổng đề tài`
-							)}
-						</div>
-					</div>
-				</div>
-				<div className={`${styles.statCard} ${styles.attention}`}>
-					<div className={`${styles.statIcon} ${styles.iconAttention}`}>
-						<ApproveSvg />
-					</div>
-					<div className={styles.statBody}>
-						<div className={styles.statValue}>
-							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.submitted}
-						</div>
-						<div className={styles.statLabel}>Chờ phê duyệt</div>
-						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-							{d.isLoadingData ? <Skeleton width={80} height={14} /> : 'Cần xử lý sớm'}
-						</div>
-					</div>
-				</div>
-				<div className={`${styles.statCard} ${styles.purple}`}>
-					<div className={`${styles.statIcon} ${styles.iconPurple}`}>
-						<CheckSvg />
-					</div>
-					<div className={styles.statBody}>
-						<div className={styles.statValue}>
-							{d.isLoadingData ? <Skeleton width={50} height={32} /> : d.stats.rejected}
-						</div>
-						<div className={styles.statLabel}>Bị từ chối</div>
-						<div className={`${styles.statDelta} ${styles.deltaDown}`}>
-							{d.isLoadingData ? (
-								<Skeleton width={80} height={14} />
-							) : (
-								`${d.stats.total > 0 ? Math.round((d.stats.rejected / d.stats.total) * 100) : 0}% tổng đề tài`
-							)}
-						</div>
-					</div>
-				</div>
-			</div>
-
+			{/* Không có hàng thẻ thống kê: Tổng / Đã duyệt / Chờ duyệt / Từ chối chính là số
+			    đếm trên tab trạng thái của bảng — hiện 2 lần chỉ đẩy bảng xuống dưới màn hình. */}
 			{/* ── TABLE CARD ── */}
 			<div className={styles.tableCard}>
 				<div className={styles.tableHeader}>
@@ -215,6 +169,25 @@ export default function TopicPage() {
 							}}
 							placeholder='Tất cả đợt'
 						/>
+						<button
+							type='button'
+							className={`${styles.moreFiltersBtn} ${refineCount > 0 ? styles.moreFiltersBtnActive : ''}`}
+							aria-expanded={filtersOpen || refineCount > 0}
+							aria-controls='topic-refine-filters'
+							onClick={() => setFiltersOpen((o) => !o)}
+						>
+							<FilterSvg />
+							Bộ lọc khác{refineCount > 0 ? ` (${refineCount})` : ''}
+						</button>
+					</div>
+				</div>
+
+				{/* Tầng 2: lọc tinh chỉnh — chỉ hiện khi mở hoặc đang có điều kiện */}
+				{(filtersOpen || refineCount > 0) && (
+					<div
+						id='topic-refine-filters'
+						className={styles.refineRow}
+					>
 						<MultiSelect
 							className={styles.filterSelectWrap}
 							options={d.levels.map((l) => ({ id: l.id, label: l.name }))}
@@ -262,13 +235,35 @@ export default function TopicPage() {
 							}}
 							placeholder='Loại'
 						/>
+						{refineCount > 0 && (
+							<button
+								type='button'
+								className={styles.clearFiltersBtn}
+								onClick={() => {
+									d.setLevelFilters(new Set());
+									d.setCatFilters(new Set());
+									d.setDeptFilters(new Set());
+									d.setArticleTypeFilters(new Set());
+									d.setPage(1);
+								}}
+							>
+								Xóa lọc
+							</button>
+						)}
 					</div>
-				</div>
+				)}
 
-				<div className={styles.tabsRow}>
+				<div
+					className={styles.tabsRow}
+					role='tablist'
+					aria-label='Lọc theo trạng thái'
+				>
 					{d.TABS.map((t) => (
-						<div
+						<button
 							key={t.key}
+							type='button'
+							role='tab'
+							aria-selected={d.activeTab === t.key}
 							className={`${styles.tab} ${d.activeTab === t.key ? styles.tabActive : ''}`}
 							onClick={() => {
 								d.setActiveTab(t.key);
@@ -276,8 +271,12 @@ export default function TopicPage() {
 							}}
 						>
 							{t.label}
-							<span className={styles.tabBadge}>{t.count}</span>
-						</div>
+							<span
+								className={`${styles.tabBadge} ${t.key === 'submitted' && t.count > 0 ? styles.tabBadgeAttention : ''}`}
+							>
+								{t.count}
+							</span>
+						</button>
 					))}
 				</div>
 
@@ -298,8 +297,6 @@ export default function TopicPage() {
 								<th className={styles.colTitle}>Tên đề tài</th>
 								<th className={styles.colRound}>Đợt NC</th>
 								<th className={styles.colLevel}>Cấp độ</th>
-								<th className={styles.colCategory}>Phân loại</th>
-								<th className={styles.colDept}>Phòng ban</th>
 								<th className={styles.colStatus}>Trạng thái</th>
 								<th className={styles.colDate}>Ngày đăng ký</th>
 								<th className={styles.colActions}>Thao tác</th>
@@ -307,31 +304,34 @@ export default function TopicPage() {
 						</thead>
 						<tbody>
 							{d.isLoadingData ? (
-								<SkeletonTable rows={10} cols={11} />
+								<SkeletonTable rows={10} cols={COL_COUNT} />
 							) : d.loadError ? (
-								<tr>
-									<td
-										colSpan={11}
-										style={{
-											textAlign: 'center',
-											padding: '40px',
-											color: 'var(--tone-red-fg)',
-											fontSize: 13,
-										}}
-									>
-										{d.loadError}
-									</td>
-								</tr>
+								<TableEmpty
+									colSpan={COL_COUNT}
+									title='Không tải được danh sách đề tài'
+									desc={d.loadError}
+									action={
+										<button
+											type='button'
+											className={styles.btnSecondary}
+											onClick={d.refreshData}
+										>
+											Thử lại
+										</button>
+									}
+								/>
 							) : d.pageSlice.length === 0 ? (
 								<tr>
-									<td colSpan={11}>
+									<td colSpan={COL_COUNT}>
 										<div className={styles.emptyState}>
 											<DocSvg className={styles.emptyIcon} />
 											<p className={styles.emptyTitle}>
-												Không tìm thấy đề tài nào
+												{hasFilters ? 'Không tìm thấy đề tài nào' : 'Chưa có đề tài nào'}
 											</p>
 											<p className={styles.emptyDesc}>
-												Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
+												{hasFilters
+													? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
+													: 'Đề tài đăng ký hoặc nhập từ Excel sẽ hiện ở đây'}
 											</p>
 										</div>
 									</td>
@@ -360,7 +360,8 @@ export default function TopicPage() {
 												<div className={styles.topicId}>{t.id}</div>
 											</td>
 											<td>
-												<div
+												<button
+													type='button'
 													className={styles.topicTitle}
 													title={t.title}
 													onClick={() => d.setViewTopic(t)}
@@ -369,10 +370,17 @@ export default function TopicPage() {
 														<Badge tone='blue'>Bài báo</Badge>
 													)}{' '}
 													{t.title}
-												</div>
+												</button>
+												{/* Khoa + phân loại gộp vào dòng phụ (trước là 2 cột riêng,
+												    đẩy cột Trạng thái/Thao tác ra ngoài khung ở 1440px) */}
 												<div className={styles.topicMeta}>
-													{lookup(d.departments, t.department_id)} ·{' '}
-													{t.member_count} thành viên
+													{[
+														lookup(d.departments, t.department_id),
+														lookup(d.categories, t.category_id),
+														`${t.member_count} thành viên`,
+													]
+														.filter(Boolean)
+														.join(' · ')}
 												</div>
 											</td>
 											<td>
@@ -381,23 +389,11 @@ export default function TopicPage() {
 												</span>
 											</td>
 											<td>
-												<Badge
-													tone={
-														t.level_id === 'CD04'
-															? 'pink'
-															: t.level_id === 'CD03'
-																? 'purple'
-																: 'teal'
-													}
-												>
+												{/* Cấp độ là danh mục, không phải trạng thái → nhãn trung tính.
+												    Hồng dành cho "đang chờ bạn", không tô theo cấp. */}
+												<Badge tone='gray'>
 													{lookup(d.levels, t.level_id)}
 												</Badge>
-											</td>
-											<td>
-												{lookup(d.categories, t.category_id)}
-											</td>
-											<td>
-												{lookup(d.departments, t.department_id)}
 											</td>
 											<td>
 												<Badge
@@ -416,7 +412,7 @@ export default function TopicPage() {
 													})}
 												</span>
 											</td>
-											<td>
+											<td className={styles.colActions}>
 												<RowActions
 													onEdit={() => {
 														d.setEditTopic(t);
@@ -543,28 +539,6 @@ export default function TopicPage() {
 					setBulkModal(null);
 				}}
 			/>
-			{d.bulkNotice && (
-				<div
-					style={{
-						position: 'fixed',
-						bottom: 24,
-						right: 24,
-						zIndex: 2000,
-						padding: '12px 18px',
-						borderRadius: 10,
-						fontSize: 13,
-						fontWeight: 600,
-						color: '#fff',
-						boxShadow: 'var(--shadow-md)',
-						background:
-							d.bulkNotice.type === 'success'
-								? 'var(--color-primary)'
-								: 'var(--tone-red-fg)',
-					}}
-				>
-					{d.bulkNotice.msg}
-				</div>
-			)}
 		</AdminLayout>
 	);
 }

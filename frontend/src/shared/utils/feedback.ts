@@ -7,10 +7,17 @@
 
 export type RequestKind = 'read' | 'write';
 
+export interface ToastAction {
+	label: string;
+	onClick: () => void;
+}
+
 export interface ToastItem {
 	id: number;
 	type: 'success' | 'error' | 'info';
 	msg: string;
+	/** Nút trong toast (vd "Hoàn tác") — toast có nút ở lại lâu hơn để kịp bấm. */
+	action?: ToastAction;
 }
 
 export interface FeedbackState {
@@ -48,12 +55,13 @@ export async function trackRequest<T>(kind: RequestKind, run: () => Promise<T>):
 
 let nextToastId = 1;
 const TOAST_MS = 3200;
+const TOAST_ACTION_MS = 7000;
 
-function push(type: ToastItem['type'], msg: string) {
+function push(type: ToastItem['type'], msg: string, action?: ToastAction) {
 	const id = nextToastId++;
 	// Giới hạn 4 toast cùng lúc — thao tác hàng loạt không được phủ kín màn hình
-	setState({ toasts: [...state.toasts.slice(-3), { id, type, msg }] });
-	setTimeout(() => dismissToast(id), TOAST_MS);
+	setState({ toasts: [...state.toasts.slice(-3), { id, type, msg, action }] });
+	setTimeout(() => dismissToast(id), action ? TOAST_ACTION_MS : TOAST_MS);
 }
 
 export function dismissToast(id: number) {
@@ -68,4 +76,5 @@ export const notify = {
 };
 
 /** Dạng (loại, nội dung) — tiện khi loại toast tính động, vd `showToast(failed ? 'error' : 'success', msg)`. */
-export const showToast = (type: ToastItem['type'], msg: string) => push(type, msg);
+export const showToast = (type: ToastItem['type'], msg: string, action?: ToastAction) =>
+	push(type, msg, action);

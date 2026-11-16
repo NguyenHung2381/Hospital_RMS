@@ -73,7 +73,7 @@ export function StatusPieChart({
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>{title}</div>
+					<h2 className={styles.chartTitle}>{title}</h2>
 					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 			</div>
@@ -155,7 +155,7 @@ export function StatusPieChart({
 									</div>
 									<div
 										style={{
-											fontSize: 11,
+											fontSize: 12,
 											color: 'var(--color-gray-400)',
 											marginTop: 4,
 										}}
@@ -201,7 +201,7 @@ export function TrendBarChart({
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>{title}</div>
+					<h2 className={styles.chartTitle}>{title}</h2>
 					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 			</div>
@@ -230,12 +230,12 @@ export function TrendBarChart({
 						/>
 						<XAxis
 							dataKey={xKey}
-							tick={{ fontSize: 11, fill: '#9ca3af' }}
+							tick={{ fontSize: 12, fill: '#526574' }}
 							axisLine={false}
 							tickLine={false}
 						/>
 						<YAxis
-							tick={{ fontSize: 11, fill: '#9ca3af' }}
+							tick={{ fontSize: 12, fill: '#526574' }}
 							axisLine={false}
 							tickLine={false}
 							allowDecimals={false}
@@ -255,7 +255,7 @@ export function TrendBarChart({
 							iconSize={10}
 							height={32}
 							wrapperStyle={{
-								fontSize: 11,
+								fontSize: 12,
 								paddingBottom: 10,
 								marginTop: -10,
 							}}
@@ -304,7 +304,7 @@ export function DeptBarChart({
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>{title}</div>
+					<h2 className={styles.chartTitle}>{title}</h2>
 					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 			</div>
@@ -335,7 +335,7 @@ export function DeptBarChart({
 								/>
 								<XAxis
 									dataKey='name'
-									tick={{ fontSize: 13, fill: '#6b7280' }}
+									tick={{ fontSize: 13, fill: '#526574' }}
 									tickFormatter={(value) =>
 										value.length > 22 ? `${value.substring(0, 20)}...` : value
 									}
@@ -347,7 +347,7 @@ export function DeptBarChart({
 									height={85}
 								/>
 								<YAxis
-									tick={{ fontSize: 13, fill: '#6b7280' }}
+									tick={{ fontSize: 13, fill: '#526574' }}
 									axisLine={false}
 									tickLine={false}
 									allowDecimals={false}

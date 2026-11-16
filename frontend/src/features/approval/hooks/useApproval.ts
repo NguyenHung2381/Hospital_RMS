@@ -259,13 +259,13 @@ export function useApproval(): ApprovalState {
 		{ key: 'pending' as TabKey, label: 'Chờ duyệt', count: stats.pending },
 		{
 			key: 'info_requested' as TabKey,
-			label: 'Cần bổ sung',
+			label: 'Bổ sung',
 			count: stats.info_requested,
 		},
 		{ key: 'approved' as TabKey, label: 'Đã duyệt', count: stats.approved },
 		{
 			key: 'rejected' as TabKey,
-			label: 'Không phê duyệt',
+			label: 'Từ chối',
 			count: stats.rejected,
 		},
 	];

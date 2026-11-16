@@ -67,7 +67,7 @@
 	align-items: flex-start;
 	gap: var(--space-3);
 	padding: var(--space-4) var(--space-6);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 	border-bottom: 1px solid var(--color-gray-100);
 }
 .stepNo {
@@ -78,7 +78,7 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold);
@@ -121,7 +121,7 @@
 	margin-bottom: var(--space-4);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 /* ── File đính kèm ────────────────────────────── */
@@ -133,7 +133,7 @@
 	padding: var(--space-6) var(--space-4);
 	border: 2px dashed var(--color-gray-200);
 	border-radius: var(--radius-lg);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 	text-align: center;
 	cursor: pointer;
 	transition: border-color 0.15s, background 0.15s;
@@ -156,7 +156,7 @@
 	margin-bottom: var(--space-2);
 	border-radius: 50%;
 	background: rgba(10, 155, 74, 0.1);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .dropzoneIcon svg {
 	width: 22px;
@@ -167,7 +167,7 @@
 	color: var(--color-gray-700);
 }
 .dropzoneText strong {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .dropzoneHint {
 	font-size: var(--font-size-xs);
@@ -192,7 +192,7 @@
 .fileIcon {
 	flex: none;
 	display: inline-flex;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .fileIcon svg {
 	width: 20px;
@@ -305,14 +305,14 @@
 .captchaRefresh {
 	background: none;
 	border: none;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-size: var(--font-size-sm);
 	cursor: pointer;
 	text-decoration: underline;
 }
 
 .input:disabled {
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 	color: var(--color-gray-600);
 }
 .inputError,
@@ -333,7 +333,6 @@
 .memberCard {
 	margin-bottom: var(--space-4);
 	border: 1px solid var(--color-gray-200);
-	border-left: 3px solid var(--color-primary);
 	border-radius: var(--radius-lg);
 	overflow: hidden;
 }
@@ -343,7 +342,7 @@
 	justify-content: space-between;
 	gap: var(--space-3);
 	padding: var(--space-3) var(--space-5);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 	border-bottom: 1px solid var(--color-gray-100);
 	font-size: var(--font-size-sm);
 }
@@ -403,9 +402,9 @@
 	width: 100%;
 	padding: var(--space-3);
 	background: none;
-	border: 1.5px dashed var(--color-gray-300, var(--color-gray-300));
+	border: 1.5px dashed var(--color-gray-300);
 	border-radius: var(--radius-lg);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium);
 	cursor: pointer;
@@ -433,7 +432,7 @@
 	padding: var(--space-5) var(--space-6);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl, 14px);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 }
 .formFooter .formGroup {
 	flex: 1 1 320px;
@@ -654,7 +653,7 @@
 .ticketStepIcon svg { width: 12px; height: 12px; }
 .ticketStepTitle { flex: 1; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-gray-800); }
 .ticketStepText { font-size: var(--font-size-sm); color: var(--color-gray-500); text-align: right; }
-.ticketStep_done .ticketStepIcon { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.ticketStep_done .ticketStepIcon { background: var(--color-primary-dark); border-color: var(--color-primary-dark); color: #fff; }
 .ticketStep_done .ticketStepText { color: var(--tone-green-fg); }
 .ticketStep_fail .ticketStepIcon { background: var(--color-error); border-color: var(--color-error); color: #fff; }
 .ticketStep_fail .ticketStepText { color: var(--tone-red-fg); }
@@ -667,7 +666,7 @@
 	align-items: center;
 	padding: var(--space-2);
 	border-radius: var(--radius-lg);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }

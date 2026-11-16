@@ -1,9 +1,9 @@
 const AVATAR_COLORS = [
 	{ bg: '#e1f5ea', color: '#085028' },
 	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#eeedfe', color: '#3c3489' },
+	{ bg: '#e3f3f6', color: '#0b5866' },
 	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#fce8fb', color: '#6b1a69' },
+	{ bg: '#f1efe8', color: '#444441' },
 ];
 
 /** Màu nền/chữ cố định cho avatar chữ cái, suy ra từ id (cùng id → cùng màu). */

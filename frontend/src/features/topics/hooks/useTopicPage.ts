@@ -77,19 +77,9 @@ export function useTopicPage() {
 	const [viewTopic, setViewTopic] = useState<Topic | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [bulkBusy, setBulkBusy] = useState(false);
-	const [bulkNotice, setBulkNotice] = useState<{
-		type: 'success' | 'error';
-		msg: string;
-	} | null>(null);
 
 	const refreshData = useCallback(() => setRefreshKey((prev) => prev + 1), []);
 	useRealtimeUpdate('topic', refreshData);
-
-	useEffect(() => {
-		if (!bulkNotice) return;
-		const t = setTimeout(() => setBulkNotice(null), 3000);
-		return () => clearTimeout(t);
-	}, [bulkNotice]);
 
 	// Danh mục — tải một lần, không phụ thuộc bộ lọc
 	useEffect(() => {
@@ -336,10 +326,10 @@ export function useTopicPage() {
 			try {
 				const { okIds, failedCount } = await runBulk(ids, deleteTopicApi);
 				refreshData();
-				setBulkNotice({
-					type: failedCount ? 'error' : 'success',
-					msg: bulkToast('xóa', okIds.size, failedCount, 'đề tài'),
-				});
+				// Toast chung (GlobalFeedback) — có role=status cho trình đọc màn hình
+				(failedCount ? notify.error : notify.success)(
+					bulkToast('xóa', okIds.size, failedCount, 'đề tài'),
+				);
 			} finally {
 				setBulkBusy(false);
 			}
@@ -356,10 +346,9 @@ export function useTopicPage() {
 					updateTopicApi(id, patch),
 				);
 				refreshData();
-				setBulkNotice({
-					type: failedCount ? 'error' : 'success',
-					msg: bulkToast('cập nhật', okIds.size, failedCount, 'đề tài'),
-				});
+				(failedCount ? notify.error : notify.success)(
+					bulkToast('cập nhật', okIds.size, failedCount, 'đề tài'),
+				);
 			} finally {
 				setBulkBusy(false);
 			}
@@ -422,7 +411,6 @@ export function useTopicPage() {
 		handleBulkDelete,
 		handleBulkEdit,
 		bulkBusy,
-		bulkNotice,
 		resetPage,
 	};
 }

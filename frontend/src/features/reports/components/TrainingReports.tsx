@@ -33,7 +33,7 @@ export function TrainingReports({ year }: { year: number }) {
 	return (
 		<div className={styles.section}>
 			<div className={styles.sectionHead}>
-				<span className={styles.sectionTitle}>Đào tạo năm {year}</span>
+				<h2 className={styles.sectionTitle}>Đào tạo năm {year}</h2>
 				<Link
 					to='/admin/dashboard/training'
 					className={styles.sectionLink}

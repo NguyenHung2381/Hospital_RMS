@@ -59,7 +59,12 @@ export function MyTopicsListPanel({
 						}}
 					>
 						{t.label}
-						<span className={styles.tabCount}>{stats[t.key]}</span>
+						{/* "Cần bổ sung" là việc của chính người nộp → hồng khi > 0 */}
+						<span
+							className={`${styles.tabCount} ${t.key === 'supplement' && stats[t.key] > 0 ? styles.tabCountAttention : ''}`}
+						>
+							{stats[t.key]}
+						</span>
 					</div>
 				))}
 			</div>

@@ -101,6 +101,15 @@ export function useTopicModal({
 	const [manualError, setManualError] = useState('');
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+	// Ảnh chụp dữ liệu lúc mở form — so với hiện tại để biết còn thay đổi chưa lưu
+	// (Modal hỏi lại trước khi đóng bằng Esc / bấm nền / nút X).
+	const [initialSnapshot] = useState(() => JSON.stringify({ form, custom }));
+	const isDirty =
+		!loading &&
+		(JSON.stringify({ form, custom }) !== initialSnapshot ||
+			pendingMembers.length > 0 ||
+			Object.values(manualForm).some((v) => v.trim() !== ''));
+
 	useEffect(() => {
 		if (memberQuery.trim().length < 2) return;
 		if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -282,6 +291,7 @@ export function useTopicModal({
 
 	return {
 		form,
+		isDirty,
 		errors,
 		cfg,
 		custom,

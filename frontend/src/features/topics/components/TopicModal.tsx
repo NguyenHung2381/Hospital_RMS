@@ -121,6 +121,7 @@ export function TopicModal({
 			title={mode === 'create' ? 'Đăng ký đề tài mới' : 'Chỉnh sửa đề tài'}
 			subtitle={mode === 'create' ? 'Tạo đề tài nghiên cứu khoa học mới' : `Cập nhật thông tin — ${topic?.id}`}
 			size='lg'
+			dirty={m.isDirty}
 			bodyClassName={s.body}
 			footer={
 				<>

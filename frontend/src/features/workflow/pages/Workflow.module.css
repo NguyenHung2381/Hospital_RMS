@@ -152,7 +152,7 @@
 }
 .addItemBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .emptyItems {
 	font-size: var(--font-size-sm);

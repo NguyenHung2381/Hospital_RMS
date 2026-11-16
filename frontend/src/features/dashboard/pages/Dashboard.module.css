@@ -76,7 +76,8 @@
 	color: var(--tone-amber-fg);
 }
 /* Không dùng tím trong giao diện — tông "purple" cũ hiển thị trung tính */
-.iconPurple {
+.iconPurple,
+.iconGray {
 	background: var(--color-gray-100);
 	color: var(--color-gray-600);
 }
@@ -683,7 +684,7 @@
 
 .cardViewAll {
 	font-size: var(--font-size-xs);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 	transition: color var(--transition-fast);
@@ -1128,7 +1129,7 @@
 	cursor: pointer;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	white-space: nowrap;
 }
 

@@ -65,7 +65,7 @@
 
 .triggerOpen .chevron {
 	transform: rotate(180deg);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 .menu {
@@ -159,7 +159,7 @@
 .optionSelected::after {
 	content: '✓';
 	margin-left: auto;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-bold);
 }
 

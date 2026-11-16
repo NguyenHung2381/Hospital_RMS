@@ -6,7 +6,7 @@ import { CourseCloneModal } from '../components/CourseCloneModal';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, InlineLoading } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
-import { formatDateOr } from '@/shared/utils';
+import { formatDateRange } from '@/shared/utils';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getCourse, updateCourse } from '../api/courseApi';
 import { AttendanceModal } from '../components/AttendanceModal';
@@ -39,8 +39,7 @@ const STEPS: { key: Step; label: string }[] = [
 const PRACTICE_STEPS = new Set<Step>(['enrollments', 'documents']);
 const isPracticeCourse = (c: Course | null) => !!c && (c.is_rolling || c.training_type_id === TRAINING_TYPE.GPHN);
 
-const range = (from: string | null, to: string | null) =>
-	from || to ? `${formatDateOr(from, '?')} → ${formatDateOr(to, '?')}` : null;
+const range = formatDateRange;
 
 /** Trang chi tiết khóa học.
  *  Khóa nhiều chương trình (ĐTLT / CTCV): tầng đầu là danh sách chương trình; chọn 1 chương trình (?program=)

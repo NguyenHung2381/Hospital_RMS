@@ -1,13 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import {
 	BuildingSvg,
-	CheckCircleSvg,
-	ClockSvg,
 	HistorySvg,
-	MessageSvg,
 	PlusSvg,
 	UserCheckSvg,
-	XCircleSvg,
 } from '@/assets/icons';
 import UserLayout from '../../../layouts/UserLayout';
 import { InlineLoading } from '@/shared/components';
@@ -17,7 +13,6 @@ import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { MyTopicsDetailPanel } from '../components/MyTopicsDetailPanel';
 import { MyTopicsListPanel } from '../components/MyTopicsListPanel';
 import { useMyTopics } from '../hooks/useMyTopics';
-import { STATUS_CFG, type FilterTab } from '../utils/myTopicsHelpers';
 import styles from './MyTopics.module.css';
 
 export default function MyTopics() {
@@ -71,134 +66,37 @@ export default function MyTopics() {
 				</div>
 			) : (
 				<>
-					{/* Category toggle (dept accounts only) */}
+					{/* Phạm vi là BỘ LỌC, không phải điểm đến → điều khiển phân đoạn gọn.
+					    Không còn 4 thẻ thống kê: chúng chính là 4 tab trạng thái của danh sách. */}
 					{d.canSeeDept && (
-						<div className={styles.categoryRow}>
-							<button
-								className={`${styles.categoryCard} ${d.category === 'department' ? styles.categoryCardActive : ''}`}
-								onClick={() => {
-									d.setCategory('department');
-									d.setSearch('');
-								}}
-							>
-								<div
-									className={`${styles.categoryIcon} ${d.category === 'department' ? styles.categoryIconActive : ''}`}
-								>
-									<BuildingSvg />
-								</div>
-								<div className={styles.categoryText}>
-									<div className={styles.categoryLabel}>Đề tài của khoa</div>
-									<div className={styles.categoryDesc}>
-										Toàn bộ đề tài thuộc khoa/phòng
-									</div>
-								</div>
-								<div
-									className={`${styles.categoryCount} ${d.category === 'department' ? styles.categoryCountActive : ''}`}
-								>
-									{d.deptTopics.length}
-								</div>
-							</button>
-							<button
-								className={`${styles.categoryCard} ${d.category === 'mine' ? styles.categoryCardActive : ''}`}
-								onClick={() => {
-									d.setCategory('mine');
-									d.setSearch('');
-								}}
-							>
-								<div
-									className={`${styles.categoryIcon} ${d.category === 'mine' ? styles.categoryIconActive : ''}`}
-								>
-									<UserCheckSvg />
-								</div>
-								<div className={styles.categoryText}>
-									<div className={styles.categoryLabel}>
-										Đề tài tôi tham gia
-									</div>
-									<div className={styles.categoryDesc}>
-										Đề tài tôi đăng ký hoặc là thành viên
-									</div>
-								</div>
-								<div
-									className={`${styles.categoryCount} ${d.category === 'mine' ? styles.categoryCountActive : ''}`}
-								>
-									{d.myTopics.length}
-								</div>
-							</button>
-						</div>
-					)}
-
-					{/* Stats row */}
-					<div className={styles.statsRow}>
-						{(
-							[
-								{
-									key: 'submitted' as FilterTab,
-									iconCls: 'iconAmber',
-									cardCls: 'amber',
-									hintCls: 'hintAmber',
-									hint: 'Cần xử lý sớm',
-									Icon: ClockSvg,
-								},
-								{
-									key: 'approved' as FilterTab,
-									iconCls: 'iconGreen',
-									cardCls: 'green',
-									hintCls: 'hintGreen',
-									hint: 'Hoàn tất',
-									Icon: CheckCircleSvg,
-								},
-								{
-									key: 'rejected' as FilterTab,
-									iconCls: 'iconRed',
-									cardCls: 'red',
-									hintCls: 'hintRed',
-									hint: 'Không đạt yêu cầu',
-									Icon: XCircleSvg,
-								},
-								{
-									key: 'supplement' as FilterTab,
-									iconCls: 'iconBlue',
-									cardCls: 'blue',
-									hintCls: 'hintBlue',
-									hint: 'Cần bổ sung hồ sơ',
-									Icon: MessageSvg,
-								},
-							] as const
-						).map((s) => {
-							const cfg = STATUS_CFG[s.key];
-							return (
-								<div
-									key={s.key}
-									className={`${styles.statCard} ${styles[s.cardCls as keyof typeof styles]} ${d.activeTab === s.key ? styles.statActive : ''}`}
-									role='button'
-									tabIndex={0}
-									aria-pressed={d.activeTab === s.key}
-									onClick={() => d.setActiveTab(s.key)}
-									onKeyDown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
-											e.preventDefault();
-											d.setActiveTab(s.key);
-										}
+						<div
+							className={styles.scopeSwitch}
+							role='group'
+							aria-label='Phạm vi đề tài'
+						>
+							{(
+								[
+									{ key: 'mine', label: 'Đề tài tôi tham gia', count: d.myTopics.length, Icon: UserCheckSvg },
+									{ key: 'department', label: 'Đề tài của khoa', count: d.deptTopics.length, Icon: BuildingSvg },
+								] as const
+							).map((c) => (
+								<button
+									key={c.key}
+									type='button'
+									aria-pressed={d.category === c.key}
+									className={`${styles.scopeOption} ${d.category === c.key ? styles.scopeOptionActive : ''}`}
+									onClick={() => {
+										d.setCategory(c.key);
+										d.setSearch('');
 									}}
 								>
-									<div
-										className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}
-									>
-										<s.Icon />
-									</div>
-									<div className={styles.statBody}>
-										<div className={styles.statValue}>{d.stats[s.key]}</div>
-										<div className={styles.statLabel}>{cfg.label}</div>
-										<div
-											className={`${styles.statHint} ${styles[s.hintCls as keyof typeof styles]}`}
-										>
-											{s.hint}
-										</div>
-									</div>
-								</div>
-							);
-						})}
-					</div>
+									<c.Icon />
+									{c.label}
+									<span className={styles.scopeCount}>{c.count}</span>
+								</button>
+							))}
+						</div>
+					)}
 
 					{/* Split layout */}
 					<div className={styles.splitLayout}>

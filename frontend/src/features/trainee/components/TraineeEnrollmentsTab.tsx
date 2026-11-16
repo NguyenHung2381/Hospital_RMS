@@ -10,7 +10,7 @@ const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: st
 	pending: { label: 'Chờ duyệt', color: '#633806', bg: '#faeeda' },
 	approved: { label: 'Đã duyệt', color: '#085028', bg: '#e1f5ea' },
 	rejected: { label: 'Từ chối', color: '#791f1f', bg: '#fcebeb' },
-	waitlisted: { label: 'Danh sách chờ đợt sau', color: '#3c3489', bg: '#eeedfe' },
+	waitlisted: { label: 'Danh sách chờ đợt sau', color: '#0c447c', bg: '#e6f1fb' },
 };
 
 /** Tab "Khóa học / chương trình": các lượt ghi danh + tiến độ bài học / vòng thực hành. */

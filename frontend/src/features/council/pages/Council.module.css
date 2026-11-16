@@ -1,7 +1,6 @@
 /* ── STATS ROW & CARDS — kiểu chung: shared/components/Card/StatCard.module.css ── */
 .statsRow {
 	composes: statsRow from '../../../shared/components/Card/StatCard.module.css';
-	margin-bottom: var(--space-6);
 }
 .statCard {
 	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
@@ -150,7 +149,7 @@
 	position: absolute;
 	top: 2px;
 	left: 5.5px;
-	transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transition: transform 0.15s var(--ease-out);
 	box-sizing: border-box;
 }
 
@@ -278,14 +277,13 @@
 
 /* ── ACCORDION GROUP BY ROUND ────────────── */
 .groupRow {
-	background: linear-gradient(90deg, var(--color-primary-pale) 0%, var(--color-gray-50) 60%);
+	background: var(--color-primary-pale);
 	cursor: pointer;
 	user-select: none;
-	border-left: 4px solid var(--color-primary-dark);
 }
 
 .groupRow:hover {
-	background: linear-gradient(90deg, var(--tone-green-border) 0%, var(--color-gray-100) 60%);
+	background: var(--tone-green-bg);
 }
 
 .groupCell {
@@ -411,7 +409,7 @@
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	animation: modalIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	animation: modalIn 0.3s var(--ease-out);
 	border: 1px solid var(--color-gray-100);
 }
 
@@ -565,7 +563,7 @@
 	background: none;
 	border: none;
 	padding: 0;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	text-transform: none;
@@ -802,9 +800,9 @@ select.formInput:focus {
 }
 
 .seatCard:not(.seatCardFilled):hover .seatBtn {
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: #ffffff;
-	border-color: var(--color-primary);
+	border-color: var(--color-primary-dark);
 }
 
 .seatCardFilled {

@@ -41,7 +41,7 @@ export function CouncilProgressStrip({
 		return (
 			<div className={styles.councilStrip}>
 				<div className={styles.councilStripLeft}>
-					<span className={styles.cardTitle}>Tiến độ đánh giá của Hội đồng Khoa học</span>
+					<h2 className={styles.cardTitle}>Tiến độ đánh giá của Hội đồng Khoa học</h2>
 				</div>
 				<div style={{ color: 'var(--color-gray-400)', fontSize: 13 }}>
 					{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu đánh giá tiến độ'}

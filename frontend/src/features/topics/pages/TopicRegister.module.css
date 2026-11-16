@@ -55,13 +55,19 @@
 	gap: var(--space-4);
 }
 
+/* Tiêu đề mục: cách khối trước 32px (gap 16 + margin 16), sát nhóm trường của nó
+   — 4 mục đọc thành 4 nhóm rõ ràng thay vì một dải trường đều nhau. */
 .formSection {
-	font-size: var(--font-size-xs);
+	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-400);
+	color: var(--color-gray-700);
 	padding-bottom: var(--space-2);
-	border-bottom: 1px solid var(--color-gray-100);
-	margin-top: var(--space-1);
+	border-bottom: 1px solid var(--color-gray-200);
+	margin-top: var(--space-4);
+	margin-bottom: calc(var(--space-1) * -1);
+}
+.formSection:first-child {
+	margin-top: 0;
 }
 
 .formGroup {
@@ -97,7 +103,7 @@
 }
 
 .formInput:focus {
-	border-color: var(--tone-blue-solid);
+	border-color: var(--color-primary);
 }
 .hasError {
 	border-color: var(--color-error) !important;
@@ -122,7 +128,7 @@
 }
 
 .formSelect:focus {
-	border-color: var(--tone-blue-solid);
+	border-color: var(--color-primary);
 }
 
 .formRow {
@@ -176,8 +182,8 @@
 }
 
 .statusPillActive {
-	border-color: var(--tone-blue-solid);
-	background: var(--tone-blue-solid);
+	border-color: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: #fff;
 }
 
@@ -199,7 +205,7 @@
 }
 
 .memberSearchInput:focus {
-	border-color: var(--tone-blue-solid);
+	border-color: var(--color-primary);
 }
 .memberSearchIcon {
 	position: absolute;
@@ -435,8 +441,8 @@
 }
 
 .roundPickerItem:hover {
-	border-color: var(--tone-blue-solid);
-	background: var(--tone-blue-bg);
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
 }
 
 .roundPickerItemMain {
@@ -581,9 +587,9 @@
 	align-self: flex-start;
 }
 .manualAddTrigger:hover {
-	border-color: var(--tone-blue-solid);
-	color: var(--tone-blue-fg);
-	background: var(--tone-blue-bg);
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+	background: var(--color-primary-pale);
 }
 .manualAddTrigger svg {
 	width: 15px;
@@ -625,7 +631,7 @@
 	height: 22px;
 	padding: 0 6px;
 	border-radius: 999px;
-	background: var(--tone-blue-solid);
+	background: var(--color-primary-dark);
 	color: #fff;
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
@@ -729,14 +735,40 @@
 }
 
 /* Form footer */
+/* Thanh quyết định dính đáy màn hình trong lúc cuộn form dài */
 .formFooter {
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
+	position: sticky;
+	bottom: 0;
+	z-index: 5;
+	padding: var(--space-3) var(--space-6);
+	background: var(--color-white);
+	border-top: 1px solid var(--color-gray-200);
 	border-radius: 0 0 var(--radius-xl) var(--radius-xl);
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--space-3);
+}
+.footerStatus {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	text-align: right;
+}
+.footerStatusLink {
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.btnGhost {
+	composes: btn ghost from '@/shared/components/Button/Button.module.css';
 }
 
 .btnPrimary {
@@ -767,10 +799,17 @@
 }
 
 /* ─── SIDE PANEL ── */
+/* Hướng dẫn đi cùng form dài (dính khi cuộn, chỉ khi 2 cột) */
 .sidePanel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);
+}
+@media (min-width: 1025px) {
+	.sidePanel {
+		position: sticky;
+		top: var(--space-6);
+	}
 }
 
 .sideCard {
@@ -885,13 +924,13 @@
 }
 
 .dropZone:hover {
-	border-color: var(--tone-blue-solid);
-	background: var(--tone-blue-bg);
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
 }
 
 .dropZoneActive {
-	border-color: var(--tone-blue-solid);
-	background: var(--tone-blue-bg);
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
 }
 
 .dropZoneIcon {
@@ -1009,11 +1048,19 @@
 		white-space: normal;
 	}
 
+	/* Điện thoại: nút chính ở cuối CẢ thứ tự DOM lẫn thứ tự nhìn (không đảo cột) */
 	.formFooter {
-		flex-direction: column-reverse;
-		align-items: stretch;
-		padding: var(--space-4);
+		flex-wrap: wrap;
+		padding: var(--space-3) var(--space-4);
 		gap: var(--space-2);
+	}
+	.footerStatus {
+		flex-basis: 100%;
+		order: -1;
+		text-align: left;
+	}
+	.formFooter > button {
+		flex: 1 1 auto;
 	}
 
 	.btnPrimary,

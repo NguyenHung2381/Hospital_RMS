@@ -17,7 +17,7 @@
 	gap: 4px;
 	padding: 6px 8px;
 	border-bottom: 1px solid var(--color-gray-200);
-	background: var(--color-gray-50, var(--color-gray-50));
+	background: var(--color-gray-50);
 }
 
 .toolBtn {
@@ -43,7 +43,7 @@
 
 .toolBtnActive {
 	background: var(--color-primary-pale);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 .toolBtnActive:hover:not(:disabled) {

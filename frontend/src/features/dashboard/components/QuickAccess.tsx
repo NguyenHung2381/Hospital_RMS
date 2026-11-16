@@ -98,7 +98,7 @@ export function QuickAccess() {
 	return (
 		<div className={styles.quickAccessCard}>
 			<div className={styles.cardHeader}>
-				<span className={styles.cardTitle}>Truy cập nhanh các phân hệ</span>
+				<h2 className={styles.cardTitle}>Truy cập nhanh các phân hệ</h2>
 			</div>
 			<div className={styles.quickAccessGrid}>
 				{links.map((l) => (

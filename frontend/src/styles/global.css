@@ -85,7 +85,7 @@ p {
 }
 
 a {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	text-decoration: none;
 	transition: color var(--transition-fast);
 }
@@ -269,6 +269,16 @@ table {
 		max-height: 85dvh !important;
 		overflow-y: auto !important;
 		margin: 12px auto !important;
+	}
+}
+
+/* Ô nhập trên điện thoại ≥16px — nhỏ hơn thì Safari iOS tự phóng to cả trang khi
+   chạm vào ô, người dùng phải thu nhỏ lại sau mỗi lần nhập. */
+@media (max-width: 768px) {
+	input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+	select,
+	textarea {
+		font-size: max(16px, 1em) !important;
 	}
 }
 

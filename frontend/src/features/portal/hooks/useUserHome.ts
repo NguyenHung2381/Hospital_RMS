@@ -33,8 +33,8 @@ export const STATUS_LABELS: Record<
 	},
 	supplement: {
 		label: 'Bổ sung',
-		color: '#6d28d9',
-		bg: '#ede9fe',
+		color: '#0c447c',
+		bg: '#e6f1fb',
 		border: '#ddd6fe',
 	},
 	cancelled: {
@@ -50,7 +50,7 @@ export const ROLE_LABELS: Record<
 	{ label: string; color: string; bg: string }
 > = {
 	leader: { label: 'Chủ nhiệm', color: '#0369a1', bg: '#e0f2fe' },
-	secretary: { label: 'Thư ký', color: '#7c3aed', bg: '#ede9fe' },
+	secretary: { label: 'Thư ký', color: '#0c447c', bg: '#e6f1fb' },
 	member: { label: 'Thành viên', color: '#475569', bg: '#f1f5f9' },
 };
 
@@ -166,9 +166,14 @@ export function useUserHome() {
 	const inProgressCount = topics.filter((t) => t.status === 'approved').length;
 	const recentTopics = topics.slice(0, 4);
 
-	const daysRemaining = activeRound?.end_date
-		? calculateDaysRemaining(activeRound.end_date)
-		: null;
+	// Mốc hiển thị ở banner: hạn ĐĂNG KÝ nếu đợt có cấu hình (khớp trang đăng ký đề tài),
+	// không thì ngày kết thúc đợt — ghi rõ là mốc nào để không mâu thuẫn giữa hai trang.
+	const deadline: { label: string; date: string } | null = activeRound?.registration_end
+		? { label: 'Hạn đăng ký', date: activeRound.registration_end }
+		: activeRound?.end_date
+			? { label: 'Kết thúc đợt', date: activeRound.end_date }
+			: null;
+	const daysRemaining = deadline ? calculateDaysRemaining(deadline.date) : null;
 
 	// Chỉ hiện lối tắt "Đăng ký đề tài mới" khi đợt đang mở cửa sổ đăng ký
 	// (server trả cờ registration_open; đợt chưa cấu hình mốc này coi như mở).
@@ -198,6 +203,7 @@ export function useUserHome() {
 		recentTopics,
 		activeRound,
 		daysRemaining,
+		deadline,
 		unreadCount,
 		canRegisterTopic,
 		greetingTime,

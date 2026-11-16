@@ -26,6 +26,11 @@ export function MetricCard({
 	accent,
 	loading,
 }: MetricCardProps) {
+	// Hồng chỉ khi có việc chờ thật: chỉ số "chờ xử lý" bằng 0 hiển thị trung tính,
+	// không báo động khi không có gì để làm.
+	const calm = accent === 'accentAttention' && !loading && (value === 0 || value === '0');
+	const cardAccent = calm ? 'accentBlue' : accent;
+	const iconCls = calm && iconClass === 'iconAttention' ? 'iconGray' : iconClass;
 	const deltaClass =
 		deltaType === 'up'
 			? styles.deltaUp
@@ -33,11 +38,11 @@ export function MetricCard({
 				? styles.deltaDown
 				: styles.deltaNeutral;
 	return (
-		<div className={`${styles.metricCard} ${styles[accent]}`}>
+		<div className={`${styles.metricCard} ${styles[cardAccent]}`}>
 			<div className={styles.metricHeader}>
 				<span className={styles.metricLabel}>{label}</span>
 				<div
-					className={`${styles.metricIconWrap} ${styles[iconClass as keyof typeof styles]}`}
+					className={`${styles.metricIconWrap} ${styles[iconCls as keyof typeof styles]}`}
 				>
 					{icon}
 				</div>

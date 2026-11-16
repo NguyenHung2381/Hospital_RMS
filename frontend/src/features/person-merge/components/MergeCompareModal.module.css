@@ -104,8 +104,8 @@
 	color: var(--color-primary-dark);
 }
 .keepBtnOn {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
+	background: var(--color-primary-dark);
+	border-color: var(--color-primary-dark);
 	color: var(--color-white);
 	cursor: default;
 }
@@ -141,7 +141,7 @@
 }
 .cellChosen {
 	background: var(--color-primary-pale, var(--tone-green-bg));
-	box-shadow: inset 3px 0 0 var(--color-primary);
+	box-shadow: inset 0 0 0 1px var(--tone-green-border);
 }
 .empty {
 	color: var(--color-gray-400);

@@ -21,9 +21,9 @@
 	font-family: inherit;
 	font-size: var(--font-size-compact);
 	font-weight: 500;
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	background: var(--color-white, #ffffff);
-	border: 1.5px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1.5px solid var(--color-gray-200);
 	border-radius: var(--radius-lg, 10px);
 	cursor: pointer;
 	outline: none;
@@ -31,13 +31,13 @@
 }
 
 .input:hover:not(:disabled) {
-	border-color: var(--color-gray-300, var(--color-gray-300));
-	background: var(--color-gray-50, var(--color-gray-50));
+	border-color: var(--color-gray-300);
+	background: var(--color-gray-50);
 }
 
 .input:focus,
 .isOpen {
-	border-color: var(--color-primary, var(--color-primary)) !important;
+	border-color: var(--color-primary) !important;
 	background: var(--color-white, #ffffff) !important;
 	box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.12) !important;
 }
@@ -51,7 +51,7 @@
 }
 
 .input:disabled {
-	background: var(--color-gray-100, var(--color-gray-100));
+	background: var(--color-gray-100);
 	color: var(--color-gray-400, var(--color-gray-500));
 	cursor: not-allowed;
 	opacity: 0.7;
@@ -89,8 +89,8 @@
 }
 
 .clearBtn:hover {
-	background: var(--color-gray-100, var(--color-gray-100));
-	color: var(--color-gray-700, var(--color-gray-700));
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
 }
 
 /* =============================================
@@ -105,7 +105,7 @@
 	width: 310px;
 	max-width: calc(100vw - 24px);
 	background: #ffffff;
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1px solid var(--color-gray-200);
 	border-radius: 16px;
 	padding: 16px;
 	box-shadow:
@@ -158,26 +158,26 @@
 .select {
 	appearance: none;
 	-webkit-appearance: none;
-	background: var(--color-gray-50, var(--color-gray-50));
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-200);
 	border-radius: 8px;
 	padding: 4px 10px;
 	font-family: inherit;
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	cursor: pointer;
 	outline: none;
 	transition: all 0.15s ease;
 }
 
 .select:hover {
-	background: var(--color-gray-100, var(--color-gray-100));
-	border-color: var(--color-gray-300, var(--color-gray-300));
+	background: var(--color-gray-100);
+	border-color: var(--color-gray-300);
 }
 
 .select:focus {
-	border-color: var(--color-primary, var(--color-primary));
+	border-color: var(--color-primary);
 }
 
 .navGroup {
@@ -190,7 +190,7 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 8px;
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1px solid var(--color-gray-200);
 	background: var(--color-white, #ffffff);
 	color: var(--color-gray-600, var(--color-gray-700));
 	display: flex;
@@ -201,9 +201,9 @@
 }
 
 .navBtn:hover {
-	background: var(--color-gray-100, var(--color-gray-100));
-	color: var(--color-gray-900, var(--color-gray-900));
-	border-color: var(--color-gray-300, var(--color-gray-300));
+	background: var(--color-gray-100);
+	color: var(--color-gray-900);
+	border-color: var(--color-gray-300);
 }
 
 /* Weekday header */
@@ -244,7 +244,7 @@
 	justify-content: center;
 	font-size: var(--font-size-compact);
 	font-weight: 500;
-	color: var(--color-gray-700, var(--color-gray-700));
+	color: var(--color-gray-700);
 	background: transparent;
 	border: none;
 	border-radius: 10px;
@@ -253,8 +253,8 @@
 }
 
 .dayCell:hover:not(.isDisabled):not(.isSelected) {
-	background: var(--color-gray-100, var(--color-gray-100));
-	color: var(--color-gray-900, var(--color-gray-900));
+	background: var(--color-gray-100);
+	color: var(--color-gray-900);
 }
 
 .otherMonth {
@@ -277,7 +277,7 @@
 	width: 4px;
 	height: 4px;
 	border-radius: 50%;
-	background: var(--color-primary, var(--color-primary));
+	background: var(--color-primary);
 }
 
 /* Context band — the parent round's whole period (blue, distinct from the
@@ -353,7 +353,7 @@
 }
 
 .inActiveRange:hover:not(.isDisabled):not(.isSelected) {
-	background: var(--color-primary, var(--color-primary)) !important;
+	background: var(--color-primary) !important;
 	color: #ffffff !important;
 }
 
@@ -388,7 +388,7 @@
 }
 
 .isSelected {
-	background: var(--color-primary, var(--color-primary)) !important;
+	background: var(--color-primary-dark) !important;
 	color: #ffffff !important;
 	font-weight: 700 !important;
 	box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
@@ -408,7 +408,7 @@
 .activeRangeStart:not(.isSelected),
 .activeRangeEnd:not(.isSelected),
 .activeEndpoint:not(.isSelected) {
-	background: var(--color-primary, var(--color-primary)) !important;
+	background: var(--color-primary-dark) !important;
 	color: #ffffff !important;
 	font-weight: 700 !important;
 	z-index: 2;
@@ -450,7 +450,7 @@
 	justify-content: space-between;
 	margin-top: 12px;
 	padding-top: 10px;
-	border-top: 1px solid var(--color-gray-100, var(--color-gray-100));
+	border-top: 1px solid var(--color-gray-100);
 }
 
 .todayBtn,
@@ -478,6 +478,6 @@
 }
 
 .clearTextBtn:hover {
-	background: var(--color-gray-100, var(--color-gray-100));
+	background: var(--color-gray-100);
 	color: var(--tone-red-fg);
 }

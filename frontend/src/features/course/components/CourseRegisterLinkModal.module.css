@@ -43,7 +43,7 @@
 	color: var(--color-gray-700);
 }
 .linkRow a:hover {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .copyBtn {
 	flex: none;
@@ -59,7 +59,7 @@
 }
 .copyBtn:hover {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .copyBtn svg {
 	width: 16px;

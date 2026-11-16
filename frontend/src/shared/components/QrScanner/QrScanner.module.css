@@ -44,7 +44,7 @@
 	height: 64px;
 	border-radius: 16px;
 	background: rgba(10, 155, 74, 0.12);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .placeholderIcon svg {
 	width: 34px;

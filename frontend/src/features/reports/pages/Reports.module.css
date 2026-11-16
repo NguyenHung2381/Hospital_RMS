@@ -61,7 +61,7 @@
 }
 .sectionLink {
 	font-size: var(--font-size-sm);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	text-decoration: none;
 	font-weight: var(--font-weight-medium);
 }

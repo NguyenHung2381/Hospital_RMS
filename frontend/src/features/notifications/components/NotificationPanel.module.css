@@ -45,7 +45,7 @@
 	box-shadow:
 		var(--shadow-md);
 	z-index: 201;
-	animation: panel-drop 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: panel-drop 200ms var(--ease-out) both;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
@@ -98,7 +98,7 @@
 .markAll,
 .viewAll {
 	font-size: var(--font-size-xs);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
 	cursor: pointer;
 	background: none;

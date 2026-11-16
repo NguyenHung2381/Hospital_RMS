@@ -478,7 +478,7 @@
 	width: 28px;
 	height: 28px;
 	border-radius: var(--radius-md);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	background: var(--color-gray-50);
 	border: 1px solid var(--color-gray-200);
 }
@@ -506,7 +506,7 @@
 	color: var(--color-gray-500);
 	cursor: pointer;
 }
-.yearStepper > button:hover:not(:disabled) { background: var(--color-gray-100); color: var(--color-primary); }
+.yearStepper > button:hover:not(:disabled) { background: var(--color-gray-100); color: var(--color-primary-dark); }
 .yearStepper > button:disabled { opacity: 0.35; cursor: not-allowed; }
 .yearStepper > button svg { width: 14px; height: 14px; }
 .yearStepperValue {
@@ -535,7 +535,7 @@
 	border-left: 1px solid var(--color-gray-200);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	white-space: nowrap;
 }
 
@@ -563,7 +563,7 @@
 .yearMode > button:hover:not(.yearModeActive) { color: var(--color-gray-800); }
 .yearMode > .yearModeActive {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
 	box-shadow: var(--shadow-sm);
 }

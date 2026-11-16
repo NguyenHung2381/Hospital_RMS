@@ -208,7 +208,7 @@
 }
 .segmentActive {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-sm);
 }
 

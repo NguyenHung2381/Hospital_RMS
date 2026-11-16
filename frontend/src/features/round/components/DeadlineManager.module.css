@@ -26,7 +26,7 @@
 
 .emptyTimelineNotice {
 	font-size: var(--font-size-compact);
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 	font-style: italic;
 	padding: 12px 16px;
 	background: var(--color-gray-50);
@@ -71,9 +71,9 @@
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, var(--color-primary-pale));
-	border: 2px solid var(--color-primary, var(--color-primary));
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	background: var(--color-primary-pale);
+	border: 2px solid var(--color-primary);
+	color: var(--color-primary-dark);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
 	display: flex;
@@ -85,7 +85,7 @@
 
 .timelineCard {
 	background: #ffffff;
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1px solid var(--color-gray-200);
 	border-radius: 12px;
 	padding: 14px 18px;
 	display: flex;
@@ -96,7 +96,7 @@
 }
 
 .timelineCard:hover {
-	border-color: var(--color-primary-light, var(--color-primary-light));
+	border-color: var(--color-primary-light);
 	box-shadow: var(--shadow-md);
 }
 
@@ -112,7 +112,7 @@
 .timelineTitle {
 	font-size: var(--font-size-sm);
 	font-weight: 700;
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 }
 
 .timelineBadge {
@@ -148,7 +148,7 @@
 	align-items: center;
 	gap: 6px;
 	font-size: var(--font-size-xs);
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 	font-weight: 500;
 	margin-left: auto;
 }
@@ -156,12 +156,12 @@
 .timelineDates svg {
 	width: 14px;
 	height: 14px;
-	color: var(--color-gray-400, var(--color-gray-400));
+	color: var(--color-gray-400);
 }
 
 .timelineDateHighlighted {
 	font-weight: 700;
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	color: var(--color-primary-dark);
 }
 
 .timelineActions {
@@ -180,7 +180,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--color-gray-400, var(--color-gray-400));
+	color: var(--color-gray-400);
 	transition: all 0.15s ease;
 }
 
@@ -191,7 +191,7 @@
 }
 
 .timelineActionBtn.edit:hover {
-	color: var(--color-primary, var(--color-primary));
+	color: var(--color-primary-dark);
 	background: var(--tone-green-bg);
 	border-color: var(--tone-green-border);
 }
@@ -205,8 +205,7 @@
 /* ── FORM CARD (NEW / EDIT MILESTONE) ── */
 .timelineFormCard {
 	background: #ffffff;
-	border: 1.5px solid rgba(10, 155, 74, 0.3);
-	border-left: 4px solid var(--color-primary, var(--color-primary));
+	border: 1px solid var(--tone-green-border);
 	border-radius: 14px;
 	padding: 20px 22px;
 	display: flex;
@@ -243,14 +242,14 @@
 .formCardTitle {
 	font-size: var(--font-size-sm);
 	font-weight: 700;
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 }
 
 .phaseBadge {
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	background: var(--color-primary-pale, var(--color-primary-pale));
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
 	border: 1px solid rgba(10, 155, 74, 0.25);
 	padding: 2px 8px;
 	border-radius: 9999px;
@@ -260,7 +259,7 @@
 	background: none;
 	border: none;
 	cursor: pointer;
-	color: var(--color-gray-400, var(--color-gray-400));
+	color: var(--color-gray-400);
 	width: 26px;
 	height: 26px;
 	border-radius: 6px;
@@ -295,7 +294,7 @@
 .fieldLabel {
 	font-size: var(--font-size-xs);
 	font-weight: 600;
-	color: var(--color-gray-700, var(--color-gray-700));
+	color: var(--color-gray-700);
 	display: flex;
 	align-items: center;
 	gap: 4px;
@@ -313,7 +312,7 @@
 	border-radius: 8px;
 	font-family: inherit;
 	font-size: var(--font-size-compact);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	background: #ffffff;
 	transition: all 0.18s ease;
 	outline: none;
@@ -325,7 +324,7 @@
 }
 
 .formInput:focus {
-	border-color: var(--color-primary, var(--color-primary));
+	border-color: var(--color-primary);
 	background: #ffffff;
 	box-shadow: var(--focus-ring-input);
 }
@@ -337,7 +336,7 @@
 	border-radius: 8px;
 	font-family: inherit;
 	font-size: var(--font-size-compact);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	background-color: #ffffff;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
 	background-repeat: no-repeat;
@@ -356,7 +355,7 @@
 }
 
 .formSelect:focus {
-	border-color: var(--color-primary, var(--color-primary));
+	border-color: var(--color-primary);
 	background-color: #ffffff;
 	box-shadow: var(--focus-ring-input);
 }
@@ -400,8 +399,8 @@
 }
 
 .chipLabelActive {
-	border-color: var(--color-primary, var(--color-primary));
-	background: var(--color-primary-pale, var(--color-primary-pale));
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
 	color: var(--tone-green-fg);
 	font-weight: 600;
 	box-shadow: var(--shadow-sm);
@@ -421,8 +420,8 @@
 }
 
 .chipLabelActive .customCheckbox {
-	background: var(--color-primary, var(--color-primary));
-	border-color: var(--color-primary, var(--color-primary));
+	background: var(--color-primary-dark);
+	border-color: var(--color-primary-dark);
 	color: #fff;
 }
 
@@ -490,9 +489,9 @@
 	gap: 8px;
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	color: var(--color-primary-dark);
 	background: #ffffff;
-	border: 1.5px dashed var(--color-primary-light, var(--color-primary-light));
+	border: 1.5px dashed var(--color-primary-light);
 	padding: 8px 18px;
 	border-radius: 10px;
 	cursor: pointer;
@@ -500,8 +499,8 @@
 }
 
 .addPhaseBtn:hover {
-	border-color: var(--color-primary, var(--color-primary));
-	background: var(--color-primary-pale, var(--color-primary-pale));
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
 	transform: translateY(-1px);
 	box-shadow: var(--shadow-md);
 }

@@ -231,8 +231,15 @@ export default function UserList() {
 					</div>
 				</div>
 
-				<div className={styles.tabsRow}>
-					<div
+				{/* Lọc theo vai trò (chọn nhiều) — xuống dòng thay vì cuộn ngang để không cắt chữ */}
+				<div
+					className={`${styles.tabsRow} ${styles.tabsRowWrap}`}
+					role='group'
+					aria-label='Lọc theo vai trò'
+				>
+					<button
+						type='button'
+						aria-pressed={d.roleFilters.length === 0}
 						className={`${styles.tab} ${d.roleFilters.length === 0 ? styles.tabActive : ''}`}
 						onClick={() => {
 							d.setRoleFilters([]);
@@ -243,10 +250,12 @@ export default function UserList() {
 						<span className={styles.tabBadge}>
 							{Object.values(d.roleCounts).reduce((a, b) => a + b, 0)}
 						</span>
-					</div>
+					</button>
 					{d.roles.map((r) => (
-						<div
+						<button
+							type='button'
 							key={r.id}
+							aria-pressed={d.roleFilters.includes(r.id)}
 							className={`${styles.tab} ${d.roleFilters.includes(r.id) ? styles.tabActive : ''}`}
 							onClick={() => {
 								d.setRoleFilters((prev) =>
@@ -259,7 +268,7 @@ export default function UserList() {
 						>
 							{r.name}
 							<span className={styles.tabBadge}>{d.roleCounts[r.id] ?? 0}</span>
-						</div>
+						</button>
 					))}
 				</div>
 

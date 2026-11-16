@@ -23,6 +23,17 @@ export function formatDateOr(value?: string | null, fallback = '—'): string {
 	return formatDate(value) ?? fallback;
 }
 
+/** Khoảng ngày đọc được khi thiếu 1 đầu: "01/02/2026 → 15/03/2026", "Từ 01/02/2026",
+ *  "Đến 15/03/2026"; cả hai trống → null. (Thay cho "01/02/2026 → ?".) */
+export function formatDateRange(from?: string | null, to?: string | null): string | null {
+	const a = formatDate(from);
+	const b = formatDate(to);
+	if (a && b) return `${a} → ${b}`;
+	if (a) return `Từ ${a}`;
+	if (b) return `Đến ${b}`;
+	return null;
+}
+
 // Chuẩn hóa bất kỳ định dạng ngày nào (ISO string "2026-10-31T00:00:00.000Z",
 // "2026-10-31", "31/10/2026", Date object) về chuỗi chuẩn 'YYYY-MM-DD'.
 export function toIsoDate(value?: string | Date | null): string {
