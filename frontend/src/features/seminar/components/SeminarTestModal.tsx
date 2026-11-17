@@ -45,6 +45,8 @@ export function SeminarTestModal({
 	const [endTime, setEndTime] = useState(seminar.test_end_time ?? '');
 	const [duration, setDuration] = useState(seminar.test_duration_minutes?.toString() ?? '');
 	const [passScore, setPassScore] = useState(seminar.test_pass_score?.toString() ?? '');
+	// Thang điểm tối đa (vd 10, 100) — trống = thang là tổng điểm các câu
+	const [scale, setScale] = useState(seminar.test_score_scale?.toString() ?? '');
 	const [shuffleQuestions, setShuffleQuestions] = useState(!!seminar.test_shuffle_questions);
 	const [shuffleOptions, setShuffleOptions] = useState(!!seminar.test_shuffle_options);
 	// Ngày mở bài mặc định khi để trống — khớp testWindow() ở backend
@@ -56,6 +58,9 @@ export function SeminarTestModal({
 
 	const filled = questions.filter((q) => !isBlank(q));
 	const totalPoints = round2(filled.reduce((s, q) => s + pointsOf(q), 0));
+	const scaleNum = numOrNull(scale);
+	// Điểm đạt nhập theo thang (nếu đặt), không thì theo tổng điểm câu hỏi
+	const passMax = scaleNum ?? totalPoints;
 
 	const patch = (i: number, p: Partial<SeminarTestQuestion>) =>
 		setQuestions((qs) => qs.map((q, k) => (k === i ? { ...q, ...p } : q)));
@@ -68,9 +73,13 @@ export function SeminarTestModal({
 		const d = numOrNull(duration);
 		if (d !== null && !(Number.isInteger(d) && d >= 1 && d <= 1440))
 			return 'Thời gian làm bài phải là số phút nguyên từ 1 đến 1440.';
+		if (scaleNum !== null && !(scaleNum >= 1 && scaleNum <= 10000))
+			return 'Thang điểm tối đa phải là số từ 1 đến 10000.';
 		const p = numOrNull(passScore);
 		if (p !== null && !(p >= 0)) return 'Điểm đạt không hợp lệ.';
-		if (p !== null && filled.length && p > totalPoints)
+		if (p !== null && scaleNum !== null && p > scaleNum)
+			return `Điểm đạt (${p}) lớn hơn thang điểm tối đa (${scaleNum}).`;
+		if (p !== null && scaleNum === null && filled.length && p > totalPoints)
 			return `Điểm đạt (${p}) lớn hơn tổng điểm bài kiểm tra (${totalPoints}).`;
 		const bad = questions.findIndex((q) => !isBlank(q) && q.points !== undefined && !(q.points > 0));
 		if (bad >= 0) return `Câu ${bad + 1}: điểm phải lớn hơn 0.`;
@@ -93,6 +102,7 @@ export function SeminarTestModal({
 				test_end_time: endTime || null,
 				test_duration_minutes: numOrNull(duration),
 				test_pass_score: numOrNull(passScore),
+				test_score_scale: scaleNum,
 				test_shuffle_questions: shuffleQuestions,
 				test_shuffle_options: shuffleOptions,
 			});
@@ -220,6 +230,27 @@ export function SeminarTestModal({
 						<span className={styles.testUnit}>phút</span>
 					</SettingRow>
 					<SettingRow
+						label='Thang điểm'
+						hint={
+							scaleNum !== null && filled.length
+								? `Điểm bài làm được quy về thang ${scaleNum}: điểm câu đúng ÷ ${totalPoints} × ${scaleNum}.`
+								: 'Để trống = chấm theo tổng điểm các câu.'
+						}
+					>
+						<input
+							type='number'
+							min={1}
+							max={10000}
+							step='any'
+							className={`${styles.formInput} ${styles.testNum}`}
+							value={scale}
+							onChange={(e) => setScale(e.target.value)}
+							placeholder={totalPoints ? String(totalPoints) : 'VD: 10'}
+							aria-label='Thang điểm tối đa'
+						/>
+						<span className={styles.testUnit}>điểm tối đa</span>
+					</SettingRow>
+					<SettingRow
 						label='Điểm đạt'
 					>
 						<input
@@ -232,7 +263,7 @@ export function SeminarTestModal({
 							placeholder='—'
 							aria-label='Điểm đạt'
 						/>
-						<span className={styles.testUnit}>/ {totalPoints} điểm</span>
+						<span className={styles.testUnit}>/ {passMax} điểm</span>
 					</SettingRow>
 					<SettingRow label='Trộn đề'>
 						<label className={styles.checkFilter}>
@@ -388,12 +419,13 @@ export function SeminarTestModal({
 	);
 }
 
-function SettingRow({ label, children }: { label: string; children: ReactNode }) {
+function SettingRow({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
 	return (
 		<div className={styles.testSettingRow}>
 			<span className={styles.testSettingLabel}>{label}</span>
 			<div className={styles.testSettingControl}>
 				<div className={styles.testSettingInputs}>{children}</div>
+				{hint && <span className={styles.hint}>{hint}</span>}
 			</div>
 		</div>
 	);

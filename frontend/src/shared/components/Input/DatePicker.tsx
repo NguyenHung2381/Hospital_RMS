@@ -59,6 +59,53 @@ function pad2(num: number): string {
 	return String(num).padStart(2, '0');
 }
 
+/**
+ * Định dạng chữ đang gõ theo khuôn DD/MM/YYYY: chỉ giữ số và '/', đổi '-' '.' ' ' thành '/',
+ * ngày / tháng tối đa 2 chữ số rồi tự chèn '/', năm tối đa 4 chữ số.
+ * Gõ liền "12052026" → "12/05/2026"; gõ "5/3/2026" vẫn được.
+ */
+function maskDate(raw: string, autoSlash: boolean): string {
+	const segs: string[] = [''];
+	for (const ch of raw.replace(/[-.\s]/g, '/')) {
+		const i = segs.length - 1;
+		if (ch === '/') {
+			if (segs[i] && i < 2) segs.push('');
+		} else if (/\d/.test(ch)) {
+			if (i < 2 && segs[i].length === 2) {
+				segs.push(ch);
+			} else if (i === 2 && segs[i].length === 4) {
+				break;
+			} else {
+				segs[i] += ch;
+			}
+		}
+	}
+	let out = segs.join('/');
+	// Vừa gõ đủ 2 số ngày / tháng thì chèn sẵn '/'
+	const last = segs[segs.length - 1];
+	if (autoSlash && segs.length < 3 && last.length === 2) out += '/';
+	return out;
+}
+
+/** Đọc ngày gõ tay "d/m/yyyy", "d/m/yy", "d/m" (năm nay) → 'YYYY-MM-DD'; rỗng → ''; sai → null. */
+function parseTypedDate(raw: string): string | null {
+	const s = maskDate(raw.trim(), false).replace(/\/$/, '');
+	if (!s) return '';
+	const m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/);
+	if (!m) return null;
+	const d = Number(m[1]);
+	const mo = Number(m[2]);
+	const thisYear = new Date().getFullYear();
+	let y = m[3] ? Number(m[3]) : thisYear;
+	if (m[3]?.length === 2) {
+		// 2 chữ số năm: lấy thế kỷ 20xx, trừ khi rơi quá xa tương lai (ngày sinh "15/04/85" → 1985)
+		y = 2000 + y > thisYear + 15 ? 1900 + y : 2000 + y;
+	}
+	const dt = new Date(y, mo - 1, d);
+	if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+	return `${y}-${pad2(mo)}-${pad2(d)}`;
+}
+
 export function DatePicker({
 	value = '',
 	onChange,
@@ -77,6 +124,8 @@ export function DatePicker({
 	align = 'auto',
 }: DatePickerProps) {
 	const [isOpen, setIsOpen] = useState(false);
+	// Chữ đang gõ tay — null = đang hiện đúng giá trị
+	const [draft, setDraft] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
 	// Parse initial value or default to today
@@ -161,7 +210,10 @@ export function DatePicker({
 			setIsOpen(false);
 		}
 		function handleKeyDown(e: KeyboardEvent) {
-			if (e.key === 'Escape') setIsOpen(false);
+			if (e.key === 'Escape') {
+				setDraft(null);
+				setIsOpen(false);
+			}
 		}
 		if (isOpen) {
 			document.addEventListener('mousedown', handleClickOutside);
@@ -249,8 +301,36 @@ export function DatePicker({
 
 	// Select day
 	const handleSelectDay = (cellIso: string) => {
+		setDraft(null);
 		onChange(cellIso);
 		setIsOpen(false);
+	};
+
+	// Gõ tay: tự chèn '/', gõ đủ ngày hợp lệ thì lịch nhảy tới tháng đó
+	const handleType = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const el = e.target;
+		const prev = draft ?? formatVN(value);
+		// Chỉ tự định dạng khi gõ thêm ở cuối; đang xoá / sửa giữa chừng thì để nguyên vị trí con trỏ
+		const atEnd = el.selectionStart === el.value.length;
+		const next = atEnd ? maskDate(el.value, el.value.length > prev.length) : el.value;
+		setDraft(next);
+		if (!isOpen) setIsOpen(true);
+		if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(next)) {
+			const iso = parseTypedDate(next);
+			if (iso) {
+				setViewYear(Number(iso.slice(0, 4)));
+				setViewMonth(Number(iso.slice(5, 7)) - 1);
+			}
+		}
+	};
+
+	// Chốt chữ đã gõ: hợp lệ (và trong khoảng min / max) thì nhận, sai thì trả lại giá trị cũ
+	const commitDraft = () => {
+		if (draft === null) return;
+		const iso = parseTypedDate(draft);
+		setDraft(null);
+		if (iso === null || (iso && isDateDisabled(iso))) return;
+		if (iso !== value.slice(0, 10)) onChange(iso);
 	};
 
 	// Năm: lùi 100 năm (đủ cho ngày sinh) tới +15 năm, luôn chứa năm đang xem
@@ -291,11 +371,27 @@ export function DatePicker({
 				<input
 					id={id}
 					type='text'
-					readOnly
+					inputMode='numeric'
+					autoComplete='off'
+					maxLength={10}
 					disabled={disabled}
-					value={formatVN(value)}
+					value={draft ?? formatVN(value)}
 					placeholder={placeholder}
-					onClick={() => !disabled && setIsOpen(!isOpen)}
+					onFocus={() => !disabled && setIsOpen(true)}
+					onClick={() => !disabled && setIsOpen(true)}
+					onChange={handleType}
+					onBlur={(e) => {
+						commitDraft();
+						// Tab sang ô khác thì đóng lịch (bấm vào ô chọn tháng / năm trong lịch thì không)
+						if (!popoverRef.current?.contains(e.relatedTarget as Node | null)) setIsOpen(false);
+					}}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') {
+							e.preventDefault();
+							commitDraft();
+							setIsOpen(false);
+						}
+					}}
 					className={`${styles.input} ${isOpen ? styles.isOpen : ''} ${
 						hasError ? styles.hasError : ''
 					}`}
@@ -350,6 +446,7 @@ export function DatePicker({
 						title='Xóa ngày'
 						onClick={(e) => {
 							e.stopPropagation();
+							setDraft(null);
 							onChange('');
 						}}
 					>
@@ -388,6 +485,10 @@ export function DatePicker({
 						pos.bottom !== undefined ? styles.placementTop : ''
 					}`}
 					style={{ left: pos.left, top: pos.top, bottom: pos.bottom }}
+					// Giữ focus ở ô nhập khi bấm ngày / nút trong lịch (ô chọn tháng, năm cần focus để mở danh sách)
+					onMouseDown={(e) => {
+						if ((e.target as HTMLElement).tagName !== 'SELECT') e.preventDefault();
+					}}
 				>
 					{/* Header */}
 					<div className={styles.header}>
@@ -545,6 +646,7 @@ export function DatePicker({
 								type='button'
 								className={styles.clearTextBtn}
 								onClick={() => {
+									setDraft(null);
 									onChange('');
 									setIsOpen(false);
 								}}

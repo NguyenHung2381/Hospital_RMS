@@ -13,7 +13,7 @@ const ExcelJS = lazyRequire('exceljs');
 const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { parseAgenda, testWindow } = require('../../utils/seminarSchedule');
-const { isPassed, maxScore } = require('../../utils/seminarTest');
+const { isPassed, maxScore, participantScore, scaleMax } = require('../../utils/seminarTest');
 const { VN_OFFSET_MS } = require('../../utils/vnDate');
 
 const EVENT_TYPE_LABELS = {
@@ -104,6 +104,7 @@ const addInfoSheet = (wb, s, agendaCount) => {
 			questionCount
 				? [
 						`${questionCount} câu · ${maxScore(questions)} điểm`,
+						s.test_score_scale != null ? `quy về thang ${Number(s.test_score_scale)} điểm` : null,
 						w?.start ? `mở ${withTime(w.date, s.test_start_time)}` : null,
 						w?.end ? `dừng nhận bài ${withTime(w.end_date, s.test_end_time)}` : null,
 						s.test_duration_minutes ? `làm bài ${s.test_duration_minutes} phút` : null,
@@ -207,13 +208,14 @@ const addParticipantSheet = (wb, s) => {
 			phone: p.phone ?? '',
 			email: p.email ?? '',
 			checked_in_at: fmtUtcDateTime(p.checked_in_at),
-			// Bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
+			// Điểm đã quy về thang của hội nghị (nếu đặt); bài nộp trước khi có điểm theo
+			// trọng số: mỗi câu đúng 1 điểm
 			test_score: p.test_submitted_at
-				? `${p.test_score ?? p.test_correct}/${p.test_max_score ?? p.test_total}`
+				? `${participantScore(s, p)}/${scaleMax(s, p.test_max_score ?? p.test_total)}`
 				: '',
 			test_correct: p.test_submitted_at ? `${p.test_correct}/${p.test_total}` : '',
 			test_passed: p.test_submitted_at
-				? isPassed(s, p.test_score ?? p.test_correct)
+				? isPassed(s, participantScore(s, p))
 					? 'Đạt'
 					: 'Chưa đạt'
 				: '',

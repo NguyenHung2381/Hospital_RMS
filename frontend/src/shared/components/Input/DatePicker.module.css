@@ -25,7 +25,7 @@
 	background: var(--color-white, #ffffff);
 	border: 1.5px solid var(--color-gray-200, var(--color-gray-200));
 	border-radius: var(--radius-lg, 10px);
-	cursor: pointer;
+	cursor: text;
 	outline: none;
 	transition: all 0.2s ease;
 }

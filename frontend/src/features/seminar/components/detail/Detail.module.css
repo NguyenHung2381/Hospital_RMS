@@ -1,0 +1,471 @@
+/* Trang chi tiết hội nghị / tập huấn — bố cục theo tab + drawer người tham dự.
+ * Bảng, nút, ô tìm kiếm dùng lại class trong pages/Seminar.module.css. */
+
+/* ── Đầu trang ── */
+.hero {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-4) var(--space-5);
+	margin-bottom: var(--space-3);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3) var(--space-5);
+}
+.heroMain {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	min-width: 0;
+}
+.heroActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+/* ── Thanh tab ── */
+.tabBar {
+	display: flex;
+	gap: var(--space-1);
+	overflow-x: auto;
+	scrollbar-width: none;
+	border-bottom: 1px solid var(--color-gray-200);
+	margin-bottom: var(--space-4);
+}
+.tabBar::-webkit-scrollbar {
+	display: none;
+}
+.tabBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	flex-shrink: 0;
+	padding: var(--space-3) var(--space-4);
+	margin-bottom: -1px;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: var(--color-gray-500);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	white-space: nowrap;
+	cursor: pointer;
+	transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.tabBtn svg {
+	width: 16px;
+	height: 16px;
+}
+.tabBtn:hover {
+	color: var(--color-gray-800);
+}
+.tabBtn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: -2px;
+	border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.tabActive {
+	color: var(--color-primary-dark);
+	border-bottom-color: var(--color-primary);
+}
+.tabCount {
+	min-width: 20px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--color-gray-100);
+	color: var(--color-gray-600);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	line-height: 18px;
+	text-align: center;
+}
+.tabActive .tabCount {
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+}
+
+/* ── Khung nội dung tab ── */
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.card {
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	padding: var(--space-5);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.cardHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+.cardTitle {
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.cardSub {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	margin-top: 2px;
+}
+.cardActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+/* ── Ô số liệu ── */
+.kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: var(--space-3);
+}
+.kpi {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: var(--space-4);
+	background: var(--color-white);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-xl);
+	text-align: left;
+	font-family: var(--font-body);
+	min-width: 0;
+}
+button.kpi {
+	cursor: pointer;
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+button.kpi:hover {
+	border-color: var(--color-primary-light);
+	box-shadow: var(--shadow-sm);
+}
+button.kpi:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.kpiLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-500);
+}
+.kpiLabel svg {
+	width: 14px;
+	height: 14px;
+}
+.kpiValue {
+	font-size: var(--font-size-2xl);
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-800);
+	line-height: 1.15;
+	font-variant-numeric: tabular-nums;
+}
+.kpiValue small {
+	font-size: var(--font-size-sm);
+	font-weight: normal;
+	color: var(--color-gray-400);
+}
+.kpiValue sup {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-400);
+	font-weight: normal;
+	margin-left: 2px;
+}
+.kpiSub {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.bar {
+	height: 6px;
+	border-radius: 999px;
+	background: var(--color-gray-100);
+	overflow: hidden;
+	margin-top: 2px;
+}
+.bar > span {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-primary);
+	transition: width 300ms ease;
+}
+
+/* ── Thanh lọc / tìm trong tab người tham dự ── */
+.filterRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.segment {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 3px;
+	background: var(--color-gray-50);
+	border: 1px solid var(--color-gray-100);
+	border-radius: var(--radius-lg);
+}
+.segment > button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 12px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-gray-600);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	cursor: pointer;
+}
+.segment > button:hover {
+	color: var(--color-gray-800);
+}
+.segment > .segActive {
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+.segment small {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-400);
+}
+
+/* ── Dòng người tham dự (bấm mở drawer) ── */
+.rowClick {
+	cursor: pointer;
+}
+.rowClick:hover > td {
+	background: var(--color-gray-50);
+}
+.rowOpen > td {
+	background: var(--color-primary-pale) !important;
+}
+.nameBtn {
+	display: inline;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+	text-align: left;
+	cursor: pointer;
+}
+.nameBtn:hover {
+	color: var(--color-primary-dark);
+	text-decoration: underline;
+}
+.nameBtn:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+.sub {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	margin-top: 2px;
+}
+.chev {
+	display: inline-flex;
+	color: var(--color-gray-300);
+}
+.chev svg {
+	width: 16px;
+	height: 16px;
+}
+.rowClick:hover .chev {
+	color: var(--color-primary);
+}
+.nowrap {
+	white-space: nowrap;
+}
+.score {
+	font-variant-numeric: tabular-nums;
+}
+
+/* ── Danh sách gọn (tab điểm danh / kiểm tra / CME) ── */
+.miniList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+.miniItem {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-1);
+	border-bottom: 1px solid var(--color-gray-100);
+	font-size: var(--font-size-sm);
+}
+.miniItem:last-child {
+	border-bottom: 0;
+}
+.miniItem > :first-child {
+	flex: 1;
+	min-width: 0;
+}
+.miniMore {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+	padding-top: var(--space-2);
+}
+
+/* ── Cấu hình bài kiểm tra ── */
+.facts {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+	gap: var(--space-3) var(--space-5);
+	margin: 0;
+}
+.facts dt {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-400);
+}
+.facts dd {
+	margin: 2px 0 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+
+.notice {
+	display: flex;
+	gap: var(--space-2);
+	align-items: flex-start;
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-sm);
+}
+.notice svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+.noticeOk {
+	border-color: var(--tone-green-border);
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+.empty {
+	padding: var(--space-6) var(--space-4);
+	text-align: center;
+	color: var(--color-gray-500);
+	font-size: var(--font-size-sm);
+}
+.empty b {
+	display: block;
+	color: var(--color-gray-700);
+	font-size: var(--font-size-base);
+	margin-bottom: 4px;
+}
+
+/* ── Drawer người tham dự ── */
+.drawerActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+.timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+}
+.step {
+	display: flex;
+	gap: var(--space-3);
+	align-items: flex-start;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+.stepDot {
+	width: 22px;
+	height: 22px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	border: 2px solid var(--color-gray-200);
+	background: var(--color-white);
+	color: var(--color-gray-300);
+}
+.stepDot svg {
+	width: 12px;
+	height: 12px;
+}
+.stepDone .stepDot {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.stepFail .stepDot {
+	border-color: var(--tone-red-border);
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+.stepDone,
+.stepFail {
+	color: var(--color-gray-800);
+}
+.stepText {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+.stepText small {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.btnDangerGhost {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+	color: var(--tone-red-fg);
+}
+.btnDangerGhost:hover:not(:disabled) {
+	border-color: var(--tone-red-border);
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+
+@media (max-width: 640px) {
+	.hero {
+		padding: var(--space-4);
+	}
+	.card {
+		padding: var(--space-4);
+	}
+	.kpis {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.hideSm {
+		display: none;
+	}
+}
