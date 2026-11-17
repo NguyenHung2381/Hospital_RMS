@@ -1,102 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpenSvg, CalendarSvg, DocSvg, UsersSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getOverviewStats } from '../api/overviewDashboardApi';
-import { StatusPieChart, TrendBarChart } from '../components/DashboardCharts';
 import { DashboardTabs } from '../components/DashboardTabs';
-import { MetricCard } from '../components/MetricCard';
-import { QuickAccess } from '../components/QuickAccess';
-import type { OverviewKpi, OverviewStats } from '../types/overviewDashboard.type';
-import { CHART_COLORS } from '../utils/dashboardHelpers';
-import styles from './Dashboard.module.css';
-import tbl from '@/shared/components/Table/Table.module.css';
-import { useClientPaging } from '@/shared/hooks/useClientPaging';
-import { Pagination } from '@/shared/components/Table/Pagination';
+import {
+	ActivityRows,
+	AttentionStrip,
+	KpiBand,
+	Panel,
+	RankTable,
+} from '../components/DashKit';
+import { fmt, last12Months, monthLabel, panelState } from '../components/dashKitHelpers';
+import type { OverviewStats } from '../types/overviewDashboard.type';
 
-const EMPTY_KPI: OverviewKpi = {
-	users_total: 0,
-	users_active: 0,
-	users_locked: 0,
-	departments_total: 0,
-	topics_total: 0,
-	topics_this_year: 0,
-	topics_pending: 0,
-	topics_approved: 0,
-	rounds_active: 0,
-	councils_total: 0,
-	courses_total: 0,
-	courses_open: 0,
-	trainees_active: 0,
-	lecturers_active: 0,
-	enrollments_pending: 0,
-	certificates_active: 0,
-	seminars_this_year: 0,
-	participants_this_year: 0,
-	cme_issued_this_year: 0,
-	current_year: new Date().getFullYear(),
-};
-
-const SERIES = {
-	topics: 'Đề tài mới',
-	enrollments: 'Lượt đăng ký khóa học',
-	seminars: 'Hội thảo diễn ra',
-} as const;
-
-const fmt = (n: number) => n.toLocaleString('vi-VN');
-
-interface ModuleCardProps {
-	title: string;
-	subtitle: string;
-	rows: { label: string; value: number }[];
-	loading: boolean;
-	linkLabel: string;
-	onOpen: () => void;
-}
-
-function ModuleCard({ title, subtitle, rows, loading, linkLabel, onOpen }: ModuleCardProps) {
-	return (
-		<div className={styles.chartCard}>
-			<div className={styles.chartCardHeader}>
-				<div>
-					<h2 className={styles.chartTitle}>{title}</h2>
-					<div className={styles.chartSubtitle}>{subtitle}</div>
-				</div>
-				<button
-					type='button'
-					className={styles.moduleLink}
-					onClick={onOpen}
-				>
-					{linkLabel} →
-				</button>
-			</div>
-			<div className={styles.moduleStatList}>
-				{rows.map((r) => (
-					<div
-						key={r.label}
-						className={styles.moduleStatRow}
-					>
-						<span>{r.label}</span>
-						{loading ? (
-							<span
-								className={styles.skeleton}
-								style={{ width: 40, height: 18, borderRadius: 4 }}
-							/>
-						) : (
-							<span className={styles.moduleStatValue}>{fmt(r.value)}</span>
-						)}
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
+type DeptRow = OverviewStats['top_departments'][number];
 
 export default function OverviewDashboard() {
-	const navigate = useNavigate();
 	const [stats, setStats] = useState<OverviewStats | null>(null);
-	const deptPg = useClientPaging(stats?.top_departments ?? []);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -132,219 +52,123 @@ export default function OverviewDashboard() {
 		};
 	}, [refreshKey]);
 
-	const kpi = stats?.kpi ?? EMPTY_KPI;
-	const year = kpi.current_year;
+	const kpi = stats?.kpi;
+	const year = kpi?.current_year ?? new Date().getFullYear();
 
-	const trendRows = (stats?.monthly_activity ?? []).map((m) => ({
-		month: `${m.month.slice(5)}/${m.month.slice(2, 4)}`,
-		[SERIES.topics]: m.topics,
-		[SERIES.enrollments]: m.enrollments,
-		[SERIES.seminars]: m.seminars,
-	}));
+	// Lấp đủ 12 tháng để các dải cùng trục.
+	const months = last12Months();
+	const byMonth = new Map((stats?.monthly_activity ?? []).map((m) => [m.month, m]));
+	const pick = (k: 'topics' | 'enrollments' | 'seminars') =>
+		months.map((m) => byMonth.get(m)?.[k] ?? 0);
 	const hasActivity = (stats?.monthly_activity ?? []).some(
 		(m) => m.topics + m.enrollments + m.seminars > 0,
 	);
 
-	const rolePie = (stats?.users_by_role ?? []).map((r) => ({
-		name: r.name,
-		value: r.cnt,
-		key: r.name,
-	}));
-	const roleColors = Object.fromEntries(
-		rolePie.map((d, i) => [d.key, CHART_COLORS[i % CHART_COLORS.length]]),
-	);
+	const depts = stats?.top_departments ?? [];
 
 	return (
 		<AdminLayout
 			pageTitle='Tổng quan hệ thống'
-			pageSubtitle='Số liệu chung toàn hệ thống: tài khoản, Nghiên cứu khoa học, Đào tạo, Hội nghị và Tín chỉ CME'
+			pageSubtitle='Việc cần xử lý và số liệu chính của Nghiên cứu khoa học, Đào tạo, Hội nghị & CME'
 		>
 			<DashboardTabs />
 
-			{/* ── TẦNG 1: CHỈ SỐ CHUNG ── */}
-			<div className={styles.metricsGrid}>
-				<MetricCard
-					label='Tài khoản đang hoạt động'
-					value={fmt(kpi.users_active)}
-					loading={loading}
-					compare={
-						error
-							? 'Lỗi tải dữ liệu'
-							: `${fmt(kpi.users_total)} tài khoản · ${fmt(kpi.departments_total)} khoa/phòng`
-					}
-					delta={kpi.users_locked > 0 ? `${kpi.users_locked} đang bị khóa` : undefined}
-					deltaType='down'
-					icon={<UsersSvg />}
-					iconClass='iconBlue'
-					accent='accentBlue'
-				/>
-				<MetricCard
-					label='Đề tài NCKH'
-					value={fmt(kpi.topics_total)}
-					loading={loading}
-					delta={`${fmt(kpi.topics_this_year)} đăng ký năm ${year}`}
-					deltaType='neutral'
-					icon={<DocSvg />}
-					iconClass='iconGreen'
-					accent='accentGreen'
-				/>
-				<MetricCard
-					label='Học viên đang đào tạo'
-					value={fmt(kpi.trainees_active)}
-					loading={loading}
-					compare={`${fmt(kpi.courses_open)} khóa đang mở / ${fmt(kpi.courses_total)} khóa`}
-					deltaType='neutral'
-					icon={<BookOpenSvg />}
-					iconClass='iconAmber'
-					accent='accentAmber'
-				/>
-				<MetricCard
-					label={`Hội thảo, hội nghị ${year}`}
-					value={fmt(kpi.seminars_this_year)}
-					loading={loading}
-					compare={`${fmt(kpi.cme_issued_this_year)} chứng nhận CME đã cấp`}
-					deltaType='neutral'
-					icon={<CalendarSvg />}
-					iconClass='iconPurple'
-					accent='accentPurple'
-				/>
-			</div>
+			<AttentionStrip
+				loading={loading}
+				error={error}
+				items={[
+					{
+						kind: 'pending',
+						count: kpi?.topics_pending ?? 0,
+						label: 'đề tài chờ thẩm định',
+						to: '/admin/approvals',
+					},
+					{
+						kind: 'pending',
+						count: kpi?.enrollments_pending ?? 0,
+						label: 'đăng ký khóa học chờ duyệt',
+						to: '/admin/dtlt',
+					},
+					{
+						kind: 'warn',
+						count: kpi?.users_locked ?? 0,
+						label: 'tài khoản đang bị khóa',
+						to: '/admin/users',
+					},
+				]}
+			/>
 
-			{/* ── TẦNG 2: TÓM TẮT THEO PHÂN HỆ ── */}
-			<div className={styles.moduleGrid}>
-				<ModuleCard
-					title='Nghiên cứu khoa học'
-					subtitle='Đề tài, đợt nghiên cứu & hội đồng'
-					loading={loading}
-					linkLabel='Tổng quan NCKH'
-					onOpen={() => navigate('/admin/dashboard/research')}
-					rows={[
-						{ label: 'Đề tài chờ thẩm định', value: kpi.topics_pending },
-						{ label: 'Đề tài đã phê duyệt', value: kpi.topics_approved },
-						{ label: 'Đợt nghiên cứu đang mở', value: kpi.rounds_active },
-						{ label: 'Hội đồng khoa học', value: kpi.councils_total },
-						{ label: `Đề tài đăng ký năm ${year}`, value: kpi.topics_this_year },
-					]}
-				/>
-				<ModuleCard
-					title='Đào tạo'
-					subtitle='Khóa học, học viên & giảng viên'
-					loading={loading}
-					linkLabel='Tổng quan đào tạo'
-					onOpen={() => navigate('/admin/dashboard/training')}
-					rows={[
-						{ label: 'Học viên đang đào tạo', value: kpi.trainees_active },
-						{ label: 'Khóa học đang mở', value: kpi.courses_open },
-						{ label: 'Giảng viên', value: kpi.lecturers_active },
-						{ label: 'Đăng ký chờ duyệt', value: kpi.enrollments_pending },
-						{ label: 'Chứng chỉ còn hiệu lực', value: kpi.certificates_active },
-					]}
-				/>
-				<ModuleCard
-					title={`Hội nghị & tín chỉ CME ${year}`}
-					subtitle='Hội nghị, hội thảo & tín chỉ CME trong năm'
-					loading={loading}
-					linkLabel='Tổng quan hội nghị & CME'
-					onOpen={() => navigate('/admin/dashboard/seminar')}
-					rows={[
-						{ label: 'Hội thảo, hội nghị', value: kpi.seminars_this_year },
-						{ label: 'Lượt tham dự', value: kpi.participants_this_year },
-						{ label: 'Chứng nhận CME đã cấp', value: kpi.cme_issued_this_year },
-					]}
-				/>
-			</div>
+			<KpiBand
+				loading={loading}
+				items={[
+					{
+						label: 'Tài khoản đang hoạt động',
+						value: fmt(kpi?.users_active),
+						context: `${fmt(kpi?.departments_total)} khoa/phòng`,
+						to: '/admin/users',
+					},
+					{
+						label: 'Đề tài NCKH',
+						value: fmt(kpi?.topics_total),
+						context: `${fmt(kpi?.topics_this_year)} đăng ký năm ${year} · ${fmt(kpi?.topics_approved)} đã duyệt`,
+						to: '/admin/dashboard/research',
+					},
+					{
+						label: 'Học viên đang đào tạo',
+						value: fmt(kpi?.trainees_active),
+						context: `${fmt(kpi?.courses_open)} khóa đang mở · ${fmt(kpi?.lecturers_active)} giảng viên`,
+						to: '/admin/dashboard/training',
+					},
+					{
+						label: `Hội thảo, hội nghị ${year}`,
+						value: fmt(kpi?.seminars_this_year),
+						context: `${fmt(kpi?.participants_this_year)} lượt tham dự · ${fmt(kpi?.cme_issued_this_year)} CME đã cấp`,
+						to: '/admin/dashboard/seminar',
+					},
+				]}
+			/>
 
-			{/* ── TẦNG 3: BIỂU ĐỒ ── */}
-			<div className={styles.chartsGridSection}>
-				<div className={styles.chartsGridPairReverse}>
-					<TrendBarChart
-						trendRows={hasActivity ? trendRows : []}
-						trendCats={[SERIES.topics, SERIES.enrollments, SERIES.seminars]}
-						loading={loading}
-						error={error}
-						title='Hoạt động hệ thống theo tháng'
-						subtitle='Đề tài mới, lượt đăng ký khóa học và hội thảo trong 12 tháng gần nhất'
-						xKey='month'
-						unitLabel=''
-						stacked={false}
+			<Panel
+				title='Hoạt động 12 tháng gần nhất'
+				subtitle='Mỗi dòng một thang đo riêng; cột đậm là tháng hiện tại'
+			>
+				{panelState(loading, error, !hasActivity, 'Chưa có hoạt động nào trong 12 tháng qua') ?? (
+					<ActivityRows
+						labels={months.map(monthLabel)}
+						totalLabel='12 tháng'
+						series={[
+							{ name: 'Đề tài mới', values: pick('topics'), unit: 'đề tài' },
+							{ name: 'Đăng ký khóa học', values: pick('enrollments'), unit: 'lượt' },
+							{ name: 'Hội thảo diễn ra', values: pick('seminars'), unit: 'hội thảo' },
+						]}
 					/>
-					<StatusPieChart
-						pieData={rolePie}
-						loading={loading}
-						error={error}
-						title='Tài khoản theo vai trò'
-						subtitle='Cơ cấu tài khoản đang hoạt động theo vai trò'
-						colors={roleColors}
-						centerLabel='tài khoản'
-					/>
-				</div>
-			</div>
-
-			{/* ── TẦNG 4: KHOA/PHÒNG & TRUY CẬP NHANH ── */}
-			<div className={styles.chartCard}>
-				<div className={styles.chartCardHeader}>
-					<div>
-						<h2 className={styles.chartTitle}>Hoạt động theo khoa/phòng</h2>
-						<div className={styles.chartSubtitle}>
-							Tài khoản, đề tài NCKH, đào tạo và hội thảo - CME năm {year} của từng đơn vị
-						</div>
-					</div>
-					<button
-						type='button'
-						className={styles.moduleLink}
-						onClick={() => navigate('/admin/departments')}
-					>
-						Chi tiết →
-					</button>
-				</div>
-				{loading ? (
-					<div
-						className={styles.skeleton}
-						style={{ height: 200, borderRadius: 12 }}
-					/>
-				) : error || !stats?.top_departments.length ? (
-					<div style={{ padding: 16, color: 'var(--color-gray-400)', fontSize: 13 }}>
-						{error ? 'Không tải được dữ liệu' : 'Chưa có dữ liệu'}
-					</div>
-				) : (
-					<div style={{ overflowX: 'auto' }}>
-						<table className={styles.deptTable}>
-							<thead>
-								<tr>
-									<th className={tbl.thIdx}>STT</th>
-									<th>Khoa / Phòng</th>
-									<th className={styles.num}>Tài khoản</th>
-									<th className={styles.num}>Đề tài NCKH</th>
-									<th className={styles.num}>Học viên</th>
-									<th className={styles.num}>Chứng chỉ</th>
-									<th className={styles.num}>Lượt dự HT {year}</th>
-									<th className={styles.num}>CME {year}</th>
-								</tr>
-							</thead>
-							<tbody>
-								{deptPg.paged.map((d, i) => (
-									<tr key={d.name}>
-										<td className={tbl.tdIdx}>{deptPg.offset + i + 1}</td>
-										<td><span className={tbl.cellTitle}>{d.name}</span></td>
-										<td className={styles.num}>{fmt(d.users_cnt)}</td>
-										<td className={styles.num}>{fmt(d.topics_cnt)}</td>
-										<td className={styles.num}>{fmt(d.trainees_cnt)}</td>
-										<td className={styles.num}>{fmt(d.certificates_cnt)}</td>
-										<td className={styles.num}>{fmt(d.participants_cnt)}</td>
-										<td className={styles.num}>{fmt(d.cme_cnt)}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-						<Pagination
-							{...deptPg.pagination}
-							itemLabel='khoa/phòng'
-						/>
-					</div>
 				)}
-			</div>
+			</Panel>
 
-			<QuickAccess />
+			<Panel
+				title='Hoạt động theo khoa/phòng'
+				subtitle={`Bấm tiêu đề cột để xếp hạng lại. Hội thảo và CME tính trong năm ${year}.`}
+				action={{ label: 'Khoa/phòng', to: '/admin/departments' }}
+			>
+				{panelState(loading, error, depts.length === 0, 'Chưa có dữ liệu khoa/phòng', 240) ?? (
+					<RankTable<DeptRow>
+						rows={depts}
+						nameKey='name'
+						nameLabel='Khoa / Phòng'
+						defaultSort='topics_cnt'
+						itemLabel='khoa/phòng'
+						caption='Hoạt động theo khoa/phòng'
+						columns={[
+							{ key: 'topics_cnt', label: 'Đề tài NCKH' },
+							{ key: 'trainees_cnt', label: 'Học viên' },
+							{ key: 'participants_cnt', label: 'Lượt dự hội thảo' },
+							{ key: 'cme_cnt', label: 'CME' },
+							{ key: 'certificates_cnt', label: 'Chứng chỉ' },
+							{ key: 'users_cnt', label: 'Tài khoản' },
+						]}
+					/>
+				)}
+			</Panel>
 		</AdminLayout>
 	);
 }

@@ -1,41 +1,51 @@
-import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BadgeSvg, BookOpenSvg, ClockSvg, UserCheckSvg, UsersSvg } from '@/assets/icons';
 import { DISPLAY_STATUS_CFG } from '@/features/course/types/course.type';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTrainingStats } from '../api/trainingDashboardApi';
-import { StatusPieChart, TrendBarChart } from '../components/DashboardCharts';
 import { DashboardTabs } from '../components/DashboardTabs';
-import { MetricCard } from '../components/MetricCard';
-import type { TrainingStats } from '../types/trainingDashboard.type';
+import {
+	ActivityRows,
+	AttentionStrip,
+	KpiBand,
+	Panel,
+	RankBars,
+	ShareBar,
+	ShortList,
+} from '../components/DashKit';
+import { dk, fmt, last12Months, monthLabel, panelState } from '../components/dashKitHelpers';
+import type { TrainingStats, UpcomingSession } from '../types/trainingDashboard.type';
 import { CHART_COLORS } from '../utils/dashboardHelpers';
-import styles from './Dashboard.module.css';
-
-const EMPTY_KPI: TrainingStats['kpi'] = {
-	open_courses: 0,
-	total_courses: 0,
-	total_trainees: 0,
-	total_lecturers: 0,
-	pending_enrollments: 0,
-	certificates_issued: 0,
-	certificates_expiring: 0,
-	trainees_this_year: 0,
-	sessions_next_7_days: 0,
-};
 
 // Trạng thái hiển thị suy ra từ ngày tháng — cùng nhãn với màn Khóa học (DISPLAY_STATUS_CFG).
 const COURSE_STATUS: Record<string, { label: string; color: string }> = {
-	upcoming: { label: DISPLAY_STATUS_CFG.upcoming.label, color: '#EF9F27' },
 	enrolling: { label: DISPLAY_STATUS_CFG.enrolling.label, color: '#0A9B4A' },
-	in_progress: { label: DISPLAY_STATUS_CFG.in_progress.label, color: '#7F77DD' },
-	completed: { label: DISPLAY_STATUS_CFG.completed.label, color: '#378ADD' },
+	in_progress: { label: DISPLAY_STATUS_CFG.in_progress.label, color: '#378ADD' },
+	upcoming: { label: DISPLAY_STATUS_CFG.upcoming.label, color: '#EF9F27' },
+	completed: { label: DISPLAY_STATUS_CFG.completed.label, color: '#64748B' },
 	cancelled: { label: DISPLAY_STATUS_CFG.cancelled.label, color: '#E24B4A' },
 };
 
+const isoDay = (d: Date) =>
+	`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Gom buổi học theo ngày, nhãn "Hôm nay"/"Ngày mai" cho 2 ngày đầu. */
+function groupByDay(sessions: UpcomingSession[]) {
+	const today = new Date();
+	const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+	const groups = new Map<string, UpcomingSession[]>();
+	for (const s of sessions) {
+		const k = s.session_date.slice(0, 10);
+		groups.set(k, [...(groups.get(k) ?? []), s]);
+	}
+	return [...groups.entries()].map(([day, items]) => {
+		const rel = day === isoDay(today) ? 'Hôm nay' : day === isoDay(tomorrow) ? 'Ngày mai' : null;
+		return { day, isToday: rel === 'Hôm nay', label: rel ? `${rel} · ${formatDateVN(day)}` : formatDateVN(day), items };
+	});
+}
+
 export default function TrainingDashboard() {
-	const navigate = useNavigate();
 	const [stats, setStats] = useState<TrainingStats | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
@@ -47,7 +57,11 @@ export default function TrainingDashboard() {
 	useEffect(() => {
 		let alive = true;
 		getTrainingStats()
-			.then((s) => alive && setStats(s))
+			.then((s) => {
+				if (!alive) return;
+				setStats(s);
+				setError(false);
+			})
 			.catch(() => alive && setError(true))
 			.finally(() => alive && setLoading(false));
 		return () => {
@@ -55,218 +69,190 @@ export default function TrainingDashboard() {
 		};
 	}, [refreshKey]);
 
-	const kpi = stats?.kpi ?? EMPTY_KPI;
+	const kpi = stats?.kpi;
+	const year = new Date().getFullYear();
 
-	const pieData = (stats?.trainees_by_type ?? []).map((t) => ({
+	const months = last12Months();
+	const trendMap = new Map((stats?.enrollment_trend ?? []).map((r) => [r.month, r.cnt]));
+	const trendValues = months.map((m) => trendMap.get(m) ?? 0);
+	const hasTrend = trendValues.some((v) => v > 0);
+
+	const fullCourses = (stats?.top_full_courses ?? []).filter((c) => c.fill_rate >= 100).length;
+	const fillData = (stats?.top_full_courses ?? []).map((c) => ({
+		label: c.name,
+		value: c.fill_rate,
+		warn: c.fill_rate >= 100,
+		display: (
+			<>
+				{c.fill_rate}% <small>· {c.approved_count}/{c.capacity}</small>
+			</>
+		),
+	}));
+
+	const traineeShare = (stats?.trainees_by_type ?? []).map((t, i) => ({
+		key: t.name,
 		name: t.name,
 		value: t.cnt,
-		key: t.name,
+		color: CHART_COLORS[i % CHART_COLORS.length],
 	}));
-	const pieColors = Object.fromEntries(pieData.map((d, i) => [d.key, CHART_COLORS[i % CHART_COLORS.length]]));
-
-	const courseStatusPie = (stats?.courses_by_status ?? []).map((c) => ({
+	const courseShare = (stats?.courses_by_status ?? []).map((c) => ({
+		key: c.status,
 		name: COURSE_STATUS[c.status]?.label ?? c.status,
 		value: c.cnt,
-		key: c.status,
+		color: COURSE_STATUS[c.status]?.color ?? '#94A3B8',
 	}));
-	const courseStatusColors = Object.fromEntries(
-		courseStatusPie.map((d) => [d.key, COURSE_STATUS[d.key]?.color ?? '#9CA3AF']),
-	);
 
-	const trendRows = (stats?.enrollment_trend ?? []).map((r) => ({ month: r.month, 'Lượt đăng ký': r.cnt }));
+	const days = groupByDay(stats?.upcoming_sessions ?? []);
 
 	return (
 		<AdminLayout
 			pageTitle='Tổng quan đào tạo'
-			pageSubtitle='Khóa học, học viên, giảng viên, lịch học & xu hướng đăng ký'
+			pageSubtitle='Đăng ký chờ duyệt, lịch học sắp tới, sĩ số lớp và xu hướng đăng ký'
 		>
 			<DashboardTabs />
 
-			<div className={styles.metricsGrid}>
-				<MetricCard
-					label='Khóa học đang mở'
-					value={kpi.open_courses}
-					loading={loading}
-					compare={`${kpi.total_courses} tổng số khóa`}
-					deltaType='neutral'
-					icon={<BookOpenSvg />}
-					iconClass='iconGreen'
-					accent='accentGreen'
-				/>
-				<MetricCard
-					label='Học viên đang hoạt động'
-					value={kpi.total_trainees}
-					loading={loading}
-					delta={`${kpi.trainees_this_year} học viên mới năm ${new Date().getFullYear()}`}
-					deltaType='neutral'
-					icon={<UsersSvg />}
-					iconClass='iconBlue'
-					accent='accentBlue'
-				/>
-				<MetricCard
-					label='Giảng viên / BCV'
-					value={kpi.total_lecturers}
-					loading={loading}
-					icon={<UserCheckSvg />}
-					iconClass='iconPurple'
-					accent='accentPurple'
-				/>
-				<MetricCard
-					label='Đăng ký chờ duyệt'
-					value={kpi.pending_enrollments}
-					loading={loading}
-					deltaType={kpi.pending_enrollments > 0 ? 'down' : 'neutral'}
-					icon={<ClockSvg />}
-					iconClass='iconAttention'
-					accent='accentAttention'
-				/>
-				<MetricCard
-					label='Chứng chỉ còn hiệu lực'
-					value={kpi.certificates_issued}
-					loading={loading}
-					delta={
-						kpi.certificates_expiring > 0
-							? `${kpi.certificates_expiring} hết hạn trong 30 ngày`
-							: undefined
-					}
-					deltaType='down'
-					icon={<BadgeSvg />}
-					iconClass='iconGreen'
-					accent='accentGreen'
-				/>
+			<AttentionStrip
+				loading={loading}
+				error={error}
+				items={[
+					{
+						kind: 'pending',
+						count: kpi?.pending_enrollments ?? 0,
+						label: 'đăng ký khóa học chờ duyệt',
+						to: '/admin/dtlt',
+					},
+					{
+						kind: 'warn',
+						count: kpi?.certificates_expiring ?? 0,
+						label: 'chứng chỉ hết hạn trong 30 ngày',
+						to: '/admin/dtlt/hoc-vien',
+					},
+					{
+						kind: 'warn',
+						count: fullCourses,
+						label: 'lớp đã đủ sĩ số',
+						to: '/admin/dtlt',
+					},
+					{
+						kind: 'info',
+						count: kpi?.sessions_next_7_days ?? 0,
+						label: 'buổi học trong 7 ngày tới',
+						to: '/admin/dtlt/lich-hoc',
+					},
+				]}
+			/>
+
+			<KpiBand
+				loading={loading}
+				items={[
+					{
+						label: 'Khóa học đang mở',
+						value: fmt(kpi?.open_courses),
+						context: `trên ${fmt(kpi?.total_courses)} khóa trong hệ thống`,
+						to: '/admin/dtlt',
+					},
+					{
+						label: 'Học viên đang hoạt động',
+						value: fmt(kpi?.total_trainees),
+						context: `${fmt(kpi?.trainees_this_year)} học viên mới năm ${year}`,
+						to: '/admin/trainees',
+					},
+					{
+						label: 'Giảng viên, báo cáo viên',
+						value: fmt(kpi?.total_lecturers),
+						to: '/admin/lecturers',
+					},
+					{
+						label: 'Chứng chỉ còn hiệu lực',
+						value: fmt(kpi?.certificates_issued),
+					},
+				]}
+			/>
+
+			<div className={dk.grid2}>
+				<Panel
+					title='Lịch học 7 ngày tới'
+					action={{ label: 'Lịch học', to: '/admin/dtlt/lich-hoc' }}
+				>
+					{panelState(loading, error, days.length === 0, 'Không có buổi học nào trong 7 ngày tới', 200) ??
+						days.map((g) => (
+							<div
+								key={g.day}
+								className={dk.dayGroup}
+							>
+								<h3 className={`${dk.dayLabel} ${g.isToday ? dk.dayLabelToday : ''}`}>{g.label}</h3>
+								<ShortList
+									items={g.items.map((s) => ({
+										id: s.id,
+										title: s.course_name,
+										meta: [s.subject_name, s.lecturer_name].filter(Boolean).join(' · ') || undefined,
+										side: s.start_time ? `${s.start_time}–${s.end_time ?? ''}` : undefined,
+										sideSub: s.room ?? undefined,
+									}))}
+								/>
+							</div>
+						))}
+				</Panel>
+
+				<Panel
+					title='Lớp đầy chỗ nhất'
+					subtitle='Tỷ lệ học viên đã duyệt trên sĩ số tối đa'
+					action={{ label: 'Khóa học', to: '/admin/dtlt' }}
+				>
+					{panelState(
+						loading,
+						error,
+						fillData.length === 0,
+						'Chưa có chương trình nào đặt sĩ số tối đa',
+						200,
+					) ?? (
+						<RankBars
+							data={fillData}
+							max={100}
+						/>
+					)}
+				</Panel>
 			</div>
 
-			<div className={styles.chartsGridSection}>
-				<div className={styles.chartsGridPair}>
-					<StatusPieChart
-						pieData={pieData}
-						loading={loading}
-						error={error}
-						title='Học viên theo đối tượng'
-						subtitle='Cơ cấu học viên đang hoạt động theo đối tượng đào tạo'
-						colors={pieColors}
-						centerLabel='học viên'
-					/>
-					<TrendBarChart
-						trendRows={trendRows}
-						trendCats={['Lượt đăng ký']}
-						loading={loading}
-						error={error}
-						title='Xu hướng đăng ký khóa học'
-						subtitle='Số lượt đăng ký khóa học theo tháng (12 tháng gần nhất)'
-						xKey='month'
-						unitLabel='lượt đăng ký'
-					/>
-				</div>
-			</div>
+			<div className={dk.grid2}>
+				<Panel
+					title='Lượt đăng ký khóa học'
+					subtitle='12 tháng gần nhất; cột đậm là tháng hiện tại'
+				>
+					{panelState(loading, error, !hasTrend, 'Chưa có lượt đăng ký nào trong 12 tháng qua', 200) ?? (
+						<ActivityRows
+							labels={months.map(monthLabel)}
+							series={[{ name: 'Lượt đăng ký', values: trendValues, unit: 'lượt' }]}
+							rowHeight={140}
+							totalLabel='12 tháng'
+						/>
+					)}
+				</Panel>
 
-			<div className={styles.chartsGridSection}>
-				<div className={styles.moduleGrid}>
-					<StatusPieChart
-						pieData={courseStatusPie}
-						loading={loading}
-						error={error}
-						title='Khóa học theo trạng thái'
-						subtitle='Toàn bộ khóa đào tạo trong hệ thống'
-						colors={courseStatusColors}
-						centerLabel='khóa học'
-					/>
-					<div className={styles.chartCard}>
-						<div className={styles.chartCardHeader}>
-							<div>
-								<div className={styles.chartTitle}>Lịch học 7 ngày tới</div>
-								<div className={styles.chartSubtitle}>
-									{loading ? 'Các buổi học sắp diễn ra' : `${kpi.sessions_next_7_days} buổi học sắp diễn ra`}
+				<Panel title='Cơ cấu'>
+					{panelState(loading, error, traineeShare.length + courseShare.length === 0, undefined, 200) ?? (
+						<>
+							{traineeShare.length > 0 && (
+								<div className={dk.shareGroup}>
+									<h3 className={dk.shareGroupTitle}>Học viên theo đối tượng</h3>
+									<ShareBar
+										data={traineeShare}
+										unit='học viên'
+									/>
 								</div>
-							</div>
-							<button
-								type='button'
-								className={styles.moduleLink}
-								onClick={() => navigate('/admin/dtlt/lich-hoc')}
-							>
-								Lịch học →
-							</button>
-						</div>
-						{loading ? (
-							<div className={styles.skeleton} style={{ height: 200, borderRadius: 12 }} />
-						) : (stats?.upcoming_sessions.length ?? 0) === 0 ? (
-							<div style={{ padding: 16, color: 'var(--color-gray-400)', fontSize: 13 }}>
-								Không có buổi học nào trong 7 ngày tới.
-							</div>
-						) : (
-							<div style={{ maxHeight: 260, overflow: 'auto' }}>
-								{stats!.upcoming_sessions.map((s) => (
-									<div
-										key={s.id}
-										style={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											padding: '8px 4px',
-											borderBottom: '1px solid var(--color-gray-100)',
-											fontSize: 13,
-										}}
-									>
-										<div>
-											<div style={{ fontWeight: 600 }}>{s.course_name}</div>
-											<div style={{ color: 'var(--color-gray-500)', fontSize: 12 }}>
-												{s.subject_name ?? ''} {s.lecturer_name ? `· ${s.lecturer_name}` : ''}
-											</div>
-										</div>
-										<div style={{ textAlign: 'right', color: 'var(--color-gray-600)' }}>
-											<div>{formatDateVN(s.session_date)}</div>
-											<div style={{ fontSize: 12 }}>
-												{s.start_time ? `${s.start_time}-${s.end_time ?? ''}` : ''} {s.room ?? ''}
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
-
-					<div className={styles.chartCard}>
-						<div className={styles.chartCardHeader}>
-							<div>
-								<div className={styles.chartTitle}>Lớp đầy chỗ nhất</div>
-								<div className={styles.chartSubtitle}>Tỷ lệ lấp đầy theo sĩ số tối đa của chương trình</div>
-							</div>
-							<button
-								type='button'
-								className={styles.moduleLink}
-								onClick={() => navigate('/admin/dtlt')}
-							>
-								Khóa học →
-							</button>
-						</div>
-						{loading ? (
-							<div className={styles.skeleton} style={{ height: 200, borderRadius: 12 }} />
-						) : (stats?.top_full_courses.length ?? 0) === 0 ? (
-							<div style={{ padding: 16, color: 'var(--color-gray-400)', fontSize: 13 }}>
-								Chưa có chương trình nào cấu hình sĩ số tối đa.
-							</div>
-						) : (
-							<div style={{ maxHeight: 260, overflow: 'auto' }}>
-								{stats!.top_full_courses.map((c) => (
-									<div
-										key={c.name}
-										style={{
-											display: 'flex',
-											justifyContent: 'space-between',
-											padding: '8px 4px',
-											borderBottom: '1px solid var(--color-gray-100)',
-											fontSize: 13,
-										}}
-									>
-										<span>{c.name}</span>
-										<span style={{ color: 'var(--color-gray-600)' }}>
-											{c.approved_count}/{c.capacity} · {c.fill_rate}%
-										</span>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
-				</div>
+							)}
+							{courseShare.length > 0 && (
+								<div className={dk.shareGroup}>
+									<h3 className={dk.shareGroupTitle}>Khóa học theo trạng thái</h3>
+									<ShareBar
+										data={courseShare}
+										unit='khóa học'
+									/>
+								</div>
+							)}
+						</>
+					)}
+				</Panel>
 			</div>
 		</AdminLayout>
 	);

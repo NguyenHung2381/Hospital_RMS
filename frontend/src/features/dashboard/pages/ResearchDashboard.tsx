@@ -1,471 +1,249 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ActivitySvg, ClipboardCheckSvg, DocSvg, InfoSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { CouncilProgressStrip } from '../components/CouncilProgressStrip';
 import { DashboardTabs } from '../components/DashboardTabs';
 import {
-	DeptBarChart,
-	StatusPieChart,
-	TrendBarChart,
-} from '../components/DashboardCharts';
-import { MetricCard } from '../components/MetricCard';
-import { HorizontalBarChart } from '../components/HorizontalBarChart';
-import { TopicTable } from '../components/TopicTable';
-import { UpcomingCouncilsTable } from '../components/UpcomingCouncilsTable';
+	ActivityRows,
+	AttentionStrip,
+	KpiBand,
+	Panel,
+	RankBars,
+	RankTable,
+	ShareBar,
+	ShortList,
+} from '../components/DashKit';
+import { dk, fmt, panelState } from '../components/dashKitHelpers';
 import { useDashboard } from '../hooks/useDashboard';
 import { useUpcomingCouncils } from '../hooks/useUpcomingCouncils';
-import { APPROVAL_CONFIG, CHART_COLORS, formatDate } from '../utils/dashboardHelpers';
-import styles from './Dashboard.module.css';
+import type { DeptStat } from '../types/dashboard.type';
+import {
+	APPROVAL_CONFIG,
+	STATUS_COLORS,
+	STATUS_CONFIG,
+	formatDate,
+} from '../utils/dashboardHelpers';
 
-type TableMode = 'topics' | 'councils';
+const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export default function ResearchDashboard() {
-	const navigate = useNavigate();
-	const [tableMode, setTableMode] = useState<TableMode>('topics');
-	const { upcomingCouncils, councilsLoading, councilsError } =
-		useUpcomingCouncils();
-	const {
-		stats,
-		statsLoading,
-		statsError,
-		topics,
-		topicsLoading,
-		topicsError,
-		topicsTotal,
-		departments,
-		levels,
-		searchInput,
-		deptFilter,
-		levelFilter,
-		activeTab,
-		totalPages,
-		safePage,
-		pieData,
-		deptBarData,
-		deptCats,
-		trendRows,
-		trendCats,
-		handleSearchInput,
-		handleTab,
-		handlePageChange,
-		handlePageSizeChange,
-		pageSize,
-		handleFilter,
-	} = useDashboard();
+	const { stats, statsLoading: loading, statsError: error } = useDashboard();
+	const { upcomingCouncils, councilsLoading, councilsError } = useUpcomingCouncils();
 
-	const kpi = stats?.overview ?? {
-		total: 0,
-		by_status: {
-			submitted: 0,
-			approved: 0,
-			rejected: 0,
-			supplement: 0,
-			cancelled: 0,
-		},
-	};
-
+	const year = new Date().getFullYear();
+	const st = stats?.overview.by_status;
+	const total = stats?.overview.total ?? 0;
 	const summary = stats?.summary;
+	const progress = stats?.council_progress;
+	const atRisk = progress?.by_rating.find((r) => r.rating === 'at_risk')?.count ?? 0;
+	const behind = progress?.by_rating.find((r) => r.rating === 'behind')?.count ?? 0;
+	const progressPct =
+		progress && progress.expected > 0 ? Math.round((progress.completed / progress.expected) * 100) : null;
 	const articleCount = (type: 'de_tai' | 'bai_bao') =>
 		stats?.by_article_type?.find((a) => a.type === type)?.count ?? 0;
-	const levelData = (stats?.by_level ?? []).map((l) => ({
-		label: l.name,
-		value: l.count,
-	}));
+
+	const statusShare = (['submitted', 'supplement', 'approved', 'rejected', 'cancelled'] as const).map(
+		(k) => ({
+			key: k,
+			name: STATUS_CONFIG[k].label,
+			value: st?.[k] ?? 0,
+			color: STATUS_COLORS[k],
+		}),
+	);
+
+	const levels = [...(stats?.by_level ?? [])]
+		.filter((l) => l.count > 0)
+		.sort((a, b) => b.count - a.count)
+		.map((l) => ({ label: l.name, value: l.count }));
+
+	// Xu hướng theo lĩnh vực: 6 lĩnh vực nhiều đề tài nhất, mỗi lĩnh vực một dải theo năm.
+	const trendRows = stats?.trend_by_category?.rows ?? [];
+	const trendYears = trendRows.map((r) => String(r.year));
+	const trendSeries = (stats?.trend_by_category?.categories ?? [])
+		.map((cat) => ({
+			name: cat,
+			values: trendRows.map((r) => Number(r[cat] ?? 0)),
+			unit: 'đề tài',
+		}))
+		.sort((a, b) => b.values.reduce((x, y) => x + y, 0) - a.values.reduce((x, y) => x + y, 0))
+		.slice(0, 6);
+	const lastIsThisYear = trendYears[trendYears.length - 1] === String(year);
+
+	const depts = stats?.by_department ?? [];
+	const approvals = stats?.recent_approvals ?? [];
 
 	return (
 		<AdminLayout
 			pageTitle='Tổng quan nghiên cứu khoa học'
-			pageSubtitle='Đề tài NCKH, tiến độ Hội đồng đánh giá, phân bố theo khoa/phòng & nhật ký thẩm định'
+			pageSubtitle='Hồ sơ cần xử lý, tiến độ hội đồng và phân bố đề tài theo khoa/phòng'
 		>
 			<DashboardTabs />
 
-			{/* ── TẦNG 1: CHỈ SỐ ĐIỀU HÀNH & TIẾN ĐỘ HỘI ĐỒNG ── */}
-			<div className={styles.metricsGrid}>
-				<MetricCard
-					label='Tổng số đề tài NCKH'
-					value={kpi.total}
-					loading={statsLoading}
-					delta={
-						summary ? `${summary.topics_this_year} đăng ký năm ${new Date().getFullYear()}` : undefined
-					}
-					deltaType='neutral'
-					compare={
-						statsError
-							? 'Lỗi tải dữ liệu'
-							: `${articleCount('de_tai')} đề tài · ${articleCount('bai_bao')} bài báo`
-					}
-					icon={<DocSvg />}
-					iconClass='iconGreen'
-					accent='accentGreen'
-				/>
-				<MetricCard
-					label='Đã phê duyệt / Đạt'
-					value={kpi.by_status.approved}
-					loading={statsLoading}
-					delta={
-						kpi.total > 0
-							? `${((kpi.by_status.approved / kpi.total) * 100).toFixed(1)}% tổng số hồ sơ`
-							: undefined
-					}
-					deltaType='up'
-					icon={<ActivitySvg />}
-					iconClass='iconBlue'
-					accent='accentBlue'
-				/>
-				<MetricCard
-					label='Đang chờ thẩm định'
-					value={kpi.by_status.submitted}
-					loading={statsLoading}
-					delta={
-						kpi.by_status.submitted > 0
-							? `${kpi.by_status.submitted} hồ sơ chờ xét duyệt`
-							: 'Không có hồ sơ tồn đọng'
-					}
-					deltaType={kpi.by_status.submitted > 5 ? 'down' : 'neutral'}
-					icon={<InfoSvg />}
-					iconClass='iconAttention'
-					accent='accentAttention'
-				/>
-				<MetricCard
-					label='Chưa thông qua / Bổ sung'
-					value={kpi.by_status.rejected + kpi.by_status.supplement}
-					loading={statsLoading}
-					delta={
-						kpi.total > 0
-							? `${(((kpi.by_status.rejected + kpi.by_status.supplement) / kpi.total) * 100).toFixed(1)}% cần hoàn thiện lại`
-							: undefined
-					}
-					deltaType={kpi.by_status.rejected > 0 ? 'down' : 'neutral'}
-					icon={<ClipboardCheckSvg />}
-					iconClass='iconPurple'
-					accent='accentPurple'
-				/>
-			</div>
-
-			{/* Đợt nghiên cứu & Hội đồng */}
-			<div className={styles.summaryStrip}>
-				{[
-					{ label: 'Đợt nghiên cứu đang mở', value: summary?.rounds_active, to: '/admin/rounds' },
-					{ label: 'Hội đồng khoa học', value: summary?.councils_total, to: '/admin/councils' },
-					{ label: 'Hội đồng sắp bảo vệ', value: summary?.councils_upcoming, to: '/admin/councils' },
-					{ label: 'Đề tài đã hủy', value: kpi.by_status.cancelled, to: '/admin/topics' },
-				].map((it) => (
-					<button
-						key={it.label}
-						type='button'
-						className={styles.summaryItem}
-						onClick={() => navigate(it.to)}
-					>
-						<span className={styles.summaryValue}>
-							{statsLoading ? '…' : (it.value ?? 0).toLocaleString('vi-VN')}
-						</span>
-						<span className={styles.summaryLabel}>{it.label}</span>
-					</button>
-				))}
-			</div>
-
-			{/* Tiến độ đánh giá của Hội đồng Khoa học */}
-			<CouncilProgressStrip
-				data={stats?.council_progress}
-				loading={statsLoading}
-				error={statsError}
+			<AttentionStrip
+				loading={loading}
+				error={error}
+				items={[
+					{
+						kind: 'pending',
+						count: st?.submitted ?? 0,
+						label: 'đề tài chờ thẩm định',
+						to: '/admin/approvals',
+					},
+					{
+						kind: 'warn',
+						count: atRisk,
+						label: 'đề tài cần đôn đốc tiến độ',
+						to: '/admin/councils',
+					},
+					{
+						kind: 'warn',
+						count: st?.supplement ?? 0,
+						label: 'hồ sơ đang chờ bổ sung',
+						to: '/admin/topics',
+					},
+					{
+						kind: 'info',
+						count: summary?.councils_upcoming ?? 0,
+						label: 'hội đồng sắp bảo vệ',
+						to: '/admin/councils',
+					},
+				]}
 			/>
 
-			{/* ── TẦNG 2: HỆ THỐNG BIỂU ĐỒ PHÂN TÍCH (2x2 CÂN ĐỐI) ── */}
-			<div className={styles.chartsGridSection}>
-				{/* Hàng 1: Cơ cấu trạng thái & Xu hướng đăng ký theo lĩnh vực */}
-				<div className={styles.chartsGridPair}>
-					<StatusPieChart
-						pieData={pieData}
-						loading={statsLoading}
-						error={statsError}
-					/>
-					<TrendBarChart
-						trendRows={trendRows}
-						trendCats={trendCats}
-						loading={statsLoading}
-						error={statsError}
-					/>
-				</div>
+			<KpiBand
+				loading={loading}
+				items={[
+					{
+						label: 'Tổng hồ sơ NCKH',
+						value: fmt(total),
+						context: `${fmt(articleCount('de_tai'))} đề tài · ${fmt(articleCount('bai_bao'))} bài báo · ${fmt(summary?.topics_this_year)} năm ${year}`,
+						to: '/admin/topics',
+					},
+					{
+						label: 'Đã phê duyệt',
+						value: fmt(st?.approved),
+						context: total > 0 ? `${pct((st?.approved ?? 0) / total)} tổng số hồ sơ` : undefined,
+					},
+					{
+						label: 'Đợt nghiên cứu đang mở',
+						value: fmt(summary?.rounds_active),
+						context: `${fmt(summary?.councils_total)} hội đồng khoa học`,
+						to: '/admin/rounds',
+					},
+					{
+						label: 'Đánh giá tiến độ của hội đồng',
+						value: progressPct === null ? '—' : <>{progressPct}<small>%</small></>,
+						context:
+							progress && progress.expected > 0
+								? `${fmt(progress.completed)}/${fmt(progress.expected)} lượt hoàn tất${behind > 0 ? ` · ${fmt(behind)} chậm tiến độ` : ''}`
+								: 'Chưa có kế hoạch đánh giá',
+						to: '/admin/councils',
+					},
+				]}
+			/>
 
-				{/* Hàng 2: Phân bố theo Khoa/Phòng & theo cấp quản lý */}
-				<div className={styles.chartsGridPairReverse}>
-					<DeptBarChart
-						deptBarData={deptBarData}
-						deptCats={deptCats}
-						loading={statsLoading}
-						error={statsError}
-					/>
-					<HorizontalBarChart
-						title='Đề tài theo cấp quản lý'
-						subtitle='Số đề tài NCKH theo cấp (cơ sở, tỉnh, bộ...)'
-						data={levelData}
-						loading={statsLoading}
-						error={statsError}
-						unitLabel='đề tài'
-					/>
-				</div>
-			</div>
-
-			{/* ── TẦNG 4: NGHIỆP VỤ CHI TIẾT & NHẬT KÝ THẨM ĐỊNH ── */}
-			<div className={styles.operationsGrid}>
-				{/* Thanh chuyển đổi tab: hàng riêng phía trên bảng, không tính vào chiều cao đối chiếu với cột phụ */}
-				<div className={styles.sectionSwitcher}>
-					<button
-						type='button'
-						className={`${styles.switcherBtn} ${tableMode === 'topics' ? styles.switcherBtnActive : ''}`}
-						onClick={() => setTableMode('topics')}
-					>
-						Danh mục Đề tài Nghiên cứu
-					</button>
-					<button
-						type='button'
-						className={`${styles.switcherBtn} ${tableMode === 'councils' ? styles.switcherBtnActive : ''}`}
-						onClick={() => setTableMode('councils')}
-					>
-						Kế hoạch Hội đồng Đánh giá & Bảo vệ
-					</button>
-				</div>
-
-				{/* Cột chính: Bảng tác vụ — cùng hàng lưới với cột phụ nên cao bằng nhau */}
-				<div className={styles.operationsMain}>
-					{tableMode === 'topics' ? (
-						<TopicTable
-							topics={topics}
-							loading={topicsLoading}
-							error={topicsError}
-							total={topicsTotal}
-							safePage={safePage}
-							totalPages={totalPages}
-							searchInput={searchInput}
-							levelFilter={levelFilter}
-							deptFilter={deptFilter}
-							levels={levels}
-							departments={departments}
-							activeTab={activeTab}
-							stats={stats}
-							onSearch={handleSearchInput}
-							onFilter={handleFilter}
-							onTab={handleTab}
-							onPageChange={handlePageChange}
-							pageSize={pageSize}
-							onPageSizeChange={handlePageSizeChange}
-						/>
-					) : (
-						<UpcomingCouncilsTable
-							councils={upcomingCouncils}
-							loading={councilsLoading}
-							error={councilsError}
+			<div className={dk.grid2even}>
+				<Panel
+					title='Hồ sơ theo trạng thái'
+					subtitle='Toàn bộ đề tài và bài báo trong hệ thống'
+				>
+					{panelState(loading, error, total === 0) ?? (
+						<ShareBar
+							data={statusShare}
+							unit='hồ sơ'
 						/>
 					)}
-				</div>
+				</Panel>
+				<Panel
+					title='Đề tài theo cấp quản lý'
+					subtitle='Cơ sở, tỉnh, bộ…'
+				>
+					{panelState(loading, error, levels.length === 0) ?? <RankBars data={levels} />}
+				</Panel>
+			</div>
 
-				{/* Cột phụ: Nhật ký thẩm định & Đơn vị nghiên cứu tiêu biểu */}
-				<div className={styles.operationsSidebar}>
-					{/* Recent approvals */}
-					<div className={styles.approvalCard}>
-						<div className={styles.cardHeader}>
-							<span className={styles.cardTitle}>Nhật ký thẩm định gần đây</span>
-							<span
-								className={styles.cardViewAll}
-								onClick={() => navigate('/admin/approvals')}
-							>
-								Xem toàn bộ →
-							</span>
-						</div>
-						<div className={styles.approvalList}>
-							{statsLoading ? (
-								Array.from({ length: 4 }).map((_, i) => (
-									<div
-										key={i}
-										className={styles.approvalItem}
-									>
-										<div
-											className={`${styles.approvalAvatar} ${styles.skeleton}`}
-										/>
-										<div className={styles.approvalInfo}>
-											<div
-												className={styles.skeleton}
-												style={{
-													height: 10,
-													width: 60,
-													marginBottom: 4,
-													borderRadius: 4,
-												}}
-											/>
-											<div
-												className={styles.skeleton}
-												style={{
-													height: 13,
-													width: '70%',
-													marginBottom: 4,
-													borderRadius: 4,
-												}}
-											/>
-											<div
-												className={styles.skeleton}
-												style={{ height: 10, width: '50%', borderRadius: 4 }}
-											/>
-										</div>
-									</div>
-								))
-							) : statsError || !stats?.recent_approvals?.length ? (
-								<div
-									style={{
-										padding: '24px',
-										textAlign: 'center',
-										color: 'var(--color-gray-400)',
-										fontSize: 13,
-									}}
-								>
-									{statsError
-										? 'Không tải được dữ liệu'
-										: 'Chưa có nhật ký thẩm định nào'}
-								</div>
-							) : (
-								stats.recent_approvals.map((apv) => {
-									const cfg = APPROVAL_CONFIG[apv.status] ?? {
-										label: apv.status,
-										tone: 'gray' as const,
-									};
-									const name = apv.approver_name ?? 'N/A';
-									const initials =
-										name
-											.split(' ')
-											.slice(-2)
-											.map((w: string) => w[0])
-											.join('')
-											.toUpperCase() || 'NA';
-									return (
-										<div
-											key={apv.id}
-											className={styles.approvalItem}
-										>
-											<div className={styles.approvalAvatar}>{initials}</div>
-											<div className={styles.approvalInfo}>
-												<div className={styles.approvalTopicId}>
-													{apv.topic_id}
-												</div>
-												<div className={styles.approvalTopicTitle}>
-													{apv.topic_title}
-												</div>
-												<div className={styles.approvalMeta}>
-													{name}
-													{apv.comment ? ` · ${apv.comment}` : ''}
-												</div>
-											</div>
-											<div className={styles.approvalRight}>
-												<Badge tone={cfg.tone}>{cfg.label}</Badge>
-												<span className={styles.approvalDate}>
-													{formatDate(apv.created_at)}
-												</span>
-											</div>
-										</div>
-									);
-								})
-							)}
-						</div>
-					</div>
+			<Panel
+				title='Đề tài đăng ký theo lĩnh vực'
+				subtitle='Theo năm đăng ký; tối đa 6 lĩnh vực nhiều đề tài nhất, mỗi dòng một thang đo'
+			>
+				{panelState(loading, error, trendSeries.length === 0 || trendYears.length === 0) ?? (
+					<ActivityRows
+						labels={trendYears}
+						series={trendSeries}
+						highlightIndex={lastIsThisYear ? trendYears.length - 1 : null}
+						totalLabel='Tổng'
+					/>
+				)}
+			</Panel>
 
-					{/* Department summary */}
-					<div className={styles.deptSummaryCard}>
-						<div className={styles.cardHeader}>
-							<span className={styles.cardTitle}>Đơn vị nghiên cứu tiêu biểu</span>
-							<span
-								className={styles.cardViewAll}
-								onClick={() => navigate('/admin/departments')}
-							>
-								Chi tiết →
-							</span>
-						</div>
-						<div className={styles.deptList}>
-							{statsLoading
-								? Array.from({ length: 5 }).map((_, i) => (
-										<div
-											key={i}
-											className={styles.deptItem}
-										>
-											<div
-												className={styles.skeleton}
-												style={{ width: 18, height: 14, borderRadius: 4 }}
-											/>
-											<div style={{ flex: 1, minWidth: 0 }}>
-												<div
-													className={styles.skeleton}
-													style={{
-														height: 13,
-														width: '60%',
-														marginBottom: 5,
-														borderRadius: 4,
-													}}
-												/>
-												<div
-													className={styles.skeleton}
-													style={{ height: 4, borderRadius: 4 }}
-												/>
-											</div>
-										</div>
-									))
-								: (stats?.by_department ?? []).map((dept, i) => {
-										const max = stats!.by_department[0]?.total ?? 1;
-										return (
-											<div
-												key={dept.name}
-												className={styles.deptItem}
-											>
-												<span className={styles.deptRank}>{i + 1}</span>
-												<div className={styles.deptInfo}>
-													<div className={styles.deptName}>{dept.name}</div>
-													<div className={styles.deptBarWrap}>
-														<div className={styles.deptBar}>
-															<div
-																className={styles.deptBarFill}
-																style={{ width: `${(dept.total / max) * 100}%` }}
-															/>
-														</div>
-														<span className={styles.deptCount}>{dept.total}</span>
-													</div>
-													<div
-														style={{
-															display: 'flex',
-															flexWrap: 'wrap',
-															gap: '4px 8px',
-															marginTop: 4,
-														}}
-													>
-														{dept.categories.map((cat, ci) => (
-															<span
-																key={cat.name}
-																style={{
-																	fontSize: 11,
-																	color: 'var(--color-gray-500)',
-																}}
-															>
-																<span
-																	style={{
-																		display: 'inline-block',
-																		width: 7,
-																		height: 7,
-																		borderRadius: '50%',
-																		background:
-																			CHART_COLORS[ci % CHART_COLORS.length],
-																		marginRight: 3,
-																		verticalAlign: 'middle',
-																	}}
-																/>
-																{cat.name}: {cat.count}
-															</span>
-														))}
-													</div>
-												</div>
-											</div>
-										);
-									})}
-						</div>
-					</div>
-				</div>
+			<Panel
+				title='Khoa/phòng chủ trì'
+				subtitle='Bấm tiêu đề cột để xếp hạng lại'
+				action={{ label: 'Khoa/phòng', to: '/admin/departments' }}
+			>
+				{panelState(loading, error, depts.length === 0, 'Chưa có dữ liệu khoa/phòng', 240) ?? (
+					<RankTable<DeptStat & Record<string, unknown>>
+						rows={depts as (DeptStat & Record<string, unknown>)[]}
+						nameKey='name'
+						nameLabel='Khoa / Phòng'
+						defaultSort='total'
+						itemLabel='khoa/phòng'
+						caption='Hồ sơ NCKH theo khoa/phòng chủ trì'
+						columns={[
+							{ key: 'total', label: 'Tổng hồ sơ' },
+							{ key: 'de_tai', label: 'Đề tài' },
+							{ key: 'bai_bao', label: 'Bài báo' },
+							{ key: 'approved', label: 'Đã duyệt' },
+							{ key: 'approval_rate', label: 'Tỷ lệ duyệt', render: (r) => pct(r.approval_rate) },
+						]}
+					/>
+				)}
+			</Panel>
+
+			<div className={dk.grid2even}>
+				<Panel
+					title='Hội đồng sắp bảo vệ'
+					subtitle='Hội đồng đã chốt, theo ngày bảo vệ gần nhất'
+					action={{ label: 'Hội đồng', to: '/admin/councils' }}
+				>
+					{panelState(
+						councilsLoading,
+						councilsError,
+						upcomingCouncils.length === 0,
+						'Chưa có lịch bảo vệ nào sắp tới',
+					) ?? (
+						<ShortList
+							items={upcomingCouncils.map((c) => ({
+								id: String(c.id),
+								title: c.name,
+								meta: [c.round_name, c.chairman_name && `Chủ tịch: ${c.chairman_name}`]
+									.filter(Boolean)
+									.join(' · '),
+								side: c.defense_date ? formatDate(c.defense_date) : '—',
+								sideSub: `${fmt(c.topic_count)} đề tài`,
+								to: '/admin/councils',
+							}))}
+						/>
+					)}
+				</Panel>
+
+				<Panel
+					title='Thẩm định gần đây'
+					action={{ label: 'Phê duyệt', to: '/admin/approvals' }}
+				>
+					{panelState(loading, error, approvals.length === 0, 'Chưa có lượt thẩm định nào') ?? (
+						<ShortList
+							items={approvals.map((a) => {
+								const cfg = APPROVAL_CONFIG[a.status] ?? { label: a.status, tone: 'gray' as const };
+								return {
+									id: a.id,
+									title: a.topic_title,
+									meta: [a.approver_name, a.comment].filter(Boolean).join(' · '),
+									side: <Badge tone={cfg.tone}>{cfg.label}</Badge>,
+									sideSub: formatDate(a.created_at),
+								};
+							})}
+						/>
+					)}
+				</Panel>
 			</div>
 		</AdminLayout>
 	);
