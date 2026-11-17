@@ -12,6 +12,8 @@ interface PendingTopicsCardProps {
 	submitError: string;
 	submittingAll: boolean;
 	submitAll: () => void;
+	/** id để thanh quyết định dưới form cuộn tới danh sách */
+	id?: string;
 }
 
 export function PendingTopicsCard({
@@ -21,9 +23,13 @@ export function PendingTopicsCard({
 	submitError,
 	submittingAll,
 	submitAll,
+	id,
 }: PendingTopicsCardProps) {
 	return (
-		<div className={styles.pendingCard}>
+		<div
+			id={id}
+			className={styles.pendingCard}
+		>
 			<div className={styles.pendingHeader}>
 				<span>Danh sách đăng ký chờ gửi</span>
 				<span className={styles.pendingBadge}>{pendingTopics.length}</span>

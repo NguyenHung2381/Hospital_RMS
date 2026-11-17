@@ -60,7 +60,7 @@ function ModuleCard({ title, subtitle, rows, loading, linkLabel, onOpen }: Modul
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>{title}</div>
+					<h2 className={styles.chartTitle}>{title}</h2>
 					<div className={styles.chartSubtitle}>{subtitle}</div>
 				</div>
 				<button
@@ -284,7 +284,7 @@ export default function OverviewDashboard() {
 			<div className={styles.chartCard}>
 				<div className={styles.chartCardHeader}>
 					<div>
-						<div className={styles.chartTitle}>Hoạt động theo khoa/phòng</div>
+						<h2 className={styles.chartTitle}>Hoạt động theo khoa/phòng</h2>
 						<div className={styles.chartSubtitle}>
 							Tài khoản, đề tài NCKH, đào tạo và hội thảo - CME năm {year} của từng đơn vị
 						</div>

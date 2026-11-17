@@ -37,7 +37,7 @@ export function HorizontalBarChart({
 		<div className={styles.chartCard}>
 			<div className={styles.chartCardHeader}>
 				<div>
-					<div className={styles.chartTitle}>{title}</div>
+					<h2 className={styles.chartTitle}>{title}</h2>
 					{subtitle && <div className={styles.chartSubtitle}>{subtitle}</div>}
 				</div>
 			</div>
@@ -77,7 +77,7 @@ export function HorizontalBarChart({
 						<XAxis
 							type='number'
 							allowDecimals={false}
-							tick={{ fontSize: 11, fill: '#9ca3af' }}
+							tick={{ fontSize: 12, fill: '#526574' }}
 							axisLine={false}
 							tickLine={false}
 						/>

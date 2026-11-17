@@ -64,7 +64,9 @@ export function useMyTopics() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const [search, setSearch] = useState('');
-	const [category, setCategory] = useState<CategoryTab>('department');
+	// Mặc định 'Đề tài tôi tham gia': người vừa đăng ký phải thấy ngay đề tài của mình,
+	// không phải danh sách khoa (có thể đang rỗng).
+	const [category, setCategory] = useState<CategoryTab>('mine');
 	const [_activeTab, setActiveTab] = useState<FilterTab | null>(null);
 	const [userSelectedId, setSelectedId] = useState<string | null>(null);
 	const [detailLoading, setDetailLoading] = useState(false);

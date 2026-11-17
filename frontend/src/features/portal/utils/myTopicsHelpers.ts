@@ -29,9 +29,9 @@ export const STATUS_CFG = {
 	},
 	supplement: {
 		...BASE_STATUS_CFG.supplement,
-		dot: '#8b5cf6',
-		bg: '#ede9fe',
-		color: '#5b21b6',
+		dot: '#1a6abd',
+		bg: '#e6f1fb',
+		color: '#0c447c',
 		label: 'Cần bổ sung',
 	},
 	cancelled: {

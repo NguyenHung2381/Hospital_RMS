@@ -74,9 +74,9 @@ export const STATUS_CFG = {
 	supplement: {
 		label: 'Bổ sung',
 		tone: 'blue',
-		dot: '#8b5cf6',
-		bg: '#ede9fe',
-		color: '#5b21b6',
+		dot: '#1a6abd',
+		bg: '#e6f1fb',
+		color: '#0c447c',
 	},
 	cancelled: {
 		label: 'Đã hủy',
@@ -99,7 +99,7 @@ export const EDIT_BANNER_STYLE: Record<
 > = {
 	topic_registration: { bg: '#dcfce7', color: '#166534' },
 	edit: { bg: '#dcfce7', color: '#166534' },
-	supplement: { bg: '#ede9fe', color: '#5b21b6' },
+	supplement: { bg: '#e6f1fb', color: '#0c447c' },
 	report_submission: { bg: '#dbeafe', color: '#1e40af' },
 };
 

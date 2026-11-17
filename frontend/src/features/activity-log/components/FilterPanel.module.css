@@ -113,7 +113,7 @@ select.control {
 	height: 18px;
 	padding: 0 5px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: #fff;
 	font-size: var(--font-size-2xs);
 	line-height: 18px;
@@ -154,13 +154,13 @@ select.control {
 	color: var(--color-primary-dark);
 }
 .quickChipOn {
-	border-color: var(--color-primary);
-	background: var(--color-primary);
+	border-color: var(--color-primary-dark);
+	background: var(--color-primary-dark);
 	color: #fff;
 }
 .quickChipOn:hover {
 	color: #fff;
-	background: var(--color-primary-dark);
+	background: var(--color-primary-darker);
 }
 
 /* ── Lưới bộ lọc nâng cao ───────────────────────────────────────────────── */

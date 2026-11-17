@@ -141,7 +141,7 @@ export default function TopicRegister() {
 						<ListSvg />
 					</div>
 					<div className={styles.emptyTitle}>
-						Chưa có vòng nghiên cứu nào đang mở
+						Chưa có đợt nghiên cứu nào đang mở
 					</div>
 					<div className={styles.emptyDesc}>
 						Vui lòng liên hệ quản trị viên để biết thêm thông tin.
@@ -325,6 +325,7 @@ export default function TopicRegister() {
 										key={t}
 										type='button'
 										className={`${styles.statusPill} ${form.article_type === t ? styles.statusPillActive : ''}`}
+										aria-pressed={form.article_type === t}
 										onClick={() => setField('article_type', t)}
 									>
 										{ARTICLE_TYPE_CFG[t].tabLabel}
@@ -389,7 +390,7 @@ export default function TopicRegister() {
 							)}
 
 							<div className={styles.formSection}>
-								Phân loại &amp; Vòng nghiên cứu
+								Phân loại &amp; Đợt nghiên cứu
 							</div>
 
 							<div className={styles.roundCard}>
@@ -398,7 +399,7 @@ export default function TopicRegister() {
 								</span>
 								<div className={styles.roundCardBody}>
 									<span className={styles.roundCardLabel}>
-										Vòng nghiên cứu
+										Đợt nghiên cứu
 									</span>
 									<span
 										className={styles.roundCardName}
@@ -608,38 +609,58 @@ export default function TopicRegister() {
 							/>
 						</div>
 
+						{/* Thanh quyết định dính đáy màn hình suốt form dài: thao tác chính luôn
+						    trong tầm nhìn. Đã có mục trong danh sách → "Gửi tất cả" là chính,
+						    "Thêm vào danh sách" lùi về phụ. Xóa nội dung = ghost, tách sang trái. */}
 						<div className={styles.formFooter}>
-							<span
-								style={{
-									flex: 1,
-									fontSize: 12,
-									color: 'var(--color-gray-400)',
-								}}
+							<button
+								type='button'
+								className={styles.btnGhost}
+								onClick={clearForm}
 							>
-								{pendingTopics.length > 0
-									? `${pendingTopics.length} mục đang chờ gửi`
-									: 'Chưa có mục nào trong danh sách'}
+								Xóa nội dung đã nhập
+							</button>
+							<span className={styles.footerStatus}>
+								{pendingTopics.length > 0 ? (
+									<button
+										type='button'
+										className={styles.footerStatusLink}
+										onClick={() =>
+											document
+												.getElementById('pending-topics')
+												?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+										}
+									>
+										{pendingTopics.length} mục đang chờ gửi · Xem danh sách
+									</button>
+								) : (
+									'Chưa có mục nào trong danh sách'
+								)}
 							</span>
 							<button
 								type='button'
-								className={styles.btnSecondary}
-								onClick={clearForm}
-							>
-								Xóa form
-							</button>
-							<button
-								type='button'
-								className={styles.btnPrimary}
+								className={pendingTopics.length > 0 ? styles.btnSecondary : styles.btnPrimary}
 								onClick={addTopicToList}
 							>
 								+ Thêm vào danh sách
 							</button>
+							{pendingTopics.length > 0 && (
+								<button
+									type='button'
+									className={styles.btnPrimary}
+									onClick={() => submitAll('submitted')}
+									disabled={submittingAll}
+								>
+									{submittingAll ? 'Đang gửi…' : `Gửi tất cả (${pendingTopics.length})`}
+								</button>
+							)}
 						</div>
 					</div>
 
 					{/* PENDING TOPICS CARD */}
 					{pendingTopics.length > 0 && (
 						<PendingTopicsCard
+							id='pending-topics'
 							pendingTopics={pendingTopics}
 							rounds={rounds}
 							removeTopicFromList={removeTopicFromList}

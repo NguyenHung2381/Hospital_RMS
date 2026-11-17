@@ -121,7 +121,7 @@
 	background: none;
 	font: inherit;
 	font-weight: var(--font-weight-semibold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	cursor: pointer;
 }
 

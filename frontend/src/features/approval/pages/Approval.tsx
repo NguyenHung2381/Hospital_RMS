@@ -1,9 +1,5 @@
 import {
-	CheckCircleSvg,
-	ClockSvg,
-	MessageSvg,
 	WarnSvg,
-	XCircleSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ApprovalDetailPanel } from '../components/ApprovalDetailPanel';
@@ -53,67 +49,18 @@ export default function Approval() {
 		handleBulkAction,
 	} = state;
 
-	const headerActions = (
-		<div
-			style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}
-		>
-			{stats.pending > 0 && (
-				<div
-					style={{
-						display: 'flex',
-						alignItems: 'center',
-						gap: 10,
-						padding: '7px 18px',
-						background: '#FAEEDA',
-						border: '1.5px solid #EF9F27',
-						borderRadius: 10,
-					}}
-				>
-					<WarnSvg />
-					<div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-						<span
-							style={{
-								fontSize: 20,
-								fontWeight: 800,
-								color: '#7C4A00',
-								lineHeight: 1,
-							}}
-						>
-							{stats.pending}
-						</span>
-						<span
-							style={{
-								fontSize: 12,
-								fontWeight: 600,
-								color: '#633806',
-								whiteSpace: 'nowrap',
-							}}
-						>
-							đề tài chờ phê duyệt
-						</span>
-					</div>
-					<div
-						style={{
-							width: 1,
-							height: 24,
-							background: '#EF9F2766',
-							margin: '0 4px',
-						}}
-					/>
-					<span
-						style={{
-							fontSize: 11,
-							fontWeight: 500,
-							color: '#9A5B00',
-							whiteSpace: 'nowrap',
-						}}
-					>
-						Cần xử lý sớm
-					</span>
-				</div>
-			)}
-		</div>
-	);
+	// Tóm tắt hàng đợi ở header — chỉ hiện khi có hồ sơ chờ (màu hổ phách = cần chú ý)
+	const headerActions =
+		stats.pending > 0 ? (
+			<div
+				className={styles.pendingSummary}
+				role='status'
+			>
+				<WarnSvg />
+				<span className={styles.pendingSummaryCount}>{stats.pending}</span>
+				<span className={styles.pendingSummaryText}>đề tài chờ phê duyệt</span>
+			</div>
+		) : null;
 
 	return (
 		<AdminLayout
@@ -121,81 +68,8 @@ export default function Approval() {
 			pageSubtitle='Xem xét và quyết định hồ sơ đề tài nghiên cứu khoa học'
 			headerActions={headerActions}
 		>
-			{/* Stats */}
-			<div className={styles.statsRow}>
-				{[
-					{
-						key: 'pending' as const,
-						value: stats.pending,
-						label: 'Chờ phê duyệt',
-						iconCls: 'iconAttention',
-						cardCls: 'attention',
-						hintCls: 'hintAttention',
-						hint: 'Cần xử lý sớm',
-					},
-					{
-						key: 'approved' as const,
-						value: stats.approved,
-						label: 'Đã phê duyệt',
-						iconCls: 'iconGreen',
-						cardCls: 'green',
-						hintCls: 'hintGreen',
-						hint: 'Hoàn tất',
-					},
-					{
-						key: 'rejected' as const,
-						value: stats.rejected,
-						label: 'Không phê duyệt',
-						iconCls: 'iconRed',
-						cardCls: 'red',
-						hintCls: 'hintRed',
-						hint: 'Không đạt yêu cầu',
-					},
-					{
-						key: 'info_requested' as const,
-						value: stats.info_requested,
-						label: 'Chờ bổ sung',
-						iconCls: 'iconBlue',
-						cardCls: 'blue',
-						hintCls: 'hintBlue',
-						hint: 'Đang chờ phản hồi',
-					},
-				].map((s) => (
-					<div
-						key={s.key}
-						className={`${styles.statCard} ${styles[s.cardCls as keyof typeof styles]} ${activeTab === s.key ? styles.statActive : ''}`}
-						role='button'
-						tabIndex={0}
-						aria-pressed={activeTab === s.key}
-						onClick={() => setActiveTab(s.key)}
-						onKeyDown={(e) => {
-							if (e.key === 'Enter' || e.key === ' ') {
-								e.preventDefault();
-								setActiveTab(s.key);
-							}
-						}}
-					>
-						<div
-							className={`${styles.statIcon} ${styles[s.iconCls as keyof typeof styles]}`}
-						>
-							{s.key === 'pending' && <ClockSvg />}
-							{s.key === 'approved' && <CheckCircleSvg />}
-							{s.key === 'rejected' && <XCircleSvg />}
-							{s.key === 'info_requested' && <MessageSvg />}
-						</div>
-						<div className={styles.statBody}>
-							<div className={styles.statValue}>{s.value}</div>
-							<div className={styles.statLabel}>{s.label}</div>
-							<div
-								className={`${styles.statHint} ${styles[s.hintCls as keyof typeof styles]}`}
-							>
-								{s.hint}
-							</div>
-						</div>
-					</div>
-				))}
-			</div>
-
+			{/* Không có hàng thẻ thống kê: 4 thẻ chính là 4 tab của danh sách (cùng số, cùng
+			    tác dụng lọc). Số chờ duyệt đã nằm ở header + badge tab "Chờ duyệt". */}
 			{/* Split layout */}
 			<div className={styles.splitLayout}>
 				<ApprovalListPanel

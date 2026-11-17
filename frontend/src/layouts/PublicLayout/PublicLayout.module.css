@@ -72,7 +72,7 @@
 }
 .navLink:hover,
 .navLinkActive {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 .navLinkPrimary {
@@ -82,13 +82,13 @@
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-white);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	padding: var(--space-2) var(--space-4);
 	border-radius: var(--radius-lg);
 	text-decoration: none;
 }
 .navLinkPrimary:hover {
-	background: var(--color-primary-dark);
+	background: var(--color-primary-darker);
 }
 
 .main {

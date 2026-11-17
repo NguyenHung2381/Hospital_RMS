@@ -203,7 +203,7 @@ select:not([multiple]) optgroup {
 		select:not([multiple]) option::checkmark {
 			order: 1;
 			margin-inline-start: auto;
-			color: var(--color-primary);
+			color: var(--color-primary-dark);
 			font-weight: var(--font-weight-bold);
 		}
 

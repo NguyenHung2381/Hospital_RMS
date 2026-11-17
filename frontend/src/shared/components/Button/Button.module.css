@@ -100,13 +100,13 @@
 }
 
 .primary {
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
-	border-color: var(--color-primary);
+	border-color: var(--color-primary-dark);
 }
 .primary:hover:not(:disabled) {
-	background: var(--color-primary-dark);
-	border-color: var(--color-primary-dark);
+	background: var(--color-primary-darker);
+	border-color: var(--color-primary-darker);
 }
 
 /* Spinner (keyframes cục bộ trong module này) */
@@ -126,5 +126,14 @@
 @keyframes spin {
 	to {
 		transform: rotate(360deg);
+	}
+}
+
+/* Màn cảm ứng: vùng bấm ≥44px (ngón tay), giữ nguyên cỡ chữ/icon */
+@media (pointer: coarse) {
+	.btn,
+	.md,
+	.sm {
+		min-height: 44px;
 	}
 }

@@ -37,7 +37,7 @@ export const STATUS_CFG: Record<TopicStatus, { label: string; dot: string }> = {
 	submitted: { label: 'Chờ phê duyệt', dot: '#f59e0b' },
 	approved: { label: 'Đã phê duyệt', dot: '#22c55e' },
 	rejected: { label: 'Không phê duyệt', dot: '#ef4444' },
-	supplement: { label: 'Yêu cầu bổ sung', dot: '#8b5cf6' },
+	supplement: { label: 'Yêu cầu bổ sung', dot: '#1a6abd' },
 	cancelled: { label: 'Đã hủy', dot: '#9ca3af' },
 };
 

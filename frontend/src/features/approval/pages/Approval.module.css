@@ -49,6 +49,9 @@
 .iconBlue {
 	composes: iconBlue from '../../../shared/components/Card/StatCard.module.css';
 }
+.iconGray {
+	composes: iconGray from '../../../shared/components/Card/StatCard.module.css';
+}
 .statBody {
 	composes: statBody from '../../../shared/components/Card/StatCard.module.css';
 }
@@ -76,18 +79,23 @@
 .hintBlue {
 	color: var(--tone-blue-fg);
 }
+.hintMuted {
+	composes: subMuted from '../../../shared/components/Card/StatCard.module.css';
+}
 
 /* =============================================
    MAIN LAYOUT: split panel
    Trái: danh sách phê duyệt | Phải: chi tiết
 ============================================= */
+/* Không còn hàng thẻ thống kê phía trên → khung chia đôi lấp đầy màn hình
+   (trừ thanh trên + tiêu đề trang + lề). Cột danh sách 400px, khe = nhịp trang. */
 .splitLayout {
 	display: grid;
-	grid-template-columns: 420px 1fr;
-	gap: var(--space-5);
+	grid-template-columns: 400px 1fr;
+	gap: var(--space-6);
 	align-items: stretch;
-	height: calc(100vh - 320px);
-	height: calc(100dvh - 320px);
+	height: calc(100vh - 200px);
+	height: calc(100dvh - 200px);
 	min-height: 520px;
 }
 
@@ -176,15 +184,12 @@
 }
 
 /* Tabs */
+/* Xuống dòng khi hẹp — trước đây cuộn ngang với thanh cuộn ẩn nên tab cuối bị cắt chữ */
 .listTabs {
 	display: flex;
+	flex-wrap: wrap;
 	border-bottom: 1px solid var(--color-gray-100);
 	flex-shrink: 0;
-	overflow-x: auto;
-	overflow-y: hidden;
-	scrollbar-width: none;
-	-ms-overflow-style: none;
-	scroll-behavior: smooth;
 }
 
 .listTabs::-webkit-scrollbar {
@@ -193,7 +198,12 @@
 
 .listTab {
 	flex: 1 0 auto;
-	padding: var(--space-2) var(--space-3);
+	background: none;
+	border-top: none;
+	border-left: none;
+	border-right: none;
+	font-family: inherit;
+	padding: var(--space-2) var(--space-2);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-500);
@@ -229,6 +239,12 @@
 .listTabActive .tabCount {
 	background: var(--color-primary-pale);
 	color: var(--color-primary-dark);
+}
+/* "Chờ duyệt" còn hồ sơ → việc đang chờ bạn (hồng) */
+.tabCount.tabCountAttention,
+.listTabActive .tabCount.tabCountAttention {
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
 }
 
 /* List items */
@@ -266,16 +282,7 @@
 
 .listItemSelected {
 	background: var(--color-primary-pale) !important;
-}
-.listItemSelected::before {
-	content: '';
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 3px;
-	background: var(--color-primary);
-	border-radius: 0 2px 2px 0;
+	box-shadow: inset 0 0 0 1px var(--tone-green-border);
 }
 
 /* Urgency dot */
@@ -801,7 +808,7 @@
 	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 420px;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: modalPopIn 220ms var(--ease-out) both;
 	overflow: hidden;
 }
 
@@ -919,7 +926,7 @@
 	padding: 10px 14px;
 	background: #ffffff;
 	border-radius: var(--radius-xl, 12px);
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1px solid var(--color-gray-200);
 	transition: all 0.2s ease;
 }
 
@@ -927,7 +934,6 @@
 	background: #ffffff;
 	border-color: rgba(16, 185, 129, 0.35);
 	box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
-	transform: translateY(-1px);
 }
 
 .memberAvatar {
@@ -975,7 +981,7 @@
 .memberName {
 	font-size: var(--font-size-compact);
 	font-weight: 600;
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1057,9 +1063,6 @@
    RESPONSIVE
 ============================================= */
 @media (max-width: 1280px) {
-	.statsRow {
-		grid-template-columns: repeat(2, 1fr);
-	}
 	.splitLayout {
 		grid-template-columns: 360px 1fr;
 	}
@@ -1075,37 +1078,24 @@
 	.detailPanel {
 		height: auto !important;
 	}
+	/* Xếp chồng: danh sách gọn (cuộn trong 360px), chi tiết dài tự nhiên theo trang
+	   — không lồng 2 hộp cuộn; khung quyết định dính đáy màn hình khi đọc chi tiết. */
 	.listBody {
-		max-height: 400px !important;
+		max-height: 360px !important;
 	}
 	.detailBody {
-		max-height: 500px !important;
+		max-height: none !important;
+		overflow: visible !important;
 	}
-	.statsRow {
-		grid-template-columns: repeat(2, 1fr) !important;
-		gap: 10px !important;
+	.detailPanel {
+		overflow: visible !important;
 	}
-	.statCard {
-		padding: 12px !important;
-		gap: 10px !important;
-	}
-	.statIcon {
-		width: 36px !important;
-		height: 36px !important;
-		border-radius: var(--radius-lg) !important;
-	}
-	.statIcon svg {
-		width: 18px !important;
-		height: 18px !important;
-	}
-	.statValue {
-		font-size: var(--font-size-2xl) !important;
-	}
-	.statLabel {
-		font-size: var(--font-size-2xs) !important;
-	}
-	.statHint {
-		font-size: var(--font-size-2xs) !important;
+	.actionPanel {
+		position: sticky;
+		bottom: 0;
+		z-index: 2;
+		background: var(--color-white);
+		box-shadow: 0 -1px 0 var(--color-gray-200);
 	}
 	.listTabs {
 		display: flex !important;
@@ -1159,4 +1149,32 @@
 	to {
 		transform: rotate(360deg);
 	}
+}
+
+/* Tóm tắt "N đề tài chờ phê duyệt" ở header trang */
+.pendingSummary {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 6px var(--space-4);
+	border: 1px solid var(--tone-amber-border);
+	border-radius: var(--radius-lg);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	white-space: nowrap;
+}
+.pendingSummary svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+}
+.pendingSummaryCount {
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-bold);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+.pendingSummaryText {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
 }

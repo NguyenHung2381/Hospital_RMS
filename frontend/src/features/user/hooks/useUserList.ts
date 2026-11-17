@@ -274,13 +274,27 @@ export function useUserList(): UserListState {
 		async (id: string) => {
 			const target = users.find((u) => u.id === id);
 			if (!target) return;
-			try {
-				const updated = await updateUserApi(id, {
-					is_active: !target.is_active,
-				});
+			const setActive = async (isActive: boolean) => {
+				const updated = await updateUserApi(id, { is_active: isActive });
 				setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
 				refreshData();
-				showToast('info', updated.is_active ? 'Đã kích hoạt tài khoản' : 'Đã khóa tài khoản');
+				return updated;
+			};
+			try {
+				const updated = await setActive(!target.is_active);
+				if (updated.is_active) {
+					showToast('info', `Đã kích hoạt tài khoản ${target.full_name}`);
+				} else {
+					// Khóa nhầm = người dùng bị chặn đăng nhập ngay → cho hoàn tác 1 chạm
+					showToast('info', `Đã khóa tài khoản ${target.full_name}`, {
+						label: 'Hoàn tác',
+						onClick: () => {
+							setActive(true)
+								.then(() => showToast('success', `Đã mở lại tài khoản ${target.full_name}`))
+								.catch(() => showToast('error', 'Không thể mở lại tài khoản'));
+						},
+					});
+				}
 			} catch {
 				showToast('error', 'Không thể cập nhật trạng thái');
 			}

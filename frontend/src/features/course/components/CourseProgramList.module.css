@@ -107,10 +107,9 @@
 .row:last-child {
 	border-bottom: none;
 }
-/* Rê chuột giống các bảng khác trong app: nền xanh nhạt + vạch xanh bên trái */
+/* Rê chuột giống các bảng khác trong app: nền xanh nhạt */
 .row:hover {
 	background: var(--tone-green-bg);
-	box-shadow: inset 3px 0 0 var(--color-primary);
 }
 .row:hover .name {
 	color: var(--color-primary-dark);

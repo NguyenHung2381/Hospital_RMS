@@ -14,9 +14,9 @@ const theme = {
 		colorWarning: '#f5a623', // --color-warning
 		colorError: '#e84545', // --color-error
 		colorInfo: '#34b8d8', // --color-info
-		colorLink: '#0a9b4a',
+		colorLink: '#087c3b', // --color-primary-dark: chữ xanh trên nền trắng cần ≥4.5:1
 		colorText: '#1a2a35', // --color-gray-800 (màu chữ của body)
-		colorTextSecondary: '#6b8090', // --color-gray-500
+		colorTextSecondary: '#526574', // --color-gray-500
 		colorBorder: '#cbd5dc', // --color-gray-300
 		colorBorderSecondary: '#e2e8ec', // --color-gray-200
 		colorBgLayout: '#f8fafb', // --color-gray-50
@@ -26,6 +26,15 @@ const theme = {
 		borderRadiusLG: 12, // --radius-lg
 		fontFamily: 'var(--font-body)',
 		fontWeightStrong: 600, // --font-weight-semibold: giao diện không đậm hơn 600
+	},
+	// Nút có chữ trắng: nền #087C3B (5.3:1) thay vì #0A9B4A (3.6:1, không đạt
+	// WCAG AA) — giống kit Button. Hover/active đậm dần thay vì sáng lên.
+	components: {
+		Button: {
+			colorPrimary: '#087c3b', // --color-primary-dark
+			colorPrimaryHover: '#066a32', // --color-primary-darker
+			colorPrimaryActive: '#055a2a',
+		},
 	},
 };
 

@@ -13,7 +13,7 @@ import React, {
 	useRef,
 	useState,
 } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import { logout, type LoginUser } from '../../features/auth/api/authApi';
 import { DASHBOARD_TABS } from '../../features/dashboard/constants/dashboardTabs';
@@ -45,6 +45,9 @@ import {
 // ─── STORAGE KEY ──────────────────────────
 const SIDEBAR_KEY = 'rms_sidebar_collapsed';
 const NAV_SCROLL_KEY = 'rms_sidebar_scroll';
+
+// Badge nav nào là "việc đang chờ bạn" (magenta). Các badge khác chỉ là số đếm.
+const PENDING_BADGE_KEYS = new Set(['myTasks', 'notifications']);
 
 // ─── PROPS ────────────────────────────────
 export interface AdminLayoutProps {
@@ -234,20 +237,16 @@ export default function AdminLayout({
 		has(t.perm),
 	);
 
-	// ── Nav click handler ─────────────────────
-	const handleNavClick = (key: string) => {
-		const path = allowedTabs(key)?.[0]?.to ?? KEY_TO_PATH[key];
-		if (path) {
-			setMobileNavOpen(false);
-			navigate(path);
-		}
-	};
+	// ── Nav target ────────────────────────────
+	// Mục nav là link thật (<a href>): mở tab mới / chép link / aria-current được.
+	const navPathOf = (key: string) =>
+		allowedTabs(key)?.[0]?.to ?? KEY_TO_PATH[key] ?? '#';
 
 	// Mỗi trang tự bọc AdminLayout riêng nên sidebar bị remount khi chuyển tab
 	// (mất vị trí cuộn). Khôi phục scrollTop đã lưu trước khi paint; nếu mục
 	// active vẫn nằm ngoài khung (vd vào trang bằng link khác) thì cuộn tới nó.
 	const navRef = useRef<HTMLElement>(null);
-	const activeItemRef = useRef<HTMLButtonElement>(null);
+	const activeItemRef = useRef<HTMLAnchorElement>(null);
 	useLayoutEffect(() => {
 		if (navRef.current)
 			navRef.current.scrollTop =
@@ -267,7 +266,10 @@ export default function AdminLayout({
 
 			{/* ══ SIDEBAR ════════════════════════════ */}
 			<aside
+				id='admin-sidebar'
 				className={`${styles.sidebar} ${effectiveCollapsed ? styles.collapsed : ''} ${mobileNavOpen ? styles.mobileDrawerOpen : ''}`}
+				// Drawer mobile đang đóng nằm ngoài màn hình: không cho Tab / trình đọc màn hình đi vào
+				inert={isMobile && !mobileNavOpen ? true : undefined}
 			>
 				{/* Header */}
 				<div className={styles.sidebarHeader}>
@@ -324,13 +326,14 @@ export default function AdminLayout({
 						<React.Fragment key={group.section}>
 							<div className={styles.navSection}>{group.section}</div>
 							{group.items.map((item) => (
-								<button
+								<Link
 									key={item.key}
 									ref={activePage === item.key ? activeItemRef : undefined}
-									type='button'
+									to={navPathOf(item.key)}
+									aria-current={activePage === item.key ? 'page' : undefined}
 									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
 									data-label={item.label}
-									onClick={() => handleNavClick(item.key)}
+									onClick={() => setMobileNavOpen(false)}
 									onMouseEnter={(e) => {
 										const r = e.currentTarget.getBoundingClientRect();
 										e.currentTarget.style.setProperty(
@@ -345,7 +348,11 @@ export default function AdminLayout({
 									{badges[item.key as keyof typeof badges] !== undefined && (
 										<span
 											className={
-												(badges[item.key as keyof typeof badges] ?? 0) > 50
+												// Magenta CHỈ cho việc đang chờ chính người này xử lý
+												// (myTasks, thông báo chưa đọc) — tổng số đề tài là
+												// thông tin, luôn xám dù lớn bao nhiêu.
+												PENDING_BADGE_KEYS.has(item.key) &&
+												(badges[item.key as keyof typeof badges] ?? 0) > 0
 													? styles.navBadge
 													: styles.navBadgeGray
 											}
@@ -353,7 +360,7 @@ export default function AdminLayout({
 											{badges[item.key as keyof typeof badges]}
 										</span>
 									)}
-								</button>
+								</Link>
 							))}
 						</React.Fragment>
 					))}
@@ -385,9 +392,12 @@ export default function AdminLayout({
 								</button>
 							</div>
 						)}
-						<div
+						<button
+							type='button'
 							className={styles.userCard}
 							title={collapsed ? userName : undefined}
+							aria-haspopup='menu'
+							aria-expanded={userMenuOpen}
 							onClick={() => setUserMenuOpen((o) => !o)}
 						>
 							<div className={styles.userAvatar}>{initials}</div>
@@ -398,7 +408,7 @@ export default function AdminLayout({
 							<span className={styles.userMenuIcon}>
 								<MoreVSvg style={{ width: 14, height: 14 }} />
 							</span>
-						</div>
+						</button>
 					</div>
 				</div>
 			</aside>
@@ -412,6 +422,8 @@ export default function AdminLayout({
 							className={styles.mobileNavTrigger}
 							onClick={() => setMobileNavOpen(true)}
 							aria-label='Mở menu'
+							aria-expanded={mobileNavOpen}
+							aria-controls='admin-sidebar'
 						>
 							<MenuSvg />
 						</button>
@@ -425,7 +437,7 @@ export default function AdminLayout({
 						</div>
 						{/* Breadcrumb */}
 						<div className={styles.breadcrumb}>
-							<span className={styles.breadcrumbItem}>RMS Hospital</span>
+							<span className={styles.breadcrumbItem}>Hospital RMS</span>
 							<span className={styles.breadcrumbSep}>/</span>
 							{breadcrumbs?.map((bc, i) => (
 								<React.Fragment key={i}>

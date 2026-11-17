@@ -264,9 +264,9 @@ export default function Roles() {
 														padding: '2px 9px',
 														borderRadius: 'var(--radius-full)',
 														background:
-															pCount > 0 ? '#eeedfe' : 'var(--color-gray-100)',
+															pCount > 0 ? '#e6f1fb' : 'var(--color-gray-100)',
 														color:
-															pCount > 0 ? '#3c3489' : 'var(--color-gray-400)',
+															pCount > 0 ? '#0c447c' : 'var(--color-gray-400)',
 														fontSize: 11,
 														fontWeight: 600,
 														whiteSpace: 'nowrap',

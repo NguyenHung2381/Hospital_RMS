@@ -146,8 +146,8 @@
 }
 
 .weekdayOn {
-	border-color: var(--color-primary);
-	background: var(--color-primary);
+	border-color: var(--color-primary-dark);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 }
 
@@ -528,7 +528,7 @@
 	height: 14px;
 	padding: 2px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 }
 .dayToday {
@@ -536,6 +536,6 @@
 	box-shadow: var(--focus-ring-input);
 }
 .dayToday .dayDate {
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 }

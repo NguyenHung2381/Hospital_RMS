@@ -195,7 +195,7 @@
 }
 .addItemBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .emptyItems {
 	font-size: var(--font-size-sm);
@@ -233,7 +233,7 @@
 	align-self: flex-start;
 	background: transparent;
 	border: none;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-size: var(--font-size-xs);
 	cursor: pointer;
 	padding: 2px 0;
@@ -249,9 +249,7 @@
 .respondCard {
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
-	border-top: 4px solid var(--color-primary);
 	border-radius: var(--radius-xl);
-	box-shadow: var(--shadow-sm);
 	overflow: hidden;
 }
 .respondHeader {
@@ -292,7 +290,7 @@
 .respondMeta svg {
 	width: 14px;
 	height: 14px;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .respondBody {
 	padding: var(--space-2) var(--space-6) var(--space-4);

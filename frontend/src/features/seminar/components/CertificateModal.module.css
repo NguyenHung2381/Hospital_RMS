@@ -36,8 +36,8 @@
 	font-weight: var(--font-weight-semibold);
 }
 .stepNumDone {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
+	background: var(--color-primary-dark);
+	border-color: var(--color-primary-dark);
 	color: var(--color-white);
 }
 .stepNumDone svg { width: 13px; height: 13px; }

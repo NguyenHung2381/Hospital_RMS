@@ -22,7 +22,7 @@
 	box-shadow: var(--shadow-xl);
 	width: 100%;
 	max-width: 480px;
-	animation: modalPopIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+	animation: modalPopIn 220ms var(--ease-out) both;
 	overflow: hidden;
 }
 
@@ -75,14 +75,16 @@
 }
 
 .modalTitle {
+	margin: 0;
 	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold);
+	line-height: var(--line-height-tight);
 	color: var(--color-gray-800);
 }
 
 .modalSub {
 	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
+	color: var(--color-gray-500);
 	margin-top: 2px;
 }
 
@@ -298,6 +300,30 @@
 }
 .footerEnd {
 	justify-content: flex-end;
+}
+/* Hỏi lại khi đóng form còn thay đổi chưa lưu — thay chỗ footer, không chồng thêm modal */
+.discardBar {
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	background: var(--status-warning-bg);
+	border-top-color: var(--tone-amber-border);
+}
+.discardText {
+	flex: 1 1 240px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--status-warning-fg);
+}
+.discardActions {
+	display: flex;
+	gap: var(--space-2);
+}
+.discardActions > button {
+	flex: 0 0 auto;
+}
+.dialog:focus {
+	outline: none;
 }
 .md {
 	max-width: 540px;

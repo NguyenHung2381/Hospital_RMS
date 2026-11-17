@@ -16,6 +16,7 @@ import {
 	STATUS_CFG,
 } from '../utils/approvalHelpers';
 import styles from '../pages/Approval.module.css';
+import { useRevealOnSelect } from '@/shared/hooks/useRevealOnSelect';
 
 interface ApprovalDetailPanelProps {
 	selected: ApprovalRecord | null;
@@ -34,8 +35,12 @@ export function ApprovalDetailPanel({
 	setFileViewer,
 	openModal,
 }: ApprovalDetailPanelProps) {
+	const panelRef = useRevealOnSelect<HTMLDivElement>(selected?.id);
 	return (
-		<div className={styles.detailPanel}>
+		<div
+			ref={panelRef}
+			className={styles.detailPanel}
+		>
 			{!selected ? (
 				<div className={styles.detailEmpty}>
 					<CheckCircleSvg className={styles.detailEmptyIcon} />
@@ -43,7 +48,7 @@ export function ApprovalDetailPanel({
 						Chọn một hồ sơ để xem chi tiết
 					</p>
 					<p className={styles.detailEmptyDesc}>
-						Nhấn vào một đề tài ở danh sách bên trái
+						Chọn một đề tài trong danh sách để xem chi tiết
 					</p>
 				</div>
 			) : (

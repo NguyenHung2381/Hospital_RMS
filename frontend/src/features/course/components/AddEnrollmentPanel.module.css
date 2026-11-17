@@ -70,7 +70,7 @@
 	width: 18px;
 	height: 18px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 	font-size: var(--font-size-2xs);
 }
@@ -98,7 +98,7 @@
 	width: 18px;
 	height: 18px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 }
 .chosenCheck svg {
@@ -331,7 +331,7 @@
 }
 .warn {
 	padding: 6px 10px;
-	border-left: 3px solid var(--color-warning);
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-sm);
 	background: var(--tone-amber-bg);
 	color: var(--tone-amber-fg);
@@ -462,7 +462,7 @@
 .recentCount {
 	padding: 0 7px;
 	border-radius: var(--radius-full);
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 	font-size: var(--font-size-2xs);
 	letter-spacing: 0;

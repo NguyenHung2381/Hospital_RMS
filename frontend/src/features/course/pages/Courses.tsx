@@ -17,7 +17,7 @@ import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
-import { formatDate } from '../../../shared/utils/formatDate';
+import { formatDateRange } from '../../../shared/utils/formatDate';
 import { CourseDeleteModal } from '../components/CourseDeleteModal';
 import { CourseFormModal } from '../components/CourseFormModal';
 import ProgramTags from '../components/ProgramTags';
@@ -29,8 +29,7 @@ import tbl from '@/shared/components/Table/Table.module.css';
 
 type Named = { id: string; name: string };
 
-const dateRange = (a: string | null, b: string | null) =>
-	a || b ? `${formatDate(a) ?? '?'} → ${formatDate(b) ?? '?'}` : null;
+const dateRange = formatDateRange;
 
 // Tiêu đề / đơn vị đếm theo loại — mỗi loại đào tạo 1 trang riêng (mục menu riêng).
 const TYPE_TEXT: Record<string, { title: string; unit: string; subtitle: string }> = {

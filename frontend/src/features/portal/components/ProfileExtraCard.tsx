@@ -49,7 +49,7 @@ export default function ProfileExtraCard({ cfg, initial }: { cfg: FormConfig; in
 			<div className={styles.detailCardHeader}>
 				<div
 					className={styles.detailCardIcon}
-					style={{ background: '#ede9fe', color: '#6d28d9' }}
+					style={{ background: '#e6f1fb', color: '#0c447c' }}
 				>
 					<UserSvg />
 				</div>

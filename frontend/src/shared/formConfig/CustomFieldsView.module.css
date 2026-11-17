@@ -8,5 +8,5 @@
 }
 .inline b {
 	font-weight: 600;
-	color: var(--color-gray-700, var(--color-gray-700));
+	color: var(--color-gray-700);
 }

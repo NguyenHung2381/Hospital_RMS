@@ -36,7 +36,7 @@
 }
 .nav:hover:not(:disabled) {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-md);
 }
 .nav:disabled {
@@ -50,7 +50,7 @@
 	gap: 6px;
 	padding: 0 10px 0 12px;
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-sm);
 }
 .trigger:hover,
@@ -60,7 +60,7 @@
 .calIcon {
 	display: block;
 	flex-shrink: 0;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .triggerLabel {
 	font-size: var(--font-size-sm);
@@ -70,7 +70,7 @@
 .triggerYear {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.2px;
 }
@@ -82,7 +82,7 @@
 }
 .triggerOpen .caret {
 	transform: rotate(180deg);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 /* ── Popover ───────────────────────────────────────────────── */
@@ -135,7 +135,7 @@
 }
 .pageBtn:hover:not(:disabled) {
 	background: var(--color-gray-100);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .pageBtn:disabled {
 	opacity: 0.35;
@@ -162,7 +162,7 @@
 }
 .cell:hover:not(:disabled):not(.cellActive) {
 	background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .cell:disabled {
 	color: var(--color-gray-300);
@@ -170,12 +170,12 @@
 }
 .cellCurrent {
 	border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold);
 }
 .cellActive {
-	background: var(--color-primary);
-	border-color: var(--color-primary);
+	background: var(--color-primary-dark);
+	border-color: var(--color-primary-dark);
 	color: var(--color-white);
 	font-weight: var(--font-weight-semibold);
 	box-shadow: 0 2px 6px color-mix(in srgb, var(--color-primary) 30%, transparent);
@@ -191,7 +191,7 @@
 	font-family: var(--font-body);
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-medium, 500);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	cursor: pointer;
 	transition: background 0.12s ease, border-color 0.12s ease;
 }

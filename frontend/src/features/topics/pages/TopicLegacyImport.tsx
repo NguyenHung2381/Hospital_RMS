@@ -480,7 +480,7 @@ export default function TopicLegacyImport() {
 							onClick={s.clearForm}
 							disabled={s.submitting}
 						>
-							Xóa form
+							Xóa nội dung đã nhập
 						</button>
 						<button
 							type='button'

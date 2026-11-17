@@ -36,7 +36,8 @@
 /* Đang lọc: cùng kiểu select[data-active] — nút ✕ thay chỗ mũi tên */
 .triggerActive,
 .triggerActive:hover {
-	padding-right: var(--space-3);
+	/* chừa chỗ cho nút ✕ (nút riêng, đặt đè lên mép phải) */
+	padding-right: 32px;
 	border-color: var(--color-primary);
 	color: var(--color-primary-dark);
 	background-color: var(--color-primary-pale);
@@ -45,15 +46,41 @@
 }
 
 .clear {
-	margin-left: auto;
-	color: var(--color-primary);
+	position: absolute;
+	top: 50%;
+	right: 4px;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-primary-dark);
 	line-height: 1;
-	font-size: var(--font-size-2xs);
-	padding: 2px 0 2px 4px;
+	font-size: var(--font-size-xs);
 	cursor: pointer;
 }
 .clear:hover {
-	color: var(--color-primary-dark);
+	background: var(--tone-green-border);
+}
+
+/* Checkbox thật: ẩn khỏi mắt, vẫn nhận Tab/Space */
+.nativeCheck {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	border: 0;
+}
+.option:has(.nativeCheck:focus-visible) {
+	outline: 2px solid var(--focus-ring-color);
+	outline-offset: -2px;
 }
 
 .menu {

@@ -225,7 +225,7 @@ export default function CouncilProgress() {
 							) : (
 								<div className={styles.emptyDetailsState}>
 									<div className={styles.emptyDetailsTitle}>Vui lòng chọn đề tài để đánh giá</div>
-									<div className={styles.emptyDetailsDesc}>Chọn một đề tài từ danh sách bên trái để xem thông tin chi tiết và tiến hành đánh giá.</div>
+									<div className={styles.emptyDetailsDesc}>Chọn một đề tài trong danh sách để xem thông tin chi tiết và tiến hành đánh giá.</div>
 								</div>
 							)}
 						</main>

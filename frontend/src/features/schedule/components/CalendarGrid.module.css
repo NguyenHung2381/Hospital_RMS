@@ -15,7 +15,7 @@
 }
 
 .today {
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white) !important;
 }
 
@@ -259,7 +259,7 @@
 	padding: 7px;
 	border: none;
 	border-radius: 8px;
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 	font-family: var(--font-body);
 	font-size: var(--font-size-compact);
@@ -297,7 +297,7 @@
 	white-space: nowrap;
 }
 .weekHeadToday .weekHeadDow {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .weekHeadNum {
 	display: inline-flex;

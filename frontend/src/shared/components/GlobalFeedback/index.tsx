@@ -72,6 +72,18 @@ export function GlobalFeedback() {
 					<div key={t.id} className={`${styles.toast} ${styles[t.type]}`} role='status'>
 						{icons[t.type]}
 						<span className={styles.msg}>{t.msg}</span>
+						{t.action && (
+							<button
+								type='button'
+								className={styles.action}
+								onClick={() => {
+									dismissToast(t.id);
+									t.action?.onClick();
+								}}
+							>
+								{t.action.label}
+							</button>
+						)}
 						<button type='button' className={styles.close} aria-label='Đóng' onClick={() => dismissToast(t.id)}>
 							×
 						</button>

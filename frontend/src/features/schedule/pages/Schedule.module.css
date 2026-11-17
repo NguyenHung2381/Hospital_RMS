@@ -58,7 +58,7 @@
 }
 .viewBtnActive {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-sm);
 	font-weight: var(--font-weight-bold);
 }
@@ -92,7 +92,7 @@
 }
 .calViewBtnActive {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-sm);
 	font-weight: var(--font-weight-bold);
 }
@@ -266,7 +266,7 @@
 }
 .scrollArrow:hover {
 	background: var(--color-white);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	opacity: 1;
 	transform: translateY(-50%) scale(1.08);
 }
@@ -400,7 +400,7 @@
 
 .roundId {
 	font-size: var(--font-size-2xs);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font-family: var(--font-mono);
 	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.04em;
@@ -455,7 +455,7 @@
 }
 .addBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 

@@ -1,12 +1,11 @@
 import { ArrowRSvg, CalendarSvg, CopySvg, EditSvg, QrSvg, TrashSvg } from '@/assets/icons';
 import { EmptyState } from '@/shared/components';
-import { formatDateOr } from '@/shared/utils';
+import { formatDateRange } from '@/shared/utils';
 import { DISPLAY_STATUS_CFG, type Course } from '../types/course.type';
 import ProgramTags from './ProgramTags';
 import styles from './CourseCards.module.css';
 
-const range = (a: string | null, b: string | null) =>
-	a || b ? `${formatDateOr(a, '?')} → ${formatDateOr(b, '?')}` : null;
+const range = formatDateRange;
 
 /** Lưới thẻ khóa học — mỗi thẻ là 1 khóa, bấm để vào trang làm việc của khóa. */
 export function CourseCards({

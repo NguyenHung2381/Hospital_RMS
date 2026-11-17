@@ -7,7 +7,7 @@
 .homeContainer {
 	display: flex;
 	flex-direction: column;
-	gap: 24px;
+	gap: var(--space-6);
 	width: 100%;
 }
 
@@ -91,7 +91,7 @@
 	width: 62px;
 	height: 62px;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.14);
+	background: rgba(0, 0, 0, 0.18);
 	border: 2px solid rgba(255, 255, 255, 0.6);
 	display: flex;
 	align-items: center;
@@ -126,8 +126,8 @@
 	gap: 6px;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold, 700);
-	color: rgba(255, 255, 255, 0.9);
-	background: rgba(255, 255, 255, 0.18);
+	color: #fff;
+	background: rgba(0, 0, 0, 0.18);
 	border: 1px solid rgba(255, 255, 255, 0.25);
 	border-radius: var(--radius-full, 9999px);
 	padding: 3px 10px;
@@ -141,7 +141,7 @@
 
 .welcomeTitle {
 	font-size: clamp(1.25rem, 2vw, 1.55rem);
-	font-weight: var(--font-weight-extrabold, 800);
+	font-weight: var(--font-weight-semibold);
 	color: #fff;
 	line-height: 1.3;
 	margin: 2px 0 4px;
@@ -185,9 +185,9 @@
 }
 
 .roundCard {
-	background: rgba(255, 255, 255, 0.15);
-	backdrop-filter: blur(14px);
-	border: 1px solid rgba(255, 255, 255, 0.3);
+	/* Phủ tối, không kính mờ: chữ trắng bên trong giữ ≥5:1 */
+	background: rgba(0, 0, 0, 0.16);
+	border: 1px solid rgba(255, 255, 255, 0.24);
 	border-radius: var(--radius-xl, 16px);
 	padding: 16px 20px;
 	display: flex;
@@ -206,10 +206,10 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold, 700);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	color: #fff;
-	background: rgba(16, 185, 129, 0.3);
+	background: rgba(0, 0, 0, 0.2);
 	border: 1px solid rgba(255, 255, 255, 0.35);
 	border-radius: var(--radius-full, 9999px);
 	padding: 3px 9px;
@@ -257,8 +257,8 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	font-size: var(--font-size-2xs);
-	color: rgba(255, 255, 255, 0.85);
+	font-size: var(--font-size-xs);
+	color: #fff;
 }
 
 .roundDeadlineText svg {
@@ -267,11 +267,12 @@
 }
 
 .daysLeftPill {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-extrabold, 800);
-	color: #fff;
-	background: rgba(245, 158, 11, 0.35);
-	border: 1px solid rgba(253, 230, 138, 0.5);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	/* Nền đặc thay vì vàng trong suốt trên xanh (chữ trắng ~3.4:1) */
+	color: var(--tone-amber-fg);
+	background: var(--tone-amber-bg);
+	border: 1px solid var(--tone-amber-border);
 	border-radius: var(--radius-full, 9999px);
 	padding: 2px 8px;
 	white-space: nowrap;
@@ -310,42 +311,36 @@
 .statsGrid {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: 16px;
+	gap: var(--space-4);
 }
 
+/* Nền/viền/hover lấy từ thẻ chung (StatCard) — trang này chỉ đổi bố cục bên trong
+   (icon trên, số dưới). Là <button> nên hover/nhấn/focus theo kiểu thẻ bấm được. */
 .statCard {
-	position: relative;
-	background: var(--color-white, #fff);
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
-	border-radius: var(--radius-lg);
-	padding: var(--space-4) var(--space-5);
-	display: flex;
+	composes: statCard from '../../../shared/components/Card/StatCard.module.css';
 	flex-direction: column;
+	align-items: stretch;
 	justify-content: space-between;
 	gap: 14px;
-	cursor: pointer;
-	transition:
-		transform var(--transition-fast),
-		box-shadow var(--transition-fast),
-		border-color var(--transition-fast);
-	outline: none;
 	overflow: hidden;
 }
-
-.statCard:hover {
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-sm);
-	border-color: var(--color-gray-300);
+.statAttention {
+	composes: statAttention from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard:active {
-	transform: translateY(0);
-	box-shadow: none;
+.iconGreen {
+	composes: iconGreen from '../../../shared/components/Card/StatCard.module.css';
 }
-
-.statCard:focus-visible {
-	border-color: var(--color-primary, var(--color-primary));
-	box-shadow: 0 0 0 3px var(--color-primary-pale, var(--color-primary-pale));
+.iconAmber {
+	composes: iconAmber from '../../../shared/components/Card/StatCard.module.css';
+}
+.iconBlue {
+	composes: iconBlue from '../../../shared/components/Card/StatCard.module.css';
+}
+.iconGray {
+	composes: iconGray from '../../../shared/components/Card/StatCard.module.css';
+}
+.iconAttention {
+	composes: iconAttention from '../../../shared/components/Card/StatCard.module.css';
 }
 
 .statTopRow {
@@ -370,11 +365,13 @@
 }
 
 .statPill {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold, 700);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	padding: 2px 8px;
-	border-radius: var(--radius-full, 9999px);
+	border-radius: var(--radius-full);
 	line-height: 1.4;
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
 }
 
 .statBottomRow {
@@ -408,14 +405,14 @@
 .statArrow {
 	width: 18px;
 	height: 18px;
-	color: var(--color-gray-300, var(--color-gray-300));
+	color: var(--color-gray-300);
 	transition: all 0.2s ease;
 	transform: translateX(-4px);
 	opacity: 0.6;
 }
 
 .statCard:hover .statArrow {
-	color: var(--color-primary, var(--color-primary));
+	color: var(--color-primary-dark);
 	transform: translateX(0);
 	opacity: 1;
 }
@@ -424,7 +421,7 @@
 .contentGrid {
 	display: grid;
 	grid-template-columns: 1fr 380px;
-	gap: 24px;
+	gap: var(--space-6);
 	align-items: start;
 }
 
@@ -432,21 +429,21 @@
 .rightColumn {
 	display: flex;
 	flex-direction: column;
-	gap: 24px;
+	gap: var(--space-6);
 	min-width: 0;
 }
 
 /* ── CARD SHELL ── */
 .card {
 	background: var(--color-white, #fff);
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
+	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl, 16px);
 	overflow: hidden;
 }
 
 .cardHeader {
 	padding: 18px 24px;
-	border-bottom: 1px solid var(--color-gray-100, var(--color-gray-100));
+	border-bottom: 1px solid var(--color-gray-100);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -462,7 +459,7 @@
 .cardTitle {
 	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	letter-spacing: -0.01em;
 	margin: 0;
 	display: flex;
@@ -473,7 +470,7 @@
 .cardHeaderIcon {
 	width: 18px;
 	height: 18px;
-	color: var(--color-primary, var(--color-primary));
+	color: var(--color-primary-dark);
 }
 
 .badgeCount {
@@ -486,8 +483,8 @@
 	border-radius: var(--radius-full, 9999px);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-extrabold, 800);
-	background: var(--color-primary-pale, var(--color-primary-pale));
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
 }
 
 .cardLink {
@@ -495,7 +492,7 @@
 	align-items: center;
 	gap: 4px;
 	font-size: var(--font-size-compact);
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	color: var(--color-primary-dark);
 	font-weight: var(--font-weight-semibold, 600);
 	background: none;
 	border: none;
@@ -507,7 +504,7 @@
 
 .cardLink:hover {
 	color: var(--tone-green-fg);
-	background: var(--color-primary-pale, var(--color-primary-pale));
+	background: var(--color-primary-pale);
 }
 
 .cardLink svg {
@@ -529,7 +526,7 @@
 .topicItem {
 	position: relative;
 	padding: 20px 24px;
-	border-bottom: 1px solid var(--color-gray-100, var(--color-gray-100));
+	border-bottom: 1px solid var(--color-gray-100);
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
@@ -605,7 +602,7 @@
 .topicTitle {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	line-height: 1.45;
 	display: -webkit-box;
 	-webkit-line-clamp: 2;
@@ -615,7 +612,7 @@
 }
 
 .topicItem:hover .topicTitle {
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	color: var(--color-primary-dark);
 }
 
 /* Topic Meta row: Round, Members, Date */
@@ -625,7 +622,7 @@
 	flex-wrap: wrap;
 	gap: 16px;
 	font-size: var(--font-size-xs);
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 }
 
 .topicMetaItem {
@@ -637,7 +634,7 @@
 .topicMetaItem svg {
 	width: 14px;
 	height: 14px;
-	color: var(--color-gray-400, var(--color-gray-400));
+	color: var(--color-gray-400);
 }
 
 /* Progress bar in topic item */
@@ -656,19 +653,19 @@
 }
 
 .progressLabel {
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 	font-weight: var(--font-weight-medium, 500);
 }
 
 .progressValue {
 	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-700, var(--color-gray-700));
+	color: var(--color-gray-700);
 }
 
 .progressTrack {
 	width: 100%;
 	height: 6px;
-	background: var(--color-gray-100, var(--color-gray-100));
+	background: var(--color-gray-100);
 	border-radius: var(--radius-full, 9999px);
 	overflow: hidden;
 }
@@ -678,8 +675,8 @@
 	border-radius: var(--radius-full, 9999px);
 	background: linear-gradient(
 		90deg,
-		var(--color-primary, var(--color-primary)) 0%,
-		var(--color-primary-dark, var(--color-primary-dark)) 100%
+		var(--color-primary) 0%,
+		var(--color-primary-dark) 100%
 	);
 	transition: width 0.4s ease;
 }
@@ -699,8 +696,8 @@
 	width: 56px;
 	height: 56px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, var(--color-primary-pale));
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -715,13 +712,13 @@
 .emptyTitle {
 	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	margin: 0;
 }
 
 .emptyDesc {
 	font-size: var(--font-size-compact);
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 	max-width: 360px;
 	line-height: 1.5;
 	margin: 0;
@@ -748,7 +745,7 @@
 	cursor: pointer;
 	text-align: left;
 	width: 100%;
-	border-bottom: 1px solid var(--color-gray-100, var(--color-gray-100));
+	border-bottom: 1px solid var(--color-gray-100);
 	transition:
 		background-color 0.18s ease,
 		transform 0.18s ease;
@@ -805,7 +802,7 @@
 .actionName {
 	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-800, var(--color-gray-800));
+	color: var(--color-gray-800);
 	line-height: 1.3;
 }
 
@@ -829,7 +826,7 @@
 
 .actionDesc {
 	font-size: var(--font-size-2xs);
-	color: var(--color-gray-500, var(--color-gray-500));
+	color: var(--color-gray-500);
 	margin-top: 2px;
 	line-height: 1.3;
 }
@@ -837,33 +834,32 @@
 .actionArrow {
 	width: 16px;
 	height: 16px;
-	color: var(--color-gray-400, var(--color-gray-400));
+	color: var(--color-gray-400);
 	flex-shrink: 0;
 	transition: all 0.18s ease;
 	transform: translateX(-3px);
 }
 
 .actionBtn:hover .actionArrow {
-	color: var(--color-primary-dark, var(--color-primary-dark));
+	color: var(--color-primary-dark);
 	transform: translateX(1px);
 }
 
 /* ── 6. RESEARCH SUPPORT & INFO CARD ── */
+/* Quy trình 4 bước + liên hệ: cột trái rộng → bước nằm ngang, liên hệ bên dưới.
+   Bước là dải số nối bằng đường mảnh (thứ tự 1→4), không phải thẻ lồng trong thẻ. */
 .supportCardBody {
-	padding: 20px;
+	padding: var(--space-5) var(--space-6);
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: var(--space-5);
 }
 
 .workflowSteps {
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	gap: 8px;
-	background: var(--color-gray-50, var(--color-gray-50));
-	border: 1px solid var(--color-gray-200, var(--color-gray-200));
-	border-radius: var(--radius-lg, 12px);
-	padding: 14px 10px;
+	gap: var(--space-2);
+	counter-reset: none;
 }
 
 .stepItem {
@@ -871,32 +867,42 @@
 	flex-direction: column;
 	align-items: center;
 	text-align: center;
-	gap: 4px;
+	gap: var(--space-2);
 	position: relative;
+}
+/* Đường nối giữa các bước */
+.stepItem:not(:last-child)::after {
+	content: '';
+	position: absolute;
+	top: 14px;
+	left: calc(50% + 20px);
+	right: calc(-50% + 20px);
+	height: 1px;
+	background: var(--tone-green-border);
 }
 
 .stepNumber {
-	width: 22px;
-	height: 22px;
+	width: 28px;
+	height: 28px;
 	border-radius: 50%;
-	background: var(--color-primary-pale, var(--color-primary-pale));
-	color: var(--color-primary-dark, var(--color-primary-dark));
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-extrabold, 800);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 }
 
 .stepTitle {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold, 700);
-	color: var(--color-gray-700, var(--color-gray-700));
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
 	line-height: 1.2;
 }
 
 .contactBox {
-	background: linear-gradient(135deg, var(--tone-green-bg) 0%, var(--tone-green-bg) 100%);
+	background: var(--tone-green-bg);
 	border: 1px solid var(--tone-green-border);
 	border-radius: var(--radius-lg, 12px);
 	padding: 16px;
@@ -946,23 +952,41 @@
 		grid-template-columns: 1fr;
 	}
 
+	/* Thao tác nhanh 2 cột khi cột phải xuống dưới, thay vì danh sách dài full-width */
+	.actionList {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
 	.statsGrid {
 		grid-template-columns: repeat(2, 1fr);
 	}
 }
 
 @media (max-width: 768px) {
+	/* Banner gọn trên điện thoại: avatar nằm cạnh lời chào (không chồng lên trên),
+	   để thẻ đợt + số liệu lọt vào màn hình đầu. */
 	.welcomeBanner {
 		flex-direction: column;
 		align-items: stretch;
-		padding: 20px;
-		gap: 20px;
+		padding: 16px;
+		gap: 14px;
+		min-height: 0;
 	}
 
 	.welcomeLeft {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 14px;
+		align-items: center;
+		gap: 12px;
+	}
+
+	.welcomeAvatar {
+		width: 44px;
+		height: 44px;
+		font-size: var(--font-size-base);
+	}
+
+	.roundCard {
+		padding: 12px 14px;
 	}
 
 	.welcomeRight {
@@ -975,15 +999,33 @@
 		gap: 12px;
 	}
 
-	.workflowSteps {
-		grid-template-columns: repeat(2, 1fr);
-		gap: 12px;
+	/* Banner điện thoại: bỏ dòng huy hiệu bệnh viện/vai trò (đã có trên thanh trên) */
+	.welcomeMetaRow {
+		display: none;
 	}
 }
 
 @media (max-width: 480px) {
 	.welcomeBanner {
-		padding: 16px;
+		padding: 14px;
+	}
+
+	.actionList {
+		grid-template-columns: 1fr;
+	}
+
+	/* Quy trình: danh sách dọc có số (giữ thứ tự 1→4), không lưới 2×2 */
+	.workflowSteps {
+		grid-template-columns: 1fr;
+		gap: var(--space-3);
+	}
+	.stepItem {
+		flex-direction: row;
+		text-align: left;
+		gap: var(--space-3);
+	}
+	.stepItem:not(:last-child)::after {
+		display: none;
 	}
 
 	/* Giữ 2 cột thẻ thống kê (1 cột = 4 thẻ cao cuộn mãi) — thu gọn nội dung thẻ */
@@ -1013,8 +1055,9 @@
 		display: none;
 	}
 
-	/* Avatar đã có trên thanh trên cùng — bỏ ở banner cho gọn */
-	.welcomeAvatar {
+	/* Avatar đã có trên thanh trên cùng — bỏ ở banner cho gọn (ẩn cả khối bọc,
+	   không thì chấm "online" còn sót lại lơ lửng) */
+	.avatarWrapper {
 		display: none;
 	}
 

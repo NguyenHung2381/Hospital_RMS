@@ -160,7 +160,7 @@
 
 .roleFilterBtn:hover {
 	border-color: var(--color-primary);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 
 .roleFilterActive {
@@ -180,7 +180,7 @@
 }
 
 .roleFilterActive .roleFilterCount {
-	background: var(--color-primary);
+	background: var(--color-primary-dark);
 	color: #fff;
 }
 

@@ -1,15 +1,20 @@
-/* Vạch màu đầu dòng theo trạng thái hồ sơ PDF (xanh = đã nộp, vàng = chờ duyệt, đỏ = chưa nộp) */
-.row_done > td:first-child {
-	box-shadow: inset 4px 0 0 var(--color-success);
+/* Ô vuông trạng thái hồ sơ PDF ở đầu dòng — cùng hình với chú thích (.swatch)
+   (xanh = đã nộp, vàng = chờ duyệt, đỏ = chưa nộp); không dùng sọc trái */
+.row_done > td:first-child::before,
+.row_pending > td:first-child::before,
+.row_missing > td:first-child::before {
+	content: '';
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-right: 8px;
+	border-radius: 3px;
+	vertical-align: middle;
+	background: var(--doc-state);
 }
-
-.row_pending > td:first-child {
-	box-shadow: inset 4px 0 0 var(--color-warning);
-}
-
-.row_missing > td:first-child {
-	box-shadow: inset 4px 0 0 var(--color-error);
-}
+.row_done { --doc-state: var(--color-success); }
+.row_pending { --doc-state: var(--color-warning); }
+.row_missing { --doc-state: var(--color-error); }
 
 .badgeBtn {
 	display: inline-flex;

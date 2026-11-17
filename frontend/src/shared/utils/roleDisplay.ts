@@ -13,7 +13,7 @@ const ROLE_DISPLAY: Record<string, { label: string; tone: BadgeTone; avatarCls: 
 	topic_leader: { label: 'Chủ nhiệm đề tài', tone: 'amber', avatarCls: 'avatarAmber' },
 	member: { label: 'Thành viên đề tài', tone: 'green', avatarCls: 'avatarGreen' },
 	dept_head: { label: 'Trưởng khoa/phòng', tone: 'teal', avatarCls: 'avatarTeal' },
-	trainee: { label: 'Học viên', tone: 'pink', avatarCls: 'avatarGray' },
+	trainee: { label: 'Học viên', tone: 'teal', avatarCls: 'avatarGray' },
 };
 
 const FALLBACK = { label: 'Vai trò', tone: 'gray' as const, avatarCls: 'avatarGray' };

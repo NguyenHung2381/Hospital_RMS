@@ -109,7 +109,7 @@ export const DISPLAY_STATUS_CFG: Record<
 > = {
 	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda', tone: 'amber' },
 	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea', tone: 'green' },
-	in_progress: { label: 'Đang trong quá trình học', color: '#3c3489', bg: '#eeedfe', tone: 'purple' },
+	in_progress: { label: 'Đang trong quá trình học', color: '#0c447c', bg: '#e6f1fb', tone: 'purple' },
 	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb', tone: 'blue' },
 	cancelled: { label: 'Đã hủy', color: '#791f1f', bg: '#fcebeb', tone: 'red' },
 };
@@ -118,7 +118,7 @@ export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; co
 	pending: { label: 'Chờ duyệt', color: '#633806', bg: '#faeeda' },
 	approved: { label: 'Đã duyệt', color: '#085028', bg: '#e1f5ea' },
 	rejected: { label: 'Từ chối', color: '#791f1f', bg: '#fcebeb' },
-	waitlisted: { label: 'Danh sách chờ', color: '#3c3489', bg: '#eeedfe' },
+	waitlisted: { label: 'Danh sách chờ', color: '#0c447c', bg: '#e6f1fb' },
 };
 
 export interface Enrollment {

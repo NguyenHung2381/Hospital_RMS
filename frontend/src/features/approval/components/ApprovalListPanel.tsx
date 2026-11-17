@@ -1,4 +1,5 @@
 import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { EmptyState } from '@/shared/components/EmptyState';
 import {
 	CheckCircleSvg,
 	CheckSmSvg,
@@ -152,9 +153,14 @@ export function ApprovalListPanel({
 			<div
 				className={styles.listTabs}
 				ref={tabsRef}
+				role='tablist'
+				aria-label='Lọc theo trạng thái'
 			>
 				{TABS.map((t) => (
-					<div
+					<button
+						type='button'
+						role='tab'
+						aria-selected={activeTab === t.key}
 						key={t.key}
 						className={`${styles.listTab} ${activeTab === t.key ? styles.listTabActive : ''}`}
 						onClick={() => {
@@ -165,8 +171,12 @@ export function ApprovalListPanel({
 						}}
 					>
 						{t.label}
-						<span className={styles.tabCount}>{t.count}</span>
-					</div>
+						<span
+							className={`${styles.tabCount} ${t.key === 'pending' && t.count > 0 ? styles.tabCountAttention : ''}`}
+						>
+							{t.count}
+						</span>
+					</button>
 				))}
 			</div>
 
@@ -185,20 +195,17 @@ export function ApprovalListPanel({
 						<div style={{ fontSize: 13, fontWeight: 600 }}>{error}</div>
 					</div>
 				) : filtered.length === 0 ? (
-					<div
-						style={{
-							padding: '48px 24px',
-							textAlign: 'center',
-							color: 'var(--color-gray-400)',
-						}}
-					>
-						<div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-							Không có hồ sơ phê duyệt nào
-						</div>
-						<div style={{ fontSize: 12 }}>
-							Vui lòng thử thay đổi bộ lọc tìm kiếm
-						</div>
-					</div>
+					// Đang tìm kiếm → gợi ý đổi từ khóa; hàng chờ trống thật → báo đã xử lý xong
+					<EmptyState
+						title={
+							search.trim()
+								? 'Không tìm thấy hồ sơ phù hợp'
+								: activeTab === 'pending'
+									? 'Bạn đã xử lý hết hồ sơ chờ duyệt'
+									: 'Chưa có hồ sơ nào ở mục này'
+						}
+						desc={search.trim() ? 'Thử từ khóa khác hoặc xóa ô tìm kiếm' : undefined}
+					/>
 				) : (
 					filtered.map((r) => {
 						const sc = STATUS_CFG[r.status];

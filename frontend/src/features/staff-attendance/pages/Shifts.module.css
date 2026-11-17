@@ -29,7 +29,7 @@
 	border: none;
 	background: none;
 	padding: 0;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	font: inherit;
 	cursor: pointer;
 }
@@ -82,8 +82,8 @@
 	cursor: pointer;
 }
 .pickOn {
-	border-color: var(--color-primary);
-	background: var(--color-primary);
+	border-color: var(--color-primary-dark);
+	background: var(--color-primary-dark);
 	color: #fff;
 }
 

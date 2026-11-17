@@ -51,7 +51,7 @@
 	height: 44px;
 	border-radius: var(--radius-full);
 	background: var(--color-white, #fff);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	box-shadow: var(--shadow-sm);
 }
 .uploadIcon svg {

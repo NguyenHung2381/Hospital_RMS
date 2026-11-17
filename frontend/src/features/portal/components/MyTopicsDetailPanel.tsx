@@ -11,6 +11,7 @@ import { TopicHistorySection } from './TopicHistorySection';
 import { TopicHeader, TopicInfoSection } from './TopicInfoSection';
 import { TopicStatusActionPanel } from './TopicStatusActionPanel';
 import styles from '../pages/MyTopics.module.css';
+import { useRevealOnSelect } from '@/shared/hooks/useRevealOnSelect';
 
 interface MyTopicsDetailPanelProps {
 	selectedId: string | null;
@@ -57,8 +58,12 @@ export function MyTopicsDetailPanel({
 	openEdit,
 	formatFileSize,
 }: MyTopicsDetailPanelProps) {
+	const panelRef = useRevealOnSelect<HTMLDivElement>(selectedId);
 	return (
-		<div className={styles.detailPanel}>
+		<div
+			ref={panelRef}
+			className={styles.detailPanel}
+		>
 			{!selectedId ? (
 				<div className={styles.detailEmpty}>
 					<DocSvg className={styles.detailEmptyIcon} />
@@ -66,7 +71,7 @@ export function MyTopicsDetailPanel({
 						Chọn một đề tài để xem chi tiết
 					</p>
 					<p className={styles.detailEmptyDesc}>
-						Nhấn vào một đề tài ở danh sách bên trái
+						Chọn một đề tài trong danh sách để xem chi tiết
 					</p>
 				</div>
 			) : (

@@ -1,5 +1,5 @@
 import { CheckSmSvg } from '@/assets/icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import styles from './MultiSelect.module.css';
 
 interface MultiSelectProps {
@@ -24,6 +24,8 @@ export function MultiSelect({
 	const [alignRight, setAlignRight] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
 	const searchRef = useRef<HTMLInputElement>(null);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const menuId = useId();
 
 	useEffect(() => {
 		if (!open) return;
@@ -35,10 +37,20 @@ export function MultiSelect({
 			if (ref.current && !ref.current.contains(e.target as Node))
 				setOpen(false);
 		};
+		// Esc đóng menu và trả focus về nút mở
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key !== 'Escape') return;
+			e.stopPropagation();
+			setOpen(false);
+			triggerRef.current?.focus();
+		};
 		document.addEventListener('mousedown', handler);
+		ref.current?.addEventListener('keydown', onKey);
+		const root = ref.current;
 		if (searchable) setTimeout(() => searchRef.current?.focus(), 0);
 		return () => {
 			document.removeEventListener('mousedown', handler);
+			root?.removeEventListener('keydown', onKey);
 			setQuery('');
 		};
 	}, [open, searchable]);
@@ -71,28 +83,35 @@ export function MultiSelect({
 			style={{ position: 'relative' }}
 		>
 			<button
+				ref={triggerRef}
 				type='button'
 				className={`${styles.trigger} ${selected.size > 0 ? styles.triggerActive : ''}`}
 				onClick={() => setOpen((o) => !o)}
+				aria-haspopup='true'
+				aria-expanded={open}
+				aria-controls={open ? menuId : undefined}
 			>
 				<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
 					{label}
 				</span>
-				{selected.size > 0 && (
-					<span
-						className={styles.clear}
-						onClick={(e) => {
-							e.stopPropagation();
-							onChange(new Set());
-						}}
-						title='Bỏ chọn tất cả'
-					>
-						✕
-					</span>
-				)}
 			</button>
+			{/* Nút xóa lọc là nút riêng (không lồng trong nút mở) — Tab tới được */}
+			{selected.size > 0 && (
+				<button
+					type='button'
+					className={styles.clear}
+					onClick={() => onChange(new Set())}
+					title='Bỏ chọn tất cả'
+					aria-label={`Bỏ lọc ${placeholder}`}
+				>
+					✕
+				</button>
+			)}
 			{open && (
 				<div
+					id={menuId}
+					role='group'
+					aria-label={placeholder}
 					className={styles.menu}
 					style={alignRight ? { left: 'auto', right: 0 } : undefined}
 				>
@@ -129,11 +148,12 @@ export function MultiSelect({
 												/>
 											)}
 										</div>
+										{/* Ẩn bằng mắt nhưng vẫn Tab/Space được (display:none làm mất bàn phím) */}
 										<input
 											type='checkbox'
 											checked={on}
 											onChange={() => toggle(opt.id)}
-											style={{ display: 'none' }}
+											className={styles.nativeCheck}
 										/>
 										{opt.label}
 									</label>
