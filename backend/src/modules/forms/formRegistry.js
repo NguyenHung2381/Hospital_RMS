@@ -425,6 +425,8 @@ const FORMS = [
 				label: 'Trình độ',
 				type: 'text',
 				required: true,
+				// Nội viện: lấy từ hồ sơ nhân sự (có người chưa ghi trình độ) — form không hỏi
+				when: { source: 'external' },
 				base: { maxLength: 150 },
 			},
 			{
