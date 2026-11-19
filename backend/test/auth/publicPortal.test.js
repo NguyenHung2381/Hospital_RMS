@@ -50,6 +50,9 @@ require('../../src/modules/training/trainingFileService').saveUploadedFile = asy
 const { generateCaptcha, verifyCaptcha } = require('../../src/utils/captcha');
 const portal = require('../../src/modules/public/publicPortalService');
 const attempts = require('../../src/utils/attemptLimiter');
+// Mọi nhánh đăng ký: cùng hình dạng { submitted, registration_code, download_token }
+const assertAck = (r) =>
+	assert.deepEqual(Object.keys(r).sort(), ['download_token', 'registration_code', 'submitted']);
 
 const { leadingZeroBits } = require('../../src/utils/loginShield');
 const nodeCrypto = require('crypto');
@@ -128,14 +131,14 @@ test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh/họ tên thì khôn
 		national_id: TRAINEE.national_id,
 		dob: '1999-01-01',
 	});
-	assert.deepEqual(bad, { submitted: true });
+	assertAck(bad);
 	const ok = await portal.register({
 		course_id: 'KH1',
 		full_name: 'nguyen van an',
 		national_id: TRAINEE.national_id,
 		dob: '2000-05-15',
 	});
-	assert.deepEqual(ok, { submitted: true });
+	assertAck(ok);
 	assert.equal(ok.trainee_id, undefined, 'không trả mã hồ sơ học viên cho người gọi ẩn danh');
 	assert.ok(log.length > before);
 });
@@ -147,7 +150,7 @@ test('đăng ký: hồ sơ cũ không có ngày sinh — không gắn và không
 		[{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' }],
 		['national_id'],
 	);
-	assert.deepEqual(r, { submitted: true });
+	assertAck(r);
 	assert.ok(
 		!log
 			.slice(before)

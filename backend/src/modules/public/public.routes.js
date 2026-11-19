@@ -6,6 +6,8 @@ const { body, param, query } = require('express-validator');
 const { validate } = require('../../middlewares/errorHandler');
 const { formConfigGuard } = require('../forms/formConfigGuard');
 const ctrl = require('./publicPortalController');
+const regCtrl = require('./publicCourseRegistrationController');
+const regValidators = require('./courseRegistration.validators');
 // Hồ sơ đính kèm (multipart: field `data` = JSON form + `files`) — tùy chọn
 const { publicUpload } = require('../../middlewares/uploadPublic');
 const uploadPolicy = require('../../utils/uploadPolicy');
@@ -90,28 +92,112 @@ router.get(
 	ctrl.lookup,
 );
 
+// ─── Đăng ký khóa đào tạo liên tục (nội viện / ngoại viện) ──────────────────
+// Kiểm cứng: courseRegistration.validators.js; bắt buộc theo Cấu hình form 'course_registration'.
+const regRulesLimiter = rateLimit({
+	name: 'courseRegRules',
+	windowMs: 15 * 60 * 1000,
+	limit: 120,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
+});
+// Tra nhân viên: mã NV + họ tên (như hội nghị) — chặt hơn hội nghị vì không phải
+// cả hội trường dùng chung 1 IP
+const regStaffLimiter = rateLimit({
+	name: 'courseRegStaff',
+	windowMs: 15 * 60 * 1000,
+	limit: 20,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều lượt tra cứu. Vui lòng thử lại sau ít phút.' },
+});
+const regOtpLimiter = rateLimit({
+	name: 'courseRegOtp',
+	windowMs: 15 * 60 * 1000,
+	limit: 10,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều lần xin mã. Vui lòng thử lại sau ít phút.' },
+});
+const regOtpVerifyLimiter = rateLimit({
+	name: 'courseRegOtpVerify',
+	windowMs: 15 * 60 * 1000,
+	limit: 20,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều lần nhập mã. Vui lòng thử lại sau ít phút.' },
+});
+// Tra cứu / tải đơn / nộp hồ sơ theo mã đăng ký (kèm CCCD/email) — như tra cứu theo CCCD
+const regCodeLimiter = rateLimit({
+	name: 'courseRegCode',
+	windowMs: 15 * 60 * 1000,
+	limit: 20,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Quá nhiều lượt tra cứu. Vui lòng thử lại sau ít phút.' },
+});
+const registrationCode = param('code').isString().isLength({ min: 1, max: 32 });
+
+router.get('/course-registration/rules', training, regRulesLimiter, regCtrl.getRules);
+router.post(
+	'/course-registration/staff-check',
+	training,
+	regStaffLimiter,
+	regValidators.staffCheck,
+	validate,
+	regCtrl.staffCheck,
+);
+router.post(
+	'/course-registration/email-otp',
+	training,
+	regOtpLimiter,
+	regValidators.emailOtpRequest,
+	validate,
+	regCtrl.requestEmailOtp,
+);
+router.post(
+	'/course-registration/email-otp/verify',
+	training,
+	regOtpVerifyLimiter,
+	regValidators.emailOtpVerify,
+	validate,
+	regCtrl.verifyEmailOtp,
+);
 router.post(
 	'/course-registration',
 	training,
 	registerLimiter,
 	publicUpload,
-	[
-		body('full_name').trim().notEmpty().withMessage('Họ tên không được để trống'),
-		body('course_id').trim().notEmpty().withMessage('Vui lòng chọn khóa học'),
-		body('program_id').optional({ checkFalsy: true }).isString().isLength({ max: 20 }),
-		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
-		// captcha_answer = nonce proof-of-work (Turnstile không có) — utils/captcha.js tự kiểm tra
-		body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email không hợp lệ'),
-		body('dob').optional({ checkFalsy: true }).isISO8601(),
-		// Có CCCD thì bắt buộc ngày sinh — dùng để đối chiếu với hồ sơ đã có
-		body('dob')
-			.if(body('national_id').trim().notEmpty())
-			.notEmpty()
-			.withMessage('Vui lòng nhập ngày sinh kèm số CCCD/CMND'),
-	],
+	regValidators.registration,
 	validate,
 	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),
 	ctrl.register,
+);
+router.post(
+	'/course-registration/:code/status',
+	training,
+	regCodeLimiter,
+	[registrationCode, ...regValidators.secondFactor],
+	validate,
+	regCtrl.getStatus,
+);
+router.post(
+	'/course-registration/:code/application',
+	training,
+	regCodeLimiter,
+	[registrationCode, ...regValidators.secondFactor],
+	validate,
+	regCtrl.downloadApplication,
+);
+router.post(
+	'/course-registration/:code/dossier',
+	training,
+	regCodeLimiter,
+	publicUpload,
+	[registrationCode, ...regValidators.secondFactor],
+	validate,
+	regCtrl.uploadDossier,
 );
 
 // ─── Đăng ký đề tài công khai (rút gọn, không cần đăng nhập) ────────────────

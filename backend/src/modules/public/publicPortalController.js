@@ -1,4 +1,6 @@
 const service = require('./publicPortalService');
+const courseRegistration = require('./publicCourseRegistrationService');
+const emailOtp = require('../training/registration/registrationEmailOtpService');
 const seminarPublicService = require('../seminars/seminarPublicService');
 const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
 const { success, created, error } = require('../../utils/response');
@@ -37,16 +39,19 @@ const lookup = asyncHandler(async (req, res) => {
 
 // Honeypot 'website': người dùng thật không thấy field này (ẩn bằng CSS) nên
 // luôn để trống; bot điền tự động thường điền vào mọi input tìm thấy. Trả về
-// một phản hồi "thành công" giả thay vì báo lỗi, để không lộ cơ chế chống bot.
+// một phản hồi "thành công" giả (mã đăng ký + token đúng định dạng, không ghi gì)
+// thay vì báo lỗi, để không lộ cơ chế chống bot.
 // Đăng ký kèm CCCD là phép thử ngày sinh/họ tên với hồ sơ học viên đã có
-// ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò từ nhiều IP.
-// Mọi nhánh (kể cả honeypot) trả cùng 1 thân phản hồi + thông điệp: service.PUBLIC_REGISTER_ACK.
+// ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò từ nhiều IP; nội viện
+// giới hạn thêm theo mã NV. Mọi nhánh (kể cả honeypot) trả cùng hình dạng
+// { submitted, registration_code, download_token } + cùng thông điệp.
 const REGISTER_PER_ID_MAX = 5;
 const REGISTER_MESSAGE = 'Đã nhận đăng ký khóa học, vui lòng chờ duyệt.';
+const DAY = 24 * 60 * 60;
 
 const register = asyncHandler(async (req, res) => {
 	if (req.body.website) {
-		return created(res, service.PUBLIC_REGISTER_ACK, REGISTER_MESSAGE);
+		return created(res, courseRegistration.fakeAck(), REGISTER_MESSAGE);
 	}
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
@@ -54,7 +59,7 @@ const register = asyncHandler(async (req, res) => {
 	const nationalId = String(req.body.national_id ?? '').trim();
 	if (
 		nationalId &&
-		!(await attempts.hit('course-registration', nationalId, REGISTER_PER_ID_MAX, 24 * 60 * 60))
+		!(await attempts.hit('course-registration', nationalId, REGISTER_PER_ID_MAX, DAY))
 	) {
 		return error(
 			res,
@@ -62,8 +67,27 @@ const register = asyncHandler(async (req, res) => {
 			429,
 		);
 	}
-	await service.register(req.body, req.files, req.formCustom);
-	created(res, service.PUBLIC_REGISTER_ACK, REGISTER_MESSAGE);
+	const staffNumber = String(req.body.staff_number ?? '').trim();
+	if (
+		req.body.source === 'internal' &&
+		!(await attempts.hit('course-registration-staff', staffNumber, REGISTER_PER_ID_MAX, DAY))
+	) {
+		return error(
+			res,
+			'Mã nhân viên này đã đăng ký quá nhiều lần hôm nay. Vui lòng thử lại vào ngày mai.',
+			429,
+		);
+	}
+	// OTP email (mặc định bật): bản khai phải mang email_token còn hạn — đối chiếu email
+	// của token với email đăng ký (nội viện: email trong hồ sơ nhân sự) ở service.
+	const otpRequired = await emailOtp.isRequired();
+	const emailProof = otpRequired ? emailOtp.readToken(req.body.email_token) : null;
+	if (otpRequired && !emailProof) return error(res, courseRegistration.EMAIL_NOT_VERIFIED, 400);
+	const ack = await service.register(req.body, req.files, req.formCustom, {
+		otpRequired,
+		emailProof,
+	});
+	created(res, ack, REGISTER_MESSAGE);
 });
 
 const getOpenTopicRounds = asyncHandler(async (req, res) => {

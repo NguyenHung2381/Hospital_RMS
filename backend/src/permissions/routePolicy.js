@@ -45,7 +45,22 @@ module.exports = {
 		[`GET ${API}/public/trainee-types`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/upload-policy`]: 'Định dạng & dung lượng file được nhận (không nhạy cảm)',
 		[`GET ${API}/public/lookup`]: 'Cổng công khai — tra cứu trạng thái đăng ký',
-		[`POST ${API}/public/course-registration`]: 'Cổng công khai — đăng ký khóa học (có captcha)',
+		[`POST ${API}/public/course-registration`]:
+			'Cổng công khai — đăng ký khóa học (captcha, OTP email, giới hạn theo CCCD / mã NV, mọi nhánh cùng phản hồi)',
+		[`GET ${API}/public/course-registration/rules`]:
+			'Cổng công khai — nội quy lớp học + cấu hình form đăng ký (không chứa dữ liệu nghiệp vụ)',
+		[`POST ${API}/public/course-registration/staff-check`]:
+			'Cổng công khai — tra nhân viên nội viện khi đăng ký khóa học (phải khớp cả mã NV + họ tên như đăng ký hội nghị, chỉ trả họ tên/khoa/trình độ/email đã che, có rate-limit + giới hạn theo mã NV)',
+		[`POST ${API}/public/course-registration/email-otp`]:
+			'Cổng công khai — gửi OTP xác minh email trước khi đăng ký (captcha, giới hạn theo email / mã NV, phản hồi luôn cùng hình dạng)',
+		[`POST ${API}/public/course-registration/email-otp/verify`]:
+			'Cổng công khai — đổi OTP lấy email_token 30 phút (giới hạn lượt thử mỗi mã, sai/hết hạn cùng 1 lỗi)',
+		[`POST ${API}/public/course-registration/:code/status`]:
+			'Cổng công khai — trạng thái đăng ký theo mã + CCCD/email/download_token trong body (sai mã hay sai yếu tố đều 404, giới hạn theo mã)',
+		[`POST ${API}/public/course-registration/:code/application`]:
+			'Cổng công khai — tải Đơn đăng ký (.docx) theo mã + yếu tố thứ hai trong body (giới hạn theo mã)',
+		[`POST ${API}/public/course-registration/:code/dossier`]:
+			'Cổng công khai — nộp 1 file PDF hồ sơ bổ sung theo mã + yếu tố thứ hai trong body (giới hạn theo mã)',
 		[`GET ${API}/public/topic-rounds`]: 'Cổng công khai — đợt đang mở',
 		[`GET ${API}/public/topic-rounds/by-token/:token`]:
 			'Cổng công khai — đợt theo link đăng ký (có rate-limit)',
