@@ -123,6 +123,15 @@ export const publicRoutes: RouteObject[] = [
 		),
 	},
 	{
+		// Cùng trang tra cứu, mở sẵn tab đơn đăng ký (link trong thư xác nhận / màn đăng ký thành công)
+		path: '/tra-cuu-don-dang-ky',
+		element: (
+			<LazyRoute title='Tra cứu đơn đăng ký'>
+				<PublicLookup />
+			</LazyRoute>
+		),
+	},
+	{
 		path: '/tra-cuu-ho-so/:maTraCuu?',
 		element: (
 			<LazyRoute title='Tra cứu hồ sơ đề tài'>

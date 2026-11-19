@@ -1,132 +1,148 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { AlertSvg, BookOpenSvg, CheckCircleSvg, CheckSmSvg, ChevRSvg, SendSvg } from '@/assets/icons';
-import { DatePicker, SearchInput } from '@/shared/components';
-import { removeDiacritics } from '@/shared/utils/helper';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertSvg, CheckSmSvg, SendSvg } from '@/assets/icons';
+import type { CustomValues } from '@/shared/formConfig/types';
+import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { formatDateOr } from '../../../shared/utils/formatDate';
-import { GENDER_OPTIONS } from '../../../shared/utils/gender';
 import {
+	checkRegistrationStaff,
+	getCourseRegistrationRules,
 	getOpenCourses,
 	getTraineeTypes,
 	registerCourse,
+	type CourseRegistrationRules,
 	type PublicCourse,
+	type RegistrationSource,
 	type TraineeTypeOption,
 } from '../api/publicApi';
-import { AttachmentPicker, type Attachment } from '../components/AttachmentPicker';
-import { CourseProgramPicker } from '../components/CourseProgramPicker';
-import { FormSection, SubGroup } from '../components/FormSection';
+import type { Attachment } from '../components/AttachmentPicker';
+import { RegisterProvider } from '../components/courseRegister/registerContext';
+import { RegisterSuccess, type RegisterDone } from '../components/courseRegister/RegisterSuccess';
+import { StepAttach } from '../components/courseRegister/StepAttach';
+import { StepCourse } from '../components/courseRegister/StepCourse';
+import { StepInfo } from '../components/courseRegister/StepInfo';
+import { StepReview } from '../components/courseRegister/StepReview';
+import { StepRules } from '../components/courseRegister/StepRules';
+import { StepWho } from '../components/courseRegister/StepWho';
 import { useCaptcha } from '../hooks/useCaptcha';
-import { PUBLIC_FIELD } from '../utils/fieldClasses';
-import { allowedOptions } from '@/shared/formConfig/allowedOptions';
-import { CfgField } from '@/shared/formConfig/CfgField';
-import { CustomFields } from '@/shared/formConfig/CustomFields';
-import type { CustomValues } from '@/shared/formConfig/types';
-import { useFormConfig } from '@/shared/formConfig/useFormConfig';
+import { useEmailOtp } from '../hooks/useEmailOtp';
+import {
+	EMPTY_FORM,
+	buildPayload,
+	clearDraft,
+	draftHasInput,
+	loadDraft,
+	saveDraft,
+	staffMatches,
+	validateInfo,
+	type RegForm,
+	type StaffMatch,
+} from '../utils/courseRegisterFields';
 import styles from './PublicPortal.module.css';
 import s from './CourseRegisterPublic.module.css';
 
-// Trang này có class ghi chú / lỗi riêng
-const COURSE_FIELD = { ...PUBLIC_FIELD, hint: s.hint, error: s.fieldError, inputError: s.inputError };
-
-const EMPTY_FORM = {
-	full_name: '',
-	dob: '',
-	gender: '',
-	national_id: '',
-	phone: '',
-	email: '',
-	address: '',
-	trainee_type_id: '',
-	website: '', // honeypot
-};
-
-// Khóa lỗi: course/program/captcha + trường có sẵn + trường tùy chỉnh (Cấu hình form)
-type FieldKey = string;
-// Thứ tự trên trang — lỗi đầu tiên theo thứ tự này được cuộn tới
-const FIELD_ORDER: FieldKey[] = [
-	'course',
-	'program',
-	'full_name',
-	'national_id',
-	'dob',
-	'gender',
-	'trainee_type_id',
-	'phone',
-	'email',
-	'address',
-];
-// Trường tùy chỉnh có id cf-<key> (CustomFields)
-const fieldId = (k: FieldKey) =>
-	k === 'program' ? 'f-course' : document.getElementById(`f-${k}`) ? `f-${k}` : `cf-${k}`;
-
-// Nhiều khóa thì mới cần ô tìm
-const SEARCH_FROM = 6;
 // Link chia sẻ thẳng tới 1 khóa: /dang-ky-khoa-hoc?khoa=<id>
 const COURSE_PARAM = 'khoa';
+// Cổng nhân viên dẫn sang với ?doi-tuong=noi-vien
+const SOURCE_PARAM = 'doi-tuong';
 
-const searchKey = (v: string) => removeDiacritics(v).toLowerCase();
+type Errors = Record<string, string | undefined>;
 
-// Số ngày còn lại tới hạn đăng ký (null = không giới hạn)
-function daysLeft(date: string | null) {
-	if (!date) return null;
-	const end = new Date(date);
-	if (Number.isNaN(end.getTime())) return null;
-	end.setHours(0, 0, 0, 0);
-	const today = new Date();
-	today.setHours(0, 0, 0, 0);
-	return Math.round((end.getTime() - today.getTime()) / 86_400_000);
-}
+const STEP_COUNT = 6;
+const LAST = STEP_COUNT - 1;
+const STEPS = [
+	{ label: 'Chọn khóa học', desc: 'Bấm vào khóa học đang mở đăng ký mà bạn muốn tham gia.' },
+	{ label: 'Nội quy lớp học', desc: 'Đọc kỹ nội quy rồi xác nhận cam kết thực hiện.' },
+	{ label: 'Đối tượng đăng ký', desc: 'Cho chúng tôi biết bạn là nhân viên bệnh viện hay đến từ đơn vị khác.' },
+	{ label: 'Thông tin học viên', desc: 'Dùng để lập hồ sơ học viên, in đơn và cấp chứng chỉ — vui lòng nhập chính xác.' },
+	{ label: 'Hồ sơ đính kèm', desc: 'Gộp giấy tờ vào 1 file PDF rồi đính kèm.' },
+	{ label: 'Xem lại và gửi', desc: 'Kiểm tra lần cuối, xác minh email và gửi đăng ký.' },
+] as const;
 
-function DeadlineTag({ date }: { date: string | null }) {
-	const left = daysLeft(date);
-	if (left == null || left < 0) return null;
-	const soon = left <= 7;
-	return (
-		<span className={`${s.tag} ${soon ? s.tagWarn : ''}`}>
-			{left === 0 ? 'Hết hạn hôm nay' : soon ? `Còn ${left} ngày` : `Hạn ĐK ${formatDateOr(date)}`}
-		</span>
-	);
-}
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-interface Done {
-	name: string;
-	course: string;
-	program: string | null;
-	start: string | null;
-	hasLookup: boolean;
-}
+// Khóa lỗi → id phần tử: ô thường f-<khóa>, trường tùy chỉnh cf-<khóa>
+const idFor = (key: string) => {
+	if (key === 'staff') return 'f-staff_number';
+	if (key === 'program') return 'f-course';
+	return document.getElementById(`f-${key}`) ? `f-${key}` : `cf-${key}`;
+};
 
 export default function CourseRegisterPublic() {
 	const [params, setParams] = useSearchParams();
+	// Bản nháp: chỉ khôi phục khi link không trỏ tới khóa khác
+	const [draft] = useState(() => {
+		const d = loadDraft();
+		const wanted = params.get(COURSE_PARAM);
+		return d && draftHasInput(d) && (!wanted || wanted === d.courseId) ? d : null;
+	});
+	const [restored, setRestored] = useState(!!draft);
+
 	const [courses, setCourses] = useState<PublicCourse[]>([]);
 	const [traineeTypes, setTraineeTypes] = useState<TraineeTypeOption[]>([]);
-	const [courseId, setCourseId] = useState('');
-	const [programId, setProgramId] = useState('');
+	const [courseId, setCourseId] = useState(draft?.courseId ?? '');
+	const [programId, setProgramId] = useState(draft?.programId ?? '');
 	const [courseQuery, setCourseQuery] = useState('');
 	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const captcha = useCaptcha();
-	const [form, setForm] = useState(EMPTY_FORM);
+	const otp = useEmailOtp();
+	const [form, setForm] = useState<RegForm>(() => ({
+		...(draft?.form ?? EMPTY_FORM),
+		source: draft?.form.source || (params.get(SOURCE_PARAM) === 'noi-vien' ? 'internal' : ''),
+	}));
+	const [staff, setStaff] = useState<StaffMatch | null>(draft?.staff ?? null);
+	const [checkingStaff, setCheckingStaff] = useState(false);
+	const [staffError, setStaffError] = useState('');
+	const [invoiceOpen, setInvoiceOpen] = useState(
+		() => !!draft && ['invoice_org_name', 'invoice_org_address', 'invoice_tax_code', 'invoice_budget_code', 'invoice_email'].some((k) => draft.form[k as keyof RegForm]),
+	);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState('');
 	// Link ?khoa=… trỏ tới khóa không còn mở đăng ký (hết hạn, chuyển nội bộ, đã hủy)
 	const [linkMissing, setLinkMissing] = useState(false);
+	const [rules, setRules] = useState<CourseRegistrationRules | null>(null);
+	const [rulesError, setRulesError] = useState('');
+	const [step, setStep] = useState(draft?.step ?? 0);
+	const [reached, setReached] = useState(draft?.reached ?? 0);
 	const [submitting, setSubmitting] = useState(false);
-	const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+	const [errorsState, setErrors] = useState<Errors>({});
 	const [serverError, setServerError] = useState('');
-	const [done, setDone] = useState<Done | null>(null);
+	const [done, setDone] = useState<RegisterDone | null>(null);
 	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
 	const cfg = useFormConfig('course_registration', 'public');
-	const [custom, setCustomState] = useState<CustomValues>({});
+	const [custom, setCustomState] = useState<CustomValues>(draft?.custom ?? {});
+
+	const headingRef = useRef<HTMLHeadingElement>(null);
+	const topRef = useRef<HTMLDivElement>(null);
+	const firstRender = useRef(true);
+	const [focusTick, setFocusTick] = useState(0);
+
+	// Đã tích ô xác nhận thì không hiện lỗi captcha cũ nữa
+	const errors: Errors = captcha.payload && errorsState.captcha ? { ...errorsState, captcha: undefined } : errorsState;
+	const course = courses.find((c) => c.id === courseId);
+	const program = course?.programs.find((p) => p.id === programId);
+	const internal = form.source === 'internal';
+	const staffOk = internal && staffMatches(staff, form);
+	const otpRequired = rules?.email_otp_required ?? true;
+
+	const clearError = (...keys: string[]) =>
+		setErrors((e) => (keys.some((k) => e[k]) ? { ...e, ...Object.fromEntries(keys.map((k) => [k, undefined])) } : e));
+
+	const setField = useCallback((key: keyof RegForm, value: string) => {
+		setForm((f) => ({ ...f, [key]: value }) as RegForm);
+		setErrors((e) => {
+			const clear = [key as string, ...(['dob', 'gender', 'national_id'].includes(key) ? ['national_id'] : [])];
+			return clear.some((k) => e[k]) ? { ...e, ...Object.fromEntries(clear.map((k) => [k, undefined])) } : e;
+		});
+	}, []);
+
 	const setCustom = (next: CustomValues) => {
 		Object.keys(next).forEach((k) => next[k] !== custom[k] && clearError(k));
 		setCustomState(next);
 	};
 
-	const course = courses.find((c) => c.id === courseId);
-	const program = course?.programs.find((p) => p.id === programId);
-
-	const clearError = (k: FieldKey) => setErrors((e) => (e[k] ? { ...e, [k]: undefined } : e));
+	// ─── Chọn khóa / chương trình ─────────────────────────────────────────────
 
 	// Chọn khóa (+ chương trình). Chương trình đã ghi đối tượng ⇒ điền sẵn
 	// "Đối tượng học viên" nếu người dùng chưa chọn.
@@ -147,8 +163,7 @@ export default function CourseRegisterPublic() {
 	const pickCourse = (c: PublicCourse | null) => {
 		choose(c, autoProgram(c));
 		setLinkMissing(false);
-		clearError('course');
-		clearError('program');
+		clearError('course', 'program');
 		setParams(
 			(p) => {
 				const n = new URLSearchParams(p);
@@ -165,106 +180,269 @@ export default function CourseRegisterPublic() {
 			.then(([c, t]) => {
 				setCourses(c);
 				setTraineeTypes(t);
-				// Mở từ link có ?khoa=… hoặc chỉ có đúng 1 khóa đang mở ⇒ chọn sẵn
+				// Thứ tự ưu tiên: link ?khoa=… → khóa trong bản nháp → chỉ có đúng 1 khóa đang mở
 				const wanted = params.get(COURSE_PARAM);
 				const linked = wanted ? c.find((x) => x.id === wanted) : undefined;
 				if (wanted && !linked) setLinkMissing(true);
+				const drafted = !wanted && draft?.courseId ? c.find((x) => x.id === draft.courseId) : undefined;
+				if (draft && !linked && !drafted) {
+					// Khóa trong bản nháp đã đóng: chọn lại từ đầu, giữ nguyên chữ đã nhập
+					setStep(0);
+					setReached(0);
+					setCourseId('');
+					setProgramId('');
+				}
+				if (drafted) {
+					const pid = draft?.programId && drafted.programs.some((p) => p.id === draft.programId) ? draft.programId : autoProgram(drafted);
+					choose(drafted, pid, t);
+					return;
+				}
 				const initial = linked ?? (c.length === 1 && !wanted ? c[0] : null);
-				if (initial) choose(initial, autoProgram(initial), t);
+				if (initial) {
+					const pid = autoProgram(initial);
+					choose(initial, pid, t);
+					// Từ cổng nhân viên (đã chọn khóa + đối tượng) thì vào thẳng bước nội quy
+					const resolved = !initial.programs.length || !!pid;
+					if (!draft && linked && resolved && params.get(SOURCE_PARAM) === 'noi-vien') {
+						setStep(1);
+						setReached(1);
+					}
+				}
 			})
 			.catch((err) => setLoadError(err instanceof Error ? err.message : 'Không thể tải dữ liệu'))
 			.finally(() => setLoading(false));
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ đọc link lúc mở trang
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ đọc link / bản nháp lúc mở trang
 	}, []);
 
-	// Đã tích ô xác nhận thì không hiện lỗi captcha cũ nữa
-	const captchaError = captcha.payload ? undefined : errors.captcha;
-
-	const set = (field: keyof typeof EMPTY_FORM) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-		setForm((f) => ({ ...f, [field]: e.target.value }));
-		clearError(field);
-		if (field === 'national_id') clearError('dob');
+	// Tăng để tải lại nội quy khi bấm "Thử lại"
+	const [rulesTry, setRulesTry] = useState(0);
+	useEffect(() => {
+		let alive = true;
+		getCourseRegistrationRules()
+			.then((r) => alive && setRules(r))
+			.catch((err) => alive && setRulesError(err instanceof Error ? err.message : 'Không tải được nội quy lớp học'));
+		return () => {
+			alive = false;
+		};
+	}, [rulesTry]);
+	const loadRules = () => {
+		setRulesError('');
+		setRulesTry((n) => n + 1);
 	};
 
-	const visibleCourses = useMemo(() => {
-		const q = searchKey(courseQuery.trim());
-		if (!q) return courses;
-		return courses.filter((c) =>
-			searchKey(`${c.name} ${c.program_name ?? ''} ${c.programs.map((p) => p.name).join(' ')}`).includes(q),
-		);
-	}, [courses, courseQuery]);
+	// ─── Bản nháp ─────────────────────────────────────────────────────────────
 
-	const validate = () => {
-		const e: Partial<Record<FieldKey, string>> = {};
-		if (!courseId) e.course = 'Vui lòng chọn khóa học muốn đăng ký';
-		else if (course?.programs.length && !programId) e.program = 'Vui lòng chọn 1 chương trình trong khóa';
-		// Bắt buộc / độ dài / định dạng theo Cấu hình form (honeypot không có trong registry nên bỏ qua)
-		Object.assign(e, cfg.validate(form, custom, { mode: 'create' }));
-		if (!form.full_name.trim()) e.full_name = 'Vui lòng nhập họ và tên';
-		// Server đối chiếu ngày sinh khi CCCD đã có hồ sơ — bắt nhập cùng lúc
-		if (form.national_id.trim() && !form.dob) e.dob = 'Nhập ngày sinh kèm số CCCD/CMND';
-		if (form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim())) e.email = 'Email không hợp lệ';
-		if (!captcha.payload) e.captcha = 'Vui lòng tích ô xác nhận trước khi gửi';
-		Object.keys(e).forEach((k) => !e[k] && delete e[k]);
+	useEffect(() => {
+		if (done) return;
+		const t = window.setTimeout(
+			() => saveDraft({ courseId, programId, step, reached, form, custom, staff }),
+			400,
+		);
+		return () => window.clearTimeout(t);
+	}, [done, courseId, programId, step, reached, form, custom, staff]);
+
+	// ─── Chuyển bước ──────────────────────────────────────────────────────────
+
+	// Đổi bước: đưa focus về tiêu đề bước (bàn phím / đọc màn hình), cuộn lên đầu form
+	useEffect(() => {
+		if (firstRender.current) {
+			firstRender.current = false;
+			return;
+		}
+		headingRef.current?.focus({ preventScroll: true });
+		topRef.current?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+	}, [step]);
+
+	// Sau khi báo lỗi: tới ô lỗi đầu tiên theo thứ tự trên trang (chạy sau effect đổi bước nên ưu tiên hơn)
+	useLayoutEffect(() => {
+		if (!focusTick) return;
+		const els = Object.keys(errors)
+			.filter((k) => errors[k])
+			.map((k) => document.getElementById(idFor(k)))
+			.filter((el): el is HTMLElement => !!el);
+		els.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+		const el = els[0];
+		if (!el) return;
+		const target = el.matches('input,select,textarea,button') ? el : el.querySelector<HTMLElement>('input,select,textarea,button');
+		el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+		target?.focus({ preventScroll: true });
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi có lượt báo lỗi mới
+	}, [focusTick]);
+
+	const fail = (errs: Errors, at?: number) => {
+		if (at !== undefined) setStep(at);
+		setErrors(errs);
+		setFocusTick((t) => t + 1);
+	};
+
+	/** Lỗi của 1 bước (rỗng = hợp lệ) */
+	const stepErrors = (i: number): Errors => {
+		const e: Errors = {};
+		if (i === 0) {
+			if (!courseId) e.course = 'Vui lòng chọn khóa học muốn đăng ký';
+			else if (course?.programs.length && !programId) e.program = 'Vui lòng chọn 1 chương trình trong khóa';
+		} else if (i === 1) {
+			if (!rules) e.rules = 'Chưa tải được nội quy, vui lòng thử lại';
+			else if (!form.rules_accepted) e.rules = 'Bạn cần xác nhận đã đọc và cam kết thực hiện nội quy để tiếp tục';
+		} else if (i === 2) {
+			if (!form.source) e.source = 'Vui lòng chọn nội viện hoặc ngoại viện';
+			else if (form.source === 'internal' && !staffOk)
+				e.staff = form.staff_number.trim() && form.full_name.trim()
+					? 'Bấm "Kiểm tra" để xác nhận mã nhân viên và họ tên trước khi tiếp tục'
+					: 'Vui lòng nhập mã nhân viên và họ tên';
+		} else if (i === 3) {
+			Object.assign(e, validateInfo(cfg, form, custom));
+		} else if (i === LAST) {
+			if (otpRequired && !otp.verifiedFor(form.email)) e.email_otp = 'Vui lòng xác minh email trước khi gửi đăng ký';
+			if (!form.declared_true) e.declared_true = 'Bạn cần xác nhận cam kết thông tin đúng sự thật để gửi đăng ký';
+			if (!captcha.payload) e.captcha = 'Vui lòng tích ô xác nhận trước khi gửi';
+		}
 		return e;
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const checkStaff = async () => {
+		const sn = form.staff_number.trim();
+		const name = form.full_name.trim();
+		if (!sn || !name) return fail({ staff: 'Vui lòng nhập mã nhân viên và họ tên' });
+		setCheckingStaff(true);
+		setStaffError('');
+		setErrors({});
+		try {
+			const info = await checkRegistrationStaff(sn, name);
+			setStaff({ staff_number: sn, full_name: info.full_name, info });
+			// Dùng đúng họ tên trong hồ sơ nhân sự cho các bước sau
+			setForm((f) => ({ ...f, full_name: info.full_name }));
+		} catch (err) {
+			setStaff(null);
+			setStaffError(err instanceof Error ? err.message : 'Không kiểm tra được, vui lòng thử lại');
+		} finally {
+			setCheckingStaff(false);
+		}
+	};
+
+	const goTo = (i: number) => {
 		setServerError('');
-		const errs = validate();
-		setErrors(errs);
-		const first =
-			FIELD_ORDER.find((k) => errs[k]) ??
-			cfg.custom.find((c) => errs[c.key])?.key ??
-			(errs.captcha ? 'captcha' : undefined);
-		if (first) {
-			const el = document.getElementById(fieldId(first));
-			el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-			if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
+		setErrors({});
+		setStep(i);
+		setReached((r) => Math.max(r, i));
+	};
+
+	const goNext = () => {
+		setServerError('');
+		// Nội viện chưa xác nhận: "Tiếp tục" / Enter trong ô nhập chính là bấm "Kiểm tra"
+		if (step === 2 && internal && !staffOk && form.staff_number.trim() && form.full_name.trim()) {
+			void checkStaff();
 			return;
+		}
+		const errs = stepErrors(step);
+		if (Object.keys(errs).length) return fail(errs);
+		goTo(step + 1);
+	};
+
+	// ─── Email OTP ────────────────────────────────────────────────────────────
+
+	const sendOtp = async () => {
+		if (!captcha.payload) return;
+		await otp.send({
+			source: form.source as RegistrationSource,
+			email: form.email.trim(),
+			...(internal && staff ? { staff_number: staff.staff_number, full_name: staff.info.full_name } : {}),
+			...captcha.payload,
+		});
+		// Mã xác nhận chỉ dùng 1 lần (đúng hay sai) — luôn lấy mã mới
+		captcha.reload();
+	};
+
+	// ─── Gửi đăng ký ──────────────────────────────────────────────────────────
+
+	const submit = async () => {
+		setServerError('');
+		// Kiểm lại mọi bước: bản nháp khôi phục hoặc cấu hình form có thể đã đổi
+		for (let i = 0; i <= LAST; i++) {
+			const errs = stepErrors(i);
+			if (Object.keys(errs).length) return fail(errs, i);
+		}
+		const emailToken = otpRequired ? otp.takeToken(form.email) : null;
+		if (otpRequired && !emailToken) {
+			otp.reset();
+			return fail({ email_otp: 'Phiên xác minh email đã hết hạn, vui lòng xác minh lại' });
 		}
 		if (!captcha.payload || !course) return;
 
 		setSubmitting(true);
 		try {
-			// Server trả cùng 1 phản hồi cố định cho mọi trường hợp (không lộ CCCD đã có hồ sơ hay chưa)
-			await registerCourse(
-				{
-					...form,
-					course_id: courseId,
-					program_id: programId || undefined,
-					custom,
-					...captcha.payload,
-				},
-				attachments.map((a) => a.file),
-			);
+			const payload = buildPayload(cfg, form, staffOk ? staff : null, {
+				course_id: courseId,
+				program_id: programId || undefined,
+				custom,
+				email_token: emailToken ?? undefined,
+				...captcha.payload,
+			});
+			// Máy chủ trả cùng 1 hình dạng cho mọi trường hợp (không lộ CCCD / mã nhân viên đã có hay chưa)
+			const res = await registerCourse(payload, attachments.map((a) => a.file));
+			clearDraft();
 			setDone({
-				name: form.full_name.trim(),
+				code: res.registration_code,
+				downloadToken: res.download_token,
+				source: form.source as RegistrationSource,
+				name: payload.full_name,
+				email: form.email.trim(),
 				course: course.name,
 				program: program?.name ?? null,
 				start: course.start_date,
-				hasLookup: !!form.national_id.trim() && !!form.dob,
 			});
 			setForm(EMPTY_FORM);
 			setCustomState({});
 			setAttachments([]);
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			setStaff(null);
+			otp.reset();
+			window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 		} catch (err) {
 			setServerError(err instanceof Error ? err.message : 'Đăng ký thất bại, vui lòng thử lại');
 		} finally {
-			// Mã xác nhận chỉ dùng 1 lần (đúng hay sai) — luôn lấy mã mới
 			captcha.reload();
 			setSubmitting(false);
 		}
 	};
 
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		if (submitting) return;
+		if (step < LAST) goNext();
+		else void submit();
+	};
+
 	const restart = () => {
+		clearDraft();
 		setDone(null);
 		setErrors({});
 		setServerError('');
+		setStaffError('');
+		setStep(0);
+		setReached(0);
 		pickCourse(null);
 		window.scrollTo({ top: 0 });
+	};
+
+	const discardDraft = () => {
+		clearDraft();
+		setRestored(false);
+		setForm({ ...EMPTY_FORM, source: '' });
+		setCustomState({});
+		setStaff(null);
+		setStaffError('');
+		setErrors({});
+		setInvoiceOpen(false);
+		otp.reset();
+		setStep(0);
+		setReached(0);
+		pickCourse(null);
+	};
+
+	const changeSource = (source: RegistrationSource) => {
+		setForm((f) => ({ ...f, source }));
+		setErrors({});
+		setStaffError('');
 	};
 
 	if (done) {
@@ -273,81 +451,44 @@ export default function CourseRegisterPublic() {
 				bare
 				title='Đăng ký khóa học đào tạo'
 			>
-				<div className={s.done}>
-					<div className={s.doneIcon}>
-						<CheckCircleSvg />
-					</div>
-					<h2 className={s.doneTitle}>Đã gửi đăng ký thành công</h2>
-					<p className={s.doneText}>
-						Phòng Đào tạo sẽ xét duyệt và liên hệ với bạn qua số điện thoại hoặc email đã cung cấp.
-					</p>
-					<dl className={s.doneCard}>
-						<div>
-							<dt>Học viên</dt>
-							<dd>{done.name}</dd>
-						</div>
-						<div>
-							<dt>Khóa học</dt>
-							<dd>{done.course}</dd>
-						</div>
-						{done.program && (
-							<div>
-								<dt>Chương trình</dt>
-								<dd>{done.program}</dd>
-							</div>
-						)}
-						{done.start && (
-							<div>
-								<dt>Khai giảng</dt>
-								<dd>{formatDateOr(done.start)}</dd>
-							</div>
-						)}
-					</dl>
-					<p className={s.doneText}>
-						{done.hasLookup
-							? 'Bạn có thể theo dõi kết quả duyệt bằng họ tên, số CCCD/CMND và ngày sinh vừa nhập.'
-							: 'Bạn chưa nhập CCCD/CMND nên không tra cứu trực tuyến được — vui lòng chờ Phòng Đào tạo liên hệ.'}
-					</p>
-					<div className={s.doneActions}>
-						<button
-							type='button'
-							className={s.ghostBtn}
-							onClick={restart}
-						>
-							Đăng ký khóa khác
-						</button>
-						{done.hasLookup && (
-							<Link
-								to='/tra-cuu-ket-qua'
-								className={s.submitBtn}
-							>
-								Tra cứu kết quả
-							</Link>
-						)}
-					</div>
-				</div>
+				<RegisterSuccess
+					done={done}
+					onRestart={restart}
+				/>
 			</PublicLayout>
 		);
 	}
 
-	const steps = [
-		{ label: 'Chọn khóa học', ok: !!course },
-		...(course?.programs.length ? [{ label: 'Chọn chương trình', ok: !!program }] : []),
-		{ label: 'Nhập họ và tên', ok: !!form.full_name.trim() },
-		{ label: 'Hồ sơ PDF (tùy chọn)', ok: attachments.length > 0 },
-		{ label: 'Xác nhận không phải người máy', ok: !!captcha.payload },
+	// ─── Giao diện ────────────────────────────────────────────────────────────
+
+	const stepDone = [
+		reached > 0 && !!course && (!course.programs.length || !!program),
+		reached > 1 && form.rules_accepted,
+		reached > 2 && !!form.source && (!internal || staffOk),
+		reached > 3,
+		reached > 4,
+		false,
 	];
+	const errorCount = Object.values(errors).filter(Boolean).length;
+	const stepTitle = step === 0 && course ? 'Chọn chương trình' : STEPS[step].label;
+	const stepDesc =
+		step === 0 && course
+			? course.programs.length > 1
+				? 'Khóa học có nhiều chương trình — chọn 1 chương trình bạn muốn theo học.'
+				: 'Kiểm tra thông tin khóa học trước khi tiếp tục.'
+			: STEPS[step].desc;
 
 	return (
 		<PublicLayout
 			bare
 			title='Đăng ký khóa học đào tạo'
-			subtitle='Chọn khóa học, điền thông tin và gửi đăng ký. Phòng Đào tạo sẽ duyệt và liên hệ lại với bạn.'
+			subtitle='Điền lần lượt từng bước. Thông tin bạn nhập được giữ lại nếu lỡ tải lại trang.'
 		>
 			<div className={s.layout}>
 				<form
 					onSubmit={handleSubmit}
 					noValidate
+					className={s.wizard}
 				>
 					{/* Honeypot: field ẩn, người dùng thật không thấy nên luôn để trống */}
 					<div
@@ -362,313 +503,179 @@ export default function CourseRegisterPublic() {
 							tabIndex={-1}
 							autoComplete='off'
 							value={form.website}
-							onChange={set('website')}
+							onChange={(e) => setField('website', e.target.value)}
 						/>
 					</div>
 
-					<div id='f-course'>
-						<FormSection
-							step={1}
-							title={course ? 'Chọn chương trình' : 'Chọn khóa học'}
-							description={
-								course
-									? course.programs.length > 1
-										? 'Khóa học có nhiều chương trình — chọn 1 chương trình bạn muốn theo học.'
-										: 'Kiểm tra thông tin khóa học trước khi điền hồ sơ.'
-									: 'Bấm vào khóa học đang mở đăng ký mà bạn muốn tham gia.'
-							}
+					<div
+						ref={topRef}
+						className={s.stepTop}
+					>
+						<div className={s.stepCount}>
+							Bước {step + 1} / {STEP_COUNT}
+						</div>
+						<div
+							className={s.progress}
+							role='progressbar'
+							aria-label='Tiến độ đăng ký'
+							aria-valuemin={1}
+							aria-valuemax={STEP_COUNT}
+							aria-valuenow={step + 1}
+							aria-valuetext={`Bước ${step + 1} trên ${STEP_COUNT}: ${stepTitle}`}
 						>
-							{linkMissing && !course && !loading && (
-								<div
-									className={s.linkNotice}
-									role='status'
-								>
-									<AlertSvg />
-									<span>
-										Khóa học trong link bạn mở đã hết hạn hoặc không còn nhận đăng ký.
-										{courses.length > 0 && ' Bạn có thể chọn một khóa khác đang mở bên dưới.'}
-									</span>
-								</div>
-							)}
-							{course ? (
-								<CourseProgramPicker
-									course={course}
-									value={programId}
-									onChange={(id) => {
-										choose(course, id);
-										clearError('program');
-									}}
-									onBack={() => pickCourse(null)}
-									backLabel={courses.length > 1 ? 'Chọn khóa khác' : 'Xem danh sách khóa'}
-									external
-								/>
-							) : loading ? (
-								<div className={styles.emptyNotice}>Đang tải danh sách khóa học...</div>
-							) : loadError ? (
-								<div className={styles.emptyNotice}>{loadError}</div>
-							) : courses.length === 0 ? (
-								<div className={styles.emptyNotice}>Hiện chưa có khóa học nào đang mở đăng ký.</div>
-							) : (
-								<>
-									{courses.length >= SEARCH_FROM && (
-										<div className={s.courseToolbar}>
-											<SearchInput
-												value={courseQuery}
-												onChange={setCourseQuery}
-												placeholder='Tìm khóa học, chương trình...'
-											/>
-										</div>
-									)}
-									<div
-										className={s.courseGrid}
-										aria-label='Danh sách khóa học'
-									>
-										{visibleCourses.map((c) => (
-											<button
-												type='button'
-												key={c.id}
-												className={s.courseItem}
-												onClick={() => pickCourse(c)}
-											>
-												<span className={s.courseIcon}>
-													<BookOpenSvg />
-												</span>
-												<span className={s.courseBody}>
-													<span className={s.courseTitle}>{c.name}</span>
-													<span className={s.courseSub}>
-														{c.programs.length > 1
-															? `${c.programs.length} chương trình để chọn`
-															: (c.programs[0]?.name ?? c.program_name ?? 'Chương trình chưa xác định')}
-													</span>
-													<span className={s.courseTags}>
-														{c.start_date && <span className={s.tag}>Khai giảng {formatDateOr(c.start_date)}</span>}
-														<DeadlineTag date={c.enrollment_end_date} />
-													</span>
-												</span>
-												<span className={s.courseArrow}>
-													<ChevRSvg />
-												</span>
-											</button>
-										))}
-									</div>
-									{visibleCourses.length === 0 && (
-										<div className={styles.emptyNotice}>Không có khóa học khớp "{courseQuery}".</div>
-									)}
-								</>
-							)}
-							{(errors.course || errors.program) && (
-								<div className={`${s.fieldError} ${s.blockError}`}>{errors.course ?? errors.program}</div>
-							)}
-						</FormSection>
+							<div
+								className={s.progressBar}
+								style={{ width: `${((step + 1) / STEP_COUNT) * 100}%` }}
+							/>
+						</div>
 					</div>
 
-					<FormSection
-						step={2}
-						title='Thông tin học viên'
-						description='Dùng để lập hồ sơ học viên và cấp chứng chỉ — vui lòng nhập chính xác.'
+					{restored && (
+						<div
+							className={s.restoreNotice}
+							role='status'
+						>
+							<span>Đã khôi phục thông tin bạn nhập dở trước khi tải lại trang.</span>
+							<button
+								type='button'
+								className={s.linkBtn}
+								onClick={discardDraft}
+							>
+								Xóa và nhập lại từ đầu
+							</button>
+						</div>
+					)}
+
+					<section
+						className={s.panel}
+						aria-labelledby='step-title'
 					>
-						<SubGroup title='Thông tin cá nhân'>
-							<div className={styles.formGrid}>
-								<CfgField
-									cfg={cfg}
-									name='full_name'
-									htmlFor='f-full_name'
-									label='Họ và tên'
-									required
-									error={errors.full_name}
-									className={styles.full}
-									classes={COURSE_FIELD}
-								>
-									<input
-										id='f-full_name'
-										className={styles.input}
-										value={form.full_name}
-										onChange={set('full_name')}
-										placeholder='VD: Nguyễn Văn An'
-										autoComplete='name'
-										required
-									/>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='national_id'
-									htmlFor='f-national_id'
-									label='Số CCCD/CMND'
-									hint='Cần để tra cứu kết quả và nhận chứng chỉ.'
-									error={errors.national_id}
-									classes={COURSE_FIELD}
-								>
-									<input
-										id='f-national_id'
-										className={styles.input}
-										value={form.national_id}
-										onChange={set('national_id')}
-										placeholder='12 số trên thẻ CCCD'
-										inputMode='numeric'
-									/>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='dob'
-									htmlFor='f-dob'
-									label='Ngày sinh'
-									forceRequired={!!form.national_id.trim()}
-									error={errors.dob}
-									classes={COURSE_FIELD}
-								>
-									<DatePicker
-										id='f-dob'
-										value={form.dob}
-										hasError={!!errors.dob}
-										max={new Date().toISOString().slice(0, 10)}
-										onChange={(v) => set('dob')({ target: { value: v } } as React.ChangeEvent<HTMLInputElement>)}
-									/>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='gender'
-									htmlFor='f-gender'
-									label='Giới tính'
-									error={errors.gender}
-									classes={COURSE_FIELD}
-								>
-									<select
-										id='f-gender'
-										className={styles.select}
-										value={form.gender}
-										onChange={set('gender')}
-									>
-										<option value=''>-- Chọn --</option>
-										{allowedOptions(cfg, 'gender', GENDER_OPTIONS).map((o) => (
-											<option
-												key={o.value}
-												value={o.value}
-											>
-												{o.label}
-											</option>
-										))}
-									</select>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='trainee_type_id'
-									htmlFor='f-trainee_type_id'
-									label='Đối tượng học viên'
-									error={errors.trainee_type_id}
-									classes={COURSE_FIELD}
-								>
-									<select
-										id='f-trainee_type_id'
-										className={styles.select}
-										value={form.trainee_type_id}
-										onChange={set('trainee_type_id')}
-									>
-										<option value=''>-- Chọn --</option>
-										{traineeTypes.map((t) => (
-											<option
-												key={t.id}
-												value={t.id}
-											>
-												{t.name}
-											</option>
-										))}
-									</select>
-								</CfgField>
-							</div>
-						</SubGroup>
+						<header className={s.panelHead}>
+							<h2
+								id='step-title'
+								ref={headingRef}
+								tabIndex={-1}
+								className={s.panelTitle}
+							>
+								{stepTitle}
+							</h2>
+							<p className={s.panelDesc}>{stepDesc}</p>
+						</header>
 
-						<SubGroup title='Thông tin liên hệ'>
-							<div className={styles.formGrid}>
-								<CfgField
-									cfg={cfg}
-									name='phone'
-									htmlFor='f-phone'
-									label='Số điện thoại'
-									error={errors.phone}
-									classes={COURSE_FIELD}
+						{step > 0 && course && (
+							<div className={s.courseBar}>
+								<span>
+									<span className={s.courseBarLabel}>Khóa học:</span> {course.name}
+									{program ? ` · ${program.name}` : ''}
+								</span>
+								<button
+									type='button'
+									className={s.linkBtn}
+									onClick={() => goTo(0)}
 								>
-									<input
-										id='f-phone'
-										className={styles.input}
-										type='tel'
-										value={form.phone}
-										onChange={set('phone')}
-										placeholder='VD: 0912345678'
-										autoComplete='tel'
-									/>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='email'
-									htmlFor='f-email'
-									label='Email'
-									error={errors.email}
-									classes={COURSE_FIELD}
-								>
-									<input
-										id='f-email'
-										type='email'
-										className={styles.input}
-										value={form.email}
-										onChange={set('email')}
-										placeholder='email@example.com'
-										autoComplete='email'
-									/>
-								</CfgField>
-								<CfgField
-									cfg={cfg}
-									name='address'
-									htmlFor='f-address'
-									label='Địa chỉ'
-									error={errors.address}
-									className={styles.full}
-									classes={COURSE_FIELD}
-								>
-									<input
-										id='f-address'
-										className={styles.input}
-										value={form.address}
-										onChange={set('address')}
-										placeholder='Số nhà, đường, xã/phường, tỉnh/thành phố'
-										autoComplete='street-address'
-									/>
-								</CfgField>
+									Đổi
+								</button>
 							</div>
-						</SubGroup>
-
-						{cfg.custom.length > 0 && (
-							<SubGroup title='Thông tin bổ sung'>
-								<div className={styles.formGrid}>
-									<CustomFields
-										cfg={cfg}
-										value={custom}
-										onChange={setCustom}
-										errors={errors}
-										title={null}
-										inputClassName={styles.input}
-										classes={COURSE_FIELD}
-									/>
-								</div>
-							</SubGroup>
 						)}
-					</FormSection>
 
-					<FormSection
-						step={3}
-						title='Hồ sơ học viên (PDF)'
-						optional
-						description='Gộp CCCD, văn bằng, chứng chỉ, ảnh thẻ... vào 1 file PDF duy nhất rồi đính kèm.'
-					>
-						<AttachmentPicker
-							value={attachments}
-							onChange={setAttachments}
-							maxFiles={1}
-							extensions={['.pdf']}
-							hint='1 file PDF đầy đủ thông tin'
-						/>
-					</FormSection>
+						<RegisterProvider value={{ cfg, form, errors, setField, traineeTypes }}>
+							<div
+								key={step}
+								className={s.stepPane}
+							>
+								{step === 0 && (
+									<StepCourse
+										courses={courses}
+										loading={loading}
+										loadError={loadError}
+										linkMissing={linkMissing}
+										course={course}
+										programId={programId}
+										query={courseQuery}
+										onQuery={setCourseQuery}
+										onPickCourse={pickCourse}
+										onPickProgram={(id) => {
+											if (course) choose(course, id);
+											clearError('program');
+										}}
+										error={errors.course ?? errors.program}
+									/>
+								)}
+								{step === 1 && (
+									<StepRules
+										rules={rules}
+										loadError={rulesError}
+										onRetry={loadRules}
+										accepted={form.rules_accepted}
+										onAccept={(v) => {
+											setForm((f) => ({ ...f, rules_accepted: v }));
+											clearError('rules');
+										}}
+										error={errors.rules}
+									/>
+								)}
+								{step === 2 && (
+									<StepWho
+										form={form}
+										onSource={changeSource}
+										onField={(key, value) => {
+											setField(key, value);
+											setStaffError('');
+											clearError('staff');
+										}}
+										staff={staff}
+										staffOk={staffOk}
+										checking={checkingStaff}
+										onCheck={() => void checkStaff()}
+										staffError={staffError}
+										errors={errors}
+									/>
+								)}
+								{step === 3 && (
+									<StepInfo
+										staff={staffOk ? staff : null}
+										idIssuePlaces={rules?.id_issue_places ?? []}
+										custom={custom}
+										onCustom={setCustom}
+										invoiceOpen={invoiceOpen}
+										onInvoiceOpen={setInvoiceOpen}
+									/>
+								)}
+								{step === 4 && form.source && (
+									<StepAttach
+										source={form.source}
+										value={attachments}
+										onChange={setAttachments}
+									/>
+								)}
+								{step === LAST && (
+									<StepReview
+										cfg={cfg}
+										course={course}
+										program={program}
+										form={form}
+										custom={custom}
+										staff={staffOk ? staff : null}
+										traineeTypes={traineeTypes}
+										attachments={attachments}
+										onEdit={goTo}
+										otp={otp}
+										otpRequired={otpRequired}
+										captchaField={captcha.field}
+										captchaReady={!!captcha.payload}
+										onSendOtp={() => void sendOtp()}
+										onDeclared={(v) => {
+											setForm((f) => ({ ...f, declared_true: v }));
+											clearError('declared_true');
+										}}
+										errors={errors}
+									/>
+								)}
+							</div>
+						</RegisterProvider>
+					</section>
 
-					<div className={s.submitBar}>
+					<div className={s.actionBar}>
 						{serverError && (
 							<div
 								className={s.serverError}
@@ -677,23 +684,48 @@ export default function CourseRegisterPublic() {
 								<AlertSvg /> {serverError}
 							</div>
 						)}
-						<div className={s.submitRow}>
-							<div id='f-captcha'>
-								{captcha.field}
-								{captchaError && <span className={s.fieldError}>{captchaError}</span>}
-							</div>
-							<button
-								type='submit'
-								className={s.submitBtn}
-								disabled={submitting}
+						{!serverError && errorCount > 0 && step !== 0 && step !== 1 && step !== 2 && (
+							<div
+								className={s.errorSummary}
+								role='alert'
 							>
-								<SendSvg />
-								{submitting ? 'Đang gửi...' : 'Gửi đăng ký'}
-							</button>
+								<AlertSvg /> Còn {errorCount} mục chưa đúng. Các ô có chữ đỏ cần được sửa.
+							</div>
+						)}
+						<div className={s.actionRow}>
+							{step > 0 ? (
+								<button
+									type='button'
+									className={s.ghostBtn}
+									onClick={() => goTo(step - 1)}
+									disabled={submitting}
+								>
+									Quay lại
+								</button>
+							) : (
+								<span />
+							)}
+							{step < LAST ? (
+								<button
+									type='submit'
+									className={s.submitBtn}
+									disabled={checkingStaff}
+								>
+									{checkingStaff ? 'Đang kiểm tra...' : step === 2 && internal && !staffOk ? 'Kiểm tra' : 'Tiếp tục'}
+								</button>
+							) : (
+								<button
+									type='submit'
+									className={s.submitBtn}
+									disabled={submitting}
+								>
+									<SendSvg />
+									{submitting ? 'Đang gửi...' : 'Gửi đăng ký'}
+								</button>
+							)}
 						</div>
 						<span className={s.submitNote}>
-							Mục có dấu <span className={styles.required}>*</span> là bắt buộc. Thông tin chỉ dùng cho việc xét duyệt
-							và quản lý đào tạo.
+							Mục có dấu <span className={styles.required}>*</span> là bắt buộc.
 						</span>
 					</div>
 				</form>
@@ -737,17 +769,37 @@ export default function CourseRegisterPublic() {
 							<dd className={form.full_name.trim() ? '' : s.muted}>{form.full_name.trim() || 'Chưa nhập'}</dd>
 						</div>
 					</dl>
-					<ul className={s.checklist}>
-						{steps.map((st) => (
-							<li
-								key={st.label}
-								className={`${s.checkItem} ${st.ok ? s.checkDone : ''}`}
-							>
-								<span className={s.checkDot}>{st.ok && <CheckSmSvg />}</span>
-								{st.label}
-							</li>
-						))}
-					</ul>
+					<ol className={s.checklist}>
+						{STEPS.map((st, i) => {
+							const ok = stepDone[i];
+							const canGo = i !== step && i <= reached;
+							const body = (
+								<>
+									<span className={s.checkDot}>{ok && <CheckSmSvg />}</span>
+									{st.label}
+								</>
+							);
+							return (
+								<li
+									key={st.label}
+									className={`${s.checkItem} ${ok ? s.checkDone : ''} ${i === step ? s.checkCurrent : ''}`}
+									aria-current={i === step ? 'step' : undefined}
+								>
+									{canGo ? (
+										<button
+											type='button'
+											className={s.checkBtn}
+											onClick={() => goTo(i)}
+										>
+											{body}
+										</button>
+									) : (
+										body
+									)}
+								</li>
+							);
+						})}
+					</ol>
 				</aside>
 			</div>
 		</PublicLayout>
