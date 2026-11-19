@@ -560,6 +560,29 @@ const SECTIONS: Section[] = [
 				],
 			},
 			{
+				title: 'Đăng ký khóa ĐTLT từ cổng công khai',
+				fields: [
+					{
+						key: 'TRAINING_REGISTRATION_EMAIL_OTP',
+						label: 'Xác minh email bằng mã OTP',
+						hint: 'Tắt thì người đăng ký gửi đơn mà không cần nhập mã xác minh; email xác nhận chỉ gửi tới địa chỉ đã xác minh nên cũng sẽ không còn được gửi.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Bắt buộc',
+						offText: 'Không bắt buộc',
+					},
+					{
+						key: 'TRAINING_REGISTRATION_REQUIRE_CHECKS',
+						label: 'Đối chiếu hồ sơ trước khi duyệt ghi danh',
+						hint: 'Tắt thì người duyệt có thể duyệt đơn đăng ký mà chưa đánh dấu đối chiếu CCCD, văn bằng, tờ trình đã duyệt và hồ sơ đính kèm.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Bắt buộc',
+						offText: 'Không bắt buộc',
+					},
+				],
+			},
+			{
 				title: 'Điểm đạt & chuyên cần',
 				desc: 'Theo Phụ lục III TT 32/2023. Lý thuyết đạt khi ≥ ngưỡng; thực hành đạt khi LỚN HƠN ngưỡng (60% ⇒ phải trên 6,0/10).',
 				layout: 'grid',

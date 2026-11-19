@@ -67,6 +67,7 @@ router.put(
 		if (!systemSettingService.isKey(req.params.key)) return notFound(res);
 		const value = req.body.value ?? null;
 		const invalid =
+			systemSettingService.validateSetting(req.params.key, value) ??
 			uploadPolicy.validateSetting(req.params.key, value) ??
 			clamav.validateSetting(req.params.key, value) ??
 			attendancePolicy.validateSetting(req.params.key, value) ??
