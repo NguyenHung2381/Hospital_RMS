@@ -17,7 +17,17 @@ router.use(authenticate);
 // Tự phục vụ theo module: tắt module thì mọi route của module đó (kể cả đăng ký khóa học
 // và khai CME tự phục vụ) trả 403 MODULE_DISABLED. Gắn theo tiền tố đường dẫn để không
 // route nào sót — riêng điểm danh (ATTENDANCE) đã gắn công tắc ở từng route bên dưới.
-router.use(['/training', '/courses', '/documents', '/lesson-documents'], requireModule('TRAINING'));
+router.use(
+	[
+		'/training',
+		'/courses',
+		'/documents',
+		'/lesson-documents',
+		'/course-registrations',
+		'/department-proposals',
+	],
+	requireModule('TRAINING'),
+);
 router.use(['/cme', '/cme-categories', '/cme-records'], requireModule('SEMINAR'));
 
 router.get(
@@ -89,6 +99,90 @@ router.post(
 			'Đã gửi đăng ký, chờ duyệt',
 		);
 	}),
+);
+
+// ─── Đơn đăng ký khóa đào tạo liên tục của tôi (form /dang-ky-khoa-hoc) ───────
+// registrationPortalService: bản khai của người khác / nhóm không được xem trả 404.
+const registrationPortalService = require('./registrationPortalService');
+// Lưu theo lượt ghi danh: uploads/training/course_registration/<enrollmentId>/
+const uploadDossier = require('../../middlewares/uploadTraining').createTrainingUpload(
+	'course_registration',
+);
+
+// File .docx tải về (Đơn đăng ký, Tờ trình) — tên có dấu nên dùng filename*
+const sendDocx = (res, out) => {
+	res.setHeader('Content-Type', out.mime);
+	res.setHeader(
+		'Content-Disposition',
+		`attachment; filename*=UTF-8''${encodeURIComponent(out.filename)}`,
+	);
+	res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+	return res.end(out.buffer);
+};
+
+router.get(
+	'/course-registrations',
+	asyncHandler(async (req, res) =>
+		success(res, await registrationPortalService.listMine(req.user)),
+	),
+);
+router.get(
+	'/course-registrations/:enrollmentId/application',
+	asyncHandler(async (req, res) =>
+		sendDocx(res, await registrationPortalService.myApplication(req.params.enrollmentId, req.user)),
+	),
+);
+// Kiểm tra chủ bản khai TRƯỚC khi multer ghi file; thư mục lưu theo mã ghi danh (req.params.id)
+const ownDossierTarget = asyncHandler(async (req, _res, next) => {
+	await registrationPortalService.assertCanUploadDossier(req.params.enrollmentId, req.user);
+	req.params.id = req.params.enrollmentId;
+	next();
+});
+router.post(
+	'/course-registrations/:enrollmentId/dossier',
+	ownDossierTarget,
+	uploadDossier.single('file'),
+	asyncHandler(async (req, res) => {
+		if (!req.file)
+			return res.status(400).json({ success: false, message: 'Vui lòng chọn file PDF hồ sơ' });
+		return success(
+			res,
+			await registrationPortalService.uploadMyDossier(req.params.enrollmentId, req.file, req.user),
+			'Đã nộp hồ sơ, chờ Trung tâm Đào tạo đối chiếu',
+		);
+	}),
+);
+router.get(
+	'/department-proposals',
+	asyncHandler(async (req, res) =>
+		success(res, await registrationPortalService.departmentProposals(req.user)),
+	),
+);
+router.get(
+	'/department-proposals/document',
+	[
+		query('course_id')
+			.isString()
+			.trim()
+			.notEmpty()
+			.isLength({ max: 20 })
+			.withMessage('Thiếu khóa học'),
+		query(['program_id', 'department_id'])
+			.optional({ values: 'falsy' })
+			.isString()
+			.isLength({ max: 20 }),
+	],
+	validate,
+	asyncHandler(async (req, res) =>
+		sendDocx(
+			res,
+			await registrationPortalService.departmentProposalDocument(req.user, {
+				course_id: String(req.query.course_id),
+				program_id: req.query.program_id ? String(req.query.program_id) : null,
+				department_id: req.query.department_id ? String(req.query.department_id) : null,
+			}),
+		),
+	),
 );
 
 router.get(

@@ -172,7 +172,15 @@ const bulkDecideEnrollments = asyncHandler(async (req, res) => {
 		req.user.id,
 		req.body.note,
 	);
-	return success(res, results, 'Đã xử lý hàng loạt');
+	// Đăng ký chưa đủ mốc đối chiếu bị bỏ qua (results[i].skipped + missing), không làm hỏng cả lô
+	const skipped = results.filter((r) => r.skipped).length;
+	return success(
+		res,
+		results,
+		skipped
+			? `Đã xử lý ${results.filter((r) => !r.error).length}/${results.length}; bỏ qua ${skipped} đăng ký chưa đủ mốc đối chiếu`
+			: 'Đã xử lý hàng loạt',
+	);
 });
 
 const removeEnrollment = asyncHandler(async (req, res) => {

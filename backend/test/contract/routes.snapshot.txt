@@ -102,6 +102,8 @@ POST   /api/v1/courses/:id/programs/cancel-open  courses:update
 PUT    /api/v1/courses/:id/programs/dates  courses:update
 POST   /api/v1/courses/:id/programs/open  courses:update
 GET    /api/v1/courses/:id/programs/suggest-dates  courses:read
+GET    /api/v1/courses/:id/proposals  courses:read
+GET    /api/v1/courses/:id/proposals/document  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update
 POST   /api/v1/courses/:id/sessions/bulk  courses:update
@@ -123,6 +125,10 @@ GET    /api/v1/courses/enrollments/:enrollmentId/grades/history  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/grades/retake  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
+GET    /api/v1/courses/enrollments/:enrollmentId/registration  courses:read
+GET    /api/v1/courses/enrollments/:enrollmentId/registration/application  courses:read
+PUT    /api/v1/courses/enrollments/:enrollmentId/registration/checks  courses:update
+GET    /api/v1/courses/enrollments/:enrollmentId/registration/dossier  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/rotations  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/auto  courses:update
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/schedule  courses:update
@@ -223,8 +229,13 @@ POST   /api/v1/me/cme-records/:id/evidence  authOnly
 POST   /api/v1/me/cme-records/:id/result-files  authOnly
 DELETE /api/v1/me/cme-records/:id/result-files/:fileId  authOnly
 POST   /api/v1/me/cme/export-excel  authOnly
+GET    /api/v1/me/course-registrations  authOnly
+GET    /api/v1/me/course-registrations/:enrollmentId/application  authOnly
+POST   /api/v1/me/course-registrations/:enrollmentId/dossier  authOnly
 GET    /api/v1/me/courses/:id  authOnly
 POST   /api/v1/me/courses/:id/register  authOnly
+GET    /api/v1/me/department-proposals  authOnly
+GET    /api/v1/me/department-proposals/document  authOnly
 PATCH  /api/v1/me/documents/:docId/download  authOnly
 GET    /api/v1/me/hospital-trainings/  authOnly
 POST   /api/v1/me/hospital-trainings/:id/register  authOnly

@@ -19,6 +19,7 @@ const programClassService = require('./programClassService');
 const systemSettingService = require('../../settings/systemSettingService');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { DOC_STATE_SQL } = require('../trainees/traineeDocumentSql');
+const approvalGate = require('../registration/registrationApprovalGate');
 
 // ─── Đăng ký khóa học ────────────────────────────────────────────────────
 // 1 dòng ghi danh kèm học viên / chương trình / tiến độ — dùng chung cho danh sách của khóa và 1 hồ sơ.
@@ -31,12 +32,15 @@ const enrollmentSelect = (whereSql) => `
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id) AS lesson_total,
            (SELECT COUNT(*) FROM enrollment_lessons el WHERE el.enrollment_id = e.id AND el.status = 'done') AS lesson_done,
            (SELECT COUNT(*) FROM enrollment_rotations er WHERE er.enrollment_id = e.id) AS rotation_total,
-           CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position
+           CASE WHEN e.status = 'waitlisted' THEN ${programClassService.WAITLIST_POSITION_SQL('e')} END AS waitlist_position,
+           -- Bản khai từ form đăng ký (nếu có) — annotateEnrollments gom thành 'registration'
+           ${approvalGate.ENROLLMENT_COLUMNS_SQL}
     FROM course_enrollments e
     JOIN trainees t ON t.id = e.trainee_id
     LEFT JOIN users u ON u.id = e.decided_by
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN users mm ON mm.id = e.main_mentor_user_id
+    ${approvalGate.ENROLLMENT_JOIN_SQL}
     WHERE ${whereSql}`;
 
 const listEnrollments = async (courseId) => {
@@ -45,19 +49,20 @@ const listEnrollments = async (courseId) => {
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.query(`${enrollmentSelect('e.course_id = @course_id')} ORDER BY e.registered_at DESC`);
-	return r.recordset;
+	return approvalGate.annotateEnrollments(r.recordset);
 };
 
 // 1 hồ sơ ghi danh (trang chi tiết Hồ sơ thực hành GPHN).
 const getEnrollment = async (enrollmentId) => {
 	const pool = await getPool();
-	const row = (
+	const found = (
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), enrollmentId)
 			.query(enrollmentSelect('e.id = @id'))
 	).recordset[0];
-	if (!row) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
+	if (!found) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
+	const [row] = await approvalGate.annotateEnrollments([found]);
 	// Trường tùy chỉnh người đăng ký điền ở cổng công khai (Cấu hình form 'course_registration')
 	row.registration_custom = await formCustomValueService.get('course_registration', enrollmentId);
 	// Trường tùy chỉnh của hồ sơ ghi danh / thực hành (Cấu hình form 'enrollment')
@@ -278,6 +283,10 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
+	// Lượt ghi danh có bản khai: chưa đủ mốc đối chiếu thì chưa duyệt được (quyết định 6).
+	// Đã duyệt rồi (duyệt lại không đổi gì) thì không chặn; từ chối không bao giờ bị chặn.
+	if (decision === 'approved' && row.status !== 'approved')
+		await approvalGate.assertApprovable(enrollmentId);
 	// Duyệt hồ sơ cũ (ghi danh trước khi người đó được phân công giảng dạy) cũng phải chặn.
 	if (decision === 'approved') await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
 
@@ -361,13 +370,24 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	};
 };
 
+// Lỗi ở 1 đăng ký không dừng cả lô. Đăng ký chưa đủ mốc đối chiếu được đánh dấu
+// skipped + missing để giao diện liệt kê "bỏ qua vì còn thiếu …".
 const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
 	const results = [];
 	for (const id of ids) {
 		try {
 			results.push(await decideEnrollment(id, decision, actorId, note));
 		} catch (err) {
-			results.push({ id, error: err.message });
+			results.push(
+				err.code === approvalGate.CHECKS_MISSING
+					? {
+							id,
+							error: err.message,
+							skipped: true,
+							missing: (err.missing ?? []).map((m) => m.label),
+						}
+					: { id, error: err.message },
+			);
 		}
 	}
 	return results;

@@ -110,6 +110,16 @@ module.exports = {
 			'Tăng lượt tải tài liệu bài học — service kiểm tra tài liệu công khai + bài học thuộc khóa đã được duyệt',
 		[`POST ${API}/me/courses/:id/register`]:
 			'Tự đăng ký khóa học — service chỉ nhận khóa bật đăng ký công khai, trong cửa sổ đăng ký, trạng thái chờ duyệt',
+		[`GET ${API}/me/course-registrations`]:
+			'Đơn đăng ký khóa học của chính mình (courseRegistrationService.listByStaff(req.user.id))',
+		[`GET ${API}/me/course-registrations/:enrollmentId/application`]:
+			'Tải Đơn đăng ký của chính mình — bản khai có staff_user_id khác req.user.id trả 404 (registrationPortalService.getOwn)',
+		[`POST ${API}/me/course-registrations/:enrollmentId/dossier`]:
+			'Nộp PDF đơn + tờ trình đã duyệt cho bản khai nội viện của chính mình — kiểm chủ bản khai trước khi multer ghi file',
+		[`GET ${API}/me/department-proposals`]:
+			'Nhóm đăng ký theo khoa: chỉ tài khoản khoa / trưởng khoa của khoa đó hoặc người có bản khai trong nhóm (registrationPortalService.visibleGroups)',
+		[`GET ${API}/me/department-proposals/document`]:
+			'Tờ trình của khoa — cùng điều kiện xem nhóm, nhóm không được xem trả 404 (visibleGroups)',
 		[`GET ${API}/me/attendance`]:
 			'Điểm danh của học viên đang đăng nhập (lọc theo user_id; tài khoản khác chỉ nhận IP hiện tại)',
 		[`POST ${API}/me/attendance/check`]:
