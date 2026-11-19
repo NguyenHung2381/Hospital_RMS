@@ -63,6 +63,11 @@ const KEYS = [
 	'TRAINING_CLASS_PREP_DAYS',
 	'TRAINING_HOLIDAYS',
 	'TRAINING_ALLOW_MULTI_PROGRAM',
+	// Form đăng ký khóa đào tạo liên tục — public/publicPortalService.js, training/registration/
+	// 'false' ⇒ không bắt xác minh email bằng OTP trước khi gửi đăng ký (mặc định bật)
+	'TRAINING_REGISTRATION_EMAIL_OTP',
+	// 'false' ⇒ duyệt ghi danh không đòi đủ mốc đối chiếu CCCD / văn bằng / tờ trình (mặc định bật)
+	'TRAINING_REGISTRATION_REQUIRE_CHECKS',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',
