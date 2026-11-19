@@ -18,6 +18,8 @@ const PURPOSES = new Set([
 	'attendance-qr', // QR điểm danh buổi học
 	'seminar-qr', // QR điểm danh hội thảo
 	'upload-url', // chữ ký link /uploads (khi không đặt UPLOAD_URL_SECRET)
+	'registration-email', // email đã xác minh bằng OTP trước khi gửi đăng ký khóa học
+	'registration-download', // tải đơn / xem bản khai ngay sau khi đăng ký khóa học
 ]);
 
 const cache = new Map();

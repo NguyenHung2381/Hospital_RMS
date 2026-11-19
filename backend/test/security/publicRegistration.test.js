@@ -2,7 +2,8 @@
 //   M-03 giấy tờ tải lên qua cổng công khai luôn 'pending' (không nhận mặc định 'approved' của bảng);
 //        nhân viên tải lên (addDocument không truyền status) vẫn 'approved'.
 //   L-06 chỉ gắn vào hồ sơ đã có khi CCCD + ngày sinh + họ tên (chuẩn hóa) đều khớp và hồ sơ có ngày sinh;
-//        mọi nhánh trả CÙNG 1 phản hồi cố định — không lộ CCCD có tồn tại hay không.
+//        mọi nhánh trả CÙNG hình dạng phản hồi { submitted, registration_code, download_token } —
+//        không lộ CCCD có tồn tại hay không.
 process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -69,7 +70,19 @@ const reset = () => {
 	log.length = 0;
 };
 const docInserts = () => log.filter((q) => /INSERT INTO trainee_documents/i.test(q.text));
+const regInserts = () => log.filter((q) => /INSERT INTO course_registrations/i.test(q.text));
 const base = (over) => ({ course_id: 'KH1', ...over });
+// Hình dạng phản hồi chung của mọi nhánh: đúng 3 khóa, không enrollment_id / mã học viên / lỗi 409
+const assertAck = (r, name) => {
+	assert.deepEqual(
+		Object.keys(r).sort(),
+		['download_token', 'registration_code', 'submitted'],
+		name,
+	);
+	assert.equal(r.submitted, true, name);
+	assert.match(r.registration_code, /^DK[A-HJ-NP-Z2-9]{10}$/, name);
+	assert.equal(typeof r.download_token, 'string', name);
+};
 
 // ─── M-03 ────────────────────────────────────────────────────────────────────
 test('M-03: giấy tờ đính kèm khi đăng ký công khai luôn là pending (chủ hồ sơ khớp đủ 3 yếu tố)', async () => {
@@ -159,18 +172,20 @@ const CASES = {
 	'không khai CCCD': { full_name: 'Không CCCD' },
 };
 
-test('L-06: mọi nhánh trả cùng một phản hồi cố định (không enrollment_id / documents_skipped / 409)', async () => {
+test('L-06: mọi nhánh trả cùng hình dạng phản hồi (không enrollment_id / documents_skipped / 409) và đều có bản khai', async () => {
 	for (const [name, input] of Object.entries(CASES)) {
 		reset();
 		const r = await portal.register(base(input), FILE, ['national_id']);
-		assert.deepEqual(r, { submitted: true }, name);
-		assert.equal(r, portal.PUBLIC_REGISTER_ACK, name);
+		assertAck(r, name);
+		assert.equal(regInserts().length, 1, `${name}: phải tạo bản khai`);
+		assert.equal(regInserts()[0].inputs.code, r.registration_code, name);
 	}
 	// ghi danh bị từ chối vì lý do phụ thuộc hồ sơ (đang học chương trình khác, lớp đầy, đã ghi danh...)
 	reset();
 	enrollError = httpError(409, 'Học viên đang theo học chương trình "X" (Khóa Y)');
 	const r = await portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên']), FILE, null);
-	assert.deepEqual(r, { submitted: true });
+	assertAck(r, '409');
+	assert.equal(regInserts().length, 1);
 });
 
 test('L-06: chỉ gắn vào hồ sơ đã có khi khớp đủ CCCD + ngày sinh + họ tên (bỏ dấu/hoa thường/khoảng trắng)', async () => {
@@ -210,7 +225,7 @@ test('L-06: ghi danh hồ sơ khớp bị 409 ⇒ không lộ lỗi, chuyển th
 	reset();
 	enrollError = httpError(409, 'Học viên đang theo học chương trình "X" (Khóa Y)');
 	const r = await portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên']), null, null);
-	assert.deepEqual(r, { submitted: true });
+	assertAck(r, '409');
 	assert.ok(!enrolled.includes('HV1'), 'không ghi danh vào hồ sơ có sẵn');
 	assert.equal(created.length, 1, 'lưu thành đăng ký chưa xác minh cho phòng Đào tạo');
 	assert.equal(created[0].national_id, null);
@@ -231,7 +246,7 @@ test('L-06: lỗi không phụ thuộc hồ sơ (khóa đóng đăng ký) vẫn 
 	});
 });
 
-test('L-06: honeypot trả đúng cùng thân + thông điệp với đăng ký thật', async () => {
+test('L-06: honeypot trả cùng hình dạng + thông điệp với đăng ký thật, không ghi gì', async () => {
 	const call = async (body) => {
 		let out;
 		const res = {
@@ -251,8 +266,11 @@ test('L-06: honeypot trả đúng cùng thân + thông điệp với đăng ký 
 		});
 		return out;
 	};
+	reset();
 	const bot = await call({ website: 'http://spam', ...base(CASES['CCCD chưa có hồ sơ']) });
 	assert.equal(bot.status, 201);
-	assert.deepEqual(bot.body.data, { submitted: true });
+	assertAck(bot.body.data, 'honeypot');
 	assert.equal(bot.body.message, 'Đã nhận đăng ký khóa học, vui lòng chờ duyệt.');
+	assert.equal(log.length, 0, 'honeypot không được chạm CSDL');
+	assert.equal(created.length + enrolled.length, 0);
 });

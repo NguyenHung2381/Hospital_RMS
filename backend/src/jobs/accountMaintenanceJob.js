@@ -4,10 +4,12 @@ const { markOnce } = require('./dedupe');
 const { todayKeyVN, todayVN } = require('../utils/vnDate');
 const logger = require('../config/logger');
 const { ROLE, roleIdOf } = require('../modules/access/roleCodes');
+const registrationEmailOtpService = require('../modules/training/registration/registrationEmailOtpService');
 
 // Job nền bảo trì tài khoản:
 //  1. Khoá tài khoản thành viên (mã member) đã quá hạn (trước là sp_deactivate_expired_accounts).
 //  2. Cảnh báo người dùng có mật khẩu quá hạn lâu ngày chưa đổi.
+//  3. Dọn refresh token / OTP quên mật khẩu / OTP xác minh email đăng ký khóa học hết hạn.
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARNING_INTERVAL_DAYS = 30; // nhắc lại mỗi 30 ngày, không phải mỗi ngày
 
@@ -107,12 +109,21 @@ const purgeExpiredResetOtps = async (pool) => {
 	if (purged > 0) logger.info(`[job:account_maintenance] Đã xóa ${purged} mã OTP hết hạn.`);
 };
 
+// OTP xác minh email của form đăng ký khóa học: mã đúng bị xoá ngay khi dùng, mã hết
+// hạn mà không dùng thì dọn ở đây (registrationEmailOtpService.purgeExpired).
+const purgeExpiredRegistrationOtps = async (pool) => {
+	const purged = await registrationEmailOtpService.purgeExpired(pool);
+	if (purged > 0)
+		logger.info(`[job:account_maintenance] Đã xóa ${purged} mã OTP đăng ký khóa học hết hạn.`);
+};
+
 const run = async () => {
 	const pool = await getPool();
 	await deactivateExpiredAccounts(pool);
 	await warnStalePasswords(pool);
 	await purgeExpiredRefreshTokens(pool);
 	await purgeExpiredResetOtps(pool);
+	await purgeExpiredRegistrationOtps(pool);
 };
 
-module.exports = { run, purgeExpiredResetOtps, deactivateExpired };
+module.exports = { run, purgeExpiredResetOtps, purgeExpiredRegistrationOtps, deactivateExpired };

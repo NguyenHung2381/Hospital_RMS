@@ -143,6 +143,63 @@ const renderOtpEmail = ({ fullName, code, ttlMin, resetUrl }) => `
 </table>
 `;
 
+// Khung chung (logo, tiêu đề, chân thư) cho các email ngắn của cổng đăng ký khóa học —
+// cùng bố cục bảng + style inline như renderOtpEmail.
+const renderShell = (heading, body) => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px;">
+	<tr><td align="center">
+		<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Inter,'Segoe UI',Arial,Helvetica,sans-serif;color:#1f2937;">
+			<tr><td align="center" style="background:#0a9b4a;padding:24px 16px;">
+				<img src="cid:rms-logo" width="64" height="64" alt="Logo" style="display:block;border:0;margin:0 auto 10px;background:#ffffff;border-radius:50%;">
+				<div style="color:#ffffff;font-size:18px;font-weight:bold;">Bệnh viện Hữu nghị Đa khoa Nghệ An</div>
+			</td></tr>
+			<tr><td style="padding:32px 32px 8px;">
+				<h2 style="margin:0 0 16px;font-size:20px;color:#087c3b;">${escapeHtml(heading)}</h2>
+			</td></tr>
+			${body}
+			<tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;line-height:1.6;color:#9ca3af;text-align:center;">
+				Đây là email tự động từ Hệ thống Quản lý NCKH &amp; Đào tạo. Vui lòng không trả lời email này.
+			</td></tr>
+		</table>
+	</td></tr>
+</table>
+`;
+
+const codeBox = (code) =>
+	`<tr><td align="center" style="padding:0 32px;">
+		<div style="display:inline-block;background:#ecfdf3;border:1px dashed #0a9b4a;border-radius:10px;padding:16px 28px;font-size:30px;font-weight:bold;letter-spacing:6px;color:#087c3b;font-family:'Courier New',monospace;">${escapeHtml(code)}</div>
+	</td></tr>`;
+
+// OTP xác minh email trước khi gửi form đăng ký khóa đào tạo (không có link — người
+// đăng ký đang mở sẵn form, chỉ cần gõ mã).
+const renderRegistrationOtpEmail = ({ code, ttlMin }) =>
+	renderShell(
+		'Xác minh email đăng ký khóa đào tạo',
+		`<tr><td style="padding:0 32px 20px;">
+			<p style="margin:0;font-size:15px;line-height:1.6;">Nhập mã dưới đây vào form đăng ký khóa đào tạo liên tục để xác minh email của bạn:</p>
+		</td></tr>
+		${codeBox(code)}
+		<tr><td style="padding:20px 32px 28px;">
+			<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#4b5563;">Mã có hiệu lực trong <strong>${Number(ttlMin)} phút</strong>. Tuyệt đối không chia sẻ mã cho bất kỳ ai.</p>
+			<p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">Nếu bạn không đăng ký khóa học nào, hãy bỏ qua email này.</p>
+		</td></tr>`,
+	);
+
+// Xác nhận đã nhận đăng ký khóa đào tạo — kèm mã đăng ký để tra cứu / tải lại đơn.
+const renderRegistrationReceivedEmail = ({ fullName, code, courseName, programName }) =>
+	renderShell(
+		'Đã nhận đăng ký khóa đào tạo',
+		`<tr><td style="padding:0 32px 20px;">
+			<p style="margin:0 0 12px;font-size:15px;line-height:1.6;">Xin chào ${escapeHtml(fullName || 'bạn')},</p>
+			<p style="margin:0;font-size:15px;line-height:1.6;">Trung tâm Đào tạo và Chỉ đạo tuyến đã nhận đăng ký của bạn cho khóa <strong>${escapeHtml(courseName || '')}</strong>${programName ? ` — ${escapeHtml(programName)}` : ''}. Mã đăng ký của bạn:</p>
+		</td></tr>
+		${codeBox(code)}
+		<tr><td style="padding:20px 32px 28px;">
+			<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#4b5563;">Giữ mã này để tra cứu trạng thái và tải lại Đơn đăng ký trên trang đăng ký khóa học (kèm số CCCD hoặc email đã khai).</p>
+			<p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">Đăng ký sẽ được phòng Đào tạo đối chiếu hồ sơ trước khi duyệt.</p>
+		</td></tr>`,
+	);
+
 // Thẻ đại biểu gửi sau khi đăng ký hội nghị công khai: QR (cid:ticket-qr) chứa
 // link vé /hoi-nghi/ve/<code> — ban tổ chức quét để điểm danh, người tham dự
 // mở để làm bài test. Cùng khung bảng/inline style như renderOtpEmail.
@@ -203,6 +260,8 @@ module.exports = {
 	renderNotificationEmail,
 	renderOtpEmail,
 	renderSeminarBadgeEmail,
+	renderRegistrationOtpEmail,
+	renderRegistrationReceivedEmail,
 	LOGO_ATTACHMENT,
 	isEnabled,
 	EVENT_DEFAULTS,

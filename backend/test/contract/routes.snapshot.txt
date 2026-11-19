@@ -277,6 +277,13 @@ PUT    /api/v1/professional-fields/:id  training_catalog:update
 GET    /api/v1/public/captcha  public
 GET    /api/v1/public/categories  public
 POST   /api/v1/public/course-registration  public
+POST   /api/v1/public/course-registration/:code/application  public
+POST   /api/v1/public/course-registration/:code/dossier  public
+POST   /api/v1/public/course-registration/:code/status  public
+POST   /api/v1/public/course-registration/email-otp  public
+POST   /api/v1/public/course-registration/email-otp/verify  public
+GET    /api/v1/public/course-registration/rules  public
+POST   /api/v1/public/course-registration/staff-check  public
 GET    /api/v1/public/courses  public
 GET    /api/v1/public/departments  public
 GET    /api/v1/public/featured-topics  public
