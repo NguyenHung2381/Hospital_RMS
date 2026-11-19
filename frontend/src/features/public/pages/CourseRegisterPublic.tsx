@@ -386,7 +386,13 @@ export default function CourseRegisterPublic() {
 				downloadToken: res.download_token,
 				source: form.source as RegistrationSource,
 				name: payload.full_name,
-				email: form.email.trim(),
+				// Máy chủ chỉ gửi thư xác nhận tới email ĐÃ xác minh (tắt OTP ⇒ không gửi). Nội viện có
+				// email trong hồ sơ nhân sự: thư đi tới email đó (đã che), không phải email nhập trên form.
+				email: !otpRequired
+					? ''
+					: form.source === 'internal'
+						? (otp.challenge?.toMasked ?? form.email.trim())
+						: form.email.trim(),
 				course: course.name,
 				program: program?.name ?? null,
 				start: course.start_date,
