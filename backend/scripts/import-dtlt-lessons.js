@@ -44,7 +44,7 @@ const PROGRAM_ALIAS = normKeys({
 	'ky thuat than nhan tao co ban - bac si': 'ĐTLT_47',
 	'ky thuat tiem khop co ban': 'ĐTLT_53',
 	'te bao hoc co ban chan doan cac khoi u': 'ĐTLT_1',
-	'noi soi chan doan duong tieu hoa tren': 'ĐTLT_6',
+	'noi soi chan doan duong tieu hoa tren': 'ĐTLT_68',
 	'noi soi dai truc trang': 'ĐTLT_8',
 	'hoa sinh lam sang co ban': 'ĐTLT_10',
 	'doc phim x.quang co ban': 'ĐTLT_20',
