@@ -27,6 +27,39 @@ test('đợt 2: các form mới có trong registry, trường nghiệp vụ bị
 	}
 });
 
+test('đăng ký khóa học: nội viện không bị đòi trình độ / khoa (server lấy từ hồ sơ nhân sự)', () => {
+	const r = resolve(getForm('course_registration'), null, 'public');
+	const filled = {
+		full_name: 'Lê Văn Hùng',
+		dob: '1985-11-20',
+		gender: 'male',
+		national_id: '040085333444',
+		national_id_issued_date: '2021-03-01',
+		national_id_issued_place: 'Bộ Công an',
+		permanent_address: 'TP Vinh',
+		phone: '0911222333',
+		email: 'a@example.com',
+		graduated_school: 'ĐH Y Hà Nội',
+		graduated_year: 2014,
+		degree_number: 'D1',
+		degree_registry_number: 'S1',
+		rules_accepted: true,
+		declared_true: true,
+	};
+	// Nhân viên chưa ghi trình độ / khoa trong hồ sơ: form gửi null cho 2 trường đó
+	const internal = validateValues(r, {
+		...filled,
+		source: 'internal',
+		staff_number: '1202',
+		qualification: null,
+		department_id: null,
+	}).errors;
+	assert.deepEqual(internal, {});
+	// Ngoại viện vẫn phải khai trình độ
+	const external = validateValues(r, { ...filled, source: 'external', qualification: '' }).errors;
+	assert.match(external.qualification, /Vui lòng nhập/);
+});
+
 test('hội nghị: trường ngoại viện chỉ đòi khi nguồn = ngoài viện', () => {
 	const r = resolve(getForm('seminar_participant'), null, 'public');
 	const internal = validateValues(r, {

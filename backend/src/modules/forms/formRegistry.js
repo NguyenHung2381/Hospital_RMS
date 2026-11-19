@@ -492,7 +492,9 @@ const FORMS = [
 				label: 'Khoa/Phòng/TT đang công tác',
 				type: 'select',
 				dynamic: true,
-				required: true,
+				// Lấy từ hồ sơ nhân sự (form không có ô chọn khoa); nhân viên chưa ghi khoa vẫn
+				// phải gửi được — như Trình độ
+				required: false,
 				when: { source: 'internal' },
 			},
 			// Thông tin xuất hóa đơn — chỉ hỏi ngoại viện
