@@ -92,6 +92,19 @@ const KEYS = [
 	'MAIL_EVENT_BROADCAST',
 ];
 const isKey = (key) => KEYS.includes(key);
+
+// Khóa bật/tắt của form đăng ký ĐTLT: người đọc chỉ coi đúng chuỗi 'false' là tắt, nên
+// giá trị gõ sai (vd "False", "0", "tat") sẽ bị hiểu là BẬT hoặc lệch giữa hai nơi đọc —
+// chỉ nhận 'true'/'false' (rỗng = bỏ ghi đè, về mặc định bật).
+const BOOLEAN_KEYS = new Set([
+	'TRAINING_REGISTRATION_EMAIL_OTP',
+	'TRAINING_REGISTRATION_REQUIRE_CHECKS',
+]);
+// null = hợp lệ; ngược lại là thông báo lỗi (dùng khi admin lưu cấu hình)
+const validateSetting = (key, value) => {
+	if (!BOOLEAN_KEYS.has(key) || value === null || value === '') return null;
+	return value === 'true' || value === 'false' ? null : 'Giá trị phải là true/false';
+};
 const MASK = '••••••';
 
 // Không bao giờ trả plaintext secret ra ngoài — chỉ báo "đã đặt" hay chưa.
@@ -229,4 +242,13 @@ const update = async (key, value, actorId) => {
 	return getById(key);
 };
 
-module.exports = { getAll, getById, getValue, smtpConfig, smtpPassword, update, isKey };
+module.exports = {
+	getAll,
+	getById,
+	getValue,
+	smtpConfig,
+	smtpPassword,
+	update,
+	isKey,
+	validateSetting,
+};
