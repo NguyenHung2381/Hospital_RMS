@@ -29,7 +29,10 @@ RUN npm run build \
     && find dist -type f -size +1k \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \
         -o -name '*.svg' -o -name '*.json' -o -name '*.txt' \) -exec gzip -9 -k {} +
 
-FROM nginx:alpine AS prod
+# Ghim nhánh mainline 1.31 (trước là tag trôi nginx:alpine): build tái lập được
+# và Dependabot (docker) mở PR khi lên 1.32. Bản vá 1.31.x tự lấy khi CI build lại
+# image quá MAX_AGE_DAYS (build-image.yml).
+FROM nginx:1.31-alpine AS prod
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Script chạy lúc khởi động (entrypoint của image nginx tự chạy mọi file
@@ -37,7 +40,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 41 chọn header CSP (chặn / chỉ báo cáo) theo CSP_REPORT_ONLY. tr bỏ CR phòng
 # khi file bị checkout CRLF trên Windows.
 COPY docker/40-trusted-proxies.sh docker/41-csp.sh /tmp/
-# apk upgrade: lấy bản vá gói hệ thống mới hơn image nginx:alpine gốc (giống
+# apk upgrade: lấy bản vá gói hệ thống mới hơn image nginx gốc (giống
 # backend) — Trivy ở CI chặn lỗ hổng CRITICAL đã có bản vá.
 RUN apk upgrade --no-cache \
     && for f in 40-trusted-proxies.sh 41-csp.sh; do \
