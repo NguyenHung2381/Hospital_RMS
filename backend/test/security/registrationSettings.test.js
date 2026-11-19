@@ -67,7 +67,10 @@ test('trang cấu hình đọc lại được giá trị đang áp dụng (effec
 	rows.clear();
 	await svc.update('TRAINING_REGISTRATION_EMAIL_OTP', 'false', 'admin');
 	const all = await svc.getAll();
-	assert.equal(all.find((r) => r.setting_key === 'TRAINING_REGISTRATION_EMAIL_OTP').effective, 'false');
+	assert.equal(
+		all.find((r) => r.setting_key === 'TRAINING_REGISTRATION_EMAIL_OTP').effective,
+		'false',
+	);
 	assert.equal(
 		all.find((r) => r.setting_key === 'TRAINING_REGISTRATION_REQUIRE_CHECKS').effective ?? null,
 		null,
