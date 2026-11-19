@@ -4,6 +4,7 @@ const ctrl = require('./courseController');
 const practiceCtrl = require('./practiceRecordController');
 const waitlistCtrl = require('./waitlistController');
 const cmeCtrl = require('./courseCmeController');
+const registrationCtrl = require('./registrationReviewController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -258,6 +259,56 @@ router.delete(
 	'/enrollments/:enrollmentId',
 	authorizePermission(['courses', 'delete']),
 	ctrl.removeEnrollment,
+);
+// ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — đối chiếu trước khi duyệt ─────
+// Đơn (.docx) và hồ sơ PDF có CCCD ⇒ controller đòi thêm trainees:read_sensitive.
+router.get(
+	'/enrollments/:enrollmentId/registration',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.getRegistration,
+);
+router.put(
+	'/enrollments/:enrollmentId/registration/checks',
+	authorizePermission(['courses', 'update']),
+	[
+		body(['id_checked', 'degree_checked', 'proposal_checked'])
+			.optional()
+			.isBoolean({ strict: true })
+			.withMessage('Mốc đối chiếu phải là true / false'),
+	],
+	validate,
+	registrationCtrl.setRegistrationChecks,
+);
+router.get(
+	'/enrollments/:enrollmentId/registration/application',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.downloadApplication,
+);
+router.get(
+	'/enrollments/:enrollmentId/registration/dossier',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.getDossier,
+);
+// Nhóm nội viện theo khoa + chương trình — Tờ trình cử cán bộ của từng khoa
+router.get(
+	'/:id/proposals',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.listProposals,
+);
+router.get(
+	'/:id/proposals/document',
+	authorizePermission(['courses', 'read']),
+	[
+		query('department_id')
+			.isString()
+			.trim()
+			.notEmpty()
+			.isLength({ max: 20 })
+			.withMessage('Thiếu khoa'),
+		query('program_id').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
+	],
+	validate,
+	registrationCtrl.downloadProposal,
 );
 // Chương trình đã chọn, hồ sơ thực hành GPHN, tiến độ của 1 lượt ghi danh;
 // bài học tự gắn theo chương trình (ĐTLT) — xem enrollmentProgramService.

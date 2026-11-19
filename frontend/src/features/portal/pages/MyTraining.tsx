@@ -8,8 +8,12 @@ import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { DISPLAY_STATUS_CFG, ENROLLMENT_STATUS_CFG } from '../../course/types/course.type';
 import {
+	getMyCourseRegistrations,
+	getMyDepartmentProposals,
 	getMyTraining,
 	registerMyCourse,
+	type MyCourseRegistration,
+	type MyDepartmentProposal,
 	type MyEnrolledCourse,
 	type MyTeachingLesson,
 	type MyTraining as Data,
@@ -21,6 +25,7 @@ import { EXAM_PART_LABEL, type ExamAttemptDetail } from '../../exam/types/exam.t
 import { Modal } from '@/shared/components/Modal';
 import { teachingApi, type PendingGrading } from '../api/teachingApi';
 import { MyTraineeDocumentsCard } from '../components/MyTraineeDocumentsCard';
+import { DepartmentProposalsCard, MyRegistrationsCard } from '../components/MyCourseRegistrations';
 import { TraineeScheduleTab } from '../../trainee/components/TraineeScheduleTab';
 import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
 import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
@@ -442,8 +447,10 @@ function PendingGradingCard({ onCount }: { onCount?: (n: number) => void }) {
 export default function MyTraining() {
 	const [data, setData] = useState<Data | null>(null);
 	const [error, setError] = useState('');
-	const [opening, setOpening] = useState<OpenCourse | null>(null);
 	const [pendingGrading, setPendingGrading] = useState(0);
+	// Đơn đăng ký khóa ĐTLT của tôi + nhóm cùng lớp trong khoa (lỗi tải thì coi như không có)
+	const [regs, setRegs] = useState<MyCourseRegistration[]>([]);
+	const [groups, setGroups] = useState<MyDepartmentProposal[]>([]);
 	const [params, setParams] = useSearchParams();
 	const navigate = useNavigate();
 
@@ -451,23 +458,32 @@ export default function MyTraining() {
 		getMyTraining()
 			.then(setData)
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu khóa học'));
+		getMyCourseRegistrations()
+			.then(setRegs)
+			.catch(() => setRegs([]));
+		getMyDepartmentProposals()
+			.then(setGroups)
+			.catch(() => setGroups([]));
 	}, []);
 	useEffect(load, [load]);
 	useRealtimeUpdate(['course', 'course_enrollment', 'lecturer_assignment'], load);
 
-	const open = (c: OpenCourse) => {
-		setOpening(c);
-		window.scrollTo({ top: 0 });
-	};
+	// Nhân viên đăng ký qua form công khai (cùng form với ngoại viện, chọn sẵn khóa + nội viện):
+	// khai đủ thông tin, xác minh email, nhận mã đăng ký và Đơn để in.
+	const open = (c: OpenCourse) =>
+		navigate(`/dang-ky-khoa-hoc?${new URLSearchParams({ khoa: c.id, 'doi-tuong': 'noi-vien' })}`);
 
 	const empty =
 		data &&
 		!data.enrolled.length &&
 		!data.teaching.length &&
 		!data.upcoming_sessions.length &&
-		!data.open_courses.length;
+		!data.open_courses.length &&
+		!regs.length &&
+		!groups.length;
 	// Vừa học vừa dạy thì tách 2 tab; chỉ một vai trò thì hiện thẳng các mục của vai trò đó
-	const isLearner = !!data && (data.enrolled.length > 0 || data.open_courses.length > 0);
+	const isLearner =
+		!!data && (data.enrolled.length > 0 || data.open_courses.length > 0 || regs.length > 0 || groups.length > 0);
 	const isTeacher = !!data && (data.teaching.length > 0 || data.teaching_lessons.length > 0);
 	const split = isLearner && isTeacher;
 	const view: 'learning' | 'teaching' = split ? (params.get('tab') === 'giang-day' ? 'teaching' : 'learning') : isTeacher ? 'teaching' : 'learning';
@@ -479,25 +495,14 @@ export default function MyTraining() {
 			pageTitle='Khóa học của tôi'
 			pageSubtitle='Lịch học, kết quả học tập, chứng chỉ và các khóa bạn giảng dạy'
 		>
-			{opening && (
-				<OpenCourseDetail
-					key={opening.id}
-					course={opening}
-					onBack={() => setOpening(null)}
-					onDone={() => {
-						setOpening(null);
-						load();
-					}}
-				/>
-			)}
-			{!opening && error && (
+			{error && (
 				<EmptyState
 					title='Không thể tải dữ liệu'
 					desc={error}
 				/>
 			)}
-			{!opening && !data && !error && <InlineLoading />}
-			{!opening && empty && (
+			{!data && !error && <InlineLoading />}
+			{empty && (
 				<EmptyState
 					icon={<BookOpenSvg />}
 					title='Bạn chưa tham gia khóa học nào'
@@ -505,7 +510,7 @@ export default function MyTraining() {
 				/>
 			)}
 
-			{!opening && data && !empty && (
+			{data && !empty && (
 				<div className={styles.stack}>
 					{data.upcoming_sessions.length > 0 && (
 						<Card>
@@ -590,6 +595,15 @@ export default function MyTraining() {
 							</div>
 						</Card>
 					)}
+
+					{showLearning && regs.length > 0 && (
+						<MyRegistrationsCard
+							items={regs}
+							onChanged={load}
+						/>
+					)}
+
+					{showLearning && groups.length > 0 && <DepartmentProposalsCard groups={groups} />}
 
 					{showLearning && data.enrolled.length > 0 && (
 						<Card>
@@ -679,7 +693,7 @@ export default function MyTraining() {
 							<Card.Header
 								icon={<DocPlusSvg />}
 								title='Khóa học đang mở đăng ký'
-								sub='Đăng ký sẽ được phòng Đào tạo xét duyệt'
+								sub='Đăng ký bằng form đăng ký khóa học — nhận mã đăng ký và đơn để in, phòng Đào tạo xét duyệt'
 							/>
 							<Card.Body>
 								<div className={styles.openGrid}>

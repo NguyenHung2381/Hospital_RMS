@@ -276,12 +276,15 @@ export function useCourseDetail(courseId: string) {
 					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				await load();
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Cập nhật thất bại');
+				// Kèm tên học viên — lỗi duyệt (vd chưa đủ mốc đối chiếu đơn đăng ký) đọc được ngay
+				const name = enrollments.find((e) => e.id === enrollmentId)?.trainee_name;
+				const msg = err instanceof Error ? err.message : 'Cập nhật thất bại';
+				setError(name ? `${name}: ${msg}` : msg);
 			} finally {
 				setBusy(false);
 			}
 		},
-		[load],
+		[load, enrollments],
 	);
 
 	/** Duyệt/từ chối nhiều đăng ký. Gọi tuần tự để backend kiểm tra sĩ số theo đúng thứ tự;
@@ -291,17 +294,19 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			const failed: string[] = [];
-			let firstError = '';
+			const reasons: string[] = [];
 			for (const id of enrollmentIds) {
 				try {
 					await apiDecideEnrollment(id, status);
 				} catch (err) {
 					failed.push(id);
-					if (!firstError) firstError = err instanceof Error ? err.message : 'Cập nhật thất bại';
+					const name = enrollments.find((e) => e.id === id)?.trainee_name ?? id;
+					reasons.push(`${name}: ${err instanceof Error ? err.message : 'Cập nhật thất bại'}`);
 				}
 			}
 			if (failed.length) {
-				setError(`${failed.length}/${enrollmentIds.length} đăng ký không cập nhật được: ${firstError}`);
+				const more = reasons.length > 3 ? ` · … và ${reasons.length - 3} đăng ký khác` : '';
+				setError(`${failed.length}/${enrollmentIds.length} đăng ký không cập nhật được — ${reasons.slice(0, 3).join(' · ')}${more}`);
 			}
 			try {
 				await load();
@@ -310,7 +315,7 @@ export function useCourseDetail(courseId: string) {
 			}
 			return failed;
 		},
-		[load],
+		[load, enrollments],
 	);
 
 	const removeEnrollment = useCallback(

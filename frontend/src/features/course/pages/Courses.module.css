@@ -1273,3 +1273,50 @@
 		flex-basis: 100%;
 	}
 }
+
+/* ── Đơn đăng ký (form /dang-ky-khoa-hoc) trên danh sách học viên ── */
+/* Nhãn tình trạng bản khai cạnh tên — bấm mở tab "Đơn đăng ký" */
+.regTagBtn {
+	display: inline-flex;
+	margin-left: var(--space-2);
+	padding: 0;
+	border: none;
+	background: none;
+	vertical-align: middle;
+	cursor: pointer;
+}
+/* Ô đếm đơn chờ duyệt theo tình trạng — bấm để lọc */
+.regSummary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+.regPill {
+	padding: 2px 10px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.regPill:hover {
+	border-color: var(--color-gray-400);
+}
+/* Việc đang chờ chính người xem (phòng Đào tạo đối chiếu) — màu hồng, chỉ hiện khi > 0 */
+.regPillPending {
+	border-color: var(--tone-pink-border);
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+}
+.regPillReady {
+	border-color: var(--tone-green-border);
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+.regPillActive {
+	outline: 2px solid var(--color-gray-700);
+	outline-offset: 1px;
+}
