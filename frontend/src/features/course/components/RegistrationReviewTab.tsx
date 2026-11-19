@@ -3,7 +3,7 @@ import { DocSvg } from '@/assets/icons';
 import { Badge, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { usePermission } from '@/shared/hooks/usePermission';
-import { formatDateTimeVN, formatDateVN } from '@/shared/utils/formatDate';
+import { formatDateVN } from '@/shared/utils/formatDate';
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import { cx } from '@/shared/utils/cx';
@@ -23,6 +23,24 @@ import styles from './RegistrationReviewTab.module.css';
 import cs from '../pages/Courses.module.css';
 
 const DATE_KEYS = new Set(['dob', 'national_id_issued_date']);
+
+// Mốc thời gian của bản khai (gửi, cam kết, xác minh email, đối chiếu, nộp hồ sơ) lưu GIỜ VN,
+// driver gắn nhãn UTC (backend/README.md, mục Giờ) ⇒ đọc theo múi UTC. formatDateTimeVN dành
+// cho cột lưu giờ UTC thật — dùng ở đây sẽ cộng thêm 7 giờ.
+const formatStamp = (iso: string | null | undefined): string => {
+	if (!iso) return '';
+	const d = new Date(iso);
+	if (Number.isNaN(d.getTime())) return '';
+	return d.toLocaleString('vi-VN', {
+		timeZone: 'UTC',
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false,
+	});
+};
 
 /** Giá trị hiển thị của 1 trường bản khai (ngày dd/mm/yyyy, giới tính, tên danh mục). */
 const show = (r: RegistrationReview, key: string, value: unknown): string => {
@@ -112,7 +130,7 @@ export function RegistrationReviewTab({
 					Mã đăng ký <span className={styles.code}>{data.registration_code}</span>
 				</span>
 				<Badge tone={data.source === 'internal' ? 'teal' : 'blue'}>{data.source === 'internal' ? 'Nội viện' : 'Ngoại viện'}</Badge>
-				{data.created_at && <span>Gửi lúc {formatDateTimeVN(data.created_at)}</span>}
+				{data.created_at && <span>Gửi lúc {formatStamp(data.created_at)}</span>}
 				{data.channel === 'portal' && <span>Qua cổng nhân viên</span>}
 			</div>
 
@@ -147,7 +165,7 @@ export function RegistrationReviewTab({
 									{saving === key
 										? 'Đang lưu…'
 										: info
-											? `${info.by_name ?? info.by ?? 'Không rõ người đánh dấu'} · ${formatDateTimeVN(info.at)}`
+											? `${info.by_name ?? info.by ?? 'Không rõ người đánh dấu'} · ${formatStamp(info.at)}`
 											: 'Chưa đối chiếu'}
 								</span>
 							</div>
@@ -160,7 +178,7 @@ export function RegistrationReviewTab({
 								<>
 									<span className={styles.checkMeta}>
 										{data.dossier.file_name}
-										{data.dossier.uploaded_at && ` · nộp ${formatDateTimeVN(data.dossier.uploaded_at)}`}
+										{data.dossier.uploaded_at && ` · nộp ${formatStamp(data.dossier.uploaded_at)}`}
 									</span>
 									{data.dossier.file_url && (
 										<button
@@ -247,13 +265,13 @@ export function RegistrationReviewTab({
 						<dt>Email đã xác minh</dt>
 						<dd>
 							{data.verified_email ?? <span className={styles.empty}>Không xác minh (cấu hình tắt OTP)</span>}
-							{data.email_verified_at && <span className={styles.checkMeta}> · {formatDateTimeVN(data.email_verified_at)}</span>}
+							{data.email_verified_at && <span className={styles.checkMeta}> · {formatStamp(data.email_verified_at)}</span>}
 						</dd>
 					</div>
 					<div className={styles.field}>
 						<dt>Cam kết nội quy / thông tin đúng sự thật</dt>
 						<dd>
-							{data.rules_accepted_at ? `Đã cam kết ${formatDateTimeVN(data.rules_accepted_at)}` : 'Chưa ghi nhận'}
+							{data.rules_accepted_at ? `Đã cam kết ${formatStamp(data.rules_accepted_at)}` : 'Chưa ghi nhận'}
 							{data.rules_version && <span className={styles.checkMeta}> · nội quy bản {data.rules_version}</span>}
 						</dd>
 					</div>
