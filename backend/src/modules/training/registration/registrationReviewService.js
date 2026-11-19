@@ -1,8 +1,8 @@
 // Phòng Đào tạo đối chiếu bản khai (form đăng ký khóa đào tạo liên tục) với hồ sơ học
 // viên + giấy tờ trước khi duyệt: bản khai đã parse, chỗ lệch so với hồ sơ, mốc đối
 // chiếu (ai / lúc nào), hồ sơ PDF nộp bổ sung, Đơn đăng ký (.docx).
-// Bản khai đọc / ghi qua courseRegistrationService (luồng L2); Đơn sinh bằng
-// registrationDocumentService (luồng L3) — file này chỉ gom dữ liệu.
+// Bản khai đọc / ghi qua courseRegistrationService; Đơn sinh bằng
+// registrationDocumentService — file này chỉ gom dữ liệu.
 const { getPool, sql } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const { hasPermission } = require('../../../permissions/authz');

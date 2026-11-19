@@ -6,7 +6,7 @@ const { body } = require('express-validator');
 const { checkNationalId, NATIONAL_ID_ISSUE_MESSAGE } = require('../../utils/nationalId');
 const { SOURCES } = require('../training/registration/registrationConstants');
 
-// Độ dài tối đa = độ dài cột (contract mục 3)
+// Độ dài tối đa = độ dài cột (form 'course_registration' ở formRegistry.js)
 const TEXT_MAX = {
 	ethnicity: 50,
 	hometown: 255,

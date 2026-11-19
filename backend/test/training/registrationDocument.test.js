@@ -89,7 +89,8 @@ test('đơn nội viện: điền đủ giá trị, kính gửi theo khoa, họ 
 			`thiếu "${needle}"`,
 		);
 
-	has('Khoa/Phòng/TT Khoa Hồi sức tích cực');
+	assert.equal(lines.find((l) => l.startsWith('Kính gửi')).includes('Khoa/Phòng/TT'), false);
+	has('Khoa Hồi sức tích cực');
 	assert.doesNotMatch(lines.join('\n'), /Giám đốc Bệnh viện Hữu nghị/);
 	has('NGUYỄN VĂN ÁNH');
 	has('Dân tộc: Kinh');
@@ -186,8 +187,8 @@ test('đơn không có họ tên: tên file dự phòng, vẫn sinh được', a
 
 const PROPOSAL = {
 	department_name: 'Khoa Nội tim mạch',
-	course_name: 'Siêu âm tim cơ bản',
-	program_name: 'Lớp tháng 3',
+	course_name: 'Đợt 2/2027',
+	program_name: 'Siêu âm tim cơ bản',
 	start_date: '2027-03-01',
 	end_date: new Date(2027, 2, 20),
 	tuition_fee: 1500000,
@@ -207,7 +208,7 @@ const PROPOSAL = {
 test('tờ trình đủ dữ liệu: khoa, năm, lớp, ngày, kinh phí, bảng người và bảng phân tích', async () => {
 	const out = await renderProposal(PROPOSAL);
 	assert.equal(out.mime, DOCX_MIME);
-	assert.equal(out.filename, 'To-trinh-Noi-tim-mach-Sieu-am-tim-co-ban-Lop-thang-3.docx');
+	assert.equal(out.filename, 'To-trinh-Noi-tim-mach-Sieu-am-tim-co-ban.docx');
 	assert.match(out.filename, /^[A-Za-z0-9.-]+$/);
 	const xml = documentXml(out.buffer);
 	noLeftoverTags(xml);
@@ -217,15 +218,15 @@ test('tờ trình đủ dữ liệu: khoa, năm, lớp, ngày, kinh phí, bảng
 	assert.ok(text.includes('KHOA: NỘI TIM MẠCH'));
 	assert.ok(text.includes('Căn cứ kế hoạch đào tạo năm 2027 của khoa Nội tim mạch;'));
 	assert.doesNotMatch(joined, /2026/, 'năm cứng 2026 đã được thay');
-	assert.ok(text.some((l) => l.startsWith('Siêu âm tim cơ bản – Lớp tháng 3 tại Bệnh viện')));
-	assert.ok(text.some((l) => /về Siêu âm tim cơ bản – Lớp tháng 3, đáp ứng/.test(l)));
+	assert.ok(text.some((l) => l.startsWith('Siêu âm tim cơ bản tại Bệnh viện')));
+	assert.ok(text.some((l) => /về Siêu âm tim cơ bản, đáp ứng/.test(l)));
 	assert.equal((joined.match(/[Kk]hoa Nội tim mạch/g) || []).length, 4, '"khoa …" ở 4 chỗ');
 	assert.ok(
 		text.includes(
 			'Khoa Nội tim mạch đã bố trí nhân lực và đảm bảo duy trì hoạt động chuyên môn thường quy trong thời gian cán bộ tham gia học tập.',
 		),
 	);
-	assert.ok(text.includes('Nội dung lớp học: Siêu âm tim cơ bản – Lớp tháng 3'));
+	assert.ok(text.includes('Nội dung lớp học: Siêu âm tim cơ bản'));
 	assert.ok(text.includes('Thời gian: Từ ngày 01/03/2027 đến ngày 20/03/2027'));
 	assert.ok(text.some((l) => l.startsWith('Kinh phí: 1.500.000 đồng/học viên/khóa học')));
 	// phần ký giữ nguyên
@@ -249,7 +250,7 @@ test('tờ trình đủ dữ liệu: khoa, năm, lớp, ngày, kinh phí, bảng
 	assert.deepEqual(needs, [
 		'',
 		'',
-		'Siêu âm tim cơ bản – Lớp tháng 3',
+		'Siêu âm tim cơ bản',
 		'Siêu âm tim qua thành ngực',
 		'2',
 		'3',

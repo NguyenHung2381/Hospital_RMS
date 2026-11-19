@@ -1,8 +1,8 @@
 // course_registrations — bản khai của 1 lượt ghi danh tạo từ form đăng ký khóa đào tạo
 // liên tục (mã đăng ký, snapshot, cam kết, hóa đơn, mốc đối chiếu, hồ sơ nộp bổ sung).
 //
-// Chữ ký hàm là hợp đồng giữa các luồng (DANG-KY-DTLT-CONTRACT.md mục 5) — luồng
-// khác chỉ gọi. snapshot lưu dạng chuỗi JSON, đọc ra luôn parse thành object.
+// Cổng công khai, cổng nhân viên và màn duyệt đều đọc / ghi bản khai qua file này.
+// snapshot lưu dạng chuỗi JSON, đọc ra luôn parse thành object.
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');

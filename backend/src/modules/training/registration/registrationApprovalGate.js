@@ -1,4 +1,4 @@
-// Chốt chặn duyệt ghi danh có bản khai (DANG-KY-DTLT-CONTRACT.md quyết định 6): lượt ghi
+// Chốt chặn duyệt ghi danh có bản khai: lượt ghi
 // danh tạo từ form đăng ký chỉ được duyệt khi phòng Đào tạo đã đối chiếu đủ giấy tờ.
 //   - Ngoại viện: đã đối chiếu CCCD + văn bằng.
 //   - Nội viện: đã nộp hồ sơ (đơn + tờ trình đã duyệt, 1 PDF) + đã đối chiếu tờ trình.

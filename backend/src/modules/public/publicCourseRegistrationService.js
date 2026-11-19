@@ -477,7 +477,7 @@ const getStatus = (reg) => ({
 	},
 });
 
-// Gom tên khóa / chương trình / khoa / đối tượng rồi giao cho mẫu Word (luồng giấy tờ)
+// Gom tên khóa / chương trình / khoa / đối tượng rồi giao cho mẫu Word (registrationDocumentService)
 const renderApplication = async (reg) => {
 	let traineeTypeName = null;
 	const typeId = reg.snapshot?.trainee_type_id;

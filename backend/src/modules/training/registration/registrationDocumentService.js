@@ -6,7 +6,6 @@
 // Mẫu dựng từ bản gốc của phòng Đào tạo bằng scripts/build-registration-templates.js
 // (dòng chấm → thẻ {ten_the} ngay trong run cũ, nên bố cục giữ nguyên). Cách điền giống
 // courses/practiceDocumentService.js: ô thiếu dữ liệu in lại dòng chấm để điền tay.
-// Chữ ký hàm là hợp đồng giữa các luồng (DANG-KY-DTLT-CONTRACT.md mục 5).
 
 const fs = require('fs');
 const path = require('path');
@@ -59,6 +58,7 @@ const str = (v) => (v === null || v === undefined ? '' : String(v).trim());
 const orBlank = (v, blank = BLANK) => str(v) || blank;
 // Mẫu viết "khoa …" / "KHOA: …" ⇒ bỏ chữ "Khoa" đầu tên trong danh mục để khỏi lặp
 const shortDept = (name) => str(name).replace(/^khoa\s+/i, '');
+const UNIT_PREFIX = /^(khoa|phòng|trung tâm|tt|ban|đơn vị)\s/i;
 const money = (n) => {
 	if (n === null || n === undefined || n === '' || Number.isNaN(Number(n))) return '';
 	return String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -140,7 +140,12 @@ const renderApplication = async (data) => {
 
 	const fields = {
 		// Nội viện gửi khoa/phòng; ngoại viện gửi Giám đốc + Trung tâm ĐT-CĐT
-		kinh_gui: internal ? `Khoa/Phòng/TT ${orBlank(dept, BLANK_LONG)}` : EXTERNAL_ADDRESSEE,
+		// Tên trong danh mục đã có sẵn "Khoa / Phòng / Trung tâm…" thì in nguyên tên, khỏi lặp chữ
+		kinh_gui: !internal
+			? EXTERNAL_ADDRESSEE
+			: UNIT_PREFIX.test(dept)
+				? dept
+				: `Khoa/Phòng/TT ${orBlank(dept, BLANK_LONG)}`,
 		ho_ten_hoa: fullName ? fullName.toUpperCase() : BLANK_LONG,
 		dan_toc: orBlank(s.ethnicity),
 		ngay_sinh: orBlank(dmy(s.dob)),
@@ -196,7 +201,9 @@ const renderApplication = async (data) => {
  */
 const renderProposal = async (data) => {
 	const dept = shortDept(data.department_name);
-	const lop = className(data.course_name, data.program_name);
+	// Tờ trình nói về nội dung đào tạo ⇒ tên chương trình; tên khóa ("Đợt 3/2026") chỉ là
+	// nhãn đợt, thời gian đã ghi ở dòng "Từ ngày … đến ngày …". Khóa không có chương trình thì dùng tên khóa.
+	const lop = str(data.program_name) || str(data.course_name);
 	const a = data.analysis ?? {};
 	const people = Array.isArray(data.people) ? data.people : [];
 	const year = data.year || dateParts(data.start_date)?.y || new Date().getFullYear();

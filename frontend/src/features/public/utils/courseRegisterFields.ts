@@ -7,7 +7,7 @@ import type { RegisterPayload, RegistrationSource, RegistrationStaff } from '../
 
 export const HOSPITAL = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
 
-// ─── Trường của bản khai (khóa = DANG-KY-DTLT-CONTRACT mục 3) ─────────────────
+// ─── Trường của bản khai (khóa trùng form 'course_registration' ở backend) ─────────────────
 
 export const INFO_KEYS = [
 	'full_name',

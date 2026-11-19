@@ -1,11 +1,11 @@
-// Đối chiếu bản khai đăng ký khóa đào tạo liên tục (luồng L5, DANG-KY-DTLT-CONTRACT.md):
+// Đối chiếu bản khai đăng ký khóa đào tạo liên tục:
 //   - computeDiffs: bản khai ↔ hồ sơ học viên, chuẩn hóa ngày / khoảng trắng / hoa-thường;
 //   - chốt chặn duyệt (quyết định 6): ngoại viện cần đối chiếu CCCD + văn bằng, nội viện cần
 //     hồ sơ nộp bổ sung + đối chiếu tờ trình; tắt bằng TRAINING_REGISTRATION_REQUIRE_CHECKS =
 //     'false'; lượt không có bản khai không bị ảnh hưởng; từ chối không bị chặn;
 //   - duyệt hàng loạt: đăng ký thiếu mốc bị bỏ qua kèm lý do, phần còn lại vẫn duyệt;
 //   - Tờ trình: số người đề xuất bỏ người bị từ chối, kèm 2 số tính từ CSDL.
-// Chạy trên CSDL giả (test/auth/fakeDb) — service bản khai / giấy tờ (luồng L2, L3) bị thay.
+// Chạy trên CSDL giả (test/auth/fakeDb) — service bản khai / giấy tờ bị thay.
 process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');

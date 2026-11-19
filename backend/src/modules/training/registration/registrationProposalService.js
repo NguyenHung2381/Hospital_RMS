@@ -1,7 +1,7 @@
 // Tờ trình cử cán bộ tham dự lớp đào tạo liên tục (mỗi khoa 1 tờ / lớp): gom nhóm nội viện
-// (courseRegistrationService.listInternalGroups — luồng L2), tính các số của Bảng phân
-// tích nhu cầu đào tạo có thể tính từ dữ liệu, rồi sinh .docx bằng registrationDocumentService
-// (luồng L3). Ô không có dữ liệu (kỹ thuật, lý do) để trống cho khoa ghi tay.
+// (courseRegistrationService.listInternalGroups), tính các số của Bảng phân tích nhu cầu đào
+// tạo có thể tính từ dữ liệu, rồi sinh .docx bằng registrationDocumentService.
+// Ô không có dữ liệu (kỹ thuật, lý do) để trống cho khoa ghi tay.
 const { getPool, sql, vnTodaySql } = require('../../../config/db');
 const courseRegistrationService = require('./courseRegistrationService');
 const registrationDocumentService = require('./registrationDocumentService');

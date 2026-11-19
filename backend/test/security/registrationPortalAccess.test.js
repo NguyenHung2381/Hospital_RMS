@@ -1,9 +1,9 @@
-// Quyền theo bản ghi ở cổng nhân viên cho đơn đăng ký khóa đào tạo liên tục (luồng L5):
+// Quyền theo bản ghi ở cổng nhân viên cho đơn đăng ký khóa đào tạo liên tục:
 //   - /me/course-registrations/:enrollmentId/(application|dossier): chỉ chủ bản khai
 //     (staff_user_id); bản khai của người khác trả 404 và KHÔNG ghi file nào xuống đĩa;
 //   - /me/department-proposals(+/document): tài khoản khoa, trưởng khoa của chính khoa đó,
 //     hoặc người có bản khai trong đúng nhóm đó; còn lại 404 / không thấy nhóm.
-// Router thật gắn vào Express, CSDL giả; service bản khai / giấy tờ (luồng L2, L3) bị thay.
+// Router thật gắn vào Express, CSDL giả; service bản khai / giấy tờ bị thay.
 process.env.JWT_SECRET = 'test-secret';
 const os = require('os');
 const path = require('path');
