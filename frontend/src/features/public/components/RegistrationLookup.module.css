@@ -1,0 +1,139 @@
+/* Kết quả tra cứu đơn đăng ký: khung 1px, không đổ bóng */
+.result {
+	margin-top: var(--space-5);
+	padding: var(--space-5) var(--space-6);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl, 14px);
+	background: var(--color-white);
+}
+.head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-2) var(--space-4);
+	margin-bottom: var(--space-4);
+}
+.name {
+	margin: 0;
+	font-family: var(--font-display);
+	font-size: var(--font-size-lg);
+	font-weight: 600;
+	color: var(--color-gray-900);
+}
+.code {
+	margin-top: 2px;
+	font-size: var(--font-size-sm);
+	font-variant-numeric: tabular-nums;
+	color: var(--color-gray-600);
+	word-break: break-all;
+}
+.facts {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3) var(--space-5);
+	margin: 0 0 var(--space-5);
+	padding: var(--space-4);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.facts dt {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.facts dd {
+	margin: 2px 0 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-900);
+	word-break: break-word;
+}
+.subTitle {
+	margin: var(--space-5) 0 var(--space-3);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.steps li {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	font-size: var(--font-size-sm);
+}
+.stepIcon {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border: 1.5px solid var(--color-gray-300);
+	border-radius: 50%;
+}
+.stepIcon svg {
+	width: 12px;
+	height: 12px;
+}
+.stepDone {
+	color: var(--color-gray-900);
+}
+.stepDone .stepIcon {
+	border-color: var(--color-primary-dark);
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+}
+.stepWait {
+	color: var(--color-gray-700);
+}
+.stepNote {
+	color: var(--color-gray-600);
+}
+
+/* Việc đang chờ người dùng xử lý — màu hồng dành riêng cho loại việc này */
+.todo {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin-top: var(--space-5);
+	padding: var(--space-4) var(--space-5);
+	border: 1px solid var(--tone-pink-border);
+	border-radius: var(--radius-lg);
+	background: var(--tone-pink-bg);
+}
+.todoTitle {
+	margin: 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--tone-pink-fg);
+}
+.todoText {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+	color: var(--color-gray-800);
+}
+.todo > button {
+	align-self: flex-start;
+}
+
+@media (max-width: 640px) {
+	.result {
+		padding: var(--space-4);
+	}
+	.facts {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.todo {
+		padding: var(--space-4);
+	}
+	.todo > button {
+		align-self: stretch;
+	}
+}

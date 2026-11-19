@@ -5,21 +5,35 @@ import { BASE_URL } from '../../../shared/api/axios';
 // nó tự gắn Authorization/refresh-token cho phiên đăng nhập, không phù hợp
 // với các trang không cần đăng nhập này (mirror cách features/auth/api/authApi.ts
 // gọi thẳng fetch tới /auth/login).
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function send(path: string, options: RequestInit = {}): Promise<Response> {
 	// FormData: để trình duyệt tự đặt Content-Type multipart kèm boundary
 	const isForm = options.body instanceof FormData;
-	const res = await fetch(`${BASE_URL}/api/v1/public${path}`, {
+	return fetch(`${BASE_URL}/api/v1/public${path}`, {
 		...options,
 		headers: {
 			...(isForm ? {} : { 'Content-Type': 'application/json' }),
 			...(options.headers ?? {}),
 		},
 	});
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+	const res = await send(path, options);
 	const json = await res.json();
 	if (!res.ok || !json.success) {
 		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
 	}
 	return json.data as T;
+}
+
+// Endpoint trả file (đơn đăng ký .docx): thành công là nội dung file, lỗi vẫn là JSON { message }
+async function requestBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+	const res = await send(path, options);
+	if (!res.ok) {
+		const json = await res.json().catch(() => null);
+		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+	}
+	return res.blob();
 }
 
 // Có file đính kèm ⇒ gửi multipart: field `data` = JSON form (giữ cấu trúc lồng
@@ -98,28 +112,152 @@ export const getOpenCourses = () => request<PublicCourse[]>('/courses');
 export const getTraineeTypes = () => request<TraineeTypeOption[]>('/trainee-types');
 export const getCaptcha = () => request<Captcha>('/captcha');
 
+export type RegistrationSource = 'internal' | 'external';
+
+/** Đăng ký khóa học công khai — khóa trường khớp backend registrationConstants.SNAPSHOT_FIELDS */
 export interface RegisterPayload {
+	source: RegistrationSource;
 	full_name: string;
 	dob?: string;
 	gender?: string;
+	ethnicity?: string;
+	hometown?: string;
 	national_id?: string;
+	national_id_issued_date?: string;
+	national_id_issued_place?: string;
+	permanent_address?: string;
+	address?: string;
 	phone?: string;
 	email?: string;
-	address?: string;
+	qualification?: string;
+	graduated_school?: string;
+	graduated_year?: number;
+	graduated_major?: string;
+	degree_number?: string;
+	degree_registry_number?: string;
+	workplace?: string;
+	work_specialty?: string;
+	work_seniority?: string;
 	trainee_type_id?: string;
+	/** Chỉ nội viện */
+	staff_number?: string;
+	department_id?: string;
+	/** Chỉ ngoại viện, tùy chọn */
+	invoice_org_name?: string;
+	invoice_org_address?: string;
+	invoice_tax_code?: string;
+	invoice_budget_code?: string;
+	invoice_email?: string;
+	rules_accepted: boolean;
+	declared_true: boolean;
 	/** Trường tùy chỉnh (Cấu hình form 'course_registration') */
 	custom?: CustomValues;
 	course_id: string;
 	program_id?: string;
+	/** Từ verifyRegistrationEmailOtp — bỏ qua khi máy chủ tắt OTP email */
+	email_token?: string;
 	captcha_token: string;
 	captcha_answer: string;
 	website?: string; // honeypot — luôn để trống, ẩn khỏi người dùng thật bằng CSS
 }
 
+/** Mọi nhánh đăng ký trả cùng hình dạng này (kể cả khi bị chặn ngầm) */
+export interface RegisterResult {
+	submitted: boolean;
+	registration_code: string;
+	/** JWT 30 phút để tải đơn ngay ở màn "đăng ký thành công" */
+	download_token: string;
+}
+
 export const registerCourse = (data: RegisterPayload, files?: File[]) =>
-	request<{ submitted: boolean }>('/course-registration', {
+	request<RegisterResult>('/course-registration', {
 		method: 'POST',
 		body: buildBody(data, files),
+	});
+
+export interface CourseRegistrationRules {
+	version: string;
+	rules: string[];
+	/** Gợi ý "Nơi cấp" CCCD */
+	id_issue_places: string[];
+	email_otp_required: boolean;
+}
+export const getCourseRegistrationRules = () => request<CourseRegistrationRules>('/course-registration/rules');
+
+export interface RegistrationStaff {
+	full_name: string;
+	department_id: string;
+	department_name: string;
+	qualification: string | null;
+	/** Email trong hồ sơ nhân sự đã che (null = không có email thật) */
+	email_masked: string | null;
+}
+// Không khớp ⇒ 404 với thông báo chung (không lộ mã nhân viên có tồn tại hay không)
+export const checkRegistrationStaff = (staff_number: string, full_name: string) =>
+	request<RegistrationStaff>('/course-registration/staff-check', {
+		method: 'POST',
+		body: JSON.stringify({ staff_number, full_name }),
+	});
+
+export interface EmailOtpPayload {
+	source: RegistrationSource;
+	email: string;
+	staff_number?: string;
+	full_name?: string;
+	captcha_token: string;
+	captcha_answer: string;
+}
+export interface EmailOtpChallenge {
+	challenge_id: string;
+	to_masked: string;
+	ttl_min: number;
+}
+export const requestRegistrationEmailOtp = (data: EmailOtpPayload) =>
+	request<EmailOtpChallenge>('/course-registration/email-otp', {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+export const verifyRegistrationEmailOtp = (challenge_id: string, code: string) =>
+	request<{ email_token: string }>('/course-registration/email-otp/verify', {
+		method: 'POST',
+		body: JSON.stringify({ challenge_id, code }),
+	});
+
+/** Yếu tố xác thực của 1 đơn — luôn gửi trong body (POST), không đưa lên URL */
+export type RegistrationProof = { national_id: string } | { email: string } | { download_token: string };
+
+export interface RegistrationStatus {
+	registration_code: string;
+	full_name: string;
+	source: RegistrationSource;
+	course_name: string;
+	program_name: string | null;
+	enrollment_status: 'pending' | 'approved' | 'rejected' | 'waitlisted' | string;
+	registered_at: string;
+	/** Nội viện chưa nộp tờ trình đã duyệt */
+	needs_dossier: boolean;
+	dossier_uploaded_at: string | null;
+	checks: { id_checked: boolean; degree_checked: boolean; proposal_checked: boolean };
+}
+const registrationPath = (code: string, action: 'status' | 'application' | 'dossier') =>
+	`/course-registration/${encodeURIComponent(code)}/${action}`;
+
+export const getRegistrationStatus = (code: string, proof: RegistrationProof) =>
+	request<RegistrationStatus>(registrationPath(code, 'status'), {
+		method: 'POST',
+		body: JSON.stringify(proof),
+	});
+/** Đơn đăng ký (.docx) đã điền sẵn để in, ký */
+export const downloadRegistrationApplication = (code: string, proof: RegistrationProof) =>
+	requestBlob(registrationPath(code, 'application'), {
+		method: 'POST',
+		body: JSON.stringify(proof),
+	});
+/** Nội viện nộp bổ sung bản scan hồ sơ (tờ trình đã duyệt) — đúng 1 file PDF */
+export const uploadRegistrationDossier = (code: string, proof: RegistrationProof, file: File) =>
+	request<{ uploaded: boolean; dossier_uploaded_at: string }>(registrationPath(code, 'dossier'), {
+		method: 'POST',
+		body: buildBody(proof, [file]),
 	});
 
 export interface LookupResult {

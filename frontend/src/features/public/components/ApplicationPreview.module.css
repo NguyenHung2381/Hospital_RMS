@@ -1,0 +1,100 @@
+/* Xem trước / in đơn đăng ký. Khung dùng lại FileViewerModal; ở đây chỉ chỉnh nút và in. */
+.toolbar {
+	min-height: 52px;
+}
+.toolbarActions {
+	display: flex;
+	flex: none;
+	gap: var(--space-2);
+}
+.printBtn,
+.closeBtn {
+	min-height: 40px;
+	padding: 0 var(--space-4);
+	border-radius: var(--radius-lg);
+	font: inherit;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.printBtn {
+	border: none;
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+}
+.printBtn:hover:not(:disabled) {
+	background: var(--color-primary-darker);
+}
+.printBtn:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+.closeBtn {
+	border: 1.5px solid var(--color-gray-200);
+	background: var(--color-white);
+	color: var(--color-gray-800);
+}
+.closeBtn:hover {
+	border-color: var(--color-gray-300);
+	background: var(--color-gray-50);
+}
+.printBtn:focus-visible,
+.closeBtn:focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+@media (max-width: 640px) {
+	.backdrop {
+		padding: 0;
+	}
+	.modal {
+		width: 100vw;
+		height: 100dvh;
+		max-width: none;
+		border-radius: 0;
+	}
+}
+
+/* In: chỉ giữ lại trang đơn. Lớp dtlt-printing gắn lên <body> lúc bấm "In đơn". */
+@media print {
+	:global(body.dtlt-printing) > :global(#root) {
+		display: none !important;
+	}
+	.backdrop {
+		position: static;
+		display: block;
+		padding: 0;
+		background: none;
+		backdrop-filter: none;
+		animation: none;
+	}
+	.modal {
+		width: auto;
+		max-width: none;
+		height: auto;
+		border-radius: 0;
+		box-shadow: none;
+		overflow: visible;
+		animation: none;
+	}
+	.toolbar,
+	.status {
+		display: none !important;
+	}
+	.docWrap {
+		overflow: visible;
+		background: #fff;
+	}
+	.docWrap :global(.docxViewer-wrapper) {
+		padding: 0;
+		background: #fff;
+	}
+	.docWrap :global(.docxViewer-wrapper > section.docxViewer) {
+		margin: 0;
+		box-shadow: none;
+	}
+	@page {
+		margin: 0;
+	}
+}
