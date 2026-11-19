@@ -29,6 +29,8 @@ import {
   type EnrollmentStatus,
 } from "../types/course.type";
 import { EnrollmentDetailModal } from "./EnrollmentDetailModal";
+import { CourseProposalsModal } from "./CourseProposalsModal";
+import { Badge } from "@/shared/components";
 import { AddEnrollmentPanel, type RecentAdd } from "./AddEnrollmentPanel";
 import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
@@ -76,6 +78,26 @@ const LIST_VIEWS: { key: ListView; label: string; /** Ẩn lựa chọn khi khô
 ];
 const isListView = (v: string | null): v is ListView =>
   LIST_VIEWS.some((t) => t.key === v);
+
+/** Đăng ký chờ duyệt có bản khai (form /dang-ky-khoa-hoc): sẵn sàng duyệt / chờ phòng Đào tạo
+ *  đối chiếu / chờ người đăng ký nộp hồ sơ. null = không có bản khai hoặc không chờ duyệt. */
+type RegState = "ready" | "check" | "dossier";
+const regState = (e: Enrollment): RegState | null => {
+  const r = e.registration;
+  if (!r || e.status !== "pending") return null;
+  if (r.ready) return "ready";
+  return r.source === "internal" && !r.has_dossier ? "dossier" : "check";
+};
+/** Còn thiếu điều kiện duyệt (backend sẽ chặn) — kể cả người bị từ chối được duyệt lại. */
+const blockedReason = (e: Enrollment) =>
+  e.registration && !e.registration.ready
+    ? `còn thiếu ${e.registration.missing.join(", ")}`
+    : null;
+const REG_STATE_TEXT: Record<RegState, string> = {
+  ready: "Sẵn sàng duyệt",
+  check: "Chờ đối chiếu",
+  dossier: "Chờ nộp hồ sơ",
+};
 
 /** Lọc nguồn học viên: nội viện (nhân viên bệnh viện) / ngoại viện. */
 type OriginFilter = "internal" | "external";
@@ -150,10 +172,10 @@ export function EnrollmentsTab({
   );
   const [detailId, setDetailId] = useState<string | null>(null);
   // Mở hồ sơ thẳng vào tab Vòng thực hành (nút "Xếp lịch" trên dòng chưa xếp)
-  const [detailTab, setDetailTab] = useState<"rotations" | undefined>();
+  const [detailTab, setDetailTab] = useState<"rotations" | "registration" | undefined>();
   const navigate = useNavigate();
   // Khóa GPHN: hồ sơ làm ở trang "Hồ sơ thực hành GPHN" (tự lưu, chọn danh mục) — không mở modal
-  const openDetail = (id: string, tab?: "rotations") => {
+  const openDetail = (id: string, tab?: "rotations" | "registration") => {
     if (course?.is_rolling) {
       navigate(`/admin/practice-records/${id}${tab ? `?tab=${tab}` : ""}`);
       return;
@@ -165,6 +187,9 @@ export function EnrollmentsTab({
   const [bookOpen, setBookOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [arranging, setArranging] = useState(false);
+  const [proposalsOpen, setProposalsOpen] = useState(false);
+  // Lọc nhanh đăng ký chờ duyệt theo tình trạng bản khai (bấm vào ô đếm phía trên bảng)
+  const [regFilter, setRegFilter] = useState<RegState | null>(null);
   const [adding, setAdding] = useState(enrollments.length === 0);
   const detail = enrollments.find((e) => e.id === detailId) ?? null;
   const [search, setSearch] = useState("");
@@ -242,12 +267,25 @@ export function EnrollmentsTab({
     return enrollments.filter(
       (en) =>
         (view === "all" || en.status === view) &&
+        (!regFilter || regState(en) === regFilter) &&
         (!q ||
           normalize(
             `${en.trainee_name} ${en.trainee_id} ${en.practice_code ?? ""} ${en.trainee_phone ?? ""} ${en.trainee_email ?? ""}`,
           ).includes(q)),
     );
-  }, [enrollments, search, view]);
+  }, [enrollments, search, view, regFilter]);
+  // Đếm đăng ký chờ duyệt theo tình trạng bản khai (toàn khóa / chương trình đang làm việc)
+  const regCounts = useMemo(() => {
+    const c: Record<RegState, number> = { ready: 0, check: 0, dossier: 0 };
+    for (const en of enrollments) {
+      const st = regState(en);
+      if (st) c[st]++;
+    }
+    return c;
+  }, [enrollments]);
+  const hasInternalRegistrations = enrollments.some(
+    (e) => e.registration?.source === "internal",
+  );
   // Số trên select nội / ngoại viện: theo nhóm + từ khóa + chương trình đang lọc.
   const originCount = (o: OriginFilter | null) =>
     searched.filter(
@@ -291,7 +329,7 @@ export function EnrollmentsTab({
   // Chương trình cố định (scopeProgramId) không tính là "đang lọc".
   const programFiltered = programFilter !== null && !scopeProgramId;
   const filterActive =
-    !!search.trim() || programFiltered || originFilter !== null;
+    !!search.trim() || programFiltered || originFilter !== null || regFilter !== null;
   const onlyProgramFilter =
     programFiltered && !search.trim() && originFilter === null;
   // Nhóm chỉ có 1 trạng thái thì cột Trạng thái thừa — chỉ giữ ở "Danh sách chờ" (vị trí chờ) và "Tất cả".
@@ -316,6 +354,7 @@ export function EnrollmentsTab({
   const resetPage = () => pg.setPage(1);
   const changeView = (v: ListView) => {
     setUrlParam("list", v);
+    if (v !== "pending" && v !== "all") setRegFilter(null);
     rowSel.clearSelection();
     resetPage();
   };
@@ -434,12 +473,47 @@ export function EnrollmentsTab({
   const rejectVerb = allSelected(selectedToReject, "approved") ? "Hủy duyệt" : "Từ chối";
 
   const bulkDecide = async (status: "approved" | "rejected") => {
-    const ids = status === "approved" ? selectedToApprove : selectedToReject;
+    let ids = status === "approved" ? selectedToApprove : selectedToReject;
     const verb = status === "approved" ? approveVerb : rejectVerb;
-    if (!window.confirm(`${verb} ${ids.length} học viên đã chọn?`)) return;
+    // Duyệt: đơn chưa đủ mốc đối chiếu bị backend chặn ⇒ tách ra trước, nói rõ ai thiếu gì
+    const blocked =
+      status === "approved"
+        ? enrollments.filter((e) => ids.includes(e.id) && blockedReason(e))
+        : [];
+    if (blocked.length) {
+      const list = blocked
+        .slice(0, 5)
+        .map((e) => `• ${e.trainee_name}: ${blockedReason(e)}`)
+        .join("\n");
+      const more = blocked.length > 5 ? `\n… và ${blocked.length - 5} người khác` : "";
+      ids = ids.filter((id) => !blocked.some((b) => b.id === id));
+      if (!ids.length) {
+        window.alert(
+          `Chưa duyệt được ${blocked.length} đơn đã chọn vì chưa đủ mốc đối chiếu:\n${list}${more}\n\nMở tab "Đơn đăng ký" của từng hồ sơ để đối chiếu.`,
+        );
+        return;
+      }
+      if (
+        !window.confirm(
+          `${blocked.length} đơn chưa đủ mốc đối chiếu sẽ được bỏ qua:\n${list}${more}\n\n${verb} ${ids.length} học viên còn lại?`,
+        )
+      )
+        return;
+    } else if (!window.confirm(`${verb} ${ids.length} học viên đã chọn?`)) return;
     const failed = await onDecideBulk(ids, status);
     rowSel.clearSelection();
-    failed.forEach(rowSel.toggleSelect);
+    [...failed, ...blocked.map((b) => b.id)].forEach(rowSel.toggleSelect);
+  };
+
+  /** Duyệt 1 đơn: chưa đủ mốc đối chiếu thì mở thẳng tab "Đơn đăng ký" thay vì gửi lên để bị từ chối. */
+  const approveOne = (en: Enrollment) => {
+    const reason = blockedReason(en);
+    if (reason) {
+      showToast("info", `Chưa duyệt được ${en.trainee_name}: ${reason}.`);
+      openDetail(en.id, "registration");
+      return;
+    }
+    onDecide(en.id, "approved");
   };
 
   /** Hủy duyệt người đã duyệt (đăng ký cho vui / không đến học) — hỏi lại vì học viên sẽ nhận email. */
@@ -581,11 +655,34 @@ export function EnrollmentsTab({
           >
             {en.is_internal ? "Nội viện" : "Ngoại viện"}
           </span>
+          {(() => {
+            const st = regState(en);
+            if (!st || !en.registration) return null;
+            return (
+              <button
+                type="button"
+                className={styles.regTagBtn}
+                title={
+                  st === "ready"
+                    ? "Đủ mốc đối chiếu — có thể duyệt"
+                    : `Còn thiếu: ${en.registration.missing.join(", ")} — bấm để mở đơn đăng ký`
+                }
+                onClick={() => openDetail(en.id, "registration")}
+              >
+                <Badge tone={st === "ready" ? "green" : st === "check" ? "amber" : "gray"}>
+                  {REG_STATE_TEXT[st]}
+                </Badge>
+              </button>
+            );
+          })()}
           <span className={styles.docStateTag}>
             <TraineeDocStateBadge state={en.trainee_doc_state} />
           </span>
           {en.practice_code && (
             <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>
+          )}
+          {en.registration && (
+            <div className={tbl.cellSub}>Mã đăng ký {en.registration.code}</div>
           )}
           <CustomValuesInline
             cfg={customCfg}
@@ -678,9 +775,15 @@ export function EnrollmentsTab({
             )}
             {(en.status === "pending" || en.status === "rejected") && (
               <RowAction
-                title={en.status === "rejected" ? "Duyệt lại" : "Duyệt"}
+                title={
+                  blockedReason(en)
+                    ? `Chưa duyệt được — ${blockedReason(en)} (bấm để mở đơn đăng ký)`
+                    : en.status === "rejected"
+                      ? "Duyệt lại"
+                      : "Duyệt"
+                }
                 disabled={busy}
-                onClick={() => onDecide(en.id, "approved")}
+                onClick={() => approveOne(en)}
               >
                 <CheckSvg />
               </RowAction>
@@ -830,6 +933,16 @@ export function EnrollmentsTab({
                 </button>
               </>
             )}
+            {hasInternalRegistrations && course && (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                onClick={() => setProposalsOpen(true)}
+                title="Nhân viên nội viện đăng ký qua form, gom theo khoa — tải Tờ trình của từng khoa"
+              >
+                Tờ trình theo khoa
+              </button>
+            )}
             <button
               type="button"
               className={styles.btnPrimary}
@@ -918,6 +1031,7 @@ export function EnrollmentsTab({
                 className={styles.enrClear}
                 onClick={() => {
                   setSearch("");
+                  setRegFilter(null);
                   setParams(
                     (p) => {
                       if (!scopeProgramId) p.delete("program");
@@ -933,6 +1047,34 @@ export function EnrollmentsTab({
               </button>
             )}
           </div>
+          {(view === "pending" || view === "all") &&
+            regCounts.ready + regCounts.check + regCounts.dossier > 0 && (
+              <div className={styles.regSummary} aria-label="Tình trạng đơn đăng ký chờ duyệt">
+                {(
+                  [
+                    // Chờ phòng Đào tạo đối chiếu = việc của người đang xem ⇒ màu hồng (chỉ khi > 0)
+                    ["check", `${regCounts.check} đơn chờ bạn đối chiếu`, styles.regPillPending],
+                    ["ready", `${regCounts.ready} đơn sẵn sàng duyệt`, styles.regPillReady],
+                    ["dossier", `${regCounts.dossier} đơn chờ người đăng ký nộp hồ sơ`, ""],
+                  ] as const
+                )
+                  .filter(([key]) => regCounts[key] > 0)
+                  .map(([key, text, tone]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={regFilter === key}
+                      className={`${styles.regPill} ${tone} ${regFilter === key ? styles.regPillActive : ""}`}
+                      onClick={() => {
+                        setRegFilter((f) => (f === key ? null : key));
+                        resetPage();
+                      }}
+                    >
+                      {text}
+                    </button>
+                  ))}
+              </div>
+            )}
           {focusClass && (
             <div
               className={`${styles.classNote} ${focusClass.open ? styles.classNoteOpen : ""}`}
@@ -1046,6 +1188,13 @@ export function EnrollmentsTab({
           mode={classModal}
           onClose={() => setClassModal(null)}
           onSaved={onSaved}
+        />
+      )}
+      {proposalsOpen && course && (
+        <CourseProposalsModal
+          courseId={course.id}
+          courseName={course.name}
+          onClose={() => setProposalsOpen(false)}
         />
       )}
       {detail && (

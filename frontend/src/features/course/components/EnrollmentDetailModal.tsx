@@ -23,6 +23,7 @@ import {
 } from '../types/course.type';
 import { PracticeDocumentsBar } from './PracticeDocumentsBar';
 import { RotationsPanel } from './RotationsPanel';
+import { RegistrationReviewTab } from './RegistrationReviewTab';
 import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
 import { TraineeResultsTab } from '../../trainee/components/TraineeResultsTab';
 import styles from '../pages/Courses.module.css';
@@ -34,7 +35,7 @@ import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 // Trạng thái bài tự tính theo điểm danh (lessonProgressService) — chỉ hiển thị
 const LESSON_STATUS_TONE = { not_started: 'gray', in_progress: 'blue', done: 'green' } as const;
 
-type Tab = 'info' | 'rotations' | 'documents' | 'lessons' | 'attendance' | 'results';
+type Tab = 'info' | 'registration' | 'rotations' | 'documents' | 'lessons' | 'attendance' | 'results';
 
 type Form = Required<{ [K in keyof EnrollmentFields]: string }>;
 
@@ -187,6 +188,8 @@ export function EnrollmentDetailModal({
 	const showLessons = !programChanged && (lessons.length > 0 || (!isPractice && !!enrollment.program_id));
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'info', label: dirty ? 'Thông tin hồ sơ •' : 'Thông tin hồ sơ' },
+		// Chỉ lượt ghi danh tạo từ form đăng ký (có bản khai) — đối chiếu trước khi duyệt
+		...(enrollment.registration ? [{ key: 'registration' as const, label: 'Đơn đăng ký' }] : []),
 		...(isPractice
 			? ([
 					{ key: 'rotations', label: 'Vòng thực hành' },
@@ -431,6 +434,14 @@ export function EnrollmentDetailModal({
 						labelClassName={m.formLabel}
 					/>
 				</div>
+			)}
+
+			{activeTab === 'registration' && (
+				<RegistrationReviewTab
+					enrollmentId={enrollment.id}
+					traineeName={enrollment.trainee_name}
+					onChanged={onSaved}
+				/>
 			)}
 
 			{activeTab === 'rotations' && (

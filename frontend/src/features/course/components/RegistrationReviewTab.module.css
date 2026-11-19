@@ -1,0 +1,133 @@
+/* Tab "Đơn đăng ký" của hồ sơ ghi danh — đối chiếu bản khai trước khi duyệt */
+.wrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+
+.headLine {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2) var(--space-3);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+}
+.code {
+	font-family: var(--font-mono, monospace);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+/* Trạng thái đủ / thiếu điều kiện duyệt */
+.note {
+	padding: 8px 12px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-compact);
+}
+.noteWarn {
+	border-color: var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+}
+.noteOk {
+	border-color: var(--tone-green-border);
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+
+.section {
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	padding: var(--space-3) var(--space-4);
+}
+.sectionTitle {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+/* Mốc đối chiếu */
+.checks {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.checkRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-3);
+}
+.checkLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
+	cursor: pointer;
+}
+.checkLabel input {
+	width: 16px;
+	height: 16px;
+	accent-color: var(--color-primary-dark);
+}
+.checkMeta {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+.actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	align-items: center;
+}
+
+/* Dữ liệu đã khai — lưới nhãn / giá trị */
+.grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-2) var(--space-4);
+	margin: 0;
+}
+.field {
+	min-width: 0;
+	padding: 6px 8px;
+	border: 1px solid transparent;
+	border-radius: var(--radius-md);
+}
+.field dt {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.field dd {
+	margin: 2px 0 0;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-900);
+	overflow-wrap: anywhere;
+}
+/* Lệch với hồ sơ học viên */
+.fieldDiff {
+	border-color: var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+}
+.profileValue {
+	display: block;
+	margin-top: 2px;
+	font-size: var(--font-size-xs);
+	color: var(--tone-amber-fg);
+}
+.empty {
+	color: var(--color-gray-400);
+}
+
+@media (max-width: 640px) {
+	.grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

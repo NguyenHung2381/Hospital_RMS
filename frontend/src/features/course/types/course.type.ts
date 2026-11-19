@@ -1,5 +1,6 @@
 import type { CustomValues } from '../../../shared/formConfig/types';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
+import type { EnrollmentRegistrationFlag } from '../api/registrationApi';
 
 export type ModalType = 'add' | 'edit' | 'delete' | null;
 // courses.status giờ chỉ còn lưu cờ hủy ('cancelled' vs 'draft' = bình thường)
@@ -166,6 +167,9 @@ export interface Enrollment {
 	progress_reason: string | null;
 	/** Vị trí trong danh sách chờ đợt sau (khóa tuyển sinh). */
 	waitlist_position?: number | null;
+	/** Bản khai từ form đăng ký (/dang-ky-khoa-hoc): mốc đối chiếu, điều kiện còn thiếu để duyệt.
+	 *  null = ghi danh hộ / nhập Excel (không có bản khai). */
+	registration?: EnrollmentRegistrationFlag | null;
 }
 
 export type ProgressStatus = 'in_progress' | 'completed' | 'dropped';

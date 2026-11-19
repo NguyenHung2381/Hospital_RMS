@@ -5,6 +5,7 @@ import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } fro
 import type { PublicCourse } from '../../public/api/publicApi';
 import type { CmeSourceType } from '../../seminar/types/cmeRecord.type';
 import type { CustomValues } from '../../../shared/formConfig/types';
+import { getBlob } from '../../course/api/registrationApi';
 
 interface MyCourseBase {
 	id: string;
@@ -256,6 +257,76 @@ export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
 export const registerMyCourse = (courseId: string, programId?: string) =>
 	apiClient.post(`/me/courses/${courseId}/register`, { program_id: programId || null });
 export const getMyCme = (year: number | 'all') => apiClient.get<MyCme>(`/me/cme?year=${year}`);
+
+// ─── Đơn đăng ký khóa đào tạo liên tục của tôi (form /dang-ky-khoa-hoc) ─────
+export interface MyCourseRegistration {
+	enrollment_id: string;
+	registration_code: string;
+	source: 'internal' | 'external';
+	channel: 'public' | 'portal' | null;
+	course_id: string | null;
+	course_name: string | null;
+	program_id: string | null;
+	program_name: string | null;
+	department_id: string | null;
+	enrollment_status: EnrollmentStatus | null;
+	created_at: string | null;
+	/** Nội viện chưa nộp PDF đơn + tờ trình đã duyệt */
+	needs_dossier: boolean;
+	dossier_uploaded_at: string | null;
+	dossier: { file_name: string; file_url: string } | null;
+	checks: { id_checked: boolean; degree_checked: boolean; proposal_checked: boolean };
+	/** Việc mình còn phải làm */
+	todo: string[];
+	/** Việc đang chờ Trung tâm Đào tạo */
+	waiting: string[];
+}
+
+/** 1 nhóm (khóa + chương trình + khoa) mình được xem — đồng nghiệp đăng ký cùng lớp. */
+export interface MyDepartmentProposal {
+	course_id: string;
+	course_name: string;
+	program_id: string | null;
+	program_name: string | null;
+	department_id: string;
+	department_name: string;
+	start_date: string | null;
+	end_date: string | null;
+	/** Tài khoản khoa / trưởng khoa của khoa này */
+	can_manage: boolean;
+	people: {
+		enrollment_id: string;
+		staff_number: number | null;
+		full_name: string;
+		qualification: string | null;
+		enrollment_status: EnrollmentStatus;
+		has_dossier: boolean;
+		proposal_checked: boolean;
+		is_me: boolean;
+	}[];
+}
+
+export const getMyCourseRegistrations = () => apiClient.get<MyCourseRegistration[]>('/me/course-registrations');
+/** Đường dẫn cho FileViewerModal (xem trước .docx) */
+export const myApplicationUrl = (enrollmentId: string) => `/api/v1/me/course-registrations/${enrollmentId}/application`;
+export const downloadMyApplication = (enrollmentId: string) => getBlob(`/me/course-registrations/${enrollmentId}/application`);
+export const uploadMyRegistrationDossier = (enrollmentId: string, file: File) => {
+	const form = new FormData();
+	form.append('file', file);
+	return apiClient.postForm<{ uploaded: true; dossier_uploaded_at: string }>(
+		`/me/course-registrations/${enrollmentId}/dossier`,
+		form,
+	);
+};
+export const getMyDepartmentProposals = () => apiClient.get<MyDepartmentProposal[]>('/me/department-proposals');
+export const downloadDepartmentProposal = (g: Pick<MyDepartmentProposal, 'course_id' | 'program_id' | 'department_id'>) =>
+	getBlob(
+		`/me/department-proposals/document?${new URLSearchParams({
+			course_id: g.course_id,
+			department_id: g.department_id,
+			...(g.program_id ? { program_id: g.program_id } : {}),
+		})}`,
+	);
 /** Phiếu CME cá nhân (Excel): 1 năm, hoặc 'all' = tất cả các năm (mỗi năm thêm 1 sheet). */
 export const exportMyCmeExcel = (year: number | 'all') => apiClient.postBlob('/me/cme/export-excel', { year });
 
