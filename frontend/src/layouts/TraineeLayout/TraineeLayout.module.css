@@ -2,9 +2,10 @@
    TRAINEE LAYOUT — Cổng học viên (ngoại viện)
    Kiểu trang web học tập: header trắng + menu ngang, nội dung căn giữa,
    không sidebar (khác hẳn trang quản trị).
-   ≥1200px   một hàng: logo · menu · tài khoản
-   640–1199  menu xuống hàng thứ hai, cuộn ngang khi chật
-   <640px    thanh trên gọn + tab đáy (điện thoại)
+   >1280px   một hàng: logo · menu · tài khoản
+   641–1280  menu xuống hàng thứ hai, cuộn ngang khi chật
+   ≤640px    thanh trên gọn + tab đáy (điện thoại)
+   Mốc chuẩn của dự án: viết `max-width: N` (N = 1280 / 1024 / 640), không dùng N-1.
 ============================================= */
 .shell {
 	--wrap-w: 1160px;
@@ -247,7 +248,7 @@
 	height: 36px;
 	border-radius: var(--radius-full);
 	background: var(--color-primary-dark);
-	color: #fff;
+	color: var(--color-white);
 	display: grid;
 	place-items: center;
 	font-size: var(--font-size-xs);
@@ -267,7 +268,7 @@
 	right: 0;
 	width: 272px;
 	max-width: calc(100vw - 24px);
-	background: #fff;
+	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-xl);
 	box-shadow: var(--shadow-xl);
@@ -391,7 +392,7 @@
 }
 
 .backLink:hover {
-	background: #fff;
+	background: var(--color-white);
 }
 
 .backLink svg {
@@ -435,6 +436,11 @@
 	min-width: 0;
 }
 
+/* <main tabIndex={-1}> nhận focus từ liên kết "Bỏ qua tới nội dung" — không vẽ viền */
+.content:focus {
+	outline: none;
+}
+
 .contentWithBand {
 	padding-top: var(--space-5);
 }
@@ -442,7 +448,7 @@
 /* ── FOOTER ──────────────────────────────── */
 .footer {
 	border-top: 1px solid var(--color-gray-200);
-	background: #fff;
+	background: var(--color-white);
 }
 
 .footerInner {
@@ -463,7 +469,7 @@
 }
 
 /* ═════ MÀN VỪA: menu xuống hàng thứ hai ═════ */
-@media (max-width: 1279px) {
+@media (max-width: 1280px) {
 	.headerInner {
 		flex-wrap: wrap;
 		row-gap: 0;
@@ -485,7 +491,7 @@
 	}
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1024px) {
 	.shell {
 		--gutter: var(--space-5);
 	}
@@ -501,7 +507,7 @@
 }
 
 /* ═════ ĐIỆN THOẠI: thanh trên + tab đáy ═════ */
-@media (max-width: 639px) {
+@media (max-width: 640px) {
 	.shell {
 		--gutter: var(--space-4);
 		--head-h: 56px;
@@ -587,7 +593,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 3px;
-		font-size: 11px;
+		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-semibold);
 		color: var(--color-gray-500);
 		text-decoration: none;
@@ -599,8 +605,25 @@
 		height: 22px;
 	}
 
+	/* Icon nằm trong nền viên thuốc; tab đang chọn tô --color-primary-pale để trạng
+	   thái không chỉ dựa vào màu chữ (nút Điểm danh QR không bọc, giữ nguyên). */
+	.tabIcon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 56px;
+		height: 28px;
+		border-radius: var(--radius-full);
+		transition: background var(--transition-fast);
+	}
+
 	.tabActive {
 		color: var(--color-primary-dark);
+		font-weight: var(--font-weight-bold);
+	}
+
+	.tabActive .tabIcon {
+		background: var(--color-primary-pale);
 	}
 
 	/* Nút Điểm danh QR nổi giữa thanh */
@@ -611,8 +634,8 @@
 		margin-top: -22px;
 		border-radius: var(--radius-full);
 		background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-		color: #fff;
-		border: 3px solid #fff;
+		color: var(--color-white);
+		border: 3px solid var(--color-white);
 		box-sizing: border-box;
 	}
 }

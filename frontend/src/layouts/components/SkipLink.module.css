@@ -1,0 +1,32 @@
+/* Ẩn ngoài màn hình cho tới khi nhận focus bàn phím. Chữ trắng đặt trên
+   --color-primary-dark (đạt AA). */
+.skipLink {
+	position: fixed;
+	top: var(--space-2);
+	left: var(--space-2);
+	z-index: var(--z-toast);
+	padding: var(--space-2) var(--space-4);
+	border-radius: var(--radius-md);
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	text-decoration: none;
+	box-shadow: var(--shadow-md);
+	transform: translateY(calc(-100% - var(--space-4)));
+}
+
+.skipLink:focus,
+.skipLink:focus-visible {
+	transform: translateY(0);
+	/* Viền trắng nằm bên trong nút: nền trang sáng nên viền ngoài sẽ không thấy */
+	outline: var(--focus-ring-width) solid var(--color-white);
+	outline-offset: -4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.skipLink {
+		transition: transform var(--transition-fast);
+	}
+}

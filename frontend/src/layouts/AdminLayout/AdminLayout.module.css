@@ -152,7 +152,7 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	color: #fff;
+	color: var(--color-white);
 	opacity: 0;
 	pointer-events: none;
 	transition:
@@ -243,14 +243,14 @@
 }
 
 .navItem:hover {
-	color: #fff;
+	color: var(--color-white);
 	/* Phủ TỐI thay vì phủ trắng: nền sáng lên kéo chữ trắng xuống ~3.8:1 */
 	background: rgba(0, 0, 0, 0.12);
 	border-left-color: rgba(255, 255, 255, 0.4);
 }
 
 .navItem.active {
-	color: #fff;
+	color: var(--color-white);
 	background: rgba(0, 0, 0, 0.22);
 	border-left-color: rgba(255, 255, 255, 0.9);
 	font-weight: var(--font-weight-semibold);
@@ -287,7 +287,7 @@
 
 .navBadge {
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-white);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	padding: 1px 6px;
@@ -300,7 +300,7 @@
 
 .navBadgeGray {
 	background: rgba(0, 0, 0, 0.2);
-	color: #fff;
+	color: var(--color-white);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-semibold);
 	padding: 1px 6px;
@@ -342,7 +342,7 @@
 	top: var(--tip-y, 50%);
 	transform: translateY(-50%);
 	background: var(--color-gray-800);
-	color: #fff;
+	color: var(--color-white);
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	padding: 5px 10px;
@@ -458,7 +458,7 @@
 	justify-content: center;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-white);
 	flex-shrink: 0;
 }
 
@@ -549,15 +549,26 @@
 	flex: 1;
 }
 
-/* Breadcrumb */
+/* Breadcrumb — <nav><ol><li>…: bỏ kiểu danh sách mặc định */
 .breadcrumb {
 	display: flex;
 	align-items: center;
-	gap: var(--space-2);
 	font-size: var(--font-size-sm);
 }
 
+.breadcrumbList {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
 .breadcrumbItem {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
 	color: var(--color-gray-500);
 }
 .breadcrumbSep {
@@ -674,6 +685,11 @@
 	overflow-x: clip;
 }
 
+/* <main tabIndex={-1}> nhận focus từ liên kết "Bỏ qua tới nội dung" — không vẽ viền */
+.pageArea:focus {
+	outline: none;
+}
+
 .pageHeader {
 	display: flex;
 	align-items: flex-start;
@@ -756,7 +772,7 @@
 
 .mobileMenuBtn:hover {
 	background: rgba(255, 255, 255, 0.2);
-	color: #fff;
+	color: var(--color-white);
 }
 
 .mobileMenuBtn svg {
@@ -811,7 +827,7 @@
 	height: 28px;
 	border-radius: 50%;
 	object-fit: contain;
-	background: #fff;
+	background: var(--color-white);
 	padding: 2px;
 }
 
