@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import AdminLayout from '@/layouts/AdminLayout';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
 import { Button, EmptyState, InlineLoading, Pagination } from '@/shared/components';
@@ -48,6 +48,9 @@ export default function Roster() {
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [anchor, setAnchor] = useState<{ row: number; col: number } | null>(null);
 	const [editing, setEditing] = useState(false);
+	// Ô đang nằm trong thứ tự Tab (roving tabindex); null = ô đầu tiên chọn được
+	const [rove, setRove] = useState<{ row: number; col: number } | null>(null);
+	const gridRef = useRef<HTMLTableElement>(null);
 
 	const days = useMemo(() => monthDays(month), [month]);
 	const today = todayVN();
@@ -125,6 +128,43 @@ export default function Roster() {
 		setAnchor({ row, col });
 	};
 
+	// Ô đầu tiên chọn được: giữ tabIndex=0 khi chưa ô nào được focus, để cả lưới chỉ chiếm một nhịp Tab
+	const firstCell = useMemo(() => {
+		for (let r = 0; r < rows.length; r++)
+			for (let c = 0; c < days.length; c++) if (studying(rows[r], days[c])) return { row: r, col: c };
+		return null;
+	}, [rows, days]);
+	const roveCell = rove && rove.row < rows.length && rove.col < days.length ? rove : firstCell;
+
+	// Mũi tên di chuyển giữa các ô chọn được (bỏ qua ô ngoài thời gian khóa học); Home/End về đầu/cuối hàng
+	const onCellKeyDown = (e: KeyboardEvent<HTMLButtonElement>, row: number, col: number) => {
+		let dr = 0;
+		let dc = 0;
+		if (e.key === 'ArrowRight') dc = 1;
+		else if (e.key === 'ArrowLeft') dc = -1;
+		else if (e.key === 'ArrowDown') dr = 1;
+		else if (e.key === 'ArrowUp') dr = -1;
+		else if (e.key === 'Home') {
+			dc = 1;
+			col = -1;
+		} else if (e.key === 'End') {
+			dc = -1;
+			col = days.length;
+		} else return;
+		e.preventDefault();
+		let r = row + dr;
+		let c = col + dc;
+		while (r >= 0 && r < rows.length && c >= 0 && c < days.length) {
+			if (studying(rows[r], days[c])) {
+				setRove({ row: r, col: c });
+				gridRef.current?.querySelector<HTMLButtonElement>(`[data-r="${r}"][data-c="${c}"]`)?.focus();
+				return;
+			}
+			r += dr;
+			c += dc;
+		}
+	};
+
 	const cells: RosterCell[] = [...selected].map((k) => {
 		const [user_id, date] = k.split('|');
 		return { user_id, date };
@@ -143,11 +183,11 @@ export default function Roster() {
 			.sort((a, b) => a.start_time.localeCompare(b.start_time));
 		if (!list.length) return day.source === 'roster' ? <span className={styles.offMark}>N</span> : null;
 		return (
-			<div className={cx(styles.cellInner, day.source === 'pattern' && styles.fromPattern)}>
+			<span className={cx(styles.cellInner, day.source === 'pattern' && styles.fromPattern)}>
 				{list.map((s) => (
 					<ShiftBadge key={s.id} shift={s} />
 				))}
-			</div>
+			</span>
 		);
 	};
 
@@ -251,7 +291,7 @@ export default function Roster() {
 					/>
 				) : (
 					<div className={styles.gridWrap}>
-						<table className={styles.grid}>
+						<table ref={gridRef} className={styles.grid}>
 							<thead>
 								<tr>
 									<th className={styles.nameCell}>Học viên</th>
@@ -260,12 +300,19 @@ export default function Roster() {
 										return (
 											<th
 												key={d}
+												scope='col'
 												className={cx(wd >= 6 && styles.weekend, d === today && styles.today)}
-												onClick={() => toggleKeys(rows.map((u) => key(u.id, d)))}
-												title={`Chọn cả ngày ${d.split('-').reverse().join('/')}`}
 											>
-												<div>{WEEKDAYS[wd - 1].label}</div>
-												<div className={styles.dayNum}>{Number(d.slice(8))}</div>
+												<button
+													type='button'
+													className={styles.headBtn}
+													onClick={() => toggleKeys(rows.map((u) => key(u.id, d)))}
+													title={`Chọn cả ngày ${d.split('-').reverse().join('/')}`}
+													aria-label={`Chọn cả ngày ${d.split('-').reverse().join('/')}`}
+												>
+													<span className={styles.headLine}>{WEEKDAYS[wd - 1].label}</span>
+													<span className={cx(styles.headLine, styles.dayNum)}>{Number(d.slice(8))}</span>
+												</button>
 											</th>
 										);
 									})}
@@ -274,28 +321,57 @@ export default function Roster() {
 							<tbody>
 								{rows.map((u, row) => (
 									<tr key={u.id}>
-										<th className={styles.nameCell} onClick={() => toggleKeys(days.map((d) => key(u.id, d)))} title='Chọn cả tháng của học viên này'>
-											<div className={styles.name}>{u.full_name}</div>
-											<div className={styles.sub}>
-												{u.trainee_id}
-												{u.department_name ? ` · ${u.department_name}` : ''}
-											</div>
-										</th>
-										{days.map((d, col) => (
-											<td
-												key={d}
-												className={cx(
-													styles.cell,
-													weekdayOf(d) >= 6 && styles.weekend,
-													!studying(u, d) && styles.outside,
-													selected.has(key(u.id, d)) && styles.selected,
-												)}
-												title={periodOn(u.periods, d)?.course_name}
-												onClick={(e) => clickCell(row, col, e.shiftKey)}
+										<th scope='row' className={styles.nameCell}>
+											<button
+												type='button'
+												className={styles.headBtn}
+												onClick={() => toggleKeys(days.map((d) => key(u.id, d)))}
+												title='Chọn cả tháng của học viên này'
+												aria-label={`Chọn cả tháng của ${u.full_name}`}
 											>
-												{renderCell(u, d)}
-											</td>
-										))}
+												<span className={cx(styles.headLine, styles.name)}>{u.full_name}</span>
+												<span className={cx(styles.headLine, styles.sub)}>
+													{u.trainee_id}
+													{u.department_name ? ` · ${u.department_name}` : ''}
+												</span>
+											</button>
+										</th>
+										{days.map((d, col) => {
+											const isStudying = studying(u, d);
+											const isSelected = selected.has(key(u.id, d));
+											return (
+												<td
+													key={d}
+													className={cx(
+														styles.cell,
+														weekdayOf(d) >= 6 && styles.weekend,
+														!isStudying && styles.outside,
+														isSelected && styles.selected,
+													)}
+													title={periodOn(u.periods, d)?.course_name}
+												>
+													{/* Ô ngoài thời gian khóa học không chọn được nên không có nút */}
+													{isStudying ? (
+														<button
+															type='button'
+															className={styles.cellBtn}
+															data-r={row}
+															data-c={col}
+															tabIndex={roveCell && roveCell.row === row && roveCell.col === col ? 0 : -1}
+															aria-pressed={isSelected}
+															aria-label={`${u.full_name}, ngày ${d.split('-').reverse().join('/')}`}
+															onFocus={() => setRove({ row, col })}
+															onKeyDown={(e) => onCellKeyDown(e, row, col)}
+															onClick={(e) => clickCell(row, col, e.shiftKey)}
+														>
+															{renderCell(u, d)}
+														</button>
+													) : (
+														renderCell(u, d)
+													)}
+												</td>
+											);
+										})}
 									</tr>
 								))}
 							</tbody>

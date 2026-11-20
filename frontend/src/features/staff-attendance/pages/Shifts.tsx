@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PlusSvg, UsersSvg } from '@/assets/icons';
 import AdminLayout from '@/layouts/AdminLayout';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
-import { Badge, Button, ConfirmDeleteModal, TableEmpty } from '@/shared/components';
+import { Badge, Button, ConfirmDeleteModal, TableEmpty, Tabs } from '@/shared/components';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { notify } from '@/shared/utils/feedback';
@@ -85,26 +85,15 @@ export default function Shifts() {
 			}
 		>
 			<div className={tbl.tableCard}>
-				<div className={tbl.tabsRow}>
-					{(
-						[
-							['shifts', 'Ca', shifts.length],
-							['patterns', 'Mẫu ca tuần', patterns.length],
-						] as const
-					).map(([key, label, count]) => (
-						<div
-							key={key}
-							role='tab'
-							aria-selected={tab === key}
-							className={`${tbl.tab} ${tab === key ? tbl.tabActive : ''}`}
-							onClick={() => setTab(key)}
-						>
-							{label}
-							<span className={tbl.tabBadge}>{count}</span>
-						</div>
-					))}
-				</div>
-
+				<Tabs
+					aria-label='Ca và mẫu ca tuần'
+					value={tab}
+					onChange={(id) => setTab(id as Tab)}
+					items={[
+						{ id: 'shifts', label: 'Ca', badge: shifts.length },
+						{ id: 'patterns', label: 'Mẫu ca tuần', badge: patterns.length },
+					]}
+				>
 				{tab === 'shifts' ? (
 					<div className={tbl.tableWrap}>
 						<table className={tbl.table}>
@@ -233,6 +222,7 @@ export default function Shifts() {
 						</div>
 					</>
 				)}
+				</Tabs>
 			</div>
 
 			{editShift !== undefined && <ShiftFormModal shift={editShift} onClose={() => setEditShift(undefined)} onSave={saveShift} />}

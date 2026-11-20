@@ -105,10 +105,10 @@ export function RosterEditModal({
 			}
 		>
 			<div className={styles.modeRow}>
-				<button type='button' className={cx(styles.pick, kind === 'same' && styles.pickOn)} onClick={() => setKind('same')}>
+				<button type='button' className={cx(styles.pick, kind === 'same' && styles.pickOn)} aria-pressed={kind === 'same'} onClick={() => setKind('same')}>
 					Cùng ca cho mọi ô
 				</button>
-				<button type='button' className={cx(styles.pick, kind === 'rotate' && styles.pickOn)} onClick={() => setKind('rotate')}>
+				<button type='button' className={cx(styles.pick, kind === 'rotate' && styles.pickOn)} aria-pressed={kind === 'rotate'} onClick={() => setKind('rotate')}>
 					Xoay vòng
 				</button>
 			</div>
@@ -116,7 +116,7 @@ export function RosterEditModal({
 			{kind === 'same' ? (
 				<>
 					<FormField label='Ca'>
-						<div className={styles.chips}>
+						<div className={styles.chips} role='group' aria-label='Ca áp dụng'>
 							{shifts.map((s) => (
 								<button
 									key={s.id}

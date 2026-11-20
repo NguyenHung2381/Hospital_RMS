@@ -180,8 +180,8 @@ export default function LeaveRequests() {
 								</option>
 							))}
 						</select>
-						<DatePicker style={{ width: 170 }} placeholder='Từ ngày' value={from} onChange={setFrom} />
-						<DatePicker style={{ width: 170 }} placeholder='Đến ngày' value={to} min={from || undefined} onChange={setTo} />
+						<DatePicker style={{ width: 170 }} aria-label='Lọc từ ngày' placeholder='Từ ngày' value={from} onChange={setFrom} />
+						<DatePicker style={{ width: 170 }} aria-label='Lọc đến ngày' placeholder='Đến ngày' value={to} min={from || undefined} onChange={setTo} />
 						{(departments.length > 1 || dept) && (
 							<select className={tbl.filterSelect} value={dept} onChange={(e) => setDept(e.target.value)} aria-label='Khoa/phòng'>
 								<option value=''>Tất cả khoa/phòng</option>
