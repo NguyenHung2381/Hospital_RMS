@@ -48,6 +48,8 @@ export function TopicImportModal({
 	);
 
 	useEffect(() => {
+		// Đổi file/đợt/mặc định thì bản xem trước cũ không còn đúng — xóa ngay rồi đọc lại (đã có từ trước, chỉ tắt cảnh báo lint)
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setPreview(null);
 		if (!file || !roundId) return;
 		let stale = false;
