@@ -26,18 +26,6 @@
 .searchInput {
 	composes: searchInput from '../../../shared/components/Table/Table.module.css';
 }
-.tabsRow {
-	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
-}
-.tab {
-	composes: tab from '../../../shared/components/Table/Table.module.css';
-}
-.tabActive {
-	composes: tabActive from '../../../shared/components/Table/Table.module.css';
-}
-.tabBadge {
-	composes: tabBadge from '../../../shared/components/Table/Table.module.css';
-}
 .tableWrap {
 	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
 }
