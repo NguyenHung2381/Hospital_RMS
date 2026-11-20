@@ -73,6 +73,7 @@ export function ActivityDetailModal({ row, onClose, onFilterActor, onFilterIp }:
 			</div>
 			{(row.actor_id || row.actor_username) && (
 				<button
+					type='button'
 					className={styles.linkBtn}
 					onClick={() => onFilterActor(row.actor_id || row.actor_username || '')}
 				>
@@ -109,8 +110,10 @@ export function ActivityDetailModal({ row, onClose, onFilterActor, onFilterIp }:
 			<Field label='Đường dẫn đầy đủ'>
 				<code className={styles.codeInline}>{row.path}</code>
 				<button
+					type='button'
 					className={styles.iconBtn}
 					title='Sao chép'
+					aria-label='Sao chép đường dẫn đầy đủ'
 					onClick={() => navigator.clipboard?.writeText(row.path)}
 				>
 					<CopySvg style={{ width: 13, height: 13 }} />
@@ -162,6 +165,7 @@ export function ActivityDetailModal({ row, onClose, onFilterActor, onFilterIp }:
 					<span className={styles.dMuted}>({IP_KIND_LABEL[row.ip_kind]})</span>
 					{row.ip_address && (
 						<button
+							type='button'
 							className={styles.linkBtn}
 							onClick={() => onFilterIp(row.ip_address!)}
 						>

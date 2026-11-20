@@ -37,7 +37,21 @@ function RankList<T>({
 					title={`${label(t)}: ${value(t).toLocaleString('vi-VN')}`}
 				>
 					<div className={styles.rankHead}>
-						<span className={styles.rankLabel}>{label(t)}</span>
+						{onClick ? (
+							// Bấm cả dòng (chuột) hoặc nút này (bàn phím) đều mở cùng một thao tác
+							<button
+								type='button'
+								className={`${styles.rankLabel} ${styles.rankLabelBtn}`}
+								onClick={(e) => {
+									e.stopPropagation();
+									onClick(t);
+								}}
+							>
+								{label(t)}
+							</button>
+						) : (
+							<span className={styles.rankLabel}>{label(t)}</span>
+						)}
 						<span className={styles.rankValue}>{value(t).toLocaleString('vi-VN')}</span>
 					</div>
 					<div className={styles.rankTrack}>

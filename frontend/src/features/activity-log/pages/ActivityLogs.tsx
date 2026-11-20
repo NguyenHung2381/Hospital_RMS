@@ -147,18 +147,21 @@ export default function ActivityLogs() {
 				<div className={styles.tabBar}>
 					<div className={styles.tabs}>
 						<button
+							type='button'
 							className={`${styles.tab} ${tab === 'logs' ? styles.tabActive : ''}`}
 							onClick={() => setTab('logs')}
 						>
 							Nhật ký chi tiết <span className={styles.tableCount}>{total.toLocaleString('vi-VN')}</span>
 						</button>
 						<button
+							type='button'
 							className={`${styles.tab} ${tab === 'sessions' ? styles.tabActive : ''}`}
 							onClick={() => setTab('sessions')}
 						>
 							Phiên truy cập <span className={styles.tableCount}>{stats?.sessions.length ?? 0}</span>
 						</button>
 						<button
+							type='button'
 							className={`${styles.tab} ${tab === 'stats' ? styles.tabActive : ''}`}
 							onClick={() => setTab('stats')}
 						>
@@ -168,6 +171,7 @@ export default function ActivityLogs() {
 					<div className={styles.tableControls}>
 						{tab === 'logs' && rows.length > 0 && (
 							<button
+								type='button'
 								className={styles.btnGhost}
 								onClick={() => exportCsv(rows)}
 								title='Xuất các dòng của trang hiện tại ra file CSV (mở bằng Excel)'
@@ -176,9 +180,11 @@ export default function ActivityLogs() {
 							</button>
 						)}
 						<button
+							type='button'
 							className={styles.btnRefresh}
 							onClick={refresh}
 							title='Làm mới'
+							aria-label='Làm mới nhật ký'
 						>
 							<RefreshSvg style={{ width: 14, height: 14 }} />
 						</button>
@@ -222,8 +228,19 @@ export default function ActivityLogs() {
 											>
 												<td className={`${styles.td} ${tbl.tdIdx}`}>{(page - 1) * pageSize + i + 1}</td>
 												<td className={styles.td}>
-													<div className={styles.timeMain}>{formatTimeOnly(row.created_at)}</div>
-													<div className={styles.timeText}>{formatDayOnly(row.created_at)}</div>
+													{/* Bấm cả dòng mở chi tiết (chuột); nút này là đường đi cho bàn phím */}
+													<button
+														type='button'
+														className={styles.rowLink}
+														aria-label={`Xem chi tiết thao tác "${row.action_label}" lúc ${formatTimeOnly(row.created_at)} ${formatDayOnly(row.created_at)}`}
+														onClick={(e) => {
+															e.stopPropagation();
+															setSelected(row);
+														}}
+													>
+														<span className={styles.timeMain}>{formatTimeOnly(row.created_at)}</span>
+														<span className={styles.timeText}>{formatDayOnly(row.created_at)}</span>
+													</button>
 												</td>
 												<td className={styles.td}>
 													<div className={styles.actorName}>{actorDisplay(row)}</div>
