@@ -324,6 +324,7 @@ export default function QuestionBank() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm câu hỏi'
 								placeholder='Tìm theo câu hỏi, phương án...'
 								value={search}
 								onChange={(e) => {
@@ -333,6 +334,7 @@ export default function QuestionBank() {
 							/>
 						</div>
 						<select
+							aria-label='Lọc theo loại câu hỏi'
 							className={styles.select}
 							value={type}
 							onChange={(e) => {
@@ -345,6 +347,7 @@ export default function QuestionBank() {
 							<option value='essay'>Tự luận</option>
 						</select>
 						<select
+							aria-label='Lọc theo trạng thái sử dụng'
 							className={styles.select}
 							value={usage}
 							onChange={(e) => {

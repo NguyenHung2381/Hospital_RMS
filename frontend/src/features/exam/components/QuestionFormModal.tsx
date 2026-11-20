@@ -124,7 +124,7 @@ export function QuestionFormModal({
 					/>
 				</div>
 				{type === 'single_choice' ? (
-					<div className={styles.field}>
+					<div className={styles.field} role='group' aria-label='Các phương án trả lời'>
 						Phương án <span className={styles.hint}>(chọn ô tròn ở phương án đúng)</span>
 						{options.map((o, i) => (
 							<div
@@ -140,21 +140,24 @@ export function QuestionFormModal({
 								/>
 								<input
 									className={styles.input}
+									aria-label={`Nội dung phương án ${String.fromCharCode(65 + i)}`}
 									placeholder={`Phương án ${String.fromCharCode(65 + i)}`}
 									value={o}
 									onChange={(e) => setOptions((prev) => prev.map((p, j) => (j === i ? e.target.value : p)))}
 								/>
 								{options.length > 2 && (
-									<div
+									<button
+										type='button'
 										className={styles.actionBtn}
 										title='Bỏ phương án'
+										aria-label={`Bỏ phương án ${String.fromCharCode(65 + i)}`}
 										onClick={() => {
 											setOptions((prev) => prev.filter((_, j) => j !== i));
 											setCorrect((c) => (c === i ? 0 : c > i ? c - 1 : c));
 										}}
 									>
 										<TrashSvg />
-									</div>
+									</button>
 								)}
 							</div>
 						))}
