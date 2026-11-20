@@ -1,5 +1,5 @@
 import { Modal, ModalActions } from '@/shared/components';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { EditSvg, InfoSvg, TrashSvg } from '@/assets/icons';
 import type { UpdateCouncilPayload } from '../api/councilApi';
 import { STATUS_LABELS, type CouncilStatus } from '../types/council.type';
@@ -17,6 +17,7 @@ export function CouncilBulkEditModal({
 	onSave: (payload: UpdateCouncilPayload) => void;
 	loading: boolean;
 }) {
+	const uid = useId();
 	const [location, setLocation] = useState('');
 	const [defenseDate, setDefenseDate] = useState('');
 	const [status, setStatus] = useState<CouncilStatus | ''>('');
@@ -54,8 +55,9 @@ export function CouncilBulkEditModal({
 			</div>
 			<div className={styles.formGrid2}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Trạng thái</label>
+					<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Trạng thái</label>
 					<select
+						id={`${uid}-f1`}
 						className={styles.formInput}
 						value={status}
 						onChange={(e) => setStatus(e.target.value as CouncilStatus | '')}
@@ -74,8 +76,9 @@ export function CouncilBulkEditModal({
 			</div>
 			<div className={styles.formGrid2}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Địa điểm</label>
+					<label htmlFor={`${uid}-f2`} className={styles.formLabel}>Địa điểm</label>
 					<input
+						id={`${uid}-f2`}
 						className={styles.formInput}
 						value={location}
 						onChange={(e) => setLocation(e.target.value)}
@@ -83,8 +86,9 @@ export function CouncilBulkEditModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngày bảo vệ</label>
+					<label htmlFor={`${uid}-f3`} className={styles.formLabel}>Ngày bảo vệ</label>
 					<DatePicker
+						id={`${uid}-f3`}
 						value={defenseDate}
 						onChange={setDefenseDate}
 						placeholder='Chọn ngày bảo vệ'
@@ -119,6 +123,7 @@ export function CouncilBulkDeleteModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -126,6 +131,7 @@ export function CouncilBulkDeleteModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnDanger}
 						onClick={onConfirm}
 						disabled={loading}

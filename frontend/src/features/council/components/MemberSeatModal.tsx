@@ -1,5 +1,5 @@
 import { Modal } from '@/shared/components';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { CheckSvg, SearchSvg, UserCheckSvg, XSvg } from '@/assets/icons';
 import { getEligibleUsers } from '../api/councilApi';
 import {
@@ -47,6 +47,7 @@ export function MemberSeatModal({
 	onRemove?: () => void;
 	loading: boolean;
 }) {
+	const uid = useId();
 	const [candidateType, setCandidateType] = useState<'internal' | 'external'>('internal');
 	const [search, setSearch] = useState('');
 	const [results, setResults] = useState<EligibleUser[]>([]);
@@ -88,6 +89,7 @@ export function MemberSeatModal({
 				<>
 					{member && onRemove ? (
 						<button
+							type='button'
 							className={styles.btnDanger}
 							onClick={onRemove}
 							disabled={loading}
@@ -96,6 +98,7 @@ export function MemberSeatModal({
 						</button>
 					) : (
 						<button
+							type='button'
 							className={styles.btnCancel}
 							onClick={onClose}
 							disabled={loading}
@@ -104,6 +107,7 @@ export function MemberSeatModal({
 						</button>
 					)}
 					<button
+						type='button'
 						className={styles.btnConfirmApprove}
 						onClick={handleSave}
 						disabled={loading}
@@ -136,7 +140,10 @@ export function MemberSeatModal({
 			)}
 
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>
+				<label
+					className={styles.formLabel}
+					htmlFor={selected ? undefined : `${uid}-search`}
+				>
 					{selected ? 'Đã chọn' : 'Tìm cán bộ'}
 				</label>
 				{selected ? (
@@ -150,7 +157,9 @@ export function MemberSeatModal({
 							</div>
 						</div>
 						<button
+							type='button'
 							className={styles.seatBtn}
+							aria-label='Bỏ chọn người này để chọn lại'
 							onClick={() => {
 								setSelected(null);
 								setError('');
@@ -162,10 +171,15 @@ export function MemberSeatModal({
 				) : (
 					<>
 						{allowExternal && (
-							<div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+							<div
+								role='group'
+								aria-label='Loại cán bộ'
+								style={{ display: 'flex', gap: 6, marginBottom: 8 }}
+							>
 								<button
 									type='button'
 									className={`${styles.specialtyChip} ${candidateType === 'internal' ? styles.specialtyChipActive : ''}`}
+									aria-pressed={candidateType === 'internal'}
 									onClick={() => setCandidateType('internal')}
 								>
 									Trong viện
@@ -173,6 +187,7 @@ export function MemberSeatModal({
 								<button
 									type='button'
 									className={`${styles.specialtyChip} ${candidateType === 'external' ? styles.specialtyChipActive : ''}`}
+									aria-pressed={candidateType === 'external'}
 									onClick={() => setCandidateType('external')}
 								>
 									Ngoài viện
@@ -180,6 +195,7 @@ export function MemberSeatModal({
 							</div>
 						)}
 						<input
+							id={`${uid}-search`}
 							className={styles.formInput}
 							placeholder={
 								candidateType === 'external'
@@ -198,9 +214,10 @@ export function MemberSeatModal({
 						{displayResults.length > 0 && (
 							<div className={styles.checkList}>
 								{displayResults.map((u) => (
-									<div
+									<button
 										key={u.id}
-										className={styles.checkRow}
+										type='button'
+										className={`${styles.checkRow} ${styles.checkRowBtn}`}
 										onClick={() => {
 											setSelected(u);
 											setError('');
@@ -237,13 +254,20 @@ export function MemberSeatModal({
 												</div>
 											)}
 										</div>
-									</div>
+									</button>
 								))}
 							</div>
 						)}
 					</>
 				)}
-				{error && <div className={styles.fieldError}>{error}</div>}
+				{error && (
+					<div
+						className={styles.fieldError}
+						role='alert'
+					>
+						{error}
+					</div>
+				)}
 			</div>
 		</Modal>
 	);

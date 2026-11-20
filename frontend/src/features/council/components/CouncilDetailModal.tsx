@@ -33,7 +33,7 @@ import {
 } from '../types/council.type';
 import { AssignTopicsModal } from './AssignTopicsModal';
 import { MemberSeatModal } from './MemberSeatModal';
-import { InlineLoading } from '@/shared/components';
+import { InlineLoading, Modal } from '@/shared/components';
 import styles from '../pages/Council.module.css';
 
 export function CouncilDetailModal({
@@ -201,217 +201,219 @@ export function CouncilDetailModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<ClipboardCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>
-							{council?.name ?? 'Chi tiết hội đồng'}
-						</div>
-						<div className={styles.modalSub}>
-							{council
-								? `${council.round_name ?? council.round_id} · ${
-										STATUS_LABELS[council.status]
-									}${council.location ? ' · ' + council.location : ''}`
-								: ''}
-						</div>
-					</div>
-					<button
-						className={styles.modalClose}
-						onClick={onClose}
-					>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					{isLoading || !council ? (
-						<InlineLoading label='Đang tải…' />
-					) : (
-						<>
-							{error && <div className={styles.fieldError}>{error}</div>}
-
-							<div>
-								<div className={styles.sectionTitle}>Thành phần hội đồng</div>
-								<div className={styles.seatGrid}>
-									{SEAT_ROLES.map((role) => {
-										const m = memberByRole(role);
-										return (
-											<div
-												key={role}
-												className={`${styles.seatCard} ${m ? styles.seatCardFilled : ''} ${styles[role] || ''}`}
-											>
-												<div style={{ minWidth: 0 }}>
-													<div className={styles.seatRole}>
-														{SEAT_ROLE_LABELS[role]}
-													</div>
-													{m ? (
-														<>
-															<div className={styles.seatName}>
-																{m.full_name}
-																{m.is_external && (
-																	<span className={styles.topicDept} style={{ marginLeft: 6 }}>
-																		Ngoài viện
-																	</span>
-																)}
-															</div>
-															{(m.is_external ? m.ext_organization : m.department_name) && (
-																<div className={styles.seatDept}>
-																	{m.is_external ? m.ext_organization : m.department_name}
-																</div>
-															)}
-														</>
-													) : (
-														<div className={styles.seatEmpty}>Chưa có người</div>
-													)}
-												</div>
-												<div className={styles.seatActions}>
-													<button
-														className={styles.seatBtn}
-														title={m ? 'Đổi người' : 'Chọn người'}
-														onClick={() => setSeatModal(role)}
-													>
-														{m ? <EditSvg /> : <PlusSvg />}
-													</button>
-												</div>
-											</div>
-										);
-									})}
-								</div>
+		<>
+			<Modal
+				open
+				onClose={onClose}
+				title={council?.name ?? 'Chi tiết hội đồng'}
+				subtitle={
+					council
+						? `${council.round_name ?? council.round_id} · ${
+								STATUS_LABELS[council.status]
+							}${council.location ? ' · ' + council.location : ''}`
+						: undefined
+				}
+				icon={<ClipboardCheckSvg />}
+				size='lg'
+				bodyClassName={styles.modalBody}
+			>
+				{isLoading || !council ? (
+					<InlineLoading label='Đang tải…' />
+				) : (
+					<>
+						{error && (
+							<div
+								className={styles.fieldError}
+								role='alert'
+							>
+								{error}
 							</div>
+						)}
 
-							<div>
-								<div className={styles.sectionTitle}>
-									Đề tài đã gán ({council.topics?.length ?? 0})
-									<button
-										className={styles.seatBtn}
-										title='Gán thêm đề tài'
-										onClick={() => setAssignModal(true)}
-									>
-										<PlusSvg />
-									</button>
-								</div>
-								{!council.topics || council.topics.length === 0 ? (
-									<div className={styles.emptyState}>
-										<div className={styles.emptyDesc}>
-											Chưa có đề tài nào được gán cho hội đồng này.
-										</div>
-									</div>
-								) : (
-									<div className={styles.topicList}>
-										{council.topics.map((t) => (
-											<div
-												key={t.id}
-												className={styles.topicRow}
-											>
-												<div style={{ minWidth: 0, flex: 1 }}>
-													<div className={styles.topicTitle}>{t.title}</div>
-													{(t.substitutes?.length ?? 0) > 0 && (
-														<div
-															style={{
-																display: 'flex',
-																flexWrap: 'wrap',
-																gap: 4,
-																marginTop: 2,
-															}}
-														>
-															{t.substitutes?.map((s) => (
-																<button
-																	key={s.role}
-																	className={styles.topicDept}
-																	style={{ cursor: 'pointer' }}
-																	title='Ghế thay thế riêng cho đề tài này — bấm để đổi hoặc xóa'
-																	onClick={() =>
-																		setSubModal({ topicId: t.id, role: s.role })
-																	}
-																>
-																	{SEAT_ROLE_LABELS[s.role]} → {s.full_name}
-																</button>
-															))}
-														</div>
-													)}
+						<div>
+							<div className={styles.sectionTitle}>Thành phần hội đồng</div>
+							<div className={styles.seatGrid}>
+								{SEAT_ROLES.map((role) => {
+									const m = memberByRole(role);
+									return (
+										<div
+											key={role}
+											className={`${styles.seatCard} ${m ? styles.seatCardFilled : ''} ${styles[role] || ''}`}
+										>
+											<div style={{ minWidth: 0 }}>
+												<div className={styles.seatRole}>
+													{SEAT_ROLE_LABELS[role]}
 												</div>
-												<span className={styles.topicDept}>
-													{t.department_name ?? ''}
-												</span>
-												<select
-													className={styles.topicSelect}
-													title='Thay người một ghế riêng cho đề tài này'
-													value=''
-													onChange={(e) =>
-														e.target.value &&
-														setSubModal({
-															topicId: t.id,
-															role: e.target.value as SeatRole,
-														})
-													}
-												>
-													<option value=''>-- Ghế thay --</option>
-													{SEAT_ROLES.map((r) => (
-														<option
-															key={r}
-															value={r}
-														>
-															{SEAT_ROLE_LABELS[r]}
-														</option>
-													))}
-												</select>
-												<select
-													className={styles.topicSelect}
-													title='Buổi bảo vệ'
-													value={t.session ?? ''}
-													onChange={(e) =>
-														void handleTopicSession(t.id, e.target.value)
-													}
-												>
-													<option value=''>-- Buổi --</option>
-													{Object.entries(SESSION_LABELS).map(([v, label]) => (
-														<option
-															key={v}
-															value={v}
-														>
-															{label}
-														</option>
-													))}
-												</select>
-
+												{m ? (
+													<>
+														<div className={styles.seatName}>
+															{m.full_name}
+															{m.is_external && (
+																<span className={styles.topicDept} style={{ marginLeft: 6 }}>
+																	Ngoài viện
+																</span>
+															)}
+														</div>
+														{(m.is_external ? m.ext_organization : m.department_name) && (
+															<div className={styles.seatDept}>
+																{m.is_external ? m.ext_organization : m.department_name}
+															</div>
+														)}
+													</>
+												) : (
+													<div className={styles.seatEmpty}>Chưa có người</div>
+												)}
+											</div>
+											<div className={styles.seatActions}>
 												<button
-													className={styles.topicRemove}
-													title='Bỏ gán'
-													onClick={() => void handleUnassignTopic(t.id)}
+													type='button'
+													className={styles.seatBtn}
+													title={m ? 'Đổi người' : 'Chọn người'}
+													aria-label={`${m ? 'Đổi người' : 'Chọn người'} cho ghế ${SEAT_ROLE_LABELS[role]}`}
+													onClick={() => setSeatModal(role)}
 												>
-													<XSvg />
+													{m ? <EditSvg /> : <PlusSvg />}
 												</button>
 											</div>
-										))}
-									</div>
-								)}
+										</div>
+									);
+								})}
 							</div>
+						</div>
 
-							{council.defense_date && (
-								<div
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 6,
-										fontSize: 12,
-										color: 'var(--color-gray-500)',
-									}}
+						<div>
+							<div className={styles.sectionTitle}>
+								Đề tài đã gán ({council.topics?.length ?? 0})
+								<button
+									type='button'
+									className={styles.seatBtn}
+									title='Gán thêm đề tài'
+									aria-label='Gán thêm đề tài cho hội đồng'
+									onClick={() => setAssignModal(true)}
 								>
-									<CalendarSvg style={{ width: 13, height: 13 }} />
-									Ngày bảo vệ: {formatDateVN(council.defense_date)}
+									<PlusSvg />
+								</button>
+							</div>
+							{!council.topics || council.topics.length === 0 ? (
+								<div className={styles.emptyState}>
+									<div className={styles.emptyDesc}>
+										Chưa có đề tài nào được gán cho hội đồng này.
+									</div>
+								</div>
+							) : (
+								<div className={styles.topicList}>
+									{council.topics.map((t) => (
+										<div
+											key={t.id}
+											className={styles.topicRow}
+										>
+											<div style={{ minWidth: 0, flex: 1 }}>
+												<div className={styles.topicTitle}>{t.title}</div>
+												{(t.substitutes?.length ?? 0) > 0 && (
+													<div
+														style={{
+															display: 'flex',
+															flexWrap: 'wrap',
+															gap: 4,
+															marginTop: 2,
+														}}
+													>
+														{t.substitutes?.map((s) => (
+															<button
+																type='button'
+																key={s.role}
+																className={styles.topicDept}
+																style={{ cursor: 'pointer' }}
+																title='Ghế thay thế riêng cho đề tài này — bấm để đổi hoặc xóa'
+																aria-label={`Đổi hoặc xóa ghế thay thế ${SEAT_ROLE_LABELS[s.role]} của đề tài ${t.title}`}
+																onClick={() =>
+																	setSubModal({ topicId: t.id, role: s.role })
+																}
+															>
+																{SEAT_ROLE_LABELS[s.role]} → {s.full_name}
+															</button>
+														))}
+													</div>
+												)}
+											</div>
+											<span className={styles.topicDept}>
+												{t.department_name ?? ''}
+											</span>
+											<select
+												className={styles.topicSelect}
+												title='Thay người một ghế riêng cho đề tài này'
+												aria-label={`Thay người một ghế riêng cho đề tài ${t.title}`}
+												value=''
+												onChange={(e) =>
+													e.target.value &&
+													setSubModal({
+														topicId: t.id,
+														role: e.target.value as SeatRole,
+													})
+												}
+											>
+												<option value=''>-- Ghế thay --</option>
+												{SEAT_ROLES.map((r) => (
+													<option
+														key={r}
+														value={r}
+													>
+														{SEAT_ROLE_LABELS[r]}
+													</option>
+												))}
+											</select>
+											<select
+												className={styles.topicSelect}
+												title='Buổi bảo vệ'
+												aria-label={`Buổi bảo vệ của đề tài ${t.title}`}
+												value={t.session ?? ''}
+												onChange={(e) =>
+													void handleTopicSession(t.id, e.target.value)
+												}
+											>
+												<option value=''>-- Buổi --</option>
+												{Object.entries(SESSION_LABELS).map(([v, label]) => (
+													<option
+														key={v}
+														value={v}
+													>
+														{label}
+													</option>
+												))}
+											</select>
+
+											<button
+												type='button'
+												className={styles.topicRemove}
+												title='Bỏ gán'
+												aria-label={`Bỏ gán đề tài ${t.title}`}
+												onClick={() => void handleUnassignTopic(t.id)}
+											>
+												<XSvg />
+											</button>
+										</div>
+									))}
 								</div>
 							)}
-						</>
-					)}
-				</div>
-			</div>
+						</div>
+
+						{council.defense_date && (
+							<div
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 6,
+									fontSize: 12,
+									color: 'var(--color-gray-500)',
+								}}
+							>
+								<CalendarSvg style={{ width: 13, height: 13 }} />
+								Ngày bảo vệ: {formatDateVN(council.defense_date)}
+							</div>
+						)}
+					</>
+				)}
+			</Modal>
 
 			{seatModal && council && (
 				<MemberSeatModal
@@ -466,6 +468,6 @@ export function CouncilDetailModal({
 					loading={busy}
 				/>
 			)}
-		</div>
+		</>
 	);
 }

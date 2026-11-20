@@ -15,6 +15,7 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge, TableEmpty } from '@/shared/components';
+import { notify } from '@/shared/utils/feedback';
 import { BulkButton, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
@@ -78,7 +79,7 @@ export default function Council() {
 			a.click();
 			URL.revokeObjectURL(url);
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Xuất Excel thất bại');
+			notify.error(e instanceof Error ? e.message : 'Xuất Excel thất bại');
 		} finally {
 			setExportingRound(null);
 		}
@@ -95,18 +96,21 @@ export default function Council() {
 	const headerActions = (
 		<div className={styles.headerActions}>
 			<button
+				type='button'
 				className={`${styles.btnCreateCouncil} ${styles.btnAmber}`}
 				onClick={() => d.setModal('auto-assign')}
 			>
 				<RefreshSvg /> Tự động phân công
 			</button>
 			<button
+				type='button'
 				className={styles.btnCreateCouncil}
 				onClick={() => d.setModal('import')}
 			>
 				<UploadSvg /> Nhập Excel
 			</button>
 			<button
+				type='button'
 				className={`${styles.btnCreateCouncil} ${styles.btnGreen}`}
 				onClick={() => d.setModal('add')}
 			>
@@ -180,6 +184,7 @@ export default function Council() {
 					<div className={styles.tableControls}>
 						<select
 							className={styles.filterSelect}
+							aria-label='Lọc theo đợt nghiên cứu'
 							value={d.roundFilter}
 							onChange={(e) => d.setRoundFilter(e.target.value)}
 						>
@@ -195,6 +200,7 @@ export default function Council() {
 						</select>
 						<select
 							className={styles.filterSelect}
+							aria-label='Lọc theo trạng thái'
 							value={d.statusFilter}
 							onChange={(e) =>
 								d.setStatusFilter(e.target.value as typeof d.statusFilter)
@@ -278,19 +284,30 @@ export default function Council() {
 												colSpan={8}
 												className={styles.groupCell}
 											>
-												<span
-													className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
-												>
-													<ChevRSvg />
-												</span>
-												<span className={styles.groupIcon}>
-													<RoundSvg />
-												</span>
-												{g.label}
-												<span className={styles.groupCount}>
-													{g.items.length} hội đồng
-												</span>
 												<button
+													type='button'
+													className={styles.groupToggle}
+													aria-expanded={open}
+													onClick={(e) => {
+														e.stopPropagation();
+														toggleExpand(g.roundId);
+													}}
+												>
+													<span
+														className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+													>
+														<ChevRSvg />
+													</span>
+													<span className={styles.groupIcon}>
+														<RoundSvg />
+													</span>
+													{g.label}
+													<span className={styles.groupCount}>
+														{g.items.length} hội đồng
+													</span>
+												</button>
+												<button
+													type='button'
 													className={styles.btnExportRound}
 													title='Xuất Excel lịch bảo vệ đợt này'
 													disabled={exportingRound === g.roundId}
@@ -327,7 +344,17 @@ export default function Council() {
 									</td>
 									<td className={`${styles.td} ${tbl.tdIdx}`}>{i + 1}</td>
 									<td className={styles.td}>
-										<div className={styles.councilName}>{c.name}</div>
+										<button
+											type='button'
+											className={styles.councilNameBtn}
+											onClick={(e) => {
+												e.stopPropagation();
+												d.setActiveCouncil(c);
+												d.setModal('detail');
+											}}
+										>
+											<div className={styles.councilName}>{c.name}</div>
+										</button>
 										<div className={styles.councilSub}>{c.id}</div>
 									</td>
 									<td className={styles.td}>

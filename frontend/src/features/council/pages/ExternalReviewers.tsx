@@ -60,6 +60,7 @@ export default function ExternalReviewers() {
 				onImported={d.refreshData}
 			/>
 			<button
+				type='button'
 				className={styles.btnCreateCouncil}
 				onClick={() => d.setModal('add')}
 			>
@@ -109,6 +110,7 @@ export default function ExternalReviewers() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm chuyên gia theo tên, đơn vị hoặc hệ chuyên môn'
 								placeholder='Tìm theo tên, đơn vị, hệ chuyên môn...'
 								value={d.search}
 								onChange={(e) => d.setSearch(e.target.value)}
