@@ -49,6 +49,7 @@ export function ScheduleListView({
 								</div>
 							</div>
 							<button
+								type='button'
 								className={styles.addBtn}
 								onClick={() => onAddDeadline(round)}
 							>
@@ -97,11 +98,13 @@ export function ScheduleListView({
 										);
 
 										return (
-											<div
+											<button
 												key={dl.id}
+												type='button'
 												className={styles.deadlineItem}
 												onClick={() => onEditDeadline(round, dl)}
-												title="Nhấp để chỉnh sửa mốc thời gian"
+												title='Nhấp để chỉnh sửa mốc thời gian'
+												aria-label={`Chỉnh sửa mốc ${dl.name}`}
 												style={{ '--dl-color': color } as React.CSSProperties}
 											>
 												<div className={styles.deadlineDot} />
@@ -115,7 +118,7 @@ export function ScheduleListView({
 												<div className={styles.deadlineDateBadge}>
 													{dl.start_date ? `${formatDateVN(dl.start_date)} ➔ ${formatDateVN(dl.deadline_date)}` : formatDateVN(dl.deadline_date)}
 												</div>
-											</div>
+											</button>
 										);
 									})}
 								</div>

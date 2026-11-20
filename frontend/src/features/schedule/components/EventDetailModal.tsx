@@ -1,3 +1,5 @@
+import { useId, useRef } from 'react';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import type { RoundDeadline } from '../../round/types/round.type';
 import type { EventDetailData } from '../types/calendarView.type';
 import type { RoundRow } from '../types/schedule.type';
@@ -11,17 +13,30 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ detail, onClose, onEditDeadline, onAddDeadline }: EventDetailModalProps) {
+	const cardRef = useRef<HTMLDivElement>(null);
+	const titleId = useId();
+	// Giữ focus trong thẻ chi tiết, Esc để đóng, trả focus về chỗ cũ khi đóng
+	useFocusTrap(cardRef, { active: true, onEscape: onClose });
+
 	return (
 		<div className={styles.popoverOverlay} onClick={onClose}>
-			<div className={styles.detailCard} onClick={(e) => e.stopPropagation()}>
+			<div
+				ref={cardRef}
+				className={styles.detailCard}
+				role='dialog'
+				aria-modal='true'
+				aria-labelledby={titleId}
+				tabIndex={-1}
+				onClick={(e) => e.stopPropagation()}
+			>
 				<div className={styles.detailHead} style={{ borderLeftColor: detail.color }}>
 					<div>
 						<span className={styles.detailBadge} style={{ background: `${detail.color}20`, color: detail.color }}>
 							{detail.typeLabel || detail.statusLabel || 'Sự kiện'}
 						</span>
-						<h3 className={styles.detailTitle}>{detail.title}</h3>
+						<h3 id={titleId} className={styles.detailTitle}>{detail.title}</h3>
 					</div>
-					<button className={styles.popoverClose} onClick={onClose}>✕</button>
+					<button type='button' className={styles.popoverClose} onClick={onClose} aria-label='Đóng'>✕</button>
 				</div>
 
 				<div className={styles.detailBody}>
@@ -42,6 +57,7 @@ export function EventDetailModal({ detail, onClose, onEditDeadline, onAddDeadlin
 				<div className={styles.detailFoot}>
 					{detail.deadline?.phase === -1 ? null : detail.deadline ? (
 						<button
+							type='button'
 							className={styles.detailEditBtn}
 							onClick={() => {
 								if (detail.deadline) {
@@ -54,6 +70,7 @@ export function EventDetailModal({ detail, onClose, onEditDeadline, onAddDeadlin
 						</button>
 					) : (
 						<button
+							type='button'
 							className={styles.detailEditBtn}
 							onClick={() => {
 								onClose();

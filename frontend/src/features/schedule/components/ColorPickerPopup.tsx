@@ -20,7 +20,7 @@ export function ColorPickerPopup({ state, onClose }: Props) {
 		>
 			<div className={styles.head}>
 				<span className={styles.title}>{state.label}</span>
-				<button className={styles.closeBtn} onClick={onClose} aria-label='Đóng'>
+				<button type='button' className={styles.closeBtn} onClick={onClose} aria-label='Đóng'>
 					<XSvg style={{ width: 12, height: 12 }} />
 				</button>
 			</div>
@@ -28,11 +28,14 @@ export function ColorPickerPopup({ state, onClose }: Props) {
 			<div className={styles.presets}>
 				{COLOR_PRESETS.map((c) => (
 					<button
+						type='button'
 						key={c}
 						className={`${styles.swatch}${c === color ? ` ${styles.swatchActive}` : ''}`}
 						style={{ background: c }}
 						onClick={() => setColor(c)}
 						title={c}
+						aria-label={`Chọn màu ${c}`}
+						aria-pressed={c === color}
 					/>
 				))}
 			</div>
@@ -44,13 +47,15 @@ export function ColorPickerPopup({ state, onClose }: Props) {
 					onChange={(e) => setColor(e.target.value)}
 					className={styles.colorInput}
 					title='Chọn màu tùy chỉnh'
+					aria-label='Chọn màu tùy chỉnh'
 				/>
 				<span className={styles.colorHex}>{color}</span>
 			</div>
 
 			<div className={styles.foot}>
-				<button className={styles.btnSecondary} onClick={onClose}>Hủy</button>
+				<button type='button' className={styles.btnSecondary} onClick={onClose}>Hủy</button>
 				<button
+					type='button'
 					className={styles.btnPrimary}
 					onClick={() => { state.onApply(color); onClose(); }}
 				>

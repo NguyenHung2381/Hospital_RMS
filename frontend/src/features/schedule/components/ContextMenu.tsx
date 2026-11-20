@@ -19,6 +19,7 @@ export function ContextMenu({ state, onAddActivity, onEditColor, onEdit, onClose
 		>
 			<li>
 				<button
+					type='button'
 					className={styles.ctxItem}
 					onClick={() => { onAddActivity(); onClose(); }}
 				>
@@ -28,6 +29,7 @@ export function ContextMenu({ state, onAddActivity, onEditColor, onEdit, onClose
 			</li>
 			<li>
 				<button
+					type='button'
 					className={`${styles.ctxItem}${!onEditColor ? ` ${styles.ctxItemDisabled}` : ''}`}
 					onClick={() => { if (onEditColor) { onEditColor(); onClose(); } }}
 					disabled={!onEditColor}
@@ -39,6 +41,7 @@ export function ContextMenu({ state, onAddActivity, onEditColor, onEdit, onClose
 			<li role='separator' className={styles.ctxSep} />
 			<li>
 				<button
+					type='button'
 					className={`${styles.ctxItem}${!onEdit ? ` ${styles.ctxItemDisabled}` : ''}`}
 					onClick={() => { if (onEdit) { onEdit(); onClose(); } }}
 					disabled={!onEdit}

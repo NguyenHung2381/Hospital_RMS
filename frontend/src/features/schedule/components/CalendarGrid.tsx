@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import type { CalDay } from '../types/calendarView.type';
 import { DOW, DOW_SHORT, isSameDay } from '../utils/calendarViewHelpers';
 import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
@@ -218,6 +219,10 @@ function DayPopover({ state, items, onClose, onAdd }: {
 	onClose: () => void;
 	onAdd?: () => void;
 }) {
+	const popRef = useRef<HTMLDivElement>(null);
+	const popTitleId = useId();
+	// Giữ focus trong popover (Esc đã xử lý ở effect bên dưới)
+	useFocusTrap(popRef, { active: true });
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
 		window.addEventListener('keydown', onKey);
@@ -232,9 +237,18 @@ function DayPopover({ state, items, onClose, onAdd }: {
 
 	return (
 		<div className={styles.popOverlay} onClick={onClose}>
-			<div className={styles.pop} style={{ left, top: Math.max(8, top), width: W }} onClick={(e) => e.stopPropagation()}>
+			<div
+				ref={popRef}
+				className={styles.pop}
+				role='dialog'
+				aria-modal='true'
+				aria-labelledby={popTitleId}
+				tabIndex={-1}
+				style={{ left, top: Math.max(8, top), width: W }}
+				onClick={(e) => e.stopPropagation()}
+			>
 				<button type='button' className={styles.popClose} onClick={onClose} aria-label='Đóng'>✕</button>
-				<div className={styles.popHead}>
+				<div className={styles.popHead} id={popTitleId}>
 					<span className={styles.popDow}>{DOW_SHORT[(day.date.getDay() + 6) % 7]}</span>
 					<span className={`${styles.popDayNum}${day.isToday ? ` ${styles.today}` : ''}`}>{day.dayNum}</span>
 				</div>

@@ -26,7 +26,18 @@ export function MonthCard({
 		<div className={styles.card} onClick={() => onSelectMonth?.(month)}>
 			<div className={styles.cardHead}>
 				<span className={styles.cardTitle}>{monthName}</span>
-				<span className={styles.zoomHint} title='Nhấp để phóng to tháng này'>🔍 Xem tháng</span>
+				<button
+					type='button'
+					className={styles.zoomHint}
+					title='Nhấp để phóng to tháng này'
+					aria-label={`Xem chi tiết ${monthName}`}
+					onClick={(e) => {
+						e.stopPropagation();
+						onSelectMonth?.(month);
+					}}
+				>
+					🔍 Xem tháng
+				</button>
 			</div>
 
 			<div className={styles.calGrid}>
@@ -67,10 +78,12 @@ export function MonthCard({
 											<div className={styles.dotRow}>
 												{evs.slice(0, 3).map((ev, ei) => (
 													<button
+														type='button'
 														key={ei}
 														className={styles.dot}
 														style={{ background: ev.color }}
 														title={`${ev.deadline.name} (${ev.round.id})`}
+														aria-label={`${ev.deadline.name} (${ev.round.id})`}
 														onClick={(e) => {
 															e.stopPropagation();
 															onOpenEventDetail(ev.round, ev.deadline, false, ev.color);
@@ -94,6 +107,7 @@ export function MonthCard({
 				<div className={styles.dlList}>
 					{monthDeadlines.map(({ round, deadline, day, color }) => (
 						<button
+							type='button'
 							key={deadline.id}
 							className={styles.dlItem}
 							onClick={(e) => {
