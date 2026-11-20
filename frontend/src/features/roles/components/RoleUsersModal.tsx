@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { UsersSvg, XSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
+import { UsersSvg } from '@/assets/icons';
+import { InlineLoading, Modal } from '@/shared/components';
 import { getUsers } from '../../user/api/userApi';
 import type { User } from '../../user/types/user.type';
 import type { Role } from '../types/role.type';
@@ -37,26 +37,22 @@ export function RoleUsersModal({ role, onClose }: RoleUsersModalProps) {
 	}, [role.id]);
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title={`Người dùng — ${role.name}`}
+			subtitle={
+				<>
+					Đổi quyền của vai trò sẽ áp dụng cho tất cả tài khoản dưới đây
+					{!loading && <span className={styles.permCountInline}>{total} người</span>}
+				</>
+			}
+			icon={<UsersSvg />}
+			iconStyle={{ background: 'var(--tone-purple-bg)', color: 'var(--tone-purple-fg)' }}
+			size='lg'
+			className={styles.dialogWide}
+			bodyClassName={styles.modalBodyFlush}
 		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UsersSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Người dùng — {role.name}</div>
-						<div className={styles.modalSub}>
-							Đổi quyền của vai trò sẽ áp dụng cho tất cả tài khoản dưới đây
-						</div>
-					</div>
-					{!loading && <span className={styles.permCount}>{total} người</span>}
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
 				<div className={styles.permModalBody}>
 					{loading ? (
 						<InlineLoading label='Đang tải…' />
@@ -104,7 +100,6 @@ export function RoleUsersModal({ role, onClose }: RoleUsersModalProps) {
 						</div>
 					)}
 				</div>
-			</div>
-		</div>
+		</Modal>
 	);
 }

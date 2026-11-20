@@ -59,6 +59,7 @@ export function RoleFormModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -66,6 +67,7 @@ export function RoleFormModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnSave}
 						onClick={() => validate() && onSave(form)}
 						disabled={loading}
@@ -129,6 +131,7 @@ export function RoleDeleteModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -136,6 +139,7 @@ export function RoleDeleteModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnDanger}
 						onClick={onConfirm}
 						disabled={loading}
