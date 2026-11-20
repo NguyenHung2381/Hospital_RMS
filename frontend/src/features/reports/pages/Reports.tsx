@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EmptyState } from '@/shared/components';
 import { useModules, type ModuleKey } from '@/shared/hooks/useModules';
@@ -34,6 +35,19 @@ export default function Reports() {
 			return next;
 		}, { replace: true });
 
+	// Mũi tên trái/phải, Home/End đổi mảng báo cáo (mẫu WAI-ARIA tabs); focus đi theo tab mới
+	const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+		let next: number;
+		if (e.key === 'ArrowRight') next = (index + 1) % areas.length;
+		else if (e.key === 'ArrowLeft') next = (index - 1 + areas.length) % areas.length;
+		else if (e.key === 'Home') next = 0;
+		else if (e.key === 'End') next = areas.length - 1;
+		else return;
+		e.preventDefault();
+		update({ tab: areas[next].key });
+		document.getElementById(`report-tab-${areas[next].key}`)?.focus();
+	};
+
 	return (
 		<AdminLayout
 			pageTitle='Báo cáo'
@@ -45,12 +59,16 @@ export default function Reports() {
 					role='tablist'
 					aria-label='Chọn mảng báo cáo'
 				>
-					{areas.map((a) => (
+					{areas.map((a, i) => (
 						<button
 							key={a.key}
 							type='button'
 							role='tab'
+							id={`report-tab-${a.key}`}
 							aria-selected={a.key === area}
+							aria-controls={a.key === area ? 'report-panel' : undefined}
+							tabIndex={a.key === area ? 0 : -1}
+							onKeyDown={(e) => onTabKeyDown(e, i)}
 							className={`${styles.areaTab} ${a.key === area ? styles.areaTabActive : ''}`}
 							onClick={() => update({ tab: a.key })}
 						>
@@ -77,9 +95,17 @@ export default function Reports() {
 				</label>
 			</div>
 
-			{area === 'research' && <ResearchReports year={year} />}
-			{area === 'training' && <TrainingReports year={year} />}
-			{area === 'seminar' && <SeminarReports year={year} />}
+			{area && (
+				<div
+					role='tabpanel'
+					id='report-panel'
+					aria-labelledby={`report-tab-${area}`}
+				>
+					{area === 'research' && <ResearchReports year={year} />}
+					{area === 'training' && <TrainingReports year={year} />}
+					{area === 'seminar' && <SeminarReports year={year} />}
+				</div>
+			)}
 			{!area && (
 				<EmptyState
 					title='Chưa có mảng nào để báo cáo'

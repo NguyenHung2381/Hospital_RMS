@@ -1,5 +1,5 @@
 import { FormField } from '@/shared/components/Input/FormField';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { Modal, ModalActions } from '@/shared/components';
 import m from '@/shared/components/Modal/Modal.module.css';
 import { catalogApi } from '../api/catalogApi';
@@ -27,6 +27,7 @@ export function CatalogFormModal({
 	const label = cfg.label.toLowerCase();
 	const isRoundType = tab === 'round-types';
 	const isDocType = tab === 'trainee-document-types';
+	const uid = useId();
 	const [form, setForm] = useState<CatalogFormData>(
 		item ? { name: item.name, description: item.description ?? '' } : EMPTY_FORM,
 	);
@@ -160,11 +161,20 @@ export function CatalogFormModal({
 							/>
 						</FormField>
 						<div className={m.formGroup}>
-							<label className={m.formLabel}>Bắt buộc nộp với học viên khóa loại</label>
+							<span
+								id={`${uid}-required-for`}
+								className={m.formLabel}
+							>
+								Bắt buộc nộp với học viên khóa loại
+							</span>
 							<div className={styles.hint}>
 								Học viên ghi danh khóa thuộc loại được tick sẽ thấy giấy tờ này trong checklist "cần nộp". Bỏ trống = không bắt buộc.
 							</div>
-							<div className={styles.levels}>
+							<div
+								className={styles.levels}
+								role='group'
+								aria-labelledby={`${uid}-required-for`}
+							>
 								{trainingTypes.map((tt) => (
 									<label
 										key={tt.id}
@@ -189,11 +199,20 @@ export function CatalogFormModal({
 
 				{isRoundType && (
 					<div className={m.formGroup}>
-						<label className={m.formLabel}>Cấp độ đề tài cho phép</label>
+						<span
+							id={`${uid}-levels`}
+							className={m.formLabel}
+						>
+							Cấp độ đề tài cho phép
+						</span>
 						<div className={styles.hint}>
 							Form đăng ký đề tài chỉ hiện các cấp độ được tick ở đây. Bỏ trống = cho phép tất cả.
 						</div>
-						<div className={styles.levels}>
+						<div
+							className={styles.levels}
+							role='group'
+							aria-labelledby={`${uid}-levels`}
+						>
 							{levels.length === 0 && <span className={styles.empty}>Chưa có cấp độ nào trong hệ thống.</span>}
 							{levels.map((lv) => (
 								<label
