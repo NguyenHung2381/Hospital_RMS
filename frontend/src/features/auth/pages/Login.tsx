@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FORCE_PASSWORD_PATH, TWO_FACTOR_SETUP_PATH } from '../../../app/router/authHelpers';
 import { ServiceUnavailableError, userMessage } from '../../../shared/api/http';
+import { useFocusTrap } from '../../../shared/hooks/useFocusTrap';
 import { canAccessAdminPanel } from '../../../shared/utils/permissions';
 import AuthLayout from '../../../layouts/AuthLayout';
 import { saveAuth } from '../../../shared/utils/storage';
@@ -130,6 +131,9 @@ export default function Login() {
 		dest: string;
 		count: number;
 	} | null>(null);
+	// Hộp chọn nơi vào: giữ focus trong hộp, chưa có lựa chọn Hủy nên không gắn Esc
+	const councilDialogRef = useRef<HTMLDivElement>(null);
+	useFocusTrap(councilDialogRef, { active: !!councilPrompt });
 	// Bước 2 của đăng nhập cho tài khoản đã bật 2FA — chỉ set khi backend trả
 	// requires_2fa=true ở bước 1 (mật khẩu đúng).
 	const [preAuthToken, setPreAuthToken] = useState<string | null>(null);
@@ -444,6 +448,8 @@ export default function Login() {
 								autoComplete='username'
 								autoFocus
 								disabled={isLoading}
+								aria-required='true'
+								aria-invalid={errors.username ? true : undefined}
 								aria-describedby={
 									errors.username ? 'username-error' : undefined
 								}
@@ -482,6 +488,8 @@ export default function Login() {
 								onChange={handleChange('password')}
 								autoComplete='current-password'
 								disabled={isLoading}
+								aria-required='true'
+								aria-invalid={errors.password ? true : undefined}
 								aria-describedby={
 									errors.password ? 'password-error' : undefined
 								}
@@ -569,29 +577,41 @@ export default function Login() {
 				createPortal(
 					<div className={styles.destBackdrop}>
 						<div
+							ref={councilDialogRef}
 							className={styles.destModal}
 							role='alertdialog'
 							aria-modal='true'
+							aria-labelledby='council-dest-title'
+							aria-describedby='council-dest-desc'
+							tabIndex={-1}
 						>
 							<div className={styles.destIcon}>
 								<ClipboardCheckSvg />
 							</div>
-							<h2 className={styles.destTitle}>
+							<h2
+								id='council-dest-title'
+								className={styles.destTitle}
+							>
 								Bạn có nhiệm vụ trong hội đồng
 							</h2>
-							<p className={styles.destDesc}>
+							<p
+								id='council-dest-desc'
+								className={styles.destDesc}
+							>
 								Bạn đang được phân công đánh giá {councilPrompt.count} đề tài
 								với vai trò thành viên hội đồng chấm đề cương. Bạn muốn vào
 								đâu?
 							</p>
 							<div className={styles.destOptions}>
 								<button
+									type='button'
 									className={styles.destOptionPrimary}
 									onClick={() => navigate('/user/council-progress')}
 								>
 									Vào cổng đánh giá hội đồng
 								</button>
 								<button
+									type='button'
 									className={styles.destOptionSecondary}
 									onClick={() => navigate(councilPrompt.dest)}
 								>
