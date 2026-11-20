@@ -56,5 +56,12 @@ export default function RadiusMap({ lat, lng, radius, onPick, className }: Props
 		if (!view.contains(bounds) || l.map.getZoom() < 12) l.map.fitBounds(bounds, { padding: [24, 24] });
 	}, [lat, lng, radius]);
 
-	return <div ref={el} className={className} />;
+	return (
+		<div
+			ref={el}
+			className={className}
+			role='region'
+			aria-label='Bản đồ chọn vị trí điểm danh. Có thể nhập tọa độ ở ô cấu hình phía trên thay cho việc bấm vào bản đồ.'
+		/>
+	);
 }

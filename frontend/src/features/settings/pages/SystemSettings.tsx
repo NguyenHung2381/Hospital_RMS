@@ -826,7 +826,7 @@ export default function SystemSettings() {
 		return (
 			<label className={styles.switch}>
 				<span className={cx(styles.switchText, checked && styles.switchTextOn)}>{checked ? f.onText ?? 'Bật' : f.offText ?? 'Tắt'}</span>
-				<input id={f.key} type='checkbox' checked={checked} onChange={(e) => set(f.key, String(e.target.checked))} />
+				<input id={f.key} type='checkbox' role='switch' checked={checked} onChange={(e) => set(f.key, String(e.target.checked))} />
 				<span className={styles.track} />
 			</label>
 		);
@@ -841,7 +841,7 @@ export default function SystemSettings() {
 		};
 		const cats = [...new Set(f.options!.map((o) => o[2] ?? ''))];
 		return (
-			<div className={styles.multi}>
+			<div className={styles.multi} role='group' aria-label={f.label}>
 				{cats.map((c) => (
 					<div className={styles.chipRow} key={c}>
 						<span className={styles.chipCat}>{c}</span>
@@ -901,7 +901,7 @@ export default function SystemSettings() {
 											</span>
 										)}
 										<span className={styles.switch}>
-											<input type='checkbox' checked={visible} disabled={it.locked} onChange={() => toggle(it.key)} />
+											<input type='checkbox' role='switch' checked={visible} disabled={it.locked} onChange={() => toggle(it.key)} />
 											<span className={cx(styles.track, styles.trackSm)} />
 										</span>
 									</label>
@@ -930,6 +930,8 @@ export default function SystemSettings() {
 			return (
 				<textarea
 					id={f.key}
+					aria-invalid={errorOf(f) ? true : undefined}
+					aria-describedby={errorOf(f) ? `${f.key}-note` : undefined}
 					className={styles.input}
 					rows={2}
 					placeholder={env[f.key] ?? f.placeholder}
@@ -943,6 +945,8 @@ export default function SystemSettings() {
 				<div className={cx(styles.numWrap, errorOf(f) && styles.invalid)}>
 					<input
 						id={f.key}
+						aria-invalid={errorOf(f) ? true : undefined}
+						aria-describedby={errorOf(f) ? `${f.key}-note` : undefined}
 						className={styles.numInput}
 						type='number'
 						inputMode='decimal'
@@ -961,6 +965,8 @@ export default function SystemSettings() {
 			<div className={styles.inputWrap}>
 				<input
 					id={f.key}
+					aria-invalid={errorOf(f) ? true : undefined}
+					aria-describedby={errorOf(f) ? `${f.key}-note` : undefined}
 					className={styles.input}
 					type={isPass && !showPass ? 'password' : 'text'}
 					autoComplete='off'
@@ -987,7 +993,12 @@ export default function SystemSettings() {
 	/** Dòng phụ dưới ô nhập: lỗi > nguồn .env > mặc định khi để trống. */
 	const renderNote = (f: Field) => {
 		const err = errorOf(f);
-		if (err && f.type !== 'multi') return <span className={styles.error}>{err}</span>;
+		if (err && f.type !== 'multi')
+			return (
+				<span id={`${f.key}-note`} className={styles.error} role='alert'>
+					{err}
+				</span>
+			);
 		if (f.type === 'bool' || f.type === 'multi' || f.type === 'password' || form[f.key]) return null;
 		if (env[f.key]) return <span className={styles.envNote}>Đang dùng giá trị trong file .env</span>;
 		if (f.type === 'number' && f.placeholder)
@@ -1002,7 +1013,7 @@ export default function SystemSettings() {
 
 	const renderRevert = (f: Field) =>
 		isDirty(f) && (
-			<button type='button' className={styles.revert} onClick={() => set(f.key, saved[f.key])} title='Trả về giá trị đã lưu'>
+			<button type='button' className={styles.revert} onClick={() => set(f.key, saved[f.key])} title='Trả về giá trị đã lưu' aria-label={`Hoàn tác ${f.label} về giá trị đã lưu`}>
 				<RefreshSvg /> Hoàn tác
 			</button>
 		);
@@ -1103,6 +1114,7 @@ export default function SystemSettings() {
 					<input
 						className={styles.input}
 						type='email'
+						aria-label='Địa chỉ email nhận thư thử'
 						placeholder='email-nhan@benhvien.vn'
 						value={testTo}
 						onChange={(e) => setTestTo(e.target.value)}
@@ -1257,7 +1269,7 @@ export default function SystemSettings() {
 			<div className={styles.layout}>
 				<aside className={styles.side}>
 					<SearchInput value={query} onChange={setQuery} placeholder='Tìm cấu hình…' />
-					<nav className={styles.tabs}>
+					<nav className={styles.tabs} aria-label='Nhóm cấu hình hệ thống'>
 						{SECTIONS.map((s) => {
 							const Icon = s.icon;
 							const n = sectionFields(s).filter(isDirty).length;
@@ -1267,6 +1279,7 @@ export default function SystemSettings() {
 									type='button'
 									className={cx(styles.tab, s.id === tab && !query && styles.tabActive)}
 									onClick={() => setTab(s.id)}
+									aria-current={s.id === tab && !query ? 'page' : undefined}
 								>
 									<span className={styles.tabIcon}>
 										<Icon />
