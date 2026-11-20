@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { SearchableSelect } from '@/shared/components';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AlertSvg, CheckSvg, TrashSvg } from '@/assets/icons';
@@ -37,6 +37,9 @@ const MAX_MEMBERS = 20;
 const INITIAL_PEOPLE: TopicPerson[] = [{ ...EMPTY_PERSON, role: 'leader' }];
 
 export default function TopicRegisterPublic() {
+	const uid = useId();
+	// id ô nhập / ghi chú / dòng lỗi để nối nhãn và aria-describedby
+	const fid = (k: string) => `${uid}-${k}`;
 	const [rounds, setRounds] = useState<PublicTopicRound[]>([]);
 	const [categories, setCategories] = useState<SimpleOption[]>([]);
 	const [departments, setDepartments] = useState<SimpleOption[]>([]);
@@ -118,11 +121,30 @@ export default function TopicRegisterPublic() {
 		(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
 			setForm((f) => ({ ...f, [field]: e.target.value }));
 	const fieldError = (k: string) =>
-		fieldErrors[k] ? <span className={styles.fieldError}>{fieldErrors[k]}</span> : null;
+		fieldErrors[k] ? (
+			<span
+				id={`${fid(k)}-error`}
+				className={styles.fieldError}
+				role='alert'
+			>
+				{fieldErrors[k]}
+			</span>
+		) : null;
 	const fieldHint = (k: string) => {
 		const h = cfg.hint(k);
-		return h ? <span className={styles.fieldHint}>{h}</span> : null;
+		return h ? (
+			<span
+				id={`${fid(k)}-hint`}
+				className={styles.fieldHint}
+			>
+				{h}
+			</span>
+		) : null;
 	};
+	// aria-describedby của ô: ghi chú (nếu có) + dòng lỗi (nếu có)
+	const describedBy = (k: string) =>
+		[cfg.hint(k) ? `${fid(k)}-hint` : '', fieldErrors[k] ? `${fid(k)}-error` : ''].filter(Boolean).join(' ') ||
+		undefined;
 
 	const setPerson = (idx: number) => (field: PersonField, value: string) => {
 		setPeople((list) => list.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
@@ -224,12 +246,18 @@ export default function TopicRegisterPublic() {
 			subtitle='Điền thông tin bên dưới để đăng ký đề tài. Hồ sơ sẽ được khoa/phòng và hội đồng xét duyệt trước khi chính thức triển khai.'
 		>
 			{error && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> {error}
 				</div>
 			)}
 			{success && (
-				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertSuccess}`}
+					role='status'
+				>
 					<CheckSvg />
 					<div>
 						<div>{success}</div>
@@ -326,10 +354,17 @@ export default function TopicRegisterPublic() {
 				>
 					<div className={styles.formGrid}>
 						<div className={`${styles.formGroup} ${styles.full}`}>
-							<label className={styles.label}>
+							<label
+								className={styles.label}
+								htmlFor={fid('title')}
+							>
 								{cfg.label('title', 'Tiêu đề đề tài')} <span className={styles.required}>*</span>
 							</label>
 							<input
+								id={fid('title')}
+								aria-required='true'
+								aria-invalid={fieldErrors.title ? true : undefined}
+								aria-describedby={describedBy('title')}
 								className={`${styles.input} ${fieldErrors.title ? styles.inputError : ''}`}
 								value={form.title}
 								onChange={set('title')}
@@ -342,11 +377,18 @@ export default function TopicRegisterPublic() {
 						</div>
 						{cfg.visible('description') && (
 							<div className={`${styles.formGroup} ${styles.full}`}>
-								<label className={styles.label}>
+								<label
+									className={styles.label}
+									htmlFor={fid('description')}
+								>
 									{cfg.label('description', 'Mô tả / Tóm tắt')}{' '}
 									{cfg.required('description') && <span className={styles.required}>*</span>}
 								</label>
 								<textarea
+									id={fid('description')}
+									aria-required={cfg.required('description') || undefined}
+									aria-invalid={fieldErrors.description ? true : undefined}
+									aria-describedby={describedBy('description')}
 									className={`${styles.textarea} ${fieldErrors.description ? styles.inputError : ''}`}
 									rows={4}
 									value={form.description}
@@ -359,10 +401,15 @@ export default function TopicRegisterPublic() {
 							</div>
 						)}
 						<div className={styles.formGroup}>
-							<label className={styles.label}>
+							<label
+								className={styles.label}
+								htmlFor={fid('category_id')}
+							>
 								{cfg.label('category_id', 'Danh mục')} <span className={styles.required}>*</span>
 							</label>
 							<select
+								id={fid('category_id')}
+								aria-required='true'
 								className={styles.select}
 								value={form.category_id}
 								onChange={set('category_id')}
@@ -380,10 +427,14 @@ export default function TopicRegisterPublic() {
 							</select>
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.label}>
+							<label
+								className={styles.label}
+								htmlFor={fid('department_id')}
+							>
 								{cfg.label('department_id', 'Khoa/phòng chủ trì')} <span className={styles.required}>*</span>
 							</label>
 							<SearchableSelect
+								id={fid('department_id')}
 								options={[{ id: '', name: '-- Chọn khoa/phòng --' }, ...departments]}
 								value={form.department_id}
 								onChange={(id) => setForm((f) => ({ ...f, department_id: id }))}
@@ -393,8 +444,14 @@ export default function TopicRegisterPublic() {
 						</div>
 						{form.round_id && levelName && (
 							<div className={styles.formGroup}>
-								<label className={styles.label}>Cấp độ đề tài (theo đợt)</label>
+								<label
+									className={styles.label}
+									htmlFor={fid('level')}
+								>
+									Cấp độ đề tài (theo đợt)
+								</label>
 								<input
+									id={fid('level')}
 									className={styles.input}
 									value={levelName}
 									readOnly
@@ -454,6 +511,7 @@ export default function TopicRegisterPublic() {
 									<button
 										type='button'
 										className={styles.memberRemove}
+										aria-label={`Xóa người thứ ${idx + 1} khỏi danh sách`}
 										onClick={() => removePerson(idx)}
 									>
 										<TrashSvg /> Xóa

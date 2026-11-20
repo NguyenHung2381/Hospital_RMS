@@ -83,7 +83,14 @@ export default function TopicStatusLookup() {
 
 			<p className={styles.searchHint}>Mã hồ sơ được cấp ngay sau khi gửi đăng ký đề tài thành công.</p>
 
-			{notFound && <div className={styles.emptyNotice}>{notFound}</div>}
+			{notFound && (
+				<div
+					className={styles.emptyNotice}
+					role='alert'
+				>
+					{notFound}
+				</div>
+			)}
 
 			{topic && (
 				<div style={{ marginTop: 24 }}>

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { FormConfig } from '@/shared/formConfig/useFormConfig';
 import type { SimpleOption } from '../api/publicApi';
 import type { PersonField, TopicPerson } from '../utils/topicPerson';
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function TopicPersonFields({ person, errors = {}, departments, secretaryTaken, onChange, cfg }: Props) {
+	// Mỗi người tham gia là một khối riêng nên id phải khác nhau giữa các khối
+	const uid = useId();
 	const input = (
 		field: PersonField,
 		label: string,
@@ -24,12 +27,21 @@ export function TopicPersonFields({ person, errors = {}, departments, secretaryT
 		if (cfg && !cfg.visible(field)) return null;
 		const required = cfg ? cfg.required(field, opts.required) : opts.required;
 		const hint = cfg?.hint(field);
+		const id = `${uid}-${field}`;
+		const describedBy = [hint ? `${id}-hint` : '', errors[field] ? `${id}-error` : ''].filter(Boolean).join(' ');
 		return (
 			<div className={styles.formGroup}>
-				<label className={styles.label}>
+				<label
+					className={styles.label}
+					htmlFor={id}
+				>
 					{cfg ? cfg.label(field, label) : label} {required && <span className={styles.required}>*</span>}
 				</label>
 				<input
+					id={id}
+					aria-required={required || undefined}
+					aria-invalid={errors[field] ? true : undefined}
+					aria-describedby={describedBy || undefined}
 					type={opts.type ?? 'text'}
 					className={`${styles.input} ${errors[field] ? styles.inputError : ''}`}
 					placeholder={cfg ? cfg.placeholder(field, opts.placeholder) : opts.placeholder}
@@ -37,8 +49,23 @@ export function TopicPersonFields({ person, errors = {}, departments, secretaryT
 					value={person[field]}
 					onChange={(e) => onChange(field, e.target.value)}
 				/>
-				{hint && <span className={styles.fieldHint}>{hint}</span>}
-				{errors[field] && <span className={styles.fieldError}>{errors[field]}</span>}
+				{hint && (
+					<span
+						id={`${id}-hint`}
+						className={styles.fieldHint}
+					>
+						{hint}
+					</span>
+				)}
+				{errors[field] && (
+					<span
+						id={`${id}-error`}
+						className={styles.fieldError}
+						role='alert'
+					>
+						{errors[field]}
+					</span>
+				)}
 			</div>
 		);
 	};
@@ -60,15 +87,22 @@ export function TopicPersonFields({ person, errors = {}, departments, secretaryT
 						placeholder: 'Bác sĩ, Điều dưỡng...',
 					})}
 					<div className={styles.formGroup}>
-						<label className={styles.label}>Vai trò trong đề tài</label>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-role`}
+						>
+							Vai trò trong đề tài
+						</label>
 						{person.role === 'leader' ? (
 							<input
+								id={`${uid}-role`}
 								className={styles.input}
 								value='Chủ nhiệm đề tài'
 								disabled
 							/>
 						) : (
 							<select
+								id={`${uid}-role`}
 								className={styles.select}
 								value={person.role}
 								onChange={(e) => onChange('role', e.target.value)}
@@ -84,8 +118,14 @@ export function TopicPersonFields({ person, errors = {}, departments, secretaryT
 						)}
 					</div>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.label}>Khoa/phòng công tác</label>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-department_id`}
+						>
+							Khoa/phòng công tác
+						</label>
 						<select
+							id={`${uid}-department_id`}
 							className={styles.select}
 							value={person.department_id}
 							onChange={(e) => onChange('department_id', e.target.value)}

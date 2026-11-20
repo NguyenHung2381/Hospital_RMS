@@ -111,7 +111,10 @@ export default function PublicLookup() {
 				aria-labelledby='lookup-tab-ketqua'
 			>
 			{error && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> {error}
 				</div>
 			)}
