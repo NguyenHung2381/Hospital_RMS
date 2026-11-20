@@ -112,6 +112,7 @@ export function ApprovalListPanel({
 				{isSelectableTab && checkedCount > 0 && (
 					<div className={styles.bulkActions}>
 						<button
+							type='button'
 							className={styles.btnSelApprove}
 							onClick={() => {
 								setBulkComment('');
@@ -121,6 +122,7 @@ export function ApprovalListPanel({
 							<CheckCircleSvg /> Phê duyệt ({checkedCount})
 						</button>
 						<button
+							type='button'
 							className={styles.btnSelReject}
 							onClick={() => {
 								setBulkComment('');
@@ -130,6 +132,7 @@ export function ApprovalListPanel({
 							<XCircleSvg /> Không phê duyệt ({checkedCount})
 						</button>
 						<button
+							type='button'
 							className={styles.btnSelClear}
 							onClick={() => setCheckedIds(new Set())}
 						>
@@ -142,6 +145,7 @@ export function ApprovalListPanel({
 					<SearchSvg className={styles.listSearchIcon} />
 					<input
 						className={styles.listSearchInput}
+						aria-label='Tìm hồ sơ theo mã, tên đề tài hoặc người nộp'
 						placeholder='Tìm mã, tên đề tài, người nộp...'
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
@@ -217,7 +221,11 @@ export function ApprovalListPanel({
 								onClick={() => setSelectedId(r.id)}
 							>
 								{isSelectableTab ? (
-									<div
+									<button
+										type='button'
+										role='checkbox'
+										aria-checked={isChecked}
+										aria-label={`Chọn hồ sơ ${r.id}`}
 										className={styles.checkCol}
 										onClick={(e) => {
 											e.stopPropagation();
@@ -237,13 +245,21 @@ export function ApprovalListPanel({
 											)}
 										</div>
 										{r.is_urgent && <span className={styles.urgentPip} />}
-									</div>
+									</button>
 								) : (
 									<div
 										className={`${styles.urgencyDot} ${r.is_urgent ? styles.dotUrgent : styles.dotNormal}`}
 									/>
 								)}
-								<div className={styles.listItemContent}>
+								<button
+									type='button'
+									className={styles.listItemContent}
+									aria-current={selected?.id === r.id ? 'true' : undefined}
+									onClick={(e) => {
+										e.stopPropagation();
+										setSelectedId(r.id);
+									}}
+								>
 									<div className={styles.listItemTopicId}>
 										{r.topic_id} · {r.id}
 									</div>
@@ -269,7 +285,7 @@ export function ApprovalListPanel({
 											{r.topic_member_count}
 										</span>
 									</div>
-								</div>
+								</button>
 								<div className={styles.listItemRight}>
 									<Badge
 										tone={sc.tone}

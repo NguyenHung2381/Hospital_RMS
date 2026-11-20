@@ -1,3 +1,5 @@
+import { useEffect, useId, useRef } from 'react';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { CheckCircleSvg, MessageSvg, XCircleSvg } from '@/assets/icons';
 import styles from '../pages/Approval.module.css';
 
@@ -49,6 +51,16 @@ export function ConfirmModal({
 	onClose,
 	loading,
 }: ConfirmModalProps) {
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const commentRef = useRef<HTMLTextAreaElement>(null);
+	const titleId = useId();
+	const descId = useId();
+	// Giữ focus trong hộp thoại, Esc để đóng, trả focus về nút đã mở khi đóng
+	useFocusTrap(dialogRef, { active: true, onEscape: onClose });
+	useEffect(() => {
+		commentRef.current?.focus();
+	}, []);
+
 	const cfg = MODAL_CFG[type];
 	const needComment = type !== 'approve';
 	const canSubmit = !needComment || comment.trim().length > 0;
@@ -68,9 +80,13 @@ export function ConfirmModal({
 			}}
 		>
 			<div
+				ref={dialogRef}
 				className={styles.modal}
-				role='alertdialog'
+				role='dialog'
 				aria-modal='true'
+				aria-labelledby={titleId}
+				aria-describedby={descId}
+				tabIndex={-1}
 			>
 				<div className={styles.modalBody}>
 					<div
@@ -78,8 +94,8 @@ export function ConfirmModal({
 					>
 						<Icon />
 					</div>
-					<h2 className={styles.modalTitle}>{cfg.title}</h2>
-					<p className={styles.modalDesc}>
+					<h2 id={titleId} className={styles.modalTitle}>{cfg.title}</h2>
+					<p id={descId} className={styles.modalDesc}>
 						Đề tài:{' '}
 						<strong>
 							"{topicTitle.slice(0, 70)}
@@ -89,7 +105,10 @@ export function ConfirmModal({
 						{cfg.desc}
 					</p>
 					<textarea
+						ref={commentRef}
 						className={styles.modalComment}
+						aria-label={needComment ? (type === 'reject' ? 'Lý do không phê duyệt' : 'Thông tin cần bổ sung') : 'Nhận xét'}
+						aria-required={needComment}
 						placeholder={cfg.placeholder}
 						value={comment}
 						onChange={(e) => onChangeComment(e.target.value)}
@@ -99,12 +118,14 @@ export function ConfirmModal({
 				</div>
 				<div className={styles.modalFooter}>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles[cfg.btnCls as keyof typeof styles] as string}
 						onClick={onConfirm}
 						disabled={loading || !canSubmit}
