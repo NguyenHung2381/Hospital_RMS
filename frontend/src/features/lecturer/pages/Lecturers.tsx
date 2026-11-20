@@ -55,13 +55,13 @@ export default function Lecturers() {
 				}
 				onImported={d.refreshData}
 			/>
-			<button
+			<button type='button'
 				className={styles.btnAddHeader}
 				onClick={() => setFromStaffOpen(true)}
 			>
 				<UserCheckSvg /> Thêm từ nhân sự có CCHN
 			</button>
-			<button
+			<button type='button'
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
