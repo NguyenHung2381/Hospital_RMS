@@ -43,6 +43,8 @@ export function WorkflowFormModal({
 	loading: boolean;
 }) {
 	const [form, setForm] = useState<WorkflowFormData>(toForm(item));
+	// Ảnh chụp ban đầu để biết còn thay đổi chưa lưu khi đóng (Esc, bấm nền, nút X).
+	const [initialForm] = useState(form);
 	const [errors, setErrors] = useState<Partial<Record<'name', string>>>({});
 
 	const setField = <K extends keyof WorkflowFormData>(k: K, val: WorkflowFormData[K]) => {
@@ -86,6 +88,7 @@ export function WorkflowFormModal({
 		<Modal
 			open
 			onClose={onClose}
+			dirty={JSON.stringify(form) !== JSON.stringify(initialForm)}
 			title={mode === 'add' ? 'Tạo quy trình duyệt' : 'Chỉnh sửa quy trình duyệt'}
 			subtitle={mode === 'add' ? 'Thiết lập quy trình duyệt nhiều bước' : `Cập nhật — ${item?.name}`}
 			className={`${styles.modal} ${styles.modalLg}`}
@@ -152,7 +155,7 @@ export function WorkflowFormModal({
 
 			<div className={styles.itemsSection}>
 				<div className={styles.itemsSectionHeader}>
-					<label className={styles.formLabel}>Các bước duyệt (theo thứ tự)</label>
+					<div className={styles.formLabel}>Các bước duyệt (theo thứ tự)</div>
 				</div>
 				{form.steps.length === 0 && <div className={styles.emptyItems}>Chưa có bước nào</div>}
 				{form.steps.map((s, i) => (
@@ -163,12 +166,14 @@ export function WorkflowFormModal({
 						<div className={styles.questionHeadRow}>
 							<input
 								className={styles.formInput}
+								aria-label={`Tên bước ${i + 1}`}
 								placeholder={`Bước ${i + 1}: tên bước`}
 								value={s.name}
 								onChange={(e) => updateStep(s.tempId, { name: e.target.value })}
 							/>
 							<select
 								className={styles.formInput}
+								aria-label={`Vai trò duyệt của bước ${i + 1}`}
 								value={s.approver_role_id}
 								onChange={(e) => updateStep(s.tempId, { approver_role_id: e.target.value })}
 							>
@@ -189,6 +194,7 @@ export function WorkflowFormModal({
 									onClick={() => moveStep(i, -1)}
 									disabled={i === 0}
 									title='Lên'
+									aria-label={`Chuyển bước ${i + 1} lên trên`}
 								>
 									↑
 								</button>
@@ -198,6 +204,7 @@ export function WorkflowFormModal({
 									onClick={() => moveStep(i, 1)}
 									disabled={i === form.steps.length - 1}
 									title='Xuống'
+									aria-label={`Chuyển bước ${i + 1} xuống dưới`}
 								>
 									↓
 								</button>
@@ -206,6 +213,7 @@ export function WorkflowFormModal({
 									className={styles.itemRemoveBtn}
 									onClick={() => removeStep(s.tempId)}
 									title='Xóa bước'
+									aria-label={`Xóa bước ${i + 1}`}
 								>
 									<TrashSvg />
 								</button>

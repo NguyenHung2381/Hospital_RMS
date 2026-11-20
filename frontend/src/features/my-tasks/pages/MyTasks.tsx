@@ -1,6 +1,6 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
-import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApproveSvg, ClipboardCheckSvg } from '@/assets/icons';
 import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -20,6 +20,19 @@ const ROW_STYLE: CSSProperties = {
 	gap: 12,
 };
 
+/** Một dòng việc: có đích đến thì là liên kết thật (bàn phím Tab + Enter), không thì là khối thường. */
+function TaskRow({ to, children }: { to?: string; children: ReactNode }) {
+	if (!to) return <div style={ROW_STYLE}>{children}</div>;
+	return (
+		<Link
+			to={to}
+			style={{ ...ROW_STYLE, cursor: 'pointer', color: 'inherit', textDecoration: 'none' }}
+		>
+			{children}
+		</Link>
+	);
+}
+
 export default function MyTasks() {
 	const navigate = useNavigate();
 	const [data, setData] = useState<MyTasksData | null>(null);
@@ -38,20 +51,6 @@ export default function MyTasks() {
 
 	// Bấm vào 1 dòng là mở thẳng nơi xử lý việc đó (trang Phê duyệt chọn sẵn
 	// đúng đề tài) — "Việc của tôi" là hộp thư, không lặp lại chức năng duyệt.
-	const rowLink = (to?: string) =>
-		to
-			? {
-					role: 'button',
-					tabIndex: 0,
-					onClick: () => navigate(to),
-					onKeyDown: (e: KeyboardEvent) => {
-						if (e.key === 'Enter' || e.key === ' ') {
-							e.preventDefault();
-							navigate(to);
-						}
-					},
-				}
-			: {};
 
 	return (
 		<Layout
@@ -106,14 +105,13 @@ export default function MyTasks() {
 								{data.approvals.map((t) => {
 									const cfg = STATUS_CFG[t.status as keyof typeof STATUS_CFG];
 									return (
-										<div
+										<TaskRow
 											key={t.id}
-											{...rowLink(
+											to={
 												isAdmin
 													? `/admin/approvals?topic=${encodeURIComponent(t.id)}`
-													: undefined,
-											)}
-											style={{ ...ROW_STYLE, cursor: isAdmin ? 'pointer' : undefined }}
+													: undefined
+											}
 										>
 											<div>
 												<div style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</div>
@@ -129,7 +127,7 @@ export default function MyTasks() {
 													{cfg.label}
 												</Badge>
 											)}
-										</div>
+										</TaskRow>
 									);
 								})}
 							</div>
@@ -164,10 +162,9 @@ export default function MyTasks() {
 					<Card.Body>
 						<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 							{data.progress_reviews.map((t) => (
-								<div
+								<TaskRow
 									key={t.id}
-									{...rowLink('/user/council-progress')}
-									style={{ ...ROW_STYLE, cursor: 'pointer' }}
+									to='/user/council-progress'
 								>
 									<div>
 										<div style={{ fontWeight: 600, fontSize: 13 }}>{t.title}</div>
@@ -177,7 +174,7 @@ export default function MyTasks() {
 										</div>
 									</div>
 									<Badge tone='blue'>{t.my_role}</Badge>
-								</div>
+								</TaskRow>
 							))}
 						</div>
 					</Card.Body>
