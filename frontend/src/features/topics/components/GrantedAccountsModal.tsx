@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { GrantedAccount } from '../api/topicApi';
 import styles from '../pages/Topic.module.css';
 import type { TopicMember } from '../types/topic.type';
-import { CheckSvg as IcCheck, WarnSvg as IcWarn, XSvg as IcX } from '@/assets/icons';
+import { CheckSvg as IcCheck, WarnSvg as IcWarn } from '@/assets/icons';
+import { Modal } from '@/shared/components';
 
 export function GrantedAccountsModal({
 	accounts,
@@ -28,134 +29,103 @@ export function GrantedAccountsModal({
 		acc.username;
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			style={{ zIndex: 1100 }}
+		<Modal
+			open
+			onClose={onClose}
+			title='Tài khoản đã được cấp'
+			subtitle={`${accounts.length} tài khoản mới`}
+			icon={<IcCheck />}
+			iconStyle={{ background: '#f0fdf4', color: '#16a34a' }}
+			// Mật khẩu tạm chỉ hiện một lần: bấm nền không đóng nhầm.
+			closeOnBackdrop={false}
+			bodyClassName={styles.cfmModalBodyTight}
+			footer={
+				<button
+					type='button'
+					className={styles.btnPrimary}
+					onClick={onClose}
+				>
+					Đã lưu, đóng lại
+				</button>
+			}
 		>
 			<div
-				className={`${styles.modal} ${styles.confirmModal}`}
-				style={{ maxWidth: 480 }}
-				role='dialog'
-				aria-modal='true'
+				className={styles.cfmWarningBox}
+				style={{
+					background: '#fefce8',
+					borderColor: '#fde68a',
+					color: '#92400e',
+				}}
 			>
-				{/* Header */}
-				<div
-					className={styles.cfmHeader}
-					style={
-						{
-							'--cfm-accent': '#f0fdf4',
-							'--cfm-color': '#16a34a',
-						} as React.CSSProperties
-					}
-				>
-					<div className={styles.cfmHeaderIcon}>
-						<IcCheck />
-					</div>
-					<div className={styles.cfmHeaderText}>
-						<div className={styles.cfmHeaderTitle}>Tài khoản đã được cấp</div>
-						<div className={styles.cfmHeaderSub}>
-							{accounts.length} tài khoản mới
-						</div>
-					</div>
-					<button
-						className={styles.modalCloseBtn}
-						onClick={onClose}
-						aria-label='Đóng'
-					>
-						<IcX />
-					</button>
-				</div>
+				<IcWarn />
+				<span>
+					Lưu thông tin ngay — mật khẩu tạm chỉ hiển thị{' '}
+					<strong>một lần duy nhất</strong>. Người dùng phải đổi mật khẩu ở
+					lần đăng nhập đầu.
+				</span>
+			</div>
 
-				{/* Body */}
-				<div
-					className={styles.modalBody}
-					style={{ gap: 'var(--space-3)' }}
-				>
+			<div className={styles.grantCredentialList}>
+				{accounts.map((acc) => (
 					<div
-						className={styles.cfmWarningBox}
-						style={{
-							background: '#fefce8',
-							borderColor: '#fde68a',
-							color: '#92400e',
-						}}
+						key={acc.user_id}
+						className={styles.grantCredentialCard}
 					>
-						<IcWarn />
-						<span>
-							Lưu thông tin ngay — mật khẩu tạm chỉ hiển thị{' '}
-							<strong>một lần duy nhất</strong>. Người dùng phải đổi mật khẩu ở
-							lần đăng nhập đầu.
-						</span>
-					</div>
-
-					<div className={styles.grantCredentialList}>
-						{accounts.map((acc) => (
-							<div
-								key={acc.user_id}
-								className={styles.grantCredentialCard}
+						<div className={styles.grantCredentialName}>
+							{memberName(acc)}
+						</div>
+						<div className={styles.grantCredentialRow}>
+							<span className={styles.grantCredentialLabel}>
+								Tên đăng nhập
+							</span>
+							<span className={styles.grantCredentialValue}>
+								{acc.username}
+							</span>
+							<button
+								type='button'
+								className={styles.grantCopyBtn}
+								aria-label={`Sao chép tên đăng nhập của ${memberName(acc)}`}
+								onClick={() => copy(acc.username, `u-${acc.user_id}`)}
 							>
-								<div className={styles.grantCredentialName}>
-									{memberName(acc)}
-								</div>
-								<div className={styles.grantCredentialRow}>
-									<span className={styles.grantCredentialLabel}>
-										Tên đăng nhập
-									</span>
-									<span className={styles.grantCredentialValue}>
-										{acc.username}
+								{copied === `u-${acc.user_id}` ? '✓' : 'Sao chép'}
+							</button>
+						</div>
+						<div className={styles.grantCredentialRow}>
+							<span className={styles.grantCredentialLabel}>Mật khẩu</span>
+							{acc.password_plain ? (
+								<>
+									<span
+										className={`${styles.grantCredentialValue} ${styles.grantCredentialPassword}`}
+									>
+										{acc.password_plain}
 									</span>
 									<button
+										type='button'
 										className={styles.grantCopyBtn}
-										onClick={() => copy(acc.username, `u-${acc.user_id}`)}
+										aria-label={`Sao chép mật khẩu của ${memberName(acc)}`}
+										onClick={() => copy(acc.password_plain ?? '', `p-${acc.user_id}`)}
 									>
-										{copied === `u-${acc.user_id}` ? '✓' : 'Sao chép'}
+										{copied === `p-${acc.user_id}` ? '✓' : 'Sao chép'}
 									</button>
-								</div>
-								<div className={styles.grantCredentialRow}>
-									<span className={styles.grantCredentialLabel}>Mật khẩu</span>
-									{acc.password_plain ? (
-										<>
-											<span
-												className={`${styles.grantCredentialValue} ${styles.grantCredentialPassword}`}
-											>
-												{acc.password_plain}
-											</span>
-											<button
-												className={styles.grantCopyBtn}
-												onClick={() => copy(acc.password_plain ?? '', `p-${acc.user_id}`)}
-											>
-												{copied === `p-${acc.user_id}` ? '✓' : 'Sao chép'}
-											</button>
-										</>
-									) : (
-										// Tài khoản đã có từ trước — server không đổi mật khẩu
-										<span className={styles.grantCredentialValue}>
-											Giữ mật khẩu hiện tại
-										</span>
-									)}
-								</div>
-								{acc.note && (
-									<div
-										className={styles.grantCredentialRow}
-										style={{ color: '#92400e', fontSize: 12 }}
-									>
-										{acc.note}
-									</div>
-								)}
+								</>
+							) : (
+								// Tài khoản đã có từ trước — server không đổi mật khẩu
+								<span className={styles.grantCredentialValue}>
+									Giữ mật khẩu hiện tại
+								</span>
+							)}
+						</div>
+						{acc.note && (
+							<div
+								className={styles.grantCredentialRow}
+								style={{ color: '#92400e', fontSize: 12 }}
+							>
+								{acc.note}
 							</div>
-						))}
+						)}
 					</div>
-				</div>
-
-				{/* Footer */}
-				<div className={styles.modalFooter}>
-					<button
-						className={styles.btnPrimary}
-						onClick={onClose}
-					>
-						Đã lưu, đóng lại
-					</button>
-				</div>
+				))}
 			</div>
-		</div>
+		</Modal>
 	);
 }

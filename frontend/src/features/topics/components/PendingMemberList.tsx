@@ -38,6 +38,7 @@ export function PendingMemberRow({
 					className={styles.remove}
 					onClick={onRemove}
 					title={removeTitle}
+					aria-label={`${removeTitle}: ${name}`}
 				>
 					<XSvg />
 				</button>
@@ -68,6 +69,7 @@ export function PendingMemberList({
 					rolePill={
 						<RoleSelectPill
 							value={m.role}
+							ariaLabel={`Vai trò của ${m.ho_ten}`}
 							onChange={(role) => changeRole(m.tempId, role)}
 							disabledCheck={(r) => isEditRoleAllowed(pendingMembers, m.tempId, r)}
 						/>

@@ -67,7 +67,8 @@ export function DrawerFilesTab({
 				style={{ display: 'none' }}
 				onChange={handleFileSelect}
 			/>
-			<div
+			<button
+				type='button'
 				className={`${styles.uploadZone} ${dragging ? styles.uploadZoneActive : ''}`}
 				onClick={() => fileInputRef.current?.click()}
 				onDragOver={(e) => {
@@ -98,7 +99,7 @@ export function DrawerFilesTab({
 					<span className={styles.formatBadge}>zip/rar</span>
 					<span className={styles.formatBadge}>image</span>
 				</div>
-			</div>
+			</button>
 
 			{pendingFiles.length > 0 && (
 				<div className={styles.uploadPendingWrap}>
@@ -112,6 +113,7 @@ export function DrawerFilesTab({
 							tổng
 						</span>
 						<button
+							type='button'
 							className={styles.uploadClearAll}
 							onClick={() => setPendingFiles([])}
 							disabled={uploading}
@@ -140,9 +142,11 @@ export function DrawerFilesTab({
 										{formatFileSize(f.size)}
 									</span>
 									<button
+										type='button'
 										className={styles.uploadPendingRemove}
 										onClick={() => removePending(i)}
 										title='Bỏ file này'
+										aria-label={`Bỏ file ${f.name} khỏi danh sách tải lên`}
 										disabled={uploading}
 									>
 										<IcX />
@@ -154,6 +158,7 @@ export function DrawerFilesTab({
 
 					<input
 						className={styles.formInput}
+						aria-label='Ghi chú lần tải lên'
 						placeholder='Ghi chú lần tải lên (tùy chọn)'
 						value={batchNote}
 						onChange={(e) => setBatchNote(e.target.value)}
@@ -163,6 +168,7 @@ export function DrawerFilesTab({
 					{uploadError && <p className={styles.uploadError}>{uploadError}</p>}
 
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						style={{ width: '100%' }}
 						onClick={() => setShowUploadConfirm(true)}
@@ -193,6 +199,7 @@ export function DrawerFilesTab({
 				>
 					<input
 						type='checkbox'
+						aria-label='Chọn tất cả file'
 						className={styles.fileCheckbox}
 						checked={files.length > 0 && selectedIds.size === files.length}
 						ref={(el) => {
@@ -217,21 +224,25 @@ export function DrawerFilesTab({
 						{selectedIds.size} file đã chọn
 					</span>
 					<button
+						type='button'
 						className={styles.fileBulkBtn}
 						onClick={handleBulkDownload}
 					>
 						<IcDownload /> Tải về
 					</button>
 					<button
+						type='button'
 						className={`${styles.fileBulkBtn} ${styles.fileBulkBtnDanger}`}
 						onClick={handleBulkDelete}
 					>
 						<IcTrash /> Xóa
 					</button>
 					<button
+						type='button'
 						className={styles.fileBulkClear}
 						onClick={() => setSelectedIds(new Set())}
 						title='Bỏ chọn'
+						aria-label='Bỏ chọn tất cả file'
 					>
 						<IcX />
 					</button>
@@ -256,17 +267,16 @@ export function DrawerFilesTab({
 						const uploadedDate = formatDateVN(f.created_at);
 						const isSelected = selectedIds.has(f.id);
 						return (
-							<div
+							<label
 								key={f.id}
 								className={`${styles.fileRow} ${isSelected ? styles.fileRowSelected : ''}`}
-								onClick={() => toggleSelect(f.id)}
 							>
 								<input
 									type='checkbox'
 									className={styles.fileCheckbox}
 									checked={isSelected}
+									aria-label={`Chọn file ${f.file_name}`}
 									onChange={() => toggleSelect(f.id)}
-									onClick={(e) => e.stopPropagation()}
 								/>
 								<div
 									className={styles.fileRowBadge}
@@ -292,10 +302,7 @@ export function DrawerFilesTab({
 										)}
 									</div>
 								</div>
-								<div
-									className={styles.fileRowActions}
-									onClick={(e) => e.stopPropagation()}
-								>
+								<div className={styles.fileRowActions}>
 									<a
 										href={`${BASE_URL}${f.file_url}`}
 										download={f.file_name}
@@ -303,18 +310,21 @@ export function DrawerFilesTab({
 										rel='noreferrer'
 										className={styles.fileActionBtn}
 										title='Tải về'
+										aria-label={`Tải về ${f.file_name}`}
 									>
 										<IcDownload />
 									</a>
 									<button
+										type='button'
 										className={`${styles.fileActionBtn} ${styles.fileActionDanger}`}
 										title='Xóa file'
+										aria-label={`Xóa file ${f.file_name}`}
 										onClick={() => handleDeleteFile(f)}
 									>
 										<IcTrash />
 									</button>
 								</div>
-							</div>
+							</label>
 						);
 					})}
 				</div>

@@ -25,7 +25,8 @@ export function RegisterAttachmentsSection({
 	const policy = useUploadPolicy();
 	return (
 		<div className={styles.formGroup}>
-			<div
+			<button
+				type='button'
 				className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ''}`}
 				onClick={() => fileInputRef.current?.click()}
 				onDragOver={(e) => {
@@ -49,15 +50,15 @@ export function RegisterAttachmentsSection({
 				<span className={styles.dropZoneHint}>
 					{policy.extensions.join(', ')} · tối đa {policy.maxSizeMB}MB mỗi tệp
 				</span>
-				<input
-					ref={fileInputRef}
-					type='file'
-					multiple
-					accept={policy.accept}
-					style={{ display: 'none' }}
-					onChange={(e) => handleFiles(e.target.files)}
-				/>
-			</div>
+			</button>
+			<input
+				ref={fileInputRef}
+				type='file'
+				multiple
+				accept={policy.accept}
+				style={{ display: 'none' }}
+				onChange={(e) => handleFiles(e.target.files)}
+			/>
 			{fileError && (
 				<div className={styles.formError}>
 					<AlertSvg /> {fileError}
@@ -82,6 +83,7 @@ export function RegisterAttachmentsSection({
 								className={styles.removeBtn}
 								onClick={() => removeAttachment(f.name)}
 								title='Xóa tệp'
+								aria-label={`Xóa tệp ${f.name}`}
 							>
 								<XSvg />
 							</button>

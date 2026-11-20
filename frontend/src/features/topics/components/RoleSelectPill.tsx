@@ -9,6 +9,8 @@ interface RoleSelectPillProps {
 	disabled?: boolean;
 	roleLabels?: Partial<Record<MemberRole, { label: string }>>;
 	size?: 'sm' | 'md';
+	/** Tên truy cập của ô chọn (mặc định "Vai trò trong đề tài"). */
+	ariaLabel?: string;
 }
 
 const ROLE_PILL_STYLES: Record<
@@ -43,6 +45,7 @@ export function RoleSelectPill({
 	disabled = false,
 	roleLabels,
 	size = 'sm',
+	ariaLabel = 'Vai trò trong đề tài',
 }: RoleSelectPillProps) {
 	const currentStyle = ROLE_PILL_STYLES[value] || ROLE_PILL_STYLES.member;
 	const isMd = size === 'md';
@@ -58,6 +61,7 @@ export function RoleSelectPill({
 			}}
 		>
 			<select
+				aria-label={ariaLabel}
 				value={value}
 				disabled={disabled}
 				onChange={(e) => onChange(e.target.value as MemberRole)}

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useId } from 'react';
 import { SearchableSelect } from '@/shared/components';
 import { AlertSvg as IcAlert } from '@/assets/icons';
 import type { SimpleItem, UserSuggestion } from '../api/topicApi';
@@ -35,6 +36,7 @@ export function AddMemberForm({
 	setShowAddMember,
 	handleAddMember,
 }: AddMemberFormProps) {
+	const uid = useId();
 	return (
 		<div
 			style={{
@@ -55,6 +57,7 @@ export function AddMemberForm({
 			>
 				<div style={{ gridColumn: '1 / -1' }}>
 					<label
+						htmlFor={`${uid}-f1`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -67,6 +70,7 @@ export function AddMemberForm({
 					</label>
 					<div style={{ position: 'relative' }}>
 						<input
+							id={`${uid}-f1`}
 							className={styles.formInput}
 							placeholder='Nhập họ tên...'
 							value={newMember.ho_ten}
@@ -174,6 +178,7 @@ export function AddMemberForm({
 				</div>
 				<div>
 					<label
+						htmlFor={`${uid}-f2`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -186,6 +191,7 @@ export function AddMemberForm({
 						<span style={{ color: 'var(--color-error)' }}>*</span>
 					</label>
 					<input
+						id={`${uid}-f2`}
 						className={styles.formInput}
 						placeholder='VD: 0123'
 						value={newMember.staff_number}
@@ -199,6 +205,7 @@ export function AddMemberForm({
 				</div>
 				<div>
 					<label
+						htmlFor={`${uid}-f3`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -210,6 +217,7 @@ export function AddMemberForm({
 						Chức vụ
 					</label>
 					<input
+						id={`${uid}-f3`}
 						className={styles.formInput}
 						placeholder='Bác sĩ, Điều dưỡng...'
 						value={newMember.chuc_vu}
@@ -223,6 +231,7 @@ export function AddMemberForm({
 				</div>
 				<div>
 					<label
+						htmlFor={`${uid}-f4`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -234,6 +243,7 @@ export function AddMemberForm({
 						Khoa / Phòng ban
 					</label>
 					<SearchableSelect
+						id={`${uid}-f4`}
 						options={[{ id: '', name: '— Chọn khoa —' }, ...departments]}
 						value={newMember.department_id}
 						onChange={(id) => setNewMember((p) => ({ ...p, department_id: id }))}
@@ -243,6 +253,7 @@ export function AddMemberForm({
 				</div>
 				<div>
 					<label
+						htmlFor={`${uid}-f5`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -254,6 +265,7 @@ export function AddMemberForm({
 						Vai trò
 					</label>
 					<select
+						id={`${uid}-f5`}
 						className={styles.formSelect}
 						value={newMember.role}
 						onChange={(e) =>
@@ -288,6 +300,7 @@ export function AddMemberForm({
 			>
 				<div>
 					<label
+						htmlFor={`${uid}-f6`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -299,6 +312,7 @@ export function AddMemberForm({
 						Email
 					</label>
 					<input
+						id={`${uid}-f6`}
 						className={styles.formInput}
 						placeholder='email@hospital.vn (tùy chọn)'
 						type='email'
@@ -310,6 +324,7 @@ export function AddMemberForm({
 				</div>
 				<div>
 					<label
+						htmlFor={`${uid}-f7`}
 						style={{
 							fontSize: 12,
 							fontWeight: 600,
@@ -321,6 +336,7 @@ export function AddMemberForm({
 						Số điện thoại
 					</label>
 					<input
+						id={`${uid}-f7`}
 						className={styles.formInput}
 						placeholder='0901234567 (tùy chọn)'
 						type='tel'
@@ -356,6 +372,7 @@ export function AddMemberForm({
 				}}
 			>
 				<button
+					type='button'
 					className={styles.btnSecondary}
 					onClick={() => {
 						setShowAddMember(false);
@@ -365,6 +382,7 @@ export function AddMemberForm({
 					Hủy
 				</button>
 				<button
+					type='button'
 					className={styles.btnPrimary}
 					onClick={handleAddMember}
 					disabled={savingMember}

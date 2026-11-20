@@ -72,6 +72,7 @@ export default function TopicPage() {
 			{/* Thứ tự chung của trang danh sách: Nhập → Xuất → thao tác chính (cuối) */}
 			{canImport && (
 				<button
+					type='button'
 					className={styles.btnSecondary}
 					onClick={() => setShowImport(true)}
 				>
@@ -80,6 +81,7 @@ export default function TopicPage() {
 				</button>
 			)}
 			<button
+				type='button'
 				className={styles.btnSecondary}
 				onClick={() => d.setShowExport(true)}
 			>
@@ -87,6 +89,7 @@ export default function TopicPage() {
 				Xuất Excel
 			</button>
 			<button
+				type='button'
 				className={styles.btnPrimary}
 				onClick={() => d.setShowCreate(true)}
 			>
@@ -138,6 +141,7 @@ export default function TopicPage() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm đề tài theo mã hoặc tên'
 								placeholder='Tìm mã, tên đề tài...'
 								value={d.search}
 								onChange={(e) => {

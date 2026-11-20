@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import styles from '../pages/Topic.module.css';
 import { formatFileSize, getFileTypeColor } from '../utils/topicHelpers';
-import { AlertSvg as IcAlert, DownloadSvg as IcDownload, XSvg as IcX } from '@/assets/icons';
+import { AlertSvg as IcAlert, DownloadSvg as IcDownload } from '@/assets/icons';
+import { Modal } from '@/shared/components';
 
 export function ConfirmUploadModal({
 	files,
@@ -30,102 +31,33 @@ export function ConfirmUploadModal({
 
 	const totalSize = files.reduce((s, f) => s + f.size, 0);
 
+	// Đang tải lên thì không cho đóng (Esc, bấm nền, nút X) để tránh bỏ dở giữa chừng.
+	const requestClose = () => {
+		if (!loading) onClose();
+	};
+
 	return (
-		<div
-			className={styles.modalBackdrop}
-			style={{ zIndex: 1100 }}
-			onClick={(e) => {
-				if (e.target === e.currentTarget && !loading) onClose();
-			}}
-		>
-			<div
-				className={`${styles.modal} ${styles.confirmModal} ${styles.confirmModalUpload}`}
-				role='dialog'
-				aria-modal='true'
-			>
-				{/* Header */}
-				<div
-					className={styles.cfmHeader}
-					style={
-						{
-							'--cfm-accent': '#eff6ff',
-							'--cfm-color': '#2563eb',
-						} as React.CSSProperties
-					}
-				>
-					<div className={styles.cfmHeaderIcon}>
-						<IcDownload />
-					</div>
-					<div className={styles.cfmHeaderText}>
-						<div className={styles.cfmHeaderTitle}>Xác nhận tải lên</div>
-						<div className={styles.cfmHeaderSub}>
-							{files.length} file • {formatFileSize(totalSize)}
-						</div>
-					</div>
-					<button
-						className={styles.modalCloseBtn}
-						onClick={onClose}
-						disabled={loading}
-						aria-label='Đóng'
-					>
-						<IcX />
-					</button>
-				</div>
-
-				{/* Progress bar */}
-				{loading && (
-					<div className={styles.cfmProgress}>
-						<div className={styles.cfmProgressFill} />
-					</div>
-				)}
-
-				{/* Body */}
-				<div
-					className={styles.modalBody}
-					style={{ gap: 'var(--space-3)' }}
-				>
-					{batchNote && (
-						<div className={styles.cfmNoteRow}>
-							<span className={styles.cfmNoteLabel}>Ghi chú</span>
-							<span className={styles.cfmNoteValue}>"{batchNote}"</span>
-						</div>
-					)}
-
-					<div className={styles.cfmUploadList}>
-						{files.map((f, i) => {
-							const ext = f.name.split('.').pop()?.toLowerCase() ?? 'file';
-							const color = getFileTypeColor(ext);
-							return (
-								<div
-									key={i}
-									className={styles.cfmUploadRow}
-								>
-									<div
-										className={styles.cfmFileBadge}
-										style={{ background: color + '1a', color }}
-									>
-										{ext.toUpperCase()}
-									</div>
-									<span className={styles.cfmUploadName}>{f.name}</span>
-									<span className={styles.cfmUploadSize}>
-										{formatFileSize(f.size)}
-									</span>
-								</div>
-							);
-						})}
-					</div>
-				</div>
-
-				{/* Footer */}
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={requestClose}
+			title='Xác nhận tải lên'
+			subtitle={`${files.length} file • ${formatFileSize(totalSize)}`}
+			icon={<IcDownload />}
+			iconStyle={{ background: '#eff6ff', color: '#2563eb' }}
+			closeOnBackdrop={!loading}
+			bodyClassName={styles.cfmModalBodyTight}
+			footer={
+				<>
 					{error && (
 						<span
+							role='alert'
 							style={{ fontSize: 12, color: 'var(--tone-red-fg)', flex: 1 }}
 						>
 							<IcAlert /> {error}
 						</span>
 					)}
 					<button
+						type='button'
 						className={styles.btnSecondary}
 						onClick={onClose}
 						disabled={loading}
@@ -133,6 +65,7 @@ export function ConfirmUploadModal({
 						Hủy bỏ
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={go}
 						disabled={loading}
@@ -146,8 +79,48 @@ export function ConfirmUploadModal({
 							`Tải lên ${files.length} file`
 						)}
 					</button>
+				</>
+			}
+		>
+			{/* Thanh tiến trình */}
+			{loading && (
+				<div
+					className={styles.cfmProgress}
+					role='progressbar'
+					aria-label='Đang tải lên'
+				>
+					<div className={styles.cfmProgressFill} />
 				</div>
+			)}
+
+			{batchNote && (
+				<div className={styles.cfmNoteRow}>
+					<span className={styles.cfmNoteLabel}>Ghi chú</span>
+					<span className={styles.cfmNoteValue}>"{batchNote}"</span>
+				</div>
+			)}
+
+			<div className={styles.cfmUploadList}>
+				{files.map((f, i) => {
+					const ext = f.name.split('.').pop()?.toLowerCase() ?? 'file';
+					const color = getFileTypeColor(ext);
+					return (
+						<div
+							key={i}
+							className={styles.cfmUploadRow}
+						>
+							<div
+								className={styles.cfmFileBadge}
+								style={{ background: color + '1a', color }}
+							>
+								{ext.toUpperCase()}
+							</div>
+							<span className={styles.cfmUploadName}>{f.name}</span>
+							<span className={styles.cfmUploadSize}>{formatFileSize(f.size)}</span>
+						</div>
+					);
+				})}
 			</div>
-		</div>
+		</Modal>
 	);
 }

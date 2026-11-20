@@ -64,6 +64,7 @@ export function PendingTopicsCard({
 								className={styles.removeBtn}
 								onClick={() => removeTopicFromList(t.localId)}
 								title='Xóa'
+								aria-label={`Xóa đề tài ${t.title} khỏi danh sách`}
 							>
 								<XSvg />
 							</button>
