@@ -245,6 +245,8 @@
 
 /* Registration link row */
 .linkRow {
+	/* Là <button>: giữ chữ đơn cách, căn trái như khung div trước đây */
+	text-align: left;
 	display: flex;
 	align-items: center;
 	gap: var(--space-2);
@@ -400,72 +402,6 @@
 /* =============================================
    MODAL
 ============================================= */
-.modalBackdrop {
-	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modal {
-	background: var(--color-white);
-	border-radius: var(--radius-2xl);
-	box-shadow: var(--shadow-xl);
-	width: 100%;
-	max-width: 720px;
-	max-height: 90vh;
-	max-height: 90dvh;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	animation: modalPopIn 220ms var(--ease-out) both;
-}
-
-.modalHeader {
-	flex-shrink: 0;
-	padding: var(--space-6) var(--space-6) var(--space-4);
-	border-bottom: 1px solid var(--color-gray-100);
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--space-4);
-}
-
-.modalTitle {
-	font-size: var(--font-size-xl);
-	font-weight: var(--font-weight-extrabold);
-	color: var(--color-gray-800);
-	letter-spacing: -0.02em;
-}
-
-.modalSubtitle {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-500);
-	margin-top: 2px;
-}
-
-.modalCloseBtn {
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-200);
-	background: var(--color-white);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: var(--color-gray-500);
-	transition: all var(--transition-fast);
-	flex-shrink: 0;
-}
-
-.modalCloseBtn:hover {
-	background: var(--color-gray-50);
-	color: var(--color-gray-800);
-	border-color: var(--color-gray-300);
-}
-
-.modalCloseBtn svg {
-	width: 14px;
-	height: 14px;
-}
 
 .modalBody {
 	flex: 1;
@@ -486,16 +422,6 @@
 }
 .modalBody::-webkit-scrollbar-track {
 	background: transparent;
-}
-
-.modalFooter {
-	flex-shrink: 0;
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--space-3);
 }
 
 /* =============================================
@@ -593,6 +519,11 @@
 	padding: 0 var(--space-6);
 	background: var(--color-gray-50);
 	border-bottom: 1px solid var(--color-gray-100);
+}
+
+.modalTabsFlush {
+	/* Thanh tab nằm trong thân <Modal>: kéo sát mép header, tràn hết bề ngang */
+	margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) 0;
 }
 
 .modalTab {

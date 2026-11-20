@@ -159,32 +159,38 @@ export function RoundCard({
 			</div>
 
 			<div className={styles.roundCardFooter}>
-				<div
+				<button
+					type='button'
 					className={styles.linkRow}
 					onClick={() => onCopyLink(round.public_token)}
 					title='Sao chép link đăng ký đề tài theo khoa/phòng (link công khai xem trong chi tiết đợt → Nâng cao)'
+					aria-label='Sao chép link đăng ký đề tài theo khoa/phòng'
 				>
 					<LinkSvg />
 					<span className={styles.linkRowText}>
 						/dang-ky-de-tai?token={round.public_token.slice(0, 10)}…
 					</span>
 					<span className={styles.linkRowHint}>Sao chép</span>
-				</div>
+				</button>
 				<div className={styles.roundCardActions}>
-					<div
+					<button
+						type='button'
 						className={styles.actionBtn}
 						title='Chỉnh sửa'
+						aria-label={`Chỉnh sửa đợt ${round.name}`}
 						onClick={onEdit}
 					>
 						<EditSvg style={{ width: 14, height: 14 }} />
-					</div>
-					<div
+					</button>
+					<button
+						type='button'
 						className={`${styles.actionBtn} ${styles.danger}`}
 						title='Xóa đợt'
+						aria-label={`Xóa đợt ${round.name}`}
 						onClick={onDelete}
 					>
 						<TrashSvg />
-					</div>
+					</button>
 				</div>
 			</div>
 		</div>

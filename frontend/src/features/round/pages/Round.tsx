@@ -151,10 +151,12 @@ export default function Round() {
 								options={d.years.map((y) => ({ id: String(y), label: `Năm ${y}` }))}
 								selected={d.yearFilter}
 								onChange={d.setYearFilter}
+								aria-label='Lọc theo năm'
 								placeholder='Tất cả năm'
 							/>
 							<select
 								className={styles.filterSelect}
+								aria-label='Lọc theo loại đợt'
 								value={d.typeFilter}
 								onChange={(e) => d.setTypeFilter(e.target.value)}
 							>
@@ -170,6 +172,7 @@ export default function Round() {
 							</select>
 							<select
 								className={styles.filterSelect}
+								aria-label='Lọc theo trạng thái'
 								value={d.statusFilter}
 								onChange={(e) =>
 									d.setStatusFilter(e.target.value as typeof d.statusFilter)
