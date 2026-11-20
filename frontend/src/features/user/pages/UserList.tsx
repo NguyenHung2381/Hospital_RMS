@@ -66,6 +66,7 @@ export default function UserList() {
 				onImported={d.refreshData}
 			/>
 			<button
+				type='button'
 				className={styles.btnExportHeader}
 				onClick={handleExport}
 				disabled={exporting || d.totalCount === 0}
@@ -74,6 +75,7 @@ export default function UserList() {
 				<DownloadSvg /> {exporting ? 'Đang xuất...' : 'Xuất Excel'}
 			</button>
 			<button
+				type='button'
 				className={styles.btnGrantHeader}
 				onClick={() => d.setShowCreate(true)}
 			>
@@ -133,6 +135,7 @@ export default function UserList() {
 							style={{ position: 'relative' }}
 						>
 							<button
+								type='button'
 								className={`${styles.filterSelect} ${d.deptFilters.length > 0 ? styles.filterActive : ''}`}
 								onClick={() => d.setIsDeptDropdownOpen(!d.isDeptDropdownOpen)}
 							>

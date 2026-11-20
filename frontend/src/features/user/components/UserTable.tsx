@@ -91,6 +91,7 @@ export function UserTable({
 					action={
 						!isFiltered && (
 							<button
+								type='button'
 								className={styles.btnGrantHeader}
 								onClick={() => setShowCreate(true)}
 							>
@@ -207,6 +208,7 @@ export function UserTable({
 										<div className={styles.statusToggle}>
 											<Toggle
 												on={u.is_active}
+												label={`Kích hoạt tài khoản ${u.full_name}`}
 												onChange={() => void handleToggleActive(u.id)}
 											/>
 											<span
@@ -229,28 +231,34 @@ export function UserTable({
 									</td>
 									<td className={`${styles.td} ${styles.tdActions}`}>
 										<div className={styles.actionBtns}>
-											<div
+											<button
+												type='button'
 												className={styles.actionBtn}
 												title='Chỉnh sửa'
+												aria-label={`Chỉnh sửa tài khoản ${u.full_name}`}
 												onClick={() => setEditUser(u)}
 											>
 												<EditSvg />
-											</div>
-											<div
+											</button>
+											<button
+												type='button'
 												className={styles.actionBtn}
 												title='Đặt lại mật khẩu (về tên đăng nhập)'
+												aria-label={`Đặt lại mật khẩu của ${u.full_name}`}
 												onClick={() => setResetUser(u)}
 												style={{ color: '#b45309' }}
 											>
 												<KeySvg />
-											</div>
-											<div
+											</button>
+											<button
+												type='button'
 												className={`${styles.actionBtn} ${styles.danger}`}
 												title='Xóa'
+												aria-label={`Xóa tài khoản ${u.full_name}`}
 												onClick={() => setDeleteUser(u)}
 											>
 												<TrashSvg />
-											</div>
+											</button>
 										</div>
 									</td>
 								</tr>
