@@ -99,6 +99,11 @@
 	padding: var(--space-10) var(--space-6);
 }
 
+/* <main tabIndex={-1}> nhận focus từ liên kết "Bỏ qua tới nội dung" — không vẽ viền */
+.main:focus {
+	outline: none;
+}
+
 .card {
 	width: 100%;
 	max-width: 1100px;
