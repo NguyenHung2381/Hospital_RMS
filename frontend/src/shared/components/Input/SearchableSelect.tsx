@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { removeDiacritics } from '@/shared/utils/helper';
 import styles from './SearchableSelect.module.css';
+import { markFieldControl, type FieldControlProps } from './fieldControl';
 
 export interface SearchableOption {
 	id: string;
@@ -10,8 +11,7 @@ export interface SearchableOption {
 	group?: string;
 }
 
-interface SearchableSelectProps {
-	id?: string;
+interface SearchableSelectProps extends FieldControlProps {
 	options: SearchableOption[];
 	value: string;
 	onChange: (id: string) => void;
@@ -46,6 +46,10 @@ export function SearchableSelect({
 	title,
 	searchPlaceholder = 'Tìm kiếm...',
 	menuMinWidth = 220,
+	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
 }: SearchableSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
@@ -141,6 +145,12 @@ export function SearchableSelect({
 				type='button'
 				title={title}
 				disabled={disabled}
+				aria-label={ariaLabel}
+				aria-describedby={ariaDescribedBy}
+				aria-invalid={ariaInvalid ?? (hasError || undefined)}
+				aria-required={ariaRequired}
+				aria-haspopup='listbox'
+				aria-expanded={open}
 				className={`${styles.trigger} ${size === 'sm' ? styles.sm : ''} ${open ? styles.triggerOpen : ''} ${hasError ? styles.hasError : ''}`}
 				onClick={() => (open ? setOpen(false) : openMenu())}
 				// Gõ chữ / ↓ khi ô đang focus ⇒ mở menu tìm luôn, khỏi bấm chuột
@@ -176,6 +186,7 @@ export function SearchableSelect({
 								type='text'
 								className={styles.searchInput}
 								placeholder={searchPlaceholder}
+								aria-label={searchPlaceholder}
 								value={query}
 								onChange={(e) => {
 									setQuery(e.target.value);
@@ -213,3 +224,5 @@ export function SearchableSelect({
 		</div>
 	);
 }
+
+markFieldControl(SearchableSelect);

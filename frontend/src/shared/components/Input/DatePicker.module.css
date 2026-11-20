@@ -200,6 +200,23 @@
 	transition: all 0.15s ease;
 }
 
+/* Màn cảm ứng: nút tháng trước/sau 40px + khe 8px, vùng bấm 48×48 không chồng nhau */
+@media (pointer: coarse) {
+	.navGroup {
+		gap: 8px;
+	}
+	.navBtn {
+		position: relative;
+		width: 40px;
+		height: 40px;
+	}
+	.navBtn::after {
+		content: '';
+		position: absolute;
+		inset: -4px;
+	}
+}
+
 .navBtn:hover {
 	background: var(--color-gray-100);
 	color: var(--color-gray-900);

@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './TimePicker.module.css';
+import { markFieldControl, type FieldControlProps } from './fieldControl';
 
 const POPOVER_WIDTH = 232;
 const POPOVER_HEIGHT = 300; // ước lượng trước khi đo được chiều cao thật
 const GAP = 6;
 const EDGE = 8; // khoảng cách tối thiểu tới mép màn hình
 
-interface TimePickerProps {
+interface TimePickerProps extends Omit<FieldControlProps, 'id' | 'aria-label'> {
 	value?: string; // 'HH:mm' (chấp nhận cả 'HH:mm:ss')
 	onChange: (val: string) => void;
 	placeholder?: string;
@@ -80,6 +81,9 @@ export function TimePicker({
 	id,
 	className,
 	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
 }: TimePickerProps) {
 	const current = value.slice(0, 5);
 	const [hh, mm] = current ? current.split(':').map(Number) : [null, null];
@@ -187,6 +191,9 @@ export function TimePicker({
 					inputMode='numeric'
 					autoComplete='off'
 					aria-label={ariaLabel}
+					aria-describedby={ariaDescribedBy}
+					aria-invalid={ariaInvalid ?? (hasError || undefined)}
+					aria-required={ariaRequired}
 					disabled={disabled}
 					maxLength={5}
 					value={draft ?? current}
@@ -217,7 +224,10 @@ export function TimePicker({
 				/>
 
 				{/* Đồng hồ */}
-				<span className={styles.calendarIcon}>
+				<span
+					className={styles.calendarIcon}
+					aria-hidden='true'
+				>
 					<svg
 						width='16'
 						height='16'
@@ -242,6 +252,7 @@ export function TimePicker({
 						type='button'
 						className={styles.clearBtn}
 						title='Xóa giờ'
+						aria-label='Xóa giờ'
 						onClick={(e) => {
 							e.stopPropagation();
 							setDraft(null);
@@ -281,6 +292,8 @@ export function TimePicker({
 						ref={popoverRef}
 						className={`${styles.popover} ${styles.timePopover} ${pos?.bottom !== undefined ? styles.placementTop : ''}`}
 						style={{ left: pos?.left ?? -9999, top: pos?.top, bottom: pos?.bottom }}
+						role='dialog'
+						aria-label='Chọn giờ'
 						// Giữ focus ở ô nhập khi bấm trong bảng chọn
 						onMouseDown={(e) => e.preventDefault()}
 					>
@@ -299,6 +312,7 @@ export function TimePicker({
 										type='button'
 										data-anchor={hh === null ? h === 7 : h === hh}
 										className={`${styles.cell} ${h === hh ? styles.cellSelected : ''}`}
+										aria-label={`${pad2(h)} giờ${h === hh ? ', đang chọn' : ''}`}
 										onClick={() => pickHour(h)}
 									>
 										{pad2(h)}
@@ -315,6 +329,7 @@ export function TimePicker({
 										type='button'
 										data-anchor={m === (mm ?? 0)}
 										className={`${styles.cell} ${m === mm ? styles.cellSelected : ''}`}
+										aria-label={`${pad2(m)} phút${m === mm ? ', đang chọn' : ''}`}
 										onClick={() => pickMinute(m)}
 									>
 										{pad2(m)}
@@ -349,3 +364,5 @@ export function TimePicker({
 		</div>
 	);
 }
+
+markFieldControl(TimePicker);

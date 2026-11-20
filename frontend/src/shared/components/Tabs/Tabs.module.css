@@ -1,0 +1,32 @@
+/* Thanh tab — dùng lại style tab trạng thái trong Table.module.css (nguồn chân lý). */
+
+.list {
+	composes: tabsRow from '../Table/Table.module.css';
+}
+.tab {
+	composes: tab from '../Table/Table.module.css';
+}
+.active {
+	composes: tabActive from '../Table/Table.module.css';
+}
+.badge {
+	composes: tabBadge from '../Table/Table.module.css';
+}
+.tab:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+.panel:focus {
+	outline: none;
+}
+.panel:focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+/* Màn cảm ứng: tab cao tối thiểu 48px */
+@media (pointer: coarse) {
+	.tab {
+		min-height: 48px;
+	}
+}

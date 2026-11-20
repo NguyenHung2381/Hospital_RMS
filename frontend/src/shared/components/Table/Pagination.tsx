@@ -46,12 +46,16 @@ export function Pagination({
 		}, []);
 
 	return (
-		<div className={styles.wrapper}>
+		<nav
+			className={styles.wrapper}
+			aria-label='Phân trang'
+		>
 			<span className={styles.info}>{info}</span>
 			<div className={styles.spacer} />
 			{!hideSizeSelect && (
 				<select
 					className={styles.sizeSelect}
+					aria-label='Số dòng mỗi trang'
 					value={rowsPerPage}
 					onChange={(e) => onRowsPerPageChange?.(Number(e.target.value))}
 				>
@@ -67,38 +71,52 @@ export function Pagination({
 			)}
 			<div className={styles.buttons}>
 				<button
+					type='button'
 					className={styles.btn}
 					onClick={() => onPageChange(Math.max(1, safe - 1))}
 					disabled={safe === 1}
+					aria-label='Trang trước'
 				>
-					<ChevLSvg style={{ width: 13, height: 13 }} />
+					<ChevLSvg
+						style={{ width: 13, height: 13 }}
+						aria-hidden='true'
+					/>
 				</button>
 				{pages.map((p, i) =>
 					p === '…' ? (
 						<span
 							key={`e${i}`}
 							className={styles.ellipsis}
+							aria-hidden='true'
 						>
 							…
 						</span>
 					) : (
 						<button
 							key={p}
+							type='button'
 							className={`${styles.btn} ${safe === p ? styles.btnActive : ''}`}
 							onClick={() => onPageChange(p as number)}
+							aria-label={`Trang ${p}`}
+							aria-current={safe === p ? 'page' : undefined}
 						>
 							{p}
 						</button>
 					),
 				)}
 				<button
+					type='button'
 					className={styles.btn}
 					onClick={() => onPageChange(Math.min(totalPages, safe + 1))}
 					disabled={safe === totalPages}
+					aria-label='Trang sau'
 				>
-					<ChevRSvg style={{ width: 13, height: 13 }} />
+					<ChevRSvg
+						style={{ width: 13, height: 13 }}
+						aria-hidden='true'
+					/>
 				</button>
 			</div>
-		</div>
+		</nav>
 	);
 }

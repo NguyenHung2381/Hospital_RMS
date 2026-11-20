@@ -57,10 +57,20 @@ let nextToastId = 1;
 const TOAST_MS = 3200;
 const TOAST_ACTION_MS = 7000;
 
+/**
+ * Toast lỗi KHÔNG tự tắt — ở lại tới khi người dùng bấm đóng (người đọc chậm / dùng
+ * trình đọc màn hình kịp đọc; WCAG 2.2.1). Không tồn đọng vì: tối đa 4 toast cùng lúc
+ * (toast cũ nhất bị đẩy ra) và lỗi trùng nội dung chỉ giữ một bản.
+ * Toast thành công / thông tin tự tắt sau 3,2 giây, có nút thì 7 giây.
+ */
 function push(type: ToastItem['type'], msg: string, action?: ToastAction) {
 	const id = nextToastId++;
+	// Lỗi trùng nội dung (vd nhiều request cùng hỏng) — bỏ bản cũ, giữ bản mới nhất
+	const rest =
+		type === 'error' ? state.toasts.filter((t) => !(t.type === 'error' && t.msg === msg)) : state.toasts;
 	// Giới hạn 4 toast cùng lúc — thao tác hàng loạt không được phủ kín màn hình
-	setState({ toasts: [...state.toasts.slice(-3), { id, type, msg, action }] });
+	setState({ toasts: [...rest.slice(-3), { id, type, msg, action }] });
+	if (type === 'error') return;
 	setTimeout(() => dismissToast(id), action ? TOAST_ACTION_MS : TOAST_MS);
 }
 

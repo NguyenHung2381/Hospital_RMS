@@ -7,8 +7,12 @@
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	height: 38px;
-	padding: 0 16px;
+	/* min-height + padding-block thay height cố định: chữ phóng to / nhãn 2 dòng không tràn.
+	   height: fit-content giữ hành vi cũ trong hàng flex/grid kéo giãn (stretch chỉ áp cho
+	   height: auto) — nút không bị kéo cao theo ô bên cạnh như khi chỉ có min-height. */
+	height: fit-content;
+	min-height: 38px;
+	padding: 8px 16px;
 	border: 1.5px solid transparent;
 	border-radius: var(--radius-lg);
 	font-family: var(--font-body);
@@ -30,10 +34,7 @@
 	height: 15px;
 	flex-shrink: 0;
 }
-.btn:focus-visible {
-	outline: 2px solid var(--color-primary-light);
-	outline-offset: 2px;
-}
+/* Vòng focus: dùng luật chung trong styles/global.css (--focus-ring-color, đủ tương phản). */
 .btn:disabled {
 	opacity: 0.6;
 	cursor: not-allowed;
@@ -42,11 +43,11 @@
 
 /* Sizes (md = mặc định trong .btn) */
 .md {
-	height: 38px;
+	min-height: 38px;
 }
 .sm {
-	height: 32px;
-	padding: 0 12px;
+	min-height: 32px;
+	padding: 6px 12px;
 	font-size: var(--font-size-compact);
 }
 .sm svg {
@@ -54,8 +55,8 @@
 	height: 14px;
 }
 .lg {
-	height: 46px;
-	padding: 0 24px;
+	min-height: 46px;
+	padding: 10px 24px;
 	font-size: var(--font-size-base);
 }
 
@@ -69,6 +70,9 @@
 	background: var(--color-gray-100);
 	color: var(--color-gray-800);
 }
+.ghost:active:not(:disabled) {
+	background: var(--color-gray-200);
+}
 
 .secondary {
 	background: var(--color-white);
@@ -77,6 +81,10 @@
 }
 .secondary:hover:not(:disabled) {
 	background: var(--color-gray-50);
+	border-color: var(--color-gray-300);
+}
+.secondary:active:not(:disabled) {
+	background: var(--color-gray-100);
 	border-color: var(--color-gray-300);
 }
 
@@ -88,6 +96,9 @@
 .warning:hover:not(:disabled) {
 	background: var(--tone-amber-border);
 }
+.warning:active:not(:disabled) {
+	background: color-mix(in srgb, var(--tone-amber-border) 85%, var(--tone-amber-fg));
+}
 
 .danger {
 	background: var(--tone-red-bg);
@@ -96,6 +107,10 @@
 }
 .danger:hover:not(:disabled) {
 	background: var(--tone-red-border);
+	border-color: var(--color-error);
+}
+.danger:active:not(:disabled) {
+	background: color-mix(in srgb, var(--tone-red-border) 85%, var(--tone-red-fg));
 	border-color: var(--color-error);
 }
 
@@ -107,6 +122,10 @@
 .primary:hover:not(:disabled) {
 	background: var(--color-primary-darker);
 	border-color: var(--color-primary-darker);
+}
+.primary:active:not(:disabled) {
+	background: color-mix(in srgb, var(--color-primary-darker) 85%, #000);
+	border-color: color-mix(in srgb, var(--color-primary-darker) 85%, #000);
 }
 
 /* Spinner (keyframes cục bộ trong module này) */
@@ -129,11 +148,21 @@
 	}
 }
 
-/* Màn cảm ứng: vùng bấm ≥44px (ngón tay), giữ nguyên cỡ chữ/icon */
+/* Màn cảm ứng: vùng bấm ≥48px (ngón tay, MD3), giữ nguyên cỡ chữ/icon */
 @media (pointer: coarse) {
 	.btn,
 	.md,
-	.sm {
-		min-height: 44px;
+	.sm,
+	.lg {
+		min-height: 48px;
+	}
+}
+
+/* Giảm chuyển động: global.css ép mọi animation 0.01ms + 1 lần (!important) — spinner
+   báo đang xử lý vẫn cần quay, nên !important để thắng, quay chậm (như Loading.module.css). */
+@media (prefers-reduced-motion: reduce) {
+	.spinner {
+		animation-duration: 2.4s !important;
+		animation-iteration-count: infinite !important;
 	}
 }

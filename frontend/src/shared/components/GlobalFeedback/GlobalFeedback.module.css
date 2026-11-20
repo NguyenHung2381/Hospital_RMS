@@ -180,27 +180,58 @@
 	line-height: 1.45;
 }
 
+/* Nút đóng: nhìn thấy 32×32 (lề âm để toast không cao thêm), vùng bấm 44×44 / 48×48 cảm ứng */
 .close {
+	position: relative;
 	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	margin: -6px -6px -6px 0;
+	padding: 0;
 	border: 0;
+	border-radius: var(--radius-md);
 	background: none;
-	padding: 0 2px;
-	min-width: 24px;
-	min-height: 24px;
-	font-size: var(--font-size-lg);
-	line-height: 1;
 	color: var(--color-gray-500);
 	cursor: pointer;
 }
+.close::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 44px;
+	height: 44px;
+	transform: translate(-50%, -50%);
+}
+.toast .close svg {
+	width: 16px;
+	height: 16px;
+	margin-top: 0;
+	color: currentColor;
+}
 
 .close:hover {
+	background: var(--color-gray-100);
 	color: var(--color-gray-700);
 }
 
+@media (pointer: coarse) {
+	.close::after {
+		width: 48px;
+		height: 48px;
+	}
+}
+
+/* Giảm chuyển động: global.css ép mọi animation 0.01ms + 1 lần (!important) — chỉ báo
+   đang tải vẫn cần chạy, nên phải !important để thắng, quay chậm (như Loading.module.css). */
 @media (prefers-reduced-motion: reduce) {
 	.bar::before,
 	.spinner {
-		animation-duration: 2.5s;
+		animation-duration: 2.4s !important;
+		animation-iteration-count: infinite !important;
 	}
 	.toast,
 	.overlay {

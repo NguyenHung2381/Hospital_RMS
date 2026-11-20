@@ -19,18 +19,25 @@ export function Button({
 	children,
 	disabled,
 	className,
+	// Mặc định 'button': nút trong <form> không vô tình submit. Cần submit thì truyền type='submit'.
+	type = 'button',
 	...props
 }: ButtonProps) {
 	return (
 		<button
+			type={type}
 			className={[styles.btn, styles[variant], styles[size], className]
 				.filter(Boolean)
 				.join(' ')}
 			disabled={disabled || loading}
+			aria-busy={loading || undefined}
 			{...props}
 		>
 			{loading ? (
-				<span className={styles.spinner} />
+				<span
+					className={styles.spinner}
+					aria-hidden='true'
+				/>
 			) : icon ? (
 				<span className={styles.icon}>{icon}</span>
 			) : null}

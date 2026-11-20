@@ -111,6 +111,17 @@
 	background: var(--color-gray-100);
 	color: var(--color-gray-700);
 }
+/* Màn cảm ứng: vùng bấm 48×48 quanh nút đóng 32px */
+@media (pointer: coarse) {
+	.modalClose {
+		position: relative;
+	}
+	.modalClose::after {
+		content: '';
+		position: absolute;
+		inset: -8px;
+	}
+}
 
 .modalBody {
 	padding: var(--space-6);
@@ -153,6 +164,15 @@
 	border-radius: 50%;
 	animation: spin 0.65s linear infinite;
 	flex-shrink: 0;
+}
+
+/* Giảm chuyển động: global.css ép animation 0.01ms + 1 lần (!important) — spinner đang
+   xử lý vẫn cần quay, nên !important để thắng, quay chậm (như Loading.module.css). */
+@media (prefers-reduced-motion: reduce) {
+	.spinner {
+		animation-duration: 2.4s !important;
+		animation-iteration-count: infinite !important;
+	}
 }
 
 .spinnerDark {
@@ -227,12 +247,12 @@
 }
 
 .fieldError {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	color: var(--tone-red-fg);
 }
 
 .formHint {
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size-xs);
 	color: var(--color-gray-400);
 }
 

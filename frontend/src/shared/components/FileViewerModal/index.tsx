@@ -86,10 +86,12 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 				<div className={styles.viewerHeader}>
 					<span className={styles.viewerTitle}>{file.name}</span>
 					<button
+						type='button'
 						className={styles.viewerClose}
 						onClick={onClose}
+						aria-label='Đóng'
 					>
-						✕
+						<span aria-hidden='true'>✕</span>
 					</button>
 				</div>
 
