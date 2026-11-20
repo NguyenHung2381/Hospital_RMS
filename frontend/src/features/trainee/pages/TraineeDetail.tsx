@@ -97,7 +97,7 @@ export default function TraineeDetail() {
 	};
 
 	const back = (
-		<button
+		<button type='button'
 			className={ds.backLink}
 			// Quay lại trang vừa mở (Học viên của 1 loại / Tất cả học viên); vào thẳng link thì về danh bạ chung
 			onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/admin/trainees'))}
@@ -124,7 +124,7 @@ export default function TraineeDetail() {
 			headerActions={
 				trainee &&
 				canEdit && (
-					<button
+					<button type='button'
 						className={styles.btnGhost}
 						onClick={() => setEditing(true)}
 					>
@@ -145,9 +145,10 @@ export default function TraineeDetail() {
 						<div
 							className={ds.tabs}
 							role='tablist'
+							aria-label='Các phần của hồ sơ học viên'
 						>
 							{tabs.map((t) => (
-								<button
+								<button type='button'
 									key={t.key}
 									role='tab'
 									aria-selected={tab === t.key}

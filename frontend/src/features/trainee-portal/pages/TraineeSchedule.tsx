@@ -17,6 +17,7 @@ export default function TraineeSchedule() {
 			<div
 				className={styles.segment}
 				role='tablist'
+				aria-label='Lịch học và điểm danh'
 			>
 				{(
 					[

@@ -140,7 +140,7 @@ export function TraineeAttendanceTab({
 					{c.rotations.length > 0 && <RotationTable rotations={c.rotations} />}
 					{c.sessions.length > 0 && (
 						<>
-							<button
+							<button type='button'
 								className={ds.toggle}
 								onClick={() => setOpen((o) => ({ ...o, [c.enrollment_id]: !o[c.enrollment_id] }))}
 							>

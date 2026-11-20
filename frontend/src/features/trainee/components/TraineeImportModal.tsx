@@ -69,11 +69,11 @@ export function TraineeImportModal({ onClose, onDone }: { onClose: () => void; o
 			bodyClassName={styles.modalBody}
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={loading}>
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
-						<button className={styles.btnConfirm} onClick={commit} disabled={loading || !preview || rows.length === 0}>
+						<button type='button' className={styles.btnConfirm} onClick={commit} disabled={loading || !preview || rows.length === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
 							Nhập {rows.length || ''} dòng
 						</button>

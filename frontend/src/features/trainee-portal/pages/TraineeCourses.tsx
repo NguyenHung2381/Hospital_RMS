@@ -60,6 +60,7 @@ export default function TraineeCourses() {
 			<div
 				className={styles.segment}
 				role='tablist'
+				aria-label='Nhóm khóa học'
 			>
 				{tabs.map((t) => (
 					<button

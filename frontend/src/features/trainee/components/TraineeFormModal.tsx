@@ -1,6 +1,6 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import { DatePicker, Modal, ModalActions } from '@/shared/components';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { UserCheckSvg } from '@/assets/icons';
 import { EMPTY_FORM, GENDER_OPTIONS, type Trainee, type TraineeFormData } from '../types/trainee.type';
 import type { SimpleItem } from '../hooks/useTrainees';
@@ -26,6 +26,10 @@ export function TraineeFormModal({
 	onSave: (d: TraineeFormData) => void;
 	loading: boolean;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [form, setForm] = useState<TraineeFormData>(
 		trainee
 			? {
@@ -99,13 +103,13 @@ export function TraineeFormModal({
 			<div className={styles.formGrid2}>
 				<CfgField
 					cfg={cfg}
-					name='full_name'
+					name='full_name' htmlFor={fid('full_name')}
 					label='Họ và tên'
 					required
 					error={errors.full_name}
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<input
+					<input id={fid('full_name')} aria-invalid={!!errors.full_name || undefined}
 						className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
 						value={form.full_name}
 						onChange={set('full_name')}
@@ -122,11 +126,11 @@ export function TraineeFormModal({
 						<option value='0'>Ngừng hoạt động</option>
 					</select>
 				</FormField>
-				<CfgField cfg={cfg} name='dob' error={errors.dob} label='Ngày sinh'>
-					<DatePicker value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
+				<CfgField cfg={cfg} name='dob' htmlFor={fid('dob')} error={errors.dob} label='Ngày sinh'>
+					<DatePicker id={fid('dob')} aria-invalid={!!errors.dob || undefined} value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
 				</CfgField>
-				<CfgField cfg={cfg} name='gender' error={errors.gender} label='Giới tính'>
-					<select
+				<CfgField cfg={cfg} name='gender' htmlFor={fid('gender')} error={errors.gender} label='Giới tính'>
+					<select id={fid('gender')} aria-invalid={!!errors.gender || undefined}
 						className={styles.formInput}
 						value={form.gender}
 						onChange={set('gender')}
@@ -142,8 +146,8 @@ export function TraineeFormModal({
 						))}
 					</select>
 				</CfgField>
-				<CfgField cfg={cfg} name='qualification' error={errors.qualification} label='Trình độ chuyên môn'>
-					<input
+				<CfgField cfg={cfg} name='qualification' htmlFor={fid('qualification')} error={errors.qualification} label='Trình độ chuyên môn'>
+					<input id={fid('qualification')} aria-invalid={!!errors.qualification || undefined}
 						className={styles.formInput}
 						value={form.qualification}
 						onChange={set('qualification')}
@@ -152,30 +156,30 @@ export function TraineeFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='national_id'
+					name='national_id' htmlFor={fid('national_id')}
 					label='Số CCCD/CMND'
 					error={errors.national_id}
 				>
-					<input
+					<input id={fid('national_id')} aria-invalid={!!errors.national_id || undefined}
 						className={`${styles.formInput} ${errors.national_id ? styles.inputError : ''}`}
 						value={form.national_id}
 						onChange={set('national_id')}
 						placeholder='VD: 038201012345'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='national_id_issued_date' error={errors.national_id_issued_date} label='Ngày cấp CCCD'>
-					<DatePicker value={form.national_id_issued_date} onChange={(v) => setForm((f) => ({ ...f, national_id_issued_date: v }))} />
+				<CfgField cfg={cfg} name='national_id_issued_date' htmlFor={fid('national_id_issued_date')} error={errors.national_id_issued_date} label='Ngày cấp CCCD'>
+					<DatePicker id={fid('national_id_issued_date')} aria-invalid={!!errors.national_id_issued_date || undefined} value={form.national_id_issued_date} onChange={(v) => setForm((f) => ({ ...f, national_id_issued_date: v }))} />
 				</CfgField>
-				<CfgField cfg={cfg} name='national_id_issued_place' error={errors.national_id_issued_place} label='Nơi cấp CCCD'>
-					<input
+				<CfgField cfg={cfg} name='national_id_issued_place' htmlFor={fid('national_id_issued_place')} error={errors.national_id_issued_place} label='Nơi cấp CCCD'>
+					<input id={fid('national_id_issued_place')} aria-invalid={!!errors.national_id_issued_place || undefined}
 						className={styles.formInput}
 						value={form.national_id_issued_place}
 						onChange={set('national_id_issued_place')}
 						placeholder='VD: Cục CSQLHC về TTXH'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='phone' error={errors.phone} label='Điện thoại'>
-					<input
+				<CfgField cfg={cfg} name='phone' htmlFor={fid('phone')} error={errors.phone} label='Điện thoại'>
+					<input id={fid('phone')} aria-invalid={!!errors.phone || undefined}
 						className={styles.formInput}
 						value={form.phone}
 						onChange={set('phone')}
@@ -184,19 +188,19 @@ export function TraineeFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='email'
+					name='email' htmlFor={fid('email')}
 					label='Email'
 					error={errors.email}
 				>
-					<input
+					<input id={fid('email')} aria-invalid={!!errors.email || undefined}
 						className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
 						value={form.email}
 						onChange={set('email')}
 						placeholder='email@example.com'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='trainee_type_id' error={errors.trainee_type_id} label='Đối tượng học viên'>
-					<select
+				<CfgField cfg={cfg} name='trainee_type_id' htmlFor={fid('trainee_type_id')} error={errors.trainee_type_id} label='Đối tượng học viên'>
+					<select id={fid('trainee_type_id')} aria-invalid={!!errors.trainee_type_id || undefined}
 						className={styles.formInput}
 						value={form.trainee_type_id}
 						onChange={set('trainee_type_id')}
@@ -212,8 +216,8 @@ export function TraineeFormModal({
 						))}
 					</select>
 				</CfgField>
-				<CfgField cfg={cfg} name='department_id' error={errors.department_id} label='Khoa / Phòng (nếu là nhân viên)'>
-					<select
+				<CfgField cfg={cfg} name='department_id' htmlFor={fid('department_id')} error={errors.department_id} label='Khoa / Phòng (nếu là nhân viên)'>
+					<select id={fid('department_id')} aria-invalid={!!errors.department_id || undefined}
 						className={styles.formInput}
 						value={form.department_id}
 						onChange={set('department_id')}
@@ -239,30 +243,30 @@ export function TraineeFormModal({
 						Là nhân viên của bệnh viện
 					</label>
 				</div>
-				<CfgField cfg={cfg} name='workplace' error={errors.workplace} label='Đơn vị công tác'>
-					<input
+				<CfgField cfg={cfg} name='workplace' htmlFor={fid('workplace')} error={errors.workplace} label='Đơn vị công tác'>
+					<input id={fid('workplace')} aria-invalid={!!errors.workplace || undefined}
 						className={styles.formInput}
 						value={form.workplace}
 						onChange={set('workplace')}
 						placeholder='VD: Bệnh viện Y học cổ truyền Nghệ An'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='position' error={errors.position} label='Chức vụ'>
-					<input
+				<CfgField cfg={cfg} name='position' htmlFor={fid('position')} error={errors.position} label='Chức vụ'>
+					<input id={fid('position')} aria-invalid={!!errors.position || undefined}
 						className={styles.formInput}
 						value={form.position}
 						onChange={set('position')}
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='graduated_school' error={errors.graduated_school} label='Trường đào tạo'>
-					<input
+				<CfgField cfg={cfg} name='graduated_school' htmlFor={fid('graduated_school')} error={errors.graduated_school} label='Trường đào tạo'>
+					<input id={fid('graduated_school')} aria-invalid={!!errors.graduated_school || undefined}
 						className={styles.formInput}
 						value={form.graduated_school}
 						onChange={set('graduated_school')}
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='graduated_year' error={errors.graduated_year} label='Năm tốt nghiệp'>
-					<input
+				<CfgField cfg={cfg} name='graduated_year' htmlFor={fid('graduated_year')} error={errors.graduated_year} label='Năm tốt nghiệp'>
+					<input id={fid('graduated_year')} aria-invalid={!!errors.graduated_year || undefined}
 						type='number'
 						className={styles.formInput}
 						value={form.graduated_year}
@@ -270,14 +274,14 @@ export function TraineeFormModal({
 						placeholder='VD: 2025'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='graduated_date' error={errors.graduated_date} label='Ngày tốt nghiệp'>
-					<DatePicker value={form.graduated_date} onChange={(v) => setForm((f) => ({ ...f, graduated_date: v }))} />
+				<CfgField cfg={cfg} name='graduated_date' htmlFor={fid('graduated_date')} error={errors.graduated_date} label='Ngày tốt nghiệp'>
+					<DatePicker id={fid('graduated_date')} aria-invalid={!!errors.graduated_date || undefined} value={form.graduated_date} onChange={(v) => setForm((f) => ({ ...f, graduated_date: v }))} />
 				</CfgField>
-				<CfgField cfg={cfg} name='degree_issued_date' error={errors.degree_issued_date} label='Ngày cấp bằng'>
-					<DatePicker value={form.degree_issued_date} onChange={(v) => setForm((f) => ({ ...f, degree_issued_date: v }))} />
+				<CfgField cfg={cfg} name='degree_issued_date' htmlFor={fid('degree_issued_date')} error={errors.degree_issued_date} label='Ngày cấp bằng'>
+					<DatePicker id={fid('degree_issued_date')} aria-invalid={!!errors.degree_issued_date || undefined} value={form.degree_issued_date} onChange={(v) => setForm((f) => ({ ...f, degree_issued_date: v }))} />
 				</CfgField>
-				<CfgField cfg={cfg} name='birth_province' error={errors.birth_province} label='Nơi sinh (tỉnh)'>
-					<input
+				<CfgField cfg={cfg} name='birth_province' htmlFor={fid('birth_province')} error={errors.birth_province} label='Nơi sinh (tỉnh)'>
+					<input id={fid('birth_province')} aria-invalid={!!errors.birth_province || undefined}
 						className={styles.formInput}
 						value={form.birth_province}
 						onChange={set('birth_province')}
@@ -286,27 +290,27 @@ export function TraineeFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='legacy_code'
+					name='legacy_code' htmlFor={fid('legacy_code')}
 					error={errors.legacy_code}
 					label='Mã học viên (sổ cũ)'
 				>
-					<input
+					<input id={fid('legacy_code')} aria-invalid={!!errors.legacy_code || undefined}
 						className={styles.formInput}
 						value={form.legacy_code}
 						onChange={set('legacy_code')}
 						placeholder='VD: 226'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='address' error={errors.address} label='Địa chỉ'>
-					<input
+				<CfgField cfg={cfg} name='address' htmlFor={fid('address')} error={errors.address} label='Địa chỉ'>
+					<input id={fid('address')} aria-invalid={!!errors.address || undefined}
 						className={styles.formInput}
 						value={form.address}
 						onChange={set('address')}
 						placeholder='Địa chỉ liên hệ...'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='permanent_address' error={errors.permanent_address} label='Địa chỉ thường trú'>
-					<input
+				<CfgField cfg={cfg} name='permanent_address' htmlFor={fid('permanent_address')} error={errors.permanent_address} label='Địa chỉ thường trú'>
+					<input id={fid('permanent_address')} aria-invalid={!!errors.permanent_address || undefined}
 						className={styles.formInput}
 						value={form.permanent_address}
 						onChange={set('permanent_address')}
@@ -315,12 +319,12 @@ export function TraineeFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='notes'
+					name='notes' htmlFor={fid('notes')}
 					error={errors.notes}
 					label='Ghi chú'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<textarea
+					<textarea id={fid('notes')} aria-invalid={!!errors.notes || undefined}
 						className={styles.formInput}
 						rows={3}
 						value={form.notes}

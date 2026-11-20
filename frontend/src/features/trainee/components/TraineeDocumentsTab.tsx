@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { FileDropzone } from '@/shared/components';
+import { confirmDialog, FileDropzone, promptDialog } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { showToast } from '@/shared/utils/feedback';
@@ -90,7 +90,7 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 						disabled={busy}
 						className={styles.subDropzone}
 					/>
-					<button
+					<button type='button'
 						className={styles.btnGhost}
 						disabled={busy || !file}
 						onClick={() =>
@@ -137,7 +137,7 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 								</span>
 								{canEdit && doc.status === 'pending' && (
 									<>
-										<button
+										<button type='button'
 											className={styles.btnGhost}
 											disabled={busy}
 											onClick={() =>
@@ -146,11 +146,17 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 										>
 											<CheckSvg /> Duyệt
 										</button>
-										<button
+										<button type='button'
 											className={styles.btnGhost}
 											disabled={busy}
-											onClick={() => {
-												const note = window.prompt('Lý do từ chối (học viên sẽ thấy):');
+											onClick={async () => {
+												const note = await promptDialog({
+													title: 'Từ chối hồ sơ',
+													label: 'Lý do từ chối (học viên sẽ thấy)',
+													multiline: true,
+													confirmLabel: 'Từ chối',
+													tone: 'danger',
+												});
 												if (note !== null)
 													void run(
 														() => traineeRecordApi.reviewDocument(doc.id, 'rejected', note),
@@ -163,13 +169,19 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 									</>
 								)}
 								{canEdit && (
-									<button
+									<button type='button'
 										className={styles.actionBtn}
 										title='Xóa file'
+										aria-label={`Xóa file ${doc.file_name}`}
 										disabled={busy}
-										onClick={() => {
-											if (confirm(`Xóa file "${doc.file_name}"?`))
-												void run(() => removeTraineeDocument(doc.id), 'Đã xóa file');
+										onClick={async () => {
+											const ok = await confirmDialog({
+												title: 'Xóa file hồ sơ?',
+												message: `Xóa file "${doc.file_name}"?`,
+												confirmLabel: 'Xóa',
+												tone: 'danger',
+											});
+											if (ok) void run(() => removeTraineeDocument(doc.id), 'Đã xóa file');
 										}}
 									>
 										<TrashSvg />
