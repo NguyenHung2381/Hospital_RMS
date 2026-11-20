@@ -212,6 +212,25 @@
 	flex-direction: column;
 	gap: var(--space-2);
 }
+/* Thẻ khảo sát bấm được: nút ở tiêu đề phủ cả thẻ bằng ::after (stretched link) */
+.cardLink {
+	position: relative;
+	cursor: pointer;
+}
+.cardLinkBtn {
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.cardLinkBtn::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+}
 .questionHeadRow {
 	display: grid;
 	grid-template-columns: 1fr 160px auto;
