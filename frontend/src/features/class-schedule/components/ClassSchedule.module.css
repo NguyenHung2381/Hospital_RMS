@@ -1,0 +1,35 @@
+/* Phần bổ sung accessibility cho lịch lớp: CSS chính nằm ở features/schedule (không sửa ở đây). */
+
+/* Nút trong suốt bọc nội dung cũ — nhìn y như thẻ div/span trước đây */
+.plainBtn {
+	background: none;
+	border: 0;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	color: inherit;
+	text-align: inherit;
+	cursor: pointer;
+}
+
+.rel {
+	position: relative;
+}
+
+/* Vùng bấm phủ cả thẻ: chuột bấm ở đâu trong thẻ cũng kích hoạt nút, bàn phím dùng chính nút này */
+.stretch::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+}
+
+/* Nút nằm trên vùng phủ để vẫn bấm riêng được */
+.above {
+	position: relative;
+	z-index: 1;
+}
+
+/* Gợi ý "Xem tháng" vốn chỉ hiện khi rê chuột — hiện cả khi focus bàn phím */
+.plainBtn:focus-visible > span {
+	opacity: 1;
+}
