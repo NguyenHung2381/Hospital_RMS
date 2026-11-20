@@ -216,8 +216,21 @@ html :where(a[href], button, summary, [role='button'], [role='tab'], [role='menu
 	}
 
 	/* Vòng xoay "đang tải" là chuyển động cần thiết (báo hệ thống còn chạy):
-	   giữ lại nhưng quay chậm. Spinner riêng của dự án: xem Loading.module.css */
-	.ant-spin-dot-spin {
+	   giữ lại nhưng quay chậm. Luật chung ở trên ép mọi animation về 1 vòng
+	   0.01ms nên nếu không có ngoại lệ này khoảng 50 spinner cục bộ (.spinner,
+	   .btnSpinner, .inlineSpinner…) đứng yên.
+	   Bộ chọn theo tên class chứa "spinner" (không phân biệt hoa/thường; class
+	   CSS Modules vẫn giữ tên gốc trong tên băm). Đã quét: mọi class chứa
+	   "spinner" trong dự án hoặc là vòng xoay `spin`, hoặc là hộp bọc không có
+	   animation (.spinnerWrapper, .loadingSpinnerBtn) nên không bắt nhầm.
+	   Phần tử giả ::before/::after cần liệt kê riêng vì luật chung nhắm `*::before`.
+	   Màn Loading toàn trang vẽ hai vòng .ringOuter/.ringInner nằm TRONG
+	   .spinnerWrapper (tên vòng không chứa "spinner") nên có dòng riêng. */
+	.ant-spin-dot-spin,
+	[class*='spinner' i],
+	[class*='spinner' i]::before,
+	[class*='spinner' i]::after,
+	[class*='spinnerWrapper' i] > [class*='ring' i] {
 		animation-duration: 2.4s !important;
 		animation-iteration-count: infinite !important;
 	}
@@ -245,9 +258,17 @@ table {
 	scrollbar-width: thin;
 }
 
-/* === MOBILE TOUCH TARGETS & MODAL UTILITIES === */
-@media (max-width: 768px) {
-	/* Touch targets minimum 38px cho nút thông thường (ngoại trừ dot/chip/icon) */
+/* === VÙNG CHẠM TRÊN MÀN CẢM ỨNG === */
+/* Vùng chạm: điều kiện theo LOẠI CON TRỎ (màn cảm ứng, kể cả máy tính bảng
+   rộng hơn 768px), không theo bề rộng cửa sổ — cửa sổ trình duyệt desktop thu
+   hẹp không bị phình nút. Tối thiểu --touch-target-min (48px, trước là 38px).
+   RỦI RO: nút nhỏ trong thanh công cụ/bảng dày (nút icon thao tác ở mỗi dòng,
+   ô phân trang) sẽ cao 48px khi chạm → dòng bảng và thanh lọc cao lên. Giữ danh
+   sách loại trừ cũ (dot/chip/zoom/arrow/close). Cần kiểm bằng mắt trên điện
+   thoại + iPad; nếu vỡ, hạ --touch-target-min hoặc thêm loại trừ theo từng
+   vùng (cột thao tác của bảng) thay vì bỏ luật. */
+@media (pointer: coarse) {
+	/* Touch targets tối thiểu cho nút thông thường (ngoại trừ dot/chip/icon) */
 	button:not([class*='dot']):not([class*='Dot']):not([class*='chip']):not(
 			[class*='Chip']
 		):not([class*='zoom']):not([class*='Zoom']):not([class*='arrow']):not(
@@ -256,9 +277,12 @@ table {
 	a,
 	input[type='button'],
 	input[type='submit'] {
-		min-height: 38px;
+		min-height: var(--touch-target-min);
 	}
+}
 
+/* === MODAL TRÊN MÀN HẸP === (theo bề rộng cửa sổ, không theo loại con trỏ) */
+@media (max-width: 768px) {
 	/* Responsive modal container */
 	.modal-container,
 	div[class*='modalCard'],
