@@ -1,8 +1,9 @@
+import { markFieldControl, type FieldControlProps } from '@/shared/components';
 import { useVenueOptions } from '../hooks/useVenueOptions';
 import type { Venue, VenueScope } from '../types/venue.type';
 import { SCOPE_LABEL } from '../utils/venueScope';
 
-interface VenueSelectProps {
+interface VenueSelectProps extends FieldControlProps {
 	/** Tên địa điểm — bảng nghiệp vụ lưu text (councils.location, class_sessions.room...). */
 	value: string;
 	onChange: (name: string) => void;
@@ -11,7 +12,6 @@ interface VenueSelectProps {
 	className?: string;
 	placeholder?: string;
 	disabled?: boolean;
-	id?: string;
 	/** Hiện thêm địa điểm dành cho mục đích khác (nhóm riêng bên dưới) — vd buổi học mượn phòng họp. */
 	includeOthers?: boolean;
 }
@@ -28,6 +28,7 @@ export function VenueSelect({
 	disabled,
 	id,
 	includeOthers,
+	...aria
 }: VenueSelectProps) {
 	const { venues, others, loaded } = useVenueOptions(scope);
 	const extra = includeOthers ? others : [];
@@ -47,6 +48,7 @@ export function VenueSelect({
 	return (
 		<select
 			id={id}
+			{...aria}
 			className={className}
 			value={value}
 			disabled={disabled}
@@ -70,3 +72,6 @@ export function VenueSelect({
 		</select>
 	);
 }
+
+// FormField tự nối nhãn / lỗi vào ô chọn này
+markFieldControl(VenueSelect);

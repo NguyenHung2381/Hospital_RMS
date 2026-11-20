@@ -144,6 +144,7 @@ export default function Venues() {
 					/>
 					{canCreate && (
 						<button
+							type='button'
 							className={base.btnAddHeader}
 							onClick={() => setEditing('new')}
 						>
@@ -164,6 +165,7 @@ export default function Venues() {
 							<SearchSvg className={base.searchIcon} />
 							<input
 								className={base.searchInput}
+								aria-label='Tìm địa điểm'
 								placeholder='Tìm theo tên, vị trí...'
 								value={search}
 								onChange={(e) => {
@@ -173,7 +175,9 @@ export default function Venues() {
 							/>
 							{search && (
 								<button
+									type='button'
 									className={base.searchClear}
+									aria-label='Xóa từ khóa tìm kiếm'
 									onClick={() => setSearch('')}
 								>
 									<XSvg />
@@ -182,6 +186,7 @@ export default function Venues() {
 						</div>
 						<select
 							className={base.pageSizeSelect}
+							aria-label='Lọc theo mục đích sử dụng'
 							value={scopeFilter}
 							onChange={(e) => {
 								setScopeFilter(e.target.value as VenueScope | '');
@@ -267,22 +272,26 @@ export default function Venues() {
 											<td className={`${base.td} ${base.tdActions}`}>
 												<div className={base.actionBtns}>
 													{canUpdate && (
-														<div
+														<button
+															type='button'
 															className={base.actionBtn}
 															title='Chỉnh sửa'
+															aria-label={`Chỉnh sửa địa điểm ${v.name}`}
 															onClick={() => setEditing(v)}
 														>
 															<EditSvg />
-														</div>
+														</button>
 													)}
 													{canDelete && (
-														<div
+														<button
+															type='button'
 															className={`${base.actionBtn} ${base.danger}`}
 															title='Xóa'
+															aria-label={`Xóa địa điểm ${v.name}`}
 															onClick={() => setDeleting(v)}
 														>
 															<TrashSvg />
-														</div>
+														</button>
 													)}
 												</div>
 											</td>
@@ -330,6 +339,7 @@ export default function Venues() {
 					footer={
 						<>
 							<button
+								type='button'
 								className={base.btnCancel}
 								onClick={() => setDeleting(null)}
 								disabled={loading}
@@ -337,6 +347,7 @@ export default function Venues() {
 								Hủy
 							</button>
 							<button
+								type='button'
 								className={base.btnDanger}
 								onClick={handleDelete}
 								disabled={loading}
