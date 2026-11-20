@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import {
 	CONCLUSION_LABELS,
@@ -40,6 +41,7 @@ export function ProgressConclusionTab({
 	savedResultId,
 	onSaveResult,
 }: ProgressConclusionTabProps) {
+	const uid = useId();
 	const pg = useClientPaging(others);
 	return (
 		<div className={styles.conclusionTabWrapper}>
@@ -140,9 +142,10 @@ export function ProgressConclusionTab({
 						</div>
 						<div className={styles.conclusionFormGrid}>
 							<div className={styles.conclusionSelectField}>
-								<label className={styles.formLabel}>Kết luận cuối cùng</label>
+								<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Kết luận cuối cùng</label>
 								<div className={styles.customSelectWrapper}>
 									<select
+										id={`${uid}-f1`}
 										value={rd.conclusion}
 										onChange={(e) =>
 											setResultDraft(t.id, {
@@ -184,6 +187,7 @@ export function ProgressConclusionTab({
 						</div>
 						<div className={styles.conclusionActions}>
 							<button
+								type='button'
 								className={styles.saveBtn}
 								disabled={savingResultId === t.id}
 								onClick={() => onSaveResult(t)}

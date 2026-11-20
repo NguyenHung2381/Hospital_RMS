@@ -1,6 +1,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useId } from 'react';
 import type { SimpleItem } from '../../topics/api/topicApi';
-import { InlineLoading } from '@/shared/components';
+import { InlineLoading, Modal } from '@/shared/components';
 import styles from '../pages/MyTopics.module.css';
 import { CustomFields } from '@/shared/formConfig/CustomFields';
 import { CustomFieldsView } from '@/shared/formConfig/CustomFieldsView';
@@ -56,6 +57,7 @@ export function EditTopicModal({
 	onSave,
 	children,
 }: EditTopicModalProps) {
+	const uid = useId();
 	const { label: lbl, placeholder: ph } = cfg;
 	const star = (k: string, def = false) => (cfg.required(k, def) ? ' *' : '');
 	const below = (k: string) => (
@@ -64,170 +66,22 @@ export function EditTopicModal({
 			{errors[k] && <div className={styles.editFieldError}>{errors[k]}</div>}
 		</>
 	);
+	// Đang lưu thì không cho đóng (Esc, bấm nền, nút X).
+	const requestClose = () => {
+		if (!editLoading) onClose();
+	};
 	return (
-		<div
-			className={styles.editBackdrop}
-			onClick={(e) => {
-				if (e.target === e.currentTarget && !editLoading) onClose();
-			}}
-		>
-			<div className={styles.editModal}>
-				<div className={styles.editModalHeader}>
-					<span className={styles.editModalTitle}>
-						Chỉnh sửa thông tin đề tài
-					</span>
+		<Modal
+			open
+			onClose={requestClose}
+			title='Chỉnh sửa thông tin đề tài'
+			size='md'
+			closeOnBackdrop={!editLoading}
+			bodyClassName={styles.editModalBody}
+			footer={
+				<>
 					<button
-						className={styles.viewerClose}
-						onClick={() => !editLoading && onClose()}
-					>
-						✕
-					</button>
-				</div>
-
-				<div className={styles.editModalBody}>
-					{refDataLoading ? (
-						<InlineLoading label='Đang tải dữ liệu…' />
-					) : (
-						<>
-							<div className={styles.editField}>
-								<label className={styles.editLabel}>{lbl('title', 'Tiêu đề đề tài')} *</label>
-								<input
-									className={styles.editInput}
-									value={editForm.title}
-									onChange={(e) =>
-										setEditForm((f) => ({ ...f, title: e.target.value }))
-									}
-									placeholder={ph('title', 'Nhập tiêu đề đề tài')}
-									maxLength={cfg.maxLength('title')}
-									disabled={editLoading || !canEditTitle}
-								/>
-								{below('title')}
-							</div>
-
-							{cfg.visible('description') && (
-								<div className={styles.editField}>
-									<label className={styles.editLabel}>
-										{lbl('description', 'Mô tả / Tóm tắt')}
-										{star('description')}
-									</label>
-									<textarea
-										className={styles.editTextarea}
-										value={editForm.description}
-										onChange={(e) =>
-											setEditForm((f) => ({ ...f, description: e.target.value }))
-										}
-										placeholder={ph('description', 'Nhập mô tả đề tài')}
-										maxLength={cfg.maxLength('description')}
-										rows={4}
-										disabled={editLoading || !canEditInfo}
-									/>
-									{below('description')}
-								</div>
-							)}
-
-							<div className={styles.editFieldRow}>
-								<div className={styles.editField}>
-									<label className={styles.editLabel}>{lbl('category_id', 'Danh mục')}</label>
-									<select
-										className={styles.editSelect}
-										value={editForm.category_id}
-										onChange={(e) =>
-											setEditForm((f) => ({
-												...f,
-												category_id: e.target.value,
-											}))
-										}
-										disabled={editLoading || !canEditInfo}
-									>
-										<option value=''>-- Chọn danh mục --</option>
-										{refData?.categories.map((c) => (
-											<option
-												key={c.id}
-												value={c.id}
-											>
-												{c.name}
-											</option>
-										))}
-									</select>
-									{below('category_id')}
-								</div>
-								<div className={styles.editField}>
-									{/* Cấp độ lấy theo đợt — chỉ hiển thị, đổi ở cấu hình đợt */}
-									<label className={styles.editLabel}>Cấp độ (theo đợt)</label>
-									<select
-										className={styles.editSelect}
-										value={editForm.level_id}
-										disabled
-									>
-										<option value=''>-- Chọn cấp độ --</option>
-										{refData?.levels.map((l) => (
-											<option
-												key={l.id}
-												value={l.id}
-											>
-												{l.name}
-											</option>
-										))}
-									</select>
-								</div>
-							</div>
-
-							<div className={styles.editField}>
-								<label className={styles.editLabel}>
-									{lbl('department_id', 'Khoa/phòng')}
-									{star('department_id', true)}
-								</label>
-								<select
-									className={styles.editSelect}
-									value={editForm.department_id}
-									onChange={(e) =>
-										setEditForm((f) => ({
-											...f,
-											department_id: e.target.value,
-										}))
-									}
-									disabled={editLoading || !canEditInfo}
-								>
-									<option value=''>-- Chọn phòng ban --</option>
-									{refData?.depts.map((d) => (
-										<option
-											key={d.id}
-											value={d.id}
-										>
-											{d.name}
-										</option>
-									))}
-								</select>
-								{below('department_id')}
-							</div>
-
-							{canEditInfo ? (
-								<CustomFields
-									cfg={cfg}
-									value={custom}
-									onChange={setCustom}
-									errors={errors}
-									sectionClassName={styles.editLabel}
-									inputClassName={styles.editInput}
-								/>
-							) : (
-								<CustomFieldsView
-									cfg={cfg}
-									data={custom}
-									itemClassName={styles.editField}
-									labelClassName={styles.editLabel}
-								/>
-							)}
-
-							{editError && <div className={styles.editError}>{editError}</div>}
-
-							{children}
-						</>
-					)}
-				</div>
-
-				<div className={styles.editModalFooter}>
-					<button
+						type='button'
 						className={styles.btnSecondary}
 						onClick={onClose}
 						disabled={editLoading}
@@ -235,14 +89,160 @@ export function EditTopicModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={onSave}
 						disabled={editLoading || !editForm.title.trim() || refDataLoading}
 					>
 						{editLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
 					</button>
-				</div>
-			</div>
-		</div>
+				</>
+			}
+		>
+			{refDataLoading ? (
+				<InlineLoading label='Đang tải dữ liệu…' />
+			) : (
+				<>
+					<div className={styles.editField}>
+						<label htmlFor={`${uid}-f1`} className={styles.editLabel}>{lbl('title', 'Tiêu đề đề tài')} *</label>
+						<input
+							id={`${uid}-f1`}
+							className={styles.editInput}
+							value={editForm.title}
+							onChange={(e) =>
+								setEditForm((f) => ({ ...f, title: e.target.value }))
+							}
+							placeholder={ph('title', 'Nhập tiêu đề đề tài')}
+							maxLength={cfg.maxLength('title')}
+							disabled={editLoading || !canEditTitle}
+						/>
+						{below('title')}
+					</div>
+
+					{cfg.visible('description') && (
+						<div className={styles.editField}>
+							<label htmlFor={`${uid}-f2`} className={styles.editLabel}>
+								{lbl('description', 'Mô tả / Tóm tắt')}
+								{star('description')}
+							</label>
+							<textarea
+								id={`${uid}-f2`}
+								className={styles.editTextarea}
+								value={editForm.description}
+								onChange={(e) =>
+									setEditForm((f) => ({ ...f, description: e.target.value }))
+								}
+								placeholder={ph('description', 'Nhập mô tả đề tài')}
+								maxLength={cfg.maxLength('description')}
+								rows={4}
+								disabled={editLoading || !canEditInfo}
+							/>
+							{below('description')}
+						</div>
+					)}
+
+					<div className={styles.editFieldRow}>
+						<div className={styles.editField}>
+							<label htmlFor={`${uid}-f3`} className={styles.editLabel}>{lbl('category_id', 'Danh mục')}</label>
+							<select
+								id={`${uid}-f3`}
+								className={styles.editSelect}
+								value={editForm.category_id}
+								onChange={(e) =>
+									setEditForm((f) => ({
+										...f,
+										category_id: e.target.value,
+									}))
+								}
+								disabled={editLoading || !canEditInfo}
+							>
+								<option value=''>-- Chọn danh mục --</option>
+								{refData?.categories.map((c) => (
+									<option
+										key={c.id}
+										value={c.id}
+									>
+										{c.name}
+									</option>
+								))}
+							</select>
+							{below('category_id')}
+						</div>
+						<div className={styles.editField}>
+							{/* Cấp độ lấy theo đợt — chỉ hiển thị, đổi ở cấu hình đợt */}
+							<label htmlFor={`${uid}-f4`} className={styles.editLabel}>Cấp độ (theo đợt)</label>
+							<select
+								id={`${uid}-f4`}
+								className={styles.editSelect}
+								value={editForm.level_id}
+								disabled
+							>
+								<option value=''>-- Chọn cấp độ --</option>
+								{refData?.levels.map((l) => (
+									<option
+										key={l.id}
+										value={l.id}
+									>
+										{l.name}
+									</option>
+								))}
+							</select>
+						</div>
+					</div>
+
+					<div className={styles.editField}>
+						<label htmlFor={`${uid}-f5`} className={styles.editLabel}>
+							{lbl('department_id', 'Khoa/phòng')}
+							{star('department_id', true)}
+						</label>
+						<select
+							id={`${uid}-f5`}
+							className={styles.editSelect}
+							value={editForm.department_id}
+							onChange={(e) =>
+								setEditForm((f) => ({
+									...f,
+									department_id: e.target.value,
+								}))
+							}
+							disabled={editLoading || !canEditInfo}
+						>
+							<option value=''>-- Chọn phòng ban --</option>
+							{refData?.depts.map((d) => (
+								<option
+									key={d.id}
+									value={d.id}
+								>
+									{d.name}
+								</option>
+							))}
+						</select>
+						{below('department_id')}
+					</div>
+
+					{canEditInfo ? (
+						<CustomFields
+							cfg={cfg}
+							value={custom}
+							onChange={setCustom}
+							errors={errors}
+							sectionClassName={styles.editLabel}
+							inputClassName={styles.editInput}
+						/>
+					) : (
+						<CustomFieldsView
+							cfg={cfg}
+							data={custom}
+							itemClassName={styles.editField}
+							labelClassName={styles.editLabel}
+						/>
+					)}
+
+					{editError && <div className={styles.editError}>{editError}</div>}
+
+					{children}
+				</>
+			)}
+		</Modal>
 	);
 }

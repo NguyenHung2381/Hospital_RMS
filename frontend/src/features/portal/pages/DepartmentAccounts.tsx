@@ -157,13 +157,16 @@ export default function DepartmentAccounts() {
 							<SearchSvg />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm tài khoản theo tên, tên đăng nhập, email hoặc mã nhân viên'
 								placeholder='Tìm theo tên, tên đăng nhập, email, mã NV...'
 								value={d.search}
 								onChange={(e) => d.setSearch(e.target.value)}
 							/>
 							{d.search && (
 								<button
+									type='button'
 									className={styles.searchClear}
+									aria-label='Xóa nội dung tìm kiếm'
 									onClick={() => d.setSearch('')}
 								>
 									<XSvg />
@@ -172,6 +175,7 @@ export default function DepartmentAccounts() {
 						</div>
 						<div className={styles.roleFilters}>
 							<button
+								type='button'
 								className={`${styles.roleFilterBtn} ${d.roleFilter === 'all' ? styles.roleFilterActive : ''}`}
 								onClick={() => d.setRoleFilter('all')}
 							>
@@ -180,6 +184,7 @@ export default function DepartmentAccounts() {
 							</button>
 							{d.roles.map((t) => (
 								<button
+									type='button'
 									key={t.id}
 									className={`${styles.roleFilterBtn} ${d.roleFilter === t.id ? styles.roleFilterActive : ''}`}
 									onClick={() => d.setRoleFilter(t.id)}
@@ -365,8 +370,10 @@ export default function DepartmentAccounts() {
 											<td className={`${styles.td} ${styles.tdActions}`}>
 												{canUpdate && (
 													<button
+														type='button'
 														className={`${styles.actionBtn} ${styles.actionEdit}`}
 														title='Chỉnh sửa'
+														aria-label={`Chỉnh sửa tài khoản ${u.username}`}
 														onClick={() => d.setEditUser(u)}
 													>
 														<EditSvg />
@@ -374,8 +381,10 @@ export default function DepartmentAccounts() {
 												)}
 												{canUpdate && (
 													<button
+														type='button'
 														className={styles.actionBtn}
 														title='Đặt lại mật khẩu (về tên đăng nhập)'
+														aria-label={`Đặt lại mật khẩu của tài khoản ${u.username}`}
 														onClick={() => d.setResetUser(u)}
 														style={{ color: '#b45309' }}
 													>
@@ -384,8 +393,10 @@ export default function DepartmentAccounts() {
 												)}
 												{canDelete && (
 													<button
+														type='button'
 														className={`${styles.actionBtn} ${styles.actionDelete}`}
 														title='Xóa'
+														aria-label={`Xóa tài khoản ${u.username}`}
 														onClick={() => d.setDeleteUser(u)}
 													>
 														<TrashSvg />

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
 	PROGRESS_RATING_LABELS,
 	uploadCommentImage,
@@ -25,6 +26,7 @@ export function ProgressMyReviewTab({
 	savedId,
 	onSave,
 }: ProgressMyReviewTabProps) {
+	const uid = useId();
 	return (
 		<div className={styles.cardSection}>
 			<h3 className={styles.cardSectionTitle}>📝 Ý kiến đánh giá cá nhân</h3>
@@ -32,9 +34,10 @@ export function ProgressMyReviewTab({
 			<div className={styles.evaluationFormGrid}>
 				<div className={styles.evaluationFormLeft}>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Tiến độ hoàn thành</label>
+						<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Tiến độ hoàn thành</label>
 						<div className={styles.inputGroupPercent}>
 							<input
+								id={`${uid}-f1`}
 								type='number'
 								min={0}
 								max={100}
@@ -49,9 +52,10 @@ export function ProgressMyReviewTab({
 					</div>
 
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Xếp loại tiến độ</label>
+						<label htmlFor={`${uid}-f2`} className={styles.formLabel}>Xếp loại tiến độ</label>
 						<div className={styles.customSelectWrapper}>
 							<select
+								id={`${uid}-f2`}
 								value={d.rating}
 								onChange={(e) =>
 									setDraft(t.id, {
@@ -94,6 +98,7 @@ export function ProgressMyReviewTab({
 
 			<div className={styles.cardSectionActions}>
 				<button
+					type='button'
 					className={styles.saveBtn}
 					disabled={savingId === t.id}
 					onClick={() => onSave(t)}

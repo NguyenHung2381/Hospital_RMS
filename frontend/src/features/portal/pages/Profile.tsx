@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
 	AlertSvg,
 	BadgeSvg,
@@ -35,6 +36,7 @@ const SPINNER = (
 );
 
 export default function Profile() {
+	const uid = useId();
 	const d = useProfile();
 	// Nhãn / độ dài họ tên + trường tùy chỉnh hồ sơ theo Cấu hình form
 	const cfg = useFormConfig('user_profile', 'profile');
@@ -191,7 +193,7 @@ export default function Profile() {
 												aria-label='Họ và tên'
 												onChange={(e) => d.setNameDraft(e.target.value)}
 											/>
-											<button className={styles.btnPrimary} disabled={d.nameSaving}>
+											<button type='button' className={styles.btnPrimary} disabled={d.nameSaving}>
 												Lưu
 											</button>
 											<button
@@ -449,6 +451,7 @@ export default function Profile() {
 											inputMode='numeric'
 											maxLength={6}
 											className={styles.formInput}
+											aria-label='Mã xác thực 6 số'
 											placeholder='000000'
 											value={d.twoFaCode}
 											onChange={(e) => d.setTwoFaCode(e.target.value.replace(/\D/g, ''))}
@@ -545,10 +548,11 @@ export default function Profile() {
 								) : d.showRegenBackup ? (
 									<>
 										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>
+											<label htmlFor={`${uid}-f1`} className={styles.formLabel}>
 												Nhập mật khẩu để tạo bộ mã khôi phục mới (bộ cũ sẽ mất hiệu lực)
 											</label>
 											<PasswordInput
+												id={`${uid}-f1`}
 												className={styles.formInput}
 												placeholder='Mật khẩu hiện tại...'
 												autoComplete='current-password'
@@ -617,8 +621,9 @@ export default function Profile() {
 								) : (
 									<>
 										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>Nhập mật khẩu để xác nhận</label>
+											<label htmlFor={`${uid}-f2`} className={styles.formLabel}>Nhập mật khẩu để xác nhận</label>
 											<PasswordInput
+												id={`${uid}-f2`}
 												className={styles.formInput}
 												placeholder='Mật khẩu hiện tại...'
 												autoComplete='current-password'
@@ -627,8 +632,9 @@ export default function Profile() {
 											/>
 										</div>
 										<div className={styles.formGroup}>
-											<label className={styles.formLabel}>Mã xác thực</label>
+											<label htmlFor={`${uid}-f3`} className={styles.formLabel}>Mã xác thực</label>
 											<input
+												id={`${uid}-f3`}
 												type='text'
 												className={styles.formInput}
 												placeholder='Mã 6 số từ ứng dụng, hoặc 1 mã khôi phục'

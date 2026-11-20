@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { SimpleItem } from '../../topics/api/topicApi';
 import type { Topic } from '../../topics/types/topic.type';
 import { lookup } from '../../topics/utils/topicHelpers';
@@ -43,14 +44,16 @@ export default function InfoTab({
 	startEditInfo,
 	handleSaveInfo,
 }: Props) {
+	const uid = useId();
 	const statusCfg = STATUS_CFG[topic.status] ?? STATUS_CFG.submitted;
 
 	if (editingInfo) {
 		return (
 			<div className={styles.infoEditForm}>
 				<div>
-					<label className={styles.infoLabel}>Tên đề tài *</label>
+					<label htmlFor={`${uid}-f1`} className={styles.infoLabel}>Tên đề tài *</label>
 					<input
+						id={`${uid}-f1`}
 						className={styles.formInput}
 						value={infoForm.title}
 						disabled={!canEditTitle}
@@ -62,8 +65,9 @@ export default function InfoTab({
 				<div className={styles.infoEditRow}>
 					<div style={{ flex: 1 }}>
 						{/* Cấp độ lấy theo đợt — chỉ hiển thị, đổi ở cấu hình đợt */}
-						<label className={styles.infoLabel}>Cấp độ (theo đợt)</label>
+						<label htmlFor={`${uid}-f2`} className={styles.infoLabel}>Cấp độ (theo đợt)</label>
 						<select
+							id={`${uid}-f2`}
 							className={styles.formInput}
 							value={infoForm.level_id}
 							disabled
@@ -80,8 +84,9 @@ export default function InfoTab({
 						</select>
 					</div>
 					<div style={{ flex: 1 }}>
-						<label className={styles.infoLabel}>Phân loại</label>
+						<label htmlFor={`${uid}-f3`} className={styles.infoLabel}>Phân loại</label>
 						<select
+							id={`${uid}-f3`}
 							className={styles.formInput}
 							value={infoForm.category_id}
 							disabled={!canEditInfo}
@@ -102,8 +107,9 @@ export default function InfoTab({
 					</div>
 				</div>
 				<div>
-					<label className={styles.infoLabel}>Mô tả / Tóm tắt</label>
+					<label htmlFor={`${uid}-f4`} className={styles.infoLabel}>Mô tả / Tóm tắt</label>
 					<textarea
+						id={`${uid}-f4`}
 						className={styles.formInput}
 						rows={4}
 						style={{ resize: 'vertical' }}
@@ -117,6 +123,7 @@ export default function InfoTab({
 				{infoErr && <p className={styles.infoEditErr}>{infoErr}</p>}
 				<div className={styles.infoEditActions}>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={handleSaveInfo}
 						disabled={savingInfo}
@@ -124,6 +131,7 @@ export default function InfoTab({
 						{savingInfo ? 'Đang lưu...' : 'Lưu thay đổi'}
 					</button>
 					<button
+						type='button'
 						className={styles.btnSecondary}
 						onClick={() => setEditingInfo(false)}
 						disabled={savingInfo}
@@ -200,6 +208,7 @@ export default function InfoTab({
 			{(canEditTitle || canEditInfo) && (
 				<div style={{ marginTop: 20 }}>
 					<button
+						type='button'
 						className={styles.btnSecondary}
 						onClick={startEditInfo}
 					>

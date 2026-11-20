@@ -41,6 +41,7 @@ export function MyTopicsListPanel({
 					<SearchSvg className={styles.listSearchIcon} />
 					<input
 						className={styles.listSearchInput}
+						aria-label='Tìm đề tài theo mã hoặc tên'
 						placeholder='Tìm mã, tên đề tài...'
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
@@ -48,10 +49,17 @@ export function MyTopicsListPanel({
 				</div>
 			</div>
 
-			<div className={styles.listTabs}>
+			<div
+				className={styles.listTabs}
+				role='tablist'
+				aria-label='Lọc đề tài theo trạng thái'
+			>
 				{TABS.map((t) => (
-					<div
+					<button
 						key={t.key}
+						type='button'
+						role='tab'
+						aria-selected={activeTab === t.key}
 						className={`${styles.listTab} ${activeTab === t.key ? styles.listTabActive : ''}`}
 						onClick={() => {
 							setActiveTab(t.key);
@@ -65,7 +73,7 @@ export function MyTopicsListPanel({
 						>
 							{stats[t.key]}
 						</span>
-					</div>
+					</button>
 				))}
 			</div>
 
@@ -88,8 +96,10 @@ export function MyTopicsListPanel({
 					filtered.map((t) => {
 						const cfg = STATUS_CFG[t.status];
 						return (
-							<div
+							<button
 								key={t.id}
+								type='button'
+								aria-current={selectedId === t.id ? 'true' : undefined}
 								className={`${styles.listItem} ${selectedId === t.id ? styles.listItemSelected : ''}`}
 								onClick={() => setSelectedId(t.id)}
 							>
@@ -124,7 +134,7 @@ export function MyTopicsListPanel({
 										{cfg.label}
 									</Badge>
 								</div>
-							</div>
+							</button>
 						);
 					})
 				)}

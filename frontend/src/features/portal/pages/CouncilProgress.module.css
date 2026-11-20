@@ -435,6 +435,11 @@
 }
 
 .sidebarTopicCard {
+	/* <button> — nhận lại dáng khối như thẻ div trước đây */
+	width: 100%;
+	font: inherit;
+	color: inherit;
+	text-align: left;
 	background: var(--color-gray-50);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);

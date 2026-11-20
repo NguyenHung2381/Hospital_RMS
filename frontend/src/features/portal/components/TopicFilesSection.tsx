@@ -45,7 +45,8 @@ export function TopicFilesSection({
 
 			{canUploadFiles && (
 				<div className={styles.uploadArea}>
-					<div
+					<button
+						type='button'
 						className={styles.uploadDropzone}
 						onClick={() => fileInputRef.current?.click()}
 						onDragOver={(e) => e.preventDefault()}
@@ -58,24 +59,24 @@ export function TopicFilesSection({
 							]);
 						}}
 					>
-						<input
-							ref={fileInputRef}
-							type='file'
-							accept={uploadPolicy.accept}
-							multiple
-							style={{ display: 'none' }}
-							onChange={(e) => {
-								const selectedFiles = Array.from(e.target.files ?? []);
-								setPendingFiles((prev) => [
-									...prev,
-									...selectedFiles,
-								]);
-								e.target.value = '';
-							}}
-						/>
 						<UploadSvg />
 						<span>Kéo thả file vào đây hoặc chọn từ máy tính</span>
-					</div>
+					</button>
+					<input
+						ref={fileInputRef}
+						type='file'
+						accept={uploadPolicy.accept}
+						multiple
+						style={{ display: 'none' }}
+						onChange={(e) => {
+							const selectedFiles = Array.from(e.target.files ?? []);
+							setPendingFiles((prev) => [
+								...prev,
+								...selectedFiles,
+							]);
+							e.target.value = '';
+						}}
+					/>
 					{pendingFiles.length > 0 && (
 						<>
 							<div className={styles.pendingList}>
@@ -92,12 +93,14 @@ export function TopicFilesSection({
 											{formatFileSize(f.size)}
 										</span>
 										<button
+											type='button'
 											className={styles.pendingRemove}
 											onClick={() =>
 												setPendingFiles((prev) =>
 													prev.filter((_, j) => j !== i),
 												)
 											}
+											aria-label={`Bỏ file ${f.name} khỏi danh sách tải lên`}
 											disabled={uploadLoading}
 										>
 											<XSvg />
@@ -108,6 +111,7 @@ export function TopicFilesSection({
 
 							<input
 								className={styles.batchNoteInput}
+								aria-label='Ghi chú lần tải lên'
 								placeholder='Ghi chú lần tải lên (tùy chọn)'
 								value={batchNote}
 								onChange={(e) => setBatchNote(e.target.value)}
@@ -116,6 +120,7 @@ export function TopicFilesSection({
 
 							<div className={styles.uploadFooter}>
 								<button
+									type='button'
 									className={styles.btnUpload}
 									onClick={() => void handleUpload()}
 									disabled={uploadLoading}

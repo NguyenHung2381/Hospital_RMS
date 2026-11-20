@@ -91,8 +91,10 @@ export function ProgressSidebar({
 											mine &&
 											(mine.rating != null || mine.progress_percent != null);
 										return (
-											<div
+											<button
 												key={t.id}
+												type='button'
+												aria-current={isSelected ? 'true' : undefined}
 												className={`${styles.sidebarTopicCard} ${isSelected ? styles.activeTopicCard : ''}`}
 												onClick={() => setSelectedTopicId(t.id)}
 											>
@@ -138,7 +140,7 @@ export function ProgressSidebar({
 														/>
 													</div>
 												)}
-											</div>
+											</button>
 										);
 									})}
 								</div>
