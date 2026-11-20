@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { removeDiacritics } from '@/shared/utils/helper';
 import styles from './SearchableSelect.module.css';
@@ -137,6 +137,10 @@ export function SearchableSelect({
 		} else if (e.key === 'Tab') setOpen(false);
 	};
 
+	// id danh sách + từng dòng để ô tìm trỏ tới dòng đang tô (aria-activedescendant)
+	const listId = useId();
+	const optionId = (i: number) => `${listId}-opt-${i}`;
+
 	return (
 		<div ref={ref} className={`${styles.wrap} ${className ?? ''}`}>
 			<button
@@ -151,6 +155,7 @@ export function SearchableSelect({
 				aria-required={ariaRequired}
 				aria-haspopup='listbox'
 				aria-expanded={open}
+				aria-controls={open ? listId : undefined}
 				className={`${styles.trigger} ${size === 'sm' ? styles.sm : ''} ${open ? styles.triggerOpen : ''} ${hasError ? styles.hasError : ''}`}
 				onClick={() => (open ? setOpen(false) : openMenu())}
 				// Gõ chữ / ↓ khi ô đang focus ⇒ mở menu tìm luôn, khỏi bấm chuột
@@ -184,6 +189,12 @@ export function SearchableSelect({
 							<input
 								ref={searchRef}
 								type='text'
+								role='combobox'
+								aria-expanded='true'
+								aria-haspopup='listbox'
+								aria-controls={listId}
+								aria-autocomplete='list'
+								aria-activedescendant={filtered[active] ? optionId(active) : undefined}
 								className={styles.searchInput}
 								placeholder={searchPlaceholder}
 								aria-label={searchPlaceholder}
@@ -195,7 +206,12 @@ export function SearchableSelect({
 								onKeyDown={onSearchKey}
 							/>
 						</div>
-						<div className={styles.options} role='listbox'>
+						<div
+							id={listId}
+							className={styles.options}
+							role='listbox'
+							aria-label={searchPlaceholder ?? placeholder}
+						>
 							{filtered.length === 0 ? (
 								<div className={styles.empty}>Không tìm thấy kết quả</div>
 							) : (
@@ -205,6 +221,7 @@ export function SearchableSelect({
 											<div className={styles.groupLabel}>{o.group}</div>
 										)}
 										<div
+											id={optionId(i)}
 											data-idx={i}
 											role='option'
 											aria-selected={o.id === value}
