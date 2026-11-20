@@ -32,6 +32,24 @@
 	cursor: pointer;
 }
 
+/* Màn cảm ứng: nút công cụ 40px + khe 8px (xuống dòng khi hẹp), vùng bấm 48×48 */
+@media (pointer: coarse) {
+	.toolbar {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.toolBtn {
+		position: relative;
+		min-width: 40px;
+		height: 40px;
+	}
+	.toolBtn::after {
+		content: '';
+		position: absolute;
+		inset: -4px;
+	}
+}
+
 .toolBtn:hover:not(:disabled) {
 	background: var(--color-gray-200);
 }

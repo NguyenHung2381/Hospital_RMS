@@ -1,10 +1,15 @@
 import { XSvg } from '@/assets/icons';
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { DIALOG_LAYER_SELECTOR, useFocusTrap } from '../../hooks/useFocusTrap';
 import { cx } from '../../utils/cx';
+import modalStyles from '../Modal/Modal.module.css';
 import styles from './Drawer.module.css';
 
 type DrawerSize = 'sm' | 'md' | 'lg';
+
+/** Lớp hộp thoại: Modal / Drawer (aria-modal) và modal tự viết `composes: modalBackdrop`. */
+const DRAWER_LAYER_SELECTOR = `${DIALOG_LAYER_SELECTOR}, .${modalStyles.modalBackdrop}`;
 
 interface DrawerProps {
 	open: boolean;
@@ -47,31 +52,9 @@ export function Drawer({
 	bodyClassName,
 }: DrawerProps) {
 	const panelRef = useRef<HTMLDivElement>(null);
-	// onClose thường là arrow function mới mỗi lần render — giữ ref để effect không chạy lại
-	const closeRef = useRef(onClose);
-	useEffect(() => {
-		closeRef.current = onClose;
-	}, [onClose]);
-
-	useEffect(() => {
-		if (!open) return;
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key !== 'Escape') return;
-			// Có modal mở chồng lên (portal mở sau ⇒ nằm cuối body): Esc để modal đó tự đóng
-			const dialogs = document.querySelectorAll('[aria-modal="true"]');
-			if (dialogs[dialogs.length - 1] === panelRef.current) closeRef.current();
-		};
-		document.addEventListener('keydown', onKey);
-		return () => document.removeEventListener('keydown', onKey);
-	}, [open]);
-
-	// Đưa focus vào panel khi mở (bàn phím / trình đọc màn hình), trả lại chỗ cũ khi đóng
-	useEffect(() => {
-		if (!open) return;
-		const prev = document.activeElement as HTMLElement | null;
-		panelRef.current?.focus({ preventScroll: true });
-		return () => prev?.focus?.({ preventScroll: true });
-	}, [open]);
+	// Đưa focus vào panel khi mở, giữ Tab trong panel, Esc đóng (chỉ khi drawer là lớp
+	// trên cùng — modal mở từ trong drawer tự xử lý phím của nó), trả focus khi đóng.
+	useFocusTrap(panelRef, { active: open, onEscape: onClose, layerSelector: DRAWER_LAYER_SELECTOR });
 
 	if (!open) return null;
 

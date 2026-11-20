@@ -1,8 +1,9 @@
 import { CheckSmSvg } from '@/assets/icons';
 import { useEffect, useId, useRef, useState } from 'react';
 import styles from './MultiSelect.module.css';
+import { markFieldControl, type FieldControlProps } from './fieldControl';
 
-interface MultiSelectProps {
+interface MultiSelectProps extends FieldControlProps {
 	options: { id: string; label: string }[];
 	selected: Set<string>;
 	onChange: (next: Set<string>) => void;
@@ -18,6 +19,11 @@ export function MultiSelect({
 	placeholder,
 	searchable,
 	className,
+	id,
+	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
 }: MultiSelectProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState('');
@@ -84,7 +90,12 @@ export function MultiSelect({
 		>
 			<button
 				ref={triggerRef}
+				id={id}
 				type='button'
+				aria-label={ariaLabel}
+				aria-describedby={ariaDescribedBy}
+				aria-invalid={ariaInvalid}
+				aria-required={ariaRequired}
 				className={`${styles.trigger} ${selected.size > 0 ? styles.triggerActive : ''}`}
 				onClick={() => setOpen((o) => !o)}
 				aria-haspopup='true'
@@ -104,7 +115,7 @@ export function MultiSelect({
 					title='Bỏ chọn tất cả'
 					aria-label={`Bỏ lọc ${placeholder}`}
 				>
-					✕
+					<span aria-hidden='true'>✕</span>
 				</button>
 			)}
 			{open && (
@@ -122,6 +133,7 @@ export function MultiSelect({
 								type='text'
 								className={styles.searchInput}
 								placeholder='Tìm kiếm...'
+								aria-label='Tìm trong danh sách'
 								value={query}
 								onChange={(e) => setQuery(e.target.value)}
 								onClick={(e) => e.stopPropagation()}
@@ -166,3 +178,5 @@ export function MultiSelect({
 		</div>
 	);
 }
+
+markFieldControl(MultiSelect);

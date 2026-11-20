@@ -4,6 +4,7 @@ import { cx } from '../../utils/cx';
 import { generateTempPassword } from '../../utils/password';
 import m from '../Modal/Modal.module.css';
 import styles from './PasswordInput.module.css';
+import { markFieldControl, type FieldControlProps } from './fieldControl';
 
 /** Ô nhập mật khẩu có nút ẩn/hiện. `generate` thêm nút "Tạo ngẫu nhiên" bên phải
  * (điền mật khẩu tạm và tự hiện để người cấp đọc lại được). */
@@ -17,8 +18,11 @@ export function PasswordInput({
 	autoComplete = 'new-password',
 	className,
 	disabled,
-}: {
-	id?: string;
+	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
+}: FieldControlProps & {
 	value: string;
 	onChange: (value: string) => void;
 	placeholder?: string;
@@ -41,6 +45,10 @@ export function PasswordInput({
 				onChange={(e) => onChange(e.target.value)}
 				autoComplete={autoComplete}
 				disabled={disabled}
+				aria-label={ariaLabel}
+				aria-describedby={ariaDescribedBy}
+				aria-invalid={ariaInvalid ?? (invalid || undefined)}
+				aria-required={ariaRequired}
 			/>
 			<button
 				type='button'
@@ -71,3 +79,5 @@ export function PasswordInput({
 		</div>
 	);
 }
+
+markFieldControl(PasswordInput);

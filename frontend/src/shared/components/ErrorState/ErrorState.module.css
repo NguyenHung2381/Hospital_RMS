@@ -1,0 +1,20 @@
+/* Trạng thái lỗi — cùng khung với EmptyState (Table.module.css là nguồn chân lý). */
+
+.root {
+	composes: emptyState from '../Table/Table.module.css';
+}
+.icon {
+	composes: emptyIcon from '../Table/Table.module.css';
+	color: var(--color-error);
+}
+.title {
+	composes: emptyTitle from '../Table/Table.module.css';
+}
+.desc {
+	composes: emptyDesc from '../Table/Table.module.css';
+	max-width: 48ch;
+	color: var(--color-gray-500);
+}
+.action {
+	margin-top: var(--space-4);
+}
