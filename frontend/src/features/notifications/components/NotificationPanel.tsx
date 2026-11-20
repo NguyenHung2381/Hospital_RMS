@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
 	ApproveSvg,
@@ -51,7 +51,14 @@ export function NotificationPanel({
 	// Mép dưới nút chuông — panel neo theo khung nhìn trên điện thoại (xem CSS).
 	const [top, setTop] = useState<number>();
 	const wrapRef = useRef<HTMLDivElement>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const bellRef = useRef<HTMLButtonElement>(null);
+	const tabRefs = useRef<Record<'all' | 'unread', HTMLButtonElement | null>>({ all: null, unread: null });
 	const navigate = useNavigate();
+	const uid = useId();
+	const panelId = `${uid}-panel`;
+	const tabId = (t: 'all' | 'unread') => `${uid}-tab-${t}`;
+	const listId = `${uid}-list`;
 
 	useEffect(() => {
 		if (!open) return;
@@ -61,7 +68,12 @@ export function NotificationPanel({
 				onClose();
 			}
 		};
-		const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+		// Esc: đóng và trả focus về nút chuông (người dùng bàn phím không bị lạc)
+		const onKey = (e: globalThis.KeyboardEvent) => {
+			if (e.key !== 'Escape') return;
+			onClose();
+			bellRef.current?.focus();
+		};
 		document.addEventListener('mousedown', handler);
 		document.addEventListener('keydown', onKey);
 		return () => {
@@ -69,6 +81,26 @@ export function NotificationPanel({
 			document.removeEventListener('keydown', onKey);
 		};
 	}, [open, onClose]);
+
+	// Mở bảng: đưa focus vào khung để trình đọc màn hình đọc tên và phím Tab đi tiếp trong bảng
+	useEffect(() => {
+		if (open) panelRef.current?.focus({ preventScroll: true });
+	}, [open]);
+
+	// Mũi tên trái/phải, Home/End chuyển tab (mẫu WAI-ARIA tabs, kích hoạt ngay vì dữ liệu có sẵn)
+	const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+		const order = ['all', 'unread'] as const;
+		const idx = order.indexOf(tab);
+		let next: number;
+		if (e.key === 'ArrowRight') next = (idx + 1) % order.length;
+		else if (e.key === 'ArrowLeft') next = (idx - 1 + order.length) % order.length;
+		else if (e.key === 'Home') next = 0;
+		else if (e.key === 'End') next = order.length - 1;
+		else return;
+		e.preventDefault();
+		setTab(order[next]);
+		tabRefs.current[order[next]]?.focus();
+	};
 
 	const displayed =
 		tab === 'unread' ? notifications.filter((n) => !n.read) : notifications;
@@ -91,13 +123,16 @@ export function NotificationPanel({
 		>
 			<button
 				type='button'
+				ref={bellRef}
 				className={cx(buttonClassName, open && activeClassName)}
 				onClick={onToggle}
-				aria-label='Thông báo'
+				aria-label={unreadCount > 0 ? `Thông báo, ${unreadCount} chưa đọc` : 'Thông báo'}
+				aria-haspopup='dialog'
 				aria-expanded={open}
+				aria-controls={open ? panelId : undefined}
 			>
 				<BellSvg />
-				{unreadCount > 0 && <span className={styles.dot} />}
+				{unreadCount > 0 && <span className={styles.dot} aria-hidden='true' />}
 			</button>
 
 			{open && (
@@ -105,8 +140,12 @@ export function NotificationPanel({
 					<div
 						className={styles.overlay}
 						onClick={onClose}
+						aria-hidden='true'
 					/>
 					<div
+						ref={panelRef}
+						id={panelId}
+						tabIndex={-1}
 						className={styles.panel}
 						role='dialog'
 						aria-label='Thông báo'
@@ -141,15 +180,23 @@ export function NotificationPanel({
 						<div
 							className={styles.tabs}
 							role='tablist'
+							aria-label='Lọc thông báo'
 						>
 							{(['all', 'unread'] as const).map((t) => (
 								<button
 									type='button'
 									role='tab'
+									id={tabId(t)}
+									ref={(el) => {
+										tabRefs.current[t] = el;
+									}}
 									aria-selected={tab === t}
+									aria-controls={tab === t ? listId : undefined}
+									tabIndex={tab === t ? 0 : -1}
 									key={t}
 									className={cx(styles.tab, tab === t && styles.tabActive)}
 									onClick={() => setTab(t)}
+									onKeyDown={onTabKeyDown}
 								>
 									{t === 'all' ? 'Tất cả' : 'Chưa đọc'}
 									<span className={styles.tabBadge}>
@@ -159,7 +206,12 @@ export function NotificationPanel({
 							))}
 						</div>
 
-						<div className={styles.list}>
+						<div
+							className={styles.list}
+							id={listId}
+							role='tabpanel'
+							aria-labelledby={tabId(tab)}
+						>
 							{displayed.length === 0 ? (
 								<div className={styles.empty}>Không có thông báo nào</div>
 							) : (

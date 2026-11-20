@@ -51,6 +51,11 @@
 	flex-direction: column;
 }
 
+/* Focus được đưa vào khung khi mở bảng — không vẽ viền quanh cả bảng */
+.panel:focus {
+	outline: none;
+}
+
 @keyframes panel-drop {
 	from {
 		opacity: 0;

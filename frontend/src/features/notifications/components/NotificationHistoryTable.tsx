@@ -83,6 +83,7 @@ export function NotificationHistoryTable({
 						<SearchSvg className={styles.searchIcon} />
 						<input
 							className={styles.searchInput}
+							aria-label='Tìm thông báo theo tiêu đề'
 							placeholder='Tìm tiêu đề...'
 							value={search}
 							onChange={(e) => {
@@ -93,6 +94,7 @@ export function NotificationHistoryTable({
 					</div>
 					<select
 						className={styles.filterSelect}
+						aria-label='Lọc theo loại thông báo'
 						value={filterType}
 						onChange={(e) => {
 							setFilterType(e.target.value);
@@ -110,9 +112,11 @@ export function NotificationHistoryTable({
 						))}
 					</select>
 					<button
+						type='button'
 						className={styles.btnRefresh}
 						onClick={onRefresh}
 						title='Làm mới'
+						aria-label='Làm mới danh sách thông báo'
 					>
 						<RefreshSvg style={{ width: 14, height: 14 }} />
 					</button>
@@ -185,6 +189,8 @@ export function NotificationHistoryTable({
 													className={styles.expandBtn}
 													onClick={() => onToggleExpand(row.batch_key)}
 													title={isExpanded ? 'Thu gọn' : 'Xem người nhận'}
+													aria-label={`${isExpanded ? 'Thu gọn' : 'Xem người nhận'} của thông báo ${row.title}`}
+													aria-expanded={isExpanded}
 												>
 													<ChevDSvg
 														style={{
@@ -229,13 +235,15 @@ export function NotificationHistoryTable({
 												<div className={styles.timeText}>{relativeTime(row.created_at)}</div>
 											</td>
 											<td className={styles.td}>
-												<div
+												<button
+													type='button'
 													className={`${styles.actionBtn} ${styles.danger}`}
 													onClick={() => onDeleteRequest(row)}
 													title='Xóa'
+													aria-label={`Xóa thông báo ${row.title}`}
 												>
 													<TrashSvg />
-												</div>
+												</button>
 											</td>
 										</tr>
 										{isExpanded && (
