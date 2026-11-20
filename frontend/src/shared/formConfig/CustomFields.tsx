@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DatePicker } from '../components/Input/DatePicker';
+import { markFieldControl, type FieldControlProps } from '../components/Input/fieldControl';
 import { MultiSelect } from '../components/Input/MultiSelect';
 import m from '../components/Modal/Modal.module.css';
 import { cx } from '../utils/cx';
@@ -16,7 +17,12 @@ function CustomInput({
 	hasError,
 	inputClassName,
 	inputErrorClassName,
-}: {
+	id: idProp,
+	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
+}: FieldControlProps & {
 	f: ResolvedField;
 	value: unknown;
 	onChange: (v: unknown) => void;
@@ -24,7 +30,14 @@ function CustomInput({
 	inputClassName?: string;
 	inputErrorClassName?: string;
 }) {
-	const id = `cf-${f.key}`;
+	const id = idProp ?? `cf-${f.key}`;
+	// Thuộc tính truy cập do FormField / FieldShell gắn vào, chuyển xuống ô nhập thật
+	const a11y = {
+		'aria-label': ariaLabel,
+		'aria-describedby': ariaDescribedBy,
+		'aria-invalid': ariaInvalid,
+		'aria-required': ariaRequired,
+	};
 	const cls = cx(inputClassName ?? m.formInput, hasError && (inputErrorClassName ?? m.inputError));
 	const placeholder = f.placeholder ?? undefined;
 	switch (f.type) {
@@ -32,6 +45,7 @@ function CustomInput({
 			return (
 				<textarea
 					id={id}
+					{...a11y}
 					className={cls}
 					rows={3}
 					value={str(value)}
@@ -44,6 +58,7 @@ function CustomInput({
 			return (
 				<input
 					id={id}
+					{...a11y}
 					type="number"
 					className={cls}
 					value={str(value)}
@@ -58,6 +73,7 @@ function CustomInput({
 			return (
 				<DatePicker
 					id={id}
+					{...a11y}
 					value={str(value)}
 					onChange={onChange}
 					placeholder={placeholder}
@@ -68,6 +84,7 @@ function CustomInput({
 			return (
 				<select
 					id={id}
+					{...a11y}
 					className={cls}
 					value={str(value)}
 					onChange={(e) => onChange(e.target.value)}
@@ -83,6 +100,8 @@ function CustomInput({
 		case 'multiselect':
 			return (
 				<MultiSelect
+					id={id}
+					{...a11y}
 					options={(f.options ?? []).map((o) => ({
 						id: o.value,
 						label: o.label,
@@ -105,6 +124,7 @@ function CustomInput({
 				>
 					<input
 						id={id}
+						{...a11y}
 						type="checkbox"
 						checked={value === true}
 						onChange={(e) => onChange(e.target.checked)}
@@ -116,6 +136,7 @@ function CustomInput({
 			return (
 				<input
 					id={id}
+					{...a11y}
 					type={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : 'text'}
 					className={cls}
 					value={str(value)}
@@ -126,6 +147,8 @@ function CustomInput({
 			);
 	}
 }
+
+markFieldControl(CustomInput);
 
 /**
  * Trường tùy chỉnh admin thêm ở Cấu hình form — đặt cuối form, gửi `custom`

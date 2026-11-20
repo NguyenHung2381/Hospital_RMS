@@ -1,6 +1,13 @@
-import { cloneElement, isValidElement, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import {
+	cloneElement,
+	isValidElement,
+	useId,
+	type CSSProperties,
+	type ReactElement,
+	type ReactNode,
+} from 'react';
+import { isFieldControl, type FieldControlProps } from '../components/Input/fieldControl';
 import { FormField } from '../components/Input/FormField';
-import m from '../components/Modal/Modal.module.css';
 import { cx } from '../utils/cx';
 import type { FormConfig } from './useFormConfig';
 
@@ -30,6 +37,27 @@ export interface FieldClasses {
 	labelWraps?: boolean;
 }
 
+const NATIVE_CONTROLS = new Set(['input', 'select', 'textarea']);
+
+/** Con là đúng một ô nhập (thẻ gốc hoặc component đã markFieldControl) thì gắn aria-* cho nó. */
+function wireControl(
+	children: ReactNode,
+	opts: { describedBy: (string | undefined)[]; invalid: boolean; required?: boolean },
+): ReactNode {
+	if (!isValidElement(children)) return children;
+	const type = children.type;
+	if (!(typeof type === 'string' ? NATIVE_CONTROLS.has(type) : isFieldControl(type))) return children;
+	const el = children as ReactElement<FieldControlProps & { required?: boolean }>;
+	const describedBy = [el.props['aria-describedby'], ...opts.describedBy].filter(Boolean).join(' ');
+	const patch: FieldControlProps = {};
+	if (describedBy) patch['aria-describedby'] = describedBy;
+	if (opts.invalid && el.props['aria-invalid'] === undefined) patch['aria-invalid'] = true;
+	if (opts.required && !el.props.required && el.props['aria-required'] === undefined) {
+		patch['aria-required'] = true;
+	}
+	return cloneElement(el, patch);
+}
+
 /** Khung "nhãn + ô nhập + ghi chú + lỗi" — FormField chuẩn, hoặc theo `classes` của trang. */
 export function FieldShell({
 	classes,
@@ -52,6 +80,7 @@ export function FieldShell({
 	style?: CSSProperties;
 	children: ReactNode;
 }) {
+	const uid = useId();
 	if (!classes)
 		return (
 			<FormField
@@ -59,13 +88,21 @@ export function FieldShell({
 				label={label}
 				required={required}
 				error={error}
+				hint={hint}
 				className={className}
 				style={style}
 			>
 				{children}
-				{hint && <div className={m.formHint}>{hint}</div>}
 			</FormField>
 		);
+	// Trang tự vẽ form: nối ghi chú / dòng lỗi với ô nhập bằng aria-describedby, lỗi thì aria-invalid
+	const hintId = `${uid}-hint`;
+	const errorId = `${uid}-error`;
+	const control = wireControl(children, {
+		describedBy: [hint ? hintId : undefined, error ? errorId : undefined],
+		invalid: !!error,
+		required,
+	});
 	// Nhãn bọc ô nhập ⇒ không cần htmlFor (id lạ còn làm mất liên kết với ô bên trong)
 	if (classes.labelWraps)
 		return (
@@ -77,9 +114,24 @@ export function FieldShell({
 					{label}
 					{required && <span className={classes.required}> *</span>}
 				</span>
-				{children}
-				{hint && <span className={classes.hint}>{hint}</span>}
-				{error && <span className={classes.error}>{error}</span>}
+				{control}
+				{hint && (
+					<span
+						id={hintId}
+						className={classes.hint}
+					>
+						{hint}
+					</span>
+				)}
+				{error && (
+					<span
+						id={errorId}
+						className={classes.error}
+						role='alert'
+					>
+						{error}
+					</span>
+				)}
 			</label>
 		);
 	return (
@@ -94,9 +146,24 @@ export function FieldShell({
 				{label}
 				{required && <span className={classes.required}> *</span>}
 			</label>
-			{children}
-			{hint && <span className={classes.hint}>{hint}</span>}
-			{error && <span className={classes.error}>{error}</span>}
+			{control}
+			{hint && (
+				<span
+					id={hintId}
+					className={classes.hint}
+				>
+					{hint}
+				</span>
+			)}
+			{error && (
+				<span
+					id={errorId}
+					className={classes.error}
+					role='alert'
+				>
+					{error}
+				</span>
+			)}
 		</div>
 	);
 }
