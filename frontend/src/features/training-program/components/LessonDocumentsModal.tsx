@@ -123,6 +123,7 @@ export function LessonDocumentsModal({
 			<div className={styles.subToolbar}>
 				<input
 					className={styles.subInput}
+					aria-label='Tiêu đề tài liệu'
 					placeholder='Tiêu đề'
 					value={form.title}
 					onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -138,6 +139,7 @@ export function LessonDocumentsModal({
 					Công khai
 				</label>
 				<select
+					aria-label='Nguồn tài liệu'
 					className={styles.subSelect}
 					value={form.sourceType}
 					onChange={(e) =>
@@ -159,6 +161,7 @@ export function LessonDocumentsModal({
 				) : (
 					<input
 						className={styles.subInput}
+						aria-label='Đường dẫn tài liệu'
 						placeholder='https://...'
 						value={form.externalUrl}
 						onChange={(e) =>
@@ -166,7 +169,7 @@ export function LessonDocumentsModal({
 						}
 					/>
 				)}
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					disabled={busy || !form.title.trim()}
 					onClick={handleAdd}
@@ -209,9 +212,10 @@ export function LessonDocumentsModal({
 									<DownloadSvg /> {doc.download_count}
 								</div>
 							</div>
-							<button
+							<button type='button'
 								className={styles.actionBtn}
 								title='Xóa'
+								aria-label={`Xóa tài liệu ${doc.title}`}
 								disabled={busy}
 								onClick={() => handleRemove(doc.id)}
 							>

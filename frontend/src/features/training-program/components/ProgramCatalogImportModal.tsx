@@ -70,7 +70,7 @@ export function ProgramCatalogImportModal({ onClose, onImported }: { onClose: ()
 			bodyClassName={styles.modalBody}
 			footer={
 				<>
-					<button
+					<button type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -78,7 +78,7 @@ export function ProgramCatalogImportModal({ onClose, onImported }: { onClose: ()
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
-						<button
+						<button type='button'
 							className={styles.btnConfirm}
 							onClick={commit}
 							disabled={loading || !s?.programs_total}

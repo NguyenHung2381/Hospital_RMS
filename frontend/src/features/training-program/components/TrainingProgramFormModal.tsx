@@ -1,6 +1,6 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions, SearchableSelect } from '@/shared/components';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { ArrowRSvg, LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import {
 	DURATION_UNIT_LABEL,
@@ -84,6 +84,10 @@ export function TrainingProgramFormModal({
 	onSave: (d: TrainingProgramFormData) => void;
 	loading: boolean;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [form, setForm] = useState<TrainingProgramFormData>(program ? fromProgram(program) : EMPTY_FORM);
 	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
 	const cfg = useFormConfig('training_program', 'admin');
@@ -155,6 +159,8 @@ export function TrainingProgramFormModal({
 
 	const numberInput = (k: keyof TrainingProgramFormData, placeholder: string, step = '1') => (
 		<input
+			id={fid(k)}
+			aria-invalid={!!errors[k] || undefined}
 			type='number'
 			min={0}
 			step={step}
@@ -186,12 +192,12 @@ export function TrainingProgramFormModal({
 			<div className={styles.formGrid2}>
 				<CfgField
 					cfg={cfg}
-					name='code'
+					name='code' htmlFor={fid('code')}
 					label='Mã chương trình'
 					required
 					error={errors.code}
 				>
-					<input
+					<input id={fid('code')} aria-invalid={!!errors.code || undefined}
 						className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
 						value={form.code}
 						onChange={set('code')}
@@ -200,12 +206,12 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='training_type_id'
+					name='training_type_id' htmlFor={fid('training_type_id')}
 					label='Loại hình'
 					required
 					error={errors.training_type_id}
 				>
-					<select
+					<select id={fid('training_type_id')}
 						className={`${styles.formInput} ${errors.training_type_id ? styles.inputError : ''}`}
 						aria-invalid={errors.training_type_id ? true : undefined}
 						value={form.training_type_id}
@@ -224,13 +230,13 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='name'
+					name='name' htmlFor={fid('name')}
 					label='Tên chương trình'
 					required
 					error={errors.name}
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<input
+					<input id={fid('name')} aria-invalid={!!errors.name || undefined}
 						className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
 						value={form.name}
 						onChange={set('name')}
@@ -239,13 +245,14 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='duration_value'
+					name='duration_value' htmlFor={fid('duration_value')}
 					label='Thời lượng'
 					error={errors.duration_value}
 				>
 					<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
 						{numberInput('duration_value', 'VD: 3', '0.5')}
 						<select
+							aria-label='Đơn vị thời lượng'
 							className={styles.formInput}
 							style={{ maxWidth: 110 }}
 							value={form.duration_unit}
@@ -264,7 +271,7 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='credit_hours'
+					name='credit_hours' htmlFor={fid('credit_hours')}
 					label='Số giờ tín chỉ'
 					error={errors.credit_hours}
 				>
@@ -272,7 +279,7 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='theory_hours'
+					name='theory_hours' htmlFor={fid('theory_hours')}
 					label='Số tiết lý thuyết'
 					error={errors.theory_hours}
 				>
@@ -280,14 +287,14 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='practice_hours'
+					name='practice_hours' htmlFor={fid('practice_hours')}
 					label='Số tiết thực hành'
 					error={errors.practice_hours}
 				>
 					{numberInput('practice_hours', '0')}
 				</CfgField>
-				<CfgField cfg={cfg} name='exam_parts' error={errors.exam_parts} label='Phần thi cuối khóa'>
-					<select
+				<CfgField cfg={cfg} name='exam_parts' htmlFor={fid('exam_parts')} error={errors.exam_parts} label='Phần thi cuối khóa'>
+					<select id={fid('exam_parts')} aria-invalid={!!errors.exam_parts || undefined}
 						className={styles.formInput}
 						value={form.exam_parts}
 						onChange={set('exam_parts')}
@@ -311,7 +318,7 @@ export function TrainingProgramFormModal({
 					label='Đối tượng học viên (chọn nhiều)'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<div className={styles.choiceGroup}>
+					<div className={styles.choiceGroup} role='group' aria-label='Đối tượng học viên'>
 						{traineeTypes.map((t) => {
 							const on = form.trainee_type_ids.includes(t.id);
 							return (
@@ -337,12 +344,12 @@ export function TrainingProgramFormModal({
 				</FormField>
 				<CfgField
 					cfg={cfg}
-					name='target_audience'
+					name='target_audience' htmlFor={fid('target_audience')}
 					error={errors.target_audience}
 					label='Đối tượng (ghi chú, điều kiện)'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<input
+					<input id={fid('target_audience')} aria-invalid={!!errors.target_audience || undefined}
 						className={styles.formInput}
 						value={form.target_audience}
 						onChange={set('target_audience')}
@@ -353,11 +360,11 @@ export function TrainingProgramFormModal({
 					<>
 						<CfgField
 							cfg={cfg}
-							name='professional_field_id'
+							name='professional_field_id' htmlFor={fid('professional_field_id')}
 							error={errors.professional_field_id}
 							label='Lĩnh vực chuyên môn (mặc định)'
 						>
-							<select
+							<select id={fid('professional_field_id')} aria-invalid={!!errors.professional_field_id || undefined}
 								className={styles.formInput}
 								value={form.professional_field_id}
 								onChange={set('professional_field_id')}
@@ -376,11 +383,11 @@ export function TrainingProgramFormModal({
 						</CfgField>
 						<CfgField
 							cfg={cfg}
-							name='practice_form_id'
+							name='practice_form_id' htmlFor={fid('practice_form_id')}
 							error={errors.practice_form_id}
 							label='Hình thức hành nghề (mặc định)'
 						>
-							<select
+							<select id={fid('practice_form_id')} aria-invalid={!!errors.practice_form_id || undefined}
 								className={styles.formInput}
 								value={form.practice_form_id}
 								onChange={set('practice_form_id')}
@@ -399,8 +406,8 @@ export function TrainingProgramFormModal({
 						</CfgField>
 					</>
 				)}
-				<CfgField cfg={cfg} name='department_id' error={errors.department_id} label='Khoa phụ trách giảng dạy'>
-					<SearchableSelect
+				<CfgField cfg={cfg} name='department_id' htmlFor={fid('department_id')} error={errors.department_id} label='Khoa phụ trách giảng dạy'>
+					<SearchableSelect id={fid('department_id')} aria-invalid={!!errors.department_id || undefined}
 						options={[{ id: '', name: '-- Chọn khoa/phòng --' }, ...departments]}
 						value={form.department_id}
 						onChange={(id) => {
@@ -412,8 +419,8 @@ export function TrainingProgramFormModal({
 						hasError={!!errors.department_id}
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='department_note' error={errors.department_note} label='Ghi chú khoa phụ trách'>
-					<input
+				<CfgField cfg={cfg} name='department_note' htmlFor={fid('department_note')} error={errors.department_note} label='Ghi chú khoa phụ trách'>
+					<input id={fid('department_note')} aria-invalid={!!errors.department_note || undefined}
 						className={styles.formInput}
 						value={form.department_note}
 						onChange={set('department_note')}
@@ -422,7 +429,7 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='tuition_fee'
+					name='tuition_fee' htmlFor={fid('tuition_fee')}
 					label='Học phí (VNĐ)'
 					error={errors.tuition_fee}
 				>
@@ -430,11 +437,11 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='min_capacity'
+					name='min_capacity' htmlFor={fid('min_capacity')}
 					label='Số lượng tối thiểu'
 					error={errors.min_capacity}
 				>
-					<input
+					<input id={fid('min_capacity')} aria-invalid={!!errors.min_capacity || undefined}
 						type='number'
 						min={1}
 						className={`${styles.formInput} ${errors.min_capacity ? styles.inputError : ''}`}
@@ -445,11 +452,11 @@ export function TrainingProgramFormModal({
 				</CfgField>
 				<CfgField
 					cfg={cfg}
-					name='max_capacity'
+					name='max_capacity' htmlFor={fid('max_capacity')}
 					label='Số lượng tối đa'
 					error={errors.max_capacity}
 				>
-					<input
+					<input id={fid('max_capacity')} aria-invalid={!!errors.max_capacity || undefined}
 						type='number'
 						min={1}
 						className={`${styles.formInput} ${errors.max_capacity ? styles.inputError : ''}`}
@@ -470,8 +477,10 @@ export function TrainingProgramFormModal({
 				<div
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1' }}
+					role='group'
+					aria-labelledby={fid('rotations')}
 				>
-					<label className={styles.formLabel}>Vòng thực hành (luân khoa)</label>
+					<div id={fid('rotations')} className={styles.formLabel}>Vòng thực hành (luân khoa)</div>
 					<div className={styles.subRowMeta}>
 						Học viên học lần lượt nhiều khoa, mỗi vòng thời lượng riêng. Một vòng có thể chọn nhiều khoa — học viên
 						được xếp vào 1 trong các khoa đó.
@@ -483,6 +492,9 @@ export function TrainingProgramFormModal({
 						>
 							<span className={styles.rotationIdx}>Vòng {i + 1}</span>
 							<input
+								aria-label={`Tên vòng ${i + 1}`}
+								aria-invalid={!!rotationErrors[i] || undefined}
+								aria-describedby={rotationErrors[i] ? `${fid('rotation-error')}-${i}` : undefined}
 								className={`${styles.formInput} ${rotationErrors[i] && !r.title.trim() ? styles.inputError : ''}`}
 								style={{ minWidth: 140 }}
 								value={r.title}
@@ -491,6 +503,7 @@ export function TrainingProgramFormModal({
 							/>
 							<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
 								<input
+									aria-label={`Thời lượng vòng ${i + 1}`}
 									type='number'
 									min={0}
 									step='0.5'
@@ -501,6 +514,7 @@ export function TrainingProgramFormModal({
 									placeholder='VD: 3'
 								/>
 								<select
+									aria-label={`Đơn vị thời lượng vòng ${i + 1}`}
 									className={styles.formInput}
 									style={{ width: 90 }}
 									value={r.duration_unit}
@@ -521,6 +535,7 @@ export function TrainingProgramFormModal({
 									type='button'
 									className={styles.actionBtn}
 									title='Đưa vòng lên'
+									aria-label={`Đưa vòng ${i + 1} lên`}
 									disabled={i === 0}
 									onClick={() => moveRotation(i, -1)}
 								>
@@ -530,6 +545,7 @@ export function TrainingProgramFormModal({
 									type='button'
 									className={styles.actionBtn}
 									title='Đưa vòng xuống'
+									aria-label={`Đưa vòng ${i + 1} xuống`}
 									disabled={i === form.rotations.length - 1}
 									onClick={() => moveRotation(i, 1)}
 								>
@@ -539,6 +555,7 @@ export function TrainingProgramFormModal({
 									type='button'
 									className={styles.actionBtn}
 									title='Bỏ vòng này'
+									aria-label={`Bỏ vòng ${i + 1}`}
 									onClick={() => removeRotation(i)}
 								>
 									<TrashSvg />
@@ -546,6 +563,7 @@ export function TrainingProgramFormModal({
 							</div>
 							<div className={styles.rotationDepts}>
 								<TagPicker
+									ariaLabel={`Khoa của vòng ${i + 1}`}
 									items={departments}
 									selectedIds={r.department_ids}
 									label={deptLabel}
@@ -554,7 +572,11 @@ export function TrainingProgramFormModal({
 									onAdd={(id) => setRotation(i, { department_ids: [...r.department_ids, id] })}
 									onRemove={(id) => setRotation(i, { department_ids: r.department_ids.filter((x) => x !== id) })}
 								/>
-								{rotationErrors[i] && <div className={styles.fieldError}>{rotationErrors[i]}</div>}
+								{rotationErrors[i] && (
+									<div id={`${fid('rotation-error')}-${i}`} className={styles.fieldError} role='alert'>
+										{rotationErrors[i]}
+									</div>
+								)}
 							</div>
 						</div>
 					))}
@@ -575,12 +597,12 @@ export function TrainingProgramFormModal({
 				</div>
 				<CfgField
 					cfg={cfg}
-					name='description'
+					name='description' htmlFor={fid('description')}
 					error={errors.description}
 					label='Mô tả'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<textarea
+					<textarea id={fid('description')} aria-invalid={!!errors.description || undefined}
 						className={styles.formTextarea}
 						value={form.description}
 						onChange={set('description')}

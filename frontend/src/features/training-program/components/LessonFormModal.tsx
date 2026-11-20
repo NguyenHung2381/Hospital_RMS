@@ -4,7 +4,7 @@ import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shar
 import { allowedOptions } from '@/shared/formConfig/allowedOptions';
 import { Modal, ModalActions } from '@/shared/components';
 import { notify } from '../../../shared/utils/feedback';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useId, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevDSvg, ListSvg, XSvg } from '@/assets/icons';
 import { removeDiacritics } from '@/shared/utils/helper';
@@ -47,6 +47,8 @@ export function TagPicker<T extends { id: string }>({
 	code,
 	placeholder,
 	emptyText,
+	inputId,
+	ariaLabel,
 	onAdd,
 	onRemove,
 }: {
@@ -57,9 +59,14 @@ export function TagPicker<T extends { id: string }>({
 	code?: (item: T) => string | null | undefined;
 	placeholder: string;
 	emptyText: string;
+	/** id của ô gõ — để <label htmlFor> nối được. */
+	inputId?: string;
+	/** Tên truy cập khi không có nhãn hiển thị gắn với ô. */
+	ariaLabel?: string;
 	onAdd: (id: string) => void;
 	onRemove: (id: string) => void;
 }) {
+	const listboxId = useId();
 	const [query, setQuery] = useState('');
 	const [open, setOpen] = useState(false);
 	// Dòng đang tô bằng phím ↑/↓ (Enter để chọn)
@@ -188,11 +195,16 @@ export function TagPicker<T extends { id: string }>({
 			})}
 			<input
 				ref={inputRef}
+				id={inputId}
 				className={styles.tagInput}
 				placeholder={selected.length ? 'Thêm...' : placeholder}
 				value={query}
 				role='combobox'
+				aria-label={ariaLabel}
+				aria-autocomplete='list'
 				aria-expanded={open}
+				aria-controls={open ? listboxId : undefined}
+				aria-activedescendant={open && suggestions.length ? `${listboxId}-opt-${activeIdx}` : undefined}
 				onChange={(e) => {
 					setQuery(e.target.value);
 					setActive(0);
@@ -216,8 +228,10 @@ export function TagPicker<T extends { id: string }>({
 				createPortal(
 					<div
 						ref={menuRef}
+						id={listboxId}
 						className={styles.tagMenu}
 						role='listbox'
+						aria-label='Gợi ý'
 						style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.maxHeight }}
 						// giữ focus ở ô gõ để chọn liên tiếp nhiều mục
 						onMouseDown={(e) => e.preventDefault()}
@@ -232,6 +246,7 @@ export function TagPicker<T extends { id: string }>({
 								return (
 									<div
 										key={x.id}
+										id={`${listboxId}-opt-${i}`}
 										data-idx={i}
 										role='option'
 										aria-selected={i === activeIdx}
@@ -292,6 +307,10 @@ export function LessonFormModal({
 	onClose: () => void;
 	onSaved: () => void;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [form, setForm] = useState<LessonFormData>(
 		lesson
 			? {
@@ -395,12 +414,12 @@ export function LessonFormModal({
 			<div className={styles.formGrid2}>
 				<CfgField
 					cfg={cfg}
-					name='code'
+					name='code' htmlFor={fid('code')}
 					label='Mã bài học'
 					required
 					error={errors.code}
 				>
-					<input
+					<input id={fid('code')} aria-invalid={!!errors.code || undefined}
 						className={`${styles.formInput} ${errors.code ? styles.inputError : ''}`}
 						value={form.code}
 						onChange={(e) => {
@@ -410,8 +429,8 @@ export function LessonFormModal({
 						placeholder='VD: TH_BS_RHM'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='lesson_kind' error={errors.lesson_kind} label='Loại'>
-					<select
+				<CfgField cfg={cfg} name='lesson_kind' htmlFor={fid('lesson_kind')} error={errors.lesson_kind} label='Loại'>
+					<select id={fid('lesson_kind')} aria-invalid={!!errors.lesson_kind || undefined}
 						className={styles.formInput}
 						value={form.lesson_kind}
 						onChange={(e) => setForm((f) => ({ ...f, lesson_kind: e.target.value as LessonKind }))}
@@ -433,13 +452,13 @@ export function LessonFormModal({
 
 				<CfgField
 					cfg={cfg}
-					name='title'
+					name='title' htmlFor={fid('title')}
 					label='Tên bài học'
 					required
 					error={errors.title}
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<input
+					<input id={fid('title')} aria-invalid={!!errors.title || undefined}
 						className={`${styles.formInput} ${errors.title ? styles.inputError : ''}`}
 						value={form.title}
 						onChange={(e) => {
@@ -454,8 +473,8 @@ export function LessonFormModal({
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)' }}
 				>
-					<CfgField cfg={cfg} name='theory_hours' error={errors.theory_hours} label='Số tiết lý thuyết'>
-						<input
+					<CfgField cfg={cfg} name='theory_hours' htmlFor={fid('theory_hours')} error={errors.theory_hours} label='Số tiết lý thuyết'>
+						<input id={fid('theory_hours')} aria-invalid={!!errors.theory_hours || undefined}
 							type='number'
 							min={0}
 							className={styles.formInput}
@@ -463,8 +482,8 @@ export function LessonFormModal({
 							onChange={(e) => setForm((f) => ({ ...f, theory_hours: e.target.value }))}
 						/>
 					</CfgField>
-					<CfgField cfg={cfg} name='practice_hours' error={errors.practice_hours} label='Số tiết thực hành'>
-						<input
+					<CfgField cfg={cfg} name='practice_hours' htmlFor={fid('practice_hours')} error={errors.practice_hours} label='Số tiết thực hành'>
+						<input id={fid('practice_hours')} aria-invalid={!!errors.practice_hours || undefined}
 							type='number'
 							min={0}
 							className={styles.formInput}
@@ -473,8 +492,9 @@ export function LessonFormModal({
 						/>
 					</CfgField>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Tổng số tiết</label>
+						<label className={styles.formLabel} htmlFor={fid('total_hours')}>Tổng số tiết</label>
 						<input
+							id={fid('total_hours')}
 							className={styles.formInput}
 							value={totalHours}
 							disabled
@@ -484,8 +504,8 @@ export function LessonFormModal({
 					</div>
 				</div>
 
-				<CfgField cfg={cfg} name='credits' error={errors.credits} label='Số tín chỉ'>
-					<input
+				<CfgField cfg={cfg} name='credits' htmlFor={fid('credits')} error={errors.credits} label='Số tín chỉ'>
+					<input id={fid('credits')} aria-invalid={!!errors.credits || undefined}
 						type='number'
 						min={0}
 						className={styles.formInput}
@@ -496,11 +516,14 @@ export function LessonFormModal({
 				<CfgField
 					cfg={cfg}
 					name='duration_value'
+					htmlFor={fid('duration_value')}
 					label='Thời lượng'
 					error={errors.duration_value}
 				>
 					<div style={{ display: 'flex', gap: 'var(--space-2)' }}>
 						<input
+							id={fid('duration_value')}
+							aria-invalid={!!errors.duration_value || undefined}
 							type='number'
 							min={0}
 							step='0.5'
@@ -513,6 +536,7 @@ export function LessonFormModal({
 							placeholder='VD: 3'
 						/>
 						<select
+							aria-label='Đơn vị thời lượng'
 							className={styles.formInput}
 							style={{ maxWidth: 110 }}
 							value={form.duration_unit}
@@ -546,8 +570,9 @@ export function LessonFormModal({
 						className={styles.formGroup}
 						style={{ gridColumn: '1 / -1' }}
 					>
-						<label className={styles.formLabel}>Khoa được chọn cho vòng này</label>
+						<label className={styles.formLabel} htmlFor={fid('department_ids')}>Khoa được chọn cho vòng này</label>
 						<TagPicker
+							inputId={fid('department_ids')}
 							items={departments}
 							selectedIds={form.department_ids}
 							label={deptLabel}
@@ -584,11 +609,12 @@ export function LessonFormModal({
 					className={styles.formGroup}
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<label className={styles.formLabel}>
+					<label className={styles.formLabel} htmlFor={fid('program_ids')}>
 						Thuộc chương trình đào tạo
 						{form.program_ids.length > 0 && <span className={styles.labelCount}>{form.program_ids.length}</span>}
 					</label>
 					<TagPicker
+						inputId={fid('program_ids')}
 						items={programs}
 						selectedIds={form.program_ids}
 						label={programName}
@@ -607,12 +633,12 @@ export function LessonFormModal({
 
 				<CfgField
 					cfg={cfg}
-					name='description'
+					name='description' htmlFor={fid('description')}
 					error={errors.description}
 					label='Mô tả'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<textarea
+					<textarea id={fid('description')} aria-invalid={!!errors.description || undefined}
 						className={styles.formTextarea}
 						rows={3}
 						value={form.description}

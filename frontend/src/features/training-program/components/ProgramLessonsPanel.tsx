@@ -47,6 +47,7 @@ function SortableLessonRow({
 			<span
 				className={styles.dragHandle}
 				title='Kéo để sắp xếp'
+				aria-label={`Kéo để sắp xếp bài học ${link.title}`}
 				{...attributes}
 				{...listeners}
 			>
@@ -82,23 +83,25 @@ function SortableLessonRow({
 					{link.description ? ` — ${link.description}` : ''}
 				</div>
 			</div>
-			<button
+			<button type='button'
 				className={styles.btnGhost}
 				onClick={onDocs}
 			>
 				<DocSvg /> Tài liệu
 			</button>
-			<button
+			<button type='button'
 				className={styles.actionBtn}
 				title='Sửa'
+				aria-label={`Sửa bài học ${link.title}`}
 				disabled={busy}
 				onClick={onEdit}
 			>
 				<EditSvg />
 			</button>
-			<button
+			<button type='button'
 				className={styles.actionBtn}
 				title='Gỡ khỏi chương trình này'
+				aria-label={`Gỡ bài học ${link.title} khỏi chương trình này`}
 				disabled={busy}
 				onClick={onUnlink}
 			>
@@ -221,7 +224,7 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 			)}
 
 			<div className={styles.subToolbar}>
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					disabled={busy}
 					onClick={() => setFormModal({ mode: 'add' })}

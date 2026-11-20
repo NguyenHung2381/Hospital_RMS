@@ -156,14 +156,14 @@ export default function TrainingPrograms() {
 				}
 				onImported={d.refreshData}
 			/>
-			<button
+			<button type='button'
 				className={styles.btnGhost}
 				onClick={() => d.setModal('import')}
 				title='Nhập danh mục chương trình + vòng thực hành (sheet "Mã CT" và "Bài học")'
 			>
 				Nhập danh mục CT
 			</button>
-			<button
+			<button type='button'
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
@@ -199,6 +199,7 @@ export default function TrainingPrograms() {
 							placeholder='Tìm theo mã, tên chương trình...'
 						/>
 						<select
+							aria-label='Lọc theo loại hình'
 							className={`${styles.filterSelect} ${d.trainingTypeFilter !== 'all' ? styles.filterActive : ''}`}
 							data-active={d.trainingTypeFilter !== 'all' ? 'true' : undefined}
 							value={d.trainingTypeFilter}
@@ -216,6 +217,7 @@ export default function TrainingPrograms() {
 							<option value='none'>Chưa gán loại hình</option>
 						</select>
 						<select
+							aria-label='Lọc theo khoa / phòng'
 							className={`${styles.filterSelect} ${d.departmentFilter !== 'all' ? styles.filterActive : ''}`}
 							data-active={d.departmentFilter !== 'all' ? 'true' : undefined}
 							value={d.departmentFilter}
@@ -233,6 +235,7 @@ export default function TrainingPrograms() {
 							<option value='none'>Chưa gán khoa</option>
 						</select>
 						<select
+							aria-label='Lọc theo đối tượng học viên'
 							className={`${styles.filterSelect} ${d.traineeTypeFilter !== 'all' ? styles.filterActive : ''}`}
 							data-active={d.traineeTypeFilter !== 'all' ? 'true' : undefined}
 							value={d.traineeTypeFilter}
@@ -250,6 +253,7 @@ export default function TrainingPrograms() {
 							<option value='none'>Chưa gán đối tượng</option>
 						</select>
 						<select
+							aria-label='Lọc theo trạng thái'
 							className={`${styles.filterSelect} ${d.statusFilter !== 'all' ? styles.filterActive : ''}`}
 							data-active={d.statusFilter !== 'all' ? 'true' : undefined}
 							value={d.statusFilter}

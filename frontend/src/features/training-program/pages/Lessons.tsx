@@ -76,7 +76,7 @@ export default function Lessons() {
 				}}
 				onImported={d.refreshData}
 			/>
-			<button
+			<button type='button'
 				className={styles.btnAddHeader}
 				onClick={() => d.setFormModal({ mode: 'add' })}
 			>
@@ -122,6 +122,7 @@ export default function Lessons() {
 							placeholder='Tìm theo tên/mã bài học...'
 						/>
 						<select
+							aria-label='Lọc theo chương trình'
 							className={`${styles.filterSelect} ${d.programFilter ? styles.filterActive : ''}`}
 							data-active={d.programFilter ? 'true' : undefined}
 							value={d.programFilter}
@@ -139,6 +140,7 @@ export default function Lessons() {
 							<option value='none'>Chưa thuộc chương trình nào</option>
 						</select>
 						<select
+							aria-label='Lọc theo trạng thái'
 							className={`${styles.filterSelect} ${d.statusFilter ? styles.filterActive : ''}`}
 							data-active={d.statusFilter ? 'true' : undefined}
 							value={d.statusFilter}
@@ -319,14 +321,14 @@ export default function Lessons() {
 					bodyClassName={styles.modalBody}
 					footer={
 						<>
-							<button
+							<button type='button'
 								className={styles.btnCancel}
 								onClick={() => d.setDeletingLesson(null)}
 								disabled={d.loading}
 							>
 								Hủy
 							</button>
-							<button
+							<button type='button'
 								className={styles.btnDanger}
 								onClick={d.handleDelete}
 								disabled={d.loading}
