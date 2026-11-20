@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarSvg, CheckSvg, EyeSvg, PlusSvg, UploadSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Button, Pagination, RowAction, RowActions, SearchInput, SkeletonTable, TableEmpty } from '@/shared/components';
+import { Button, confirmDialog, Pagination, RowAction, RowActions, SearchInput, SkeletonTable, TableEmpty } from '@/shared/components';
 import crud from '@/shared/components/Table/CrudPage.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -161,7 +161,12 @@ export default function PracticeRecords() {
 		navigate(`/admin/practice-records/${r.id}${tab ? `?tab=${tab}` : ''}`);
 
 	const decide = async (r: PracticeRecordRow, status: 'approved' | 'rejected') => {
-		if (status === 'rejected' && !window.confirm(`Từ chối hồ sơ của ${r.trainee_name}?`)) return;
+		if (status === 'rejected' && !(await confirmDialog({
+				title: 'Từ chối hồ sơ?',
+				message: `Từ chối hồ sơ của ${r.trainee_name}?`,
+				confirmLabel: 'Từ chối',
+				tone: 'danger',
+			}))) return;
 		setBusy(true);
 		try {
 			await decideEnrollment(r.id, status);
@@ -427,12 +432,12 @@ export default function PracticeRecords() {
 										>
 											<td className={`${styles.td} ${styles.tdIdx}`}>{pg.offset + i + 1}</td>
 											<td className={styles.td}>
-												<span
+												<Link
 													className={styles.itemName}
-													onClick={() => open(r)}
+													to={`/admin/practice-records/${r.id}`}
 												>
 													{r.trainee_name}
-												</span>
+												</Link>
 												<div className={styles.descText}>
 													{[r.practice_code, r.is_internal ? 'Nội viện' : 'Ngoại viện', r.trainee_phone]
 														.filter(Boolean)

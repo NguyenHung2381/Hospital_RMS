@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useId, useCallback, useEffect, useState } from 'react';
 import { FormField } from '@/shared/components/Input/FormField';
-import { Badge, DatePicker, Modal, ModalActions } from '@/shared/components';
+import { Badge, confirmDialog, DatePicker, Modal, ModalActions } from '@/shared/components';
 import { UserCheckSvg } from '@/assets/icons';
 import { showToast } from '@/shared/utils/feedback';
 import {
@@ -77,6 +77,10 @@ export function EnrollmentDetailModal({
 	onClose: () => void;
 	onSaved: () => void;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [form, setForm] = useState<Form>(() => toForm(enrollment));
 	const [lessons, setLessons] = useState<EnrollmentLesson[]>([]);
 	const [saving, setSaving] = useState(false);
@@ -134,8 +138,12 @@ export function EnrollmentDetailModal({
 
 	const save = async () => {
 		if (programChanged && enrollment.lesson_total > 0) {
-			if (!window.confirm('Đổi chương trình sẽ thay danh sách bài học của học viên theo chương trình mới. Tiếp tục?'))
-				return;
+			const ok = await confirmDialog({
+				title: 'Đổi chương trình?',
+				message: 'Đổi chương trình sẽ thay danh sách bài học của học viên theo chương trình mới. Tiếp tục?',
+				confirmLabel: 'Đổi chương trình',
+			});
+			if (!ok) return;
 		}
 		const errs = cfg.validate({ ...view }, custom, { mode: 'edit' });
 		setFieldErrors(errs);
@@ -181,8 +189,17 @@ export function EnrollmentDetailModal({
 	const dirty =
 		(Object.keys(form) as (keyof Form)[]).some((k) => form[k] !== initial[k]) ||
 		JSON.stringify(custom) !== JSON.stringify(enrollment.custom ?? {});
-	const close = () => {
-		if (dirty && !window.confirm('Có thay đổi chưa lưu ở tab "Thông tin hồ sơ". Đóng và bỏ thay đổi?')) return;
+	const close = async () => {
+		if (
+			dirty &&
+			!(await confirmDialog({
+				title: 'Bỏ thay đổi chưa lưu?',
+				message: 'Có thay đổi chưa lưu ở tab "Thông tin hồ sơ". Đóng và bỏ thay đổi?',
+				confirmLabel: 'Đóng và bỏ thay đổi',
+				tone: 'danger',
+			}))
+		)
+			return;
 		onClose();
 	};
 	const showLessons = !programChanged && (lessons.length > 0 || (!isPractice && !!enrollment.program_id));
@@ -264,12 +281,12 @@ export function EnrollmentDetailModal({
 				<div className={styles.formGrid2}>
 					<CfgField
 						cfg={cfg}
-						name='program_id'
+						name='program_id' htmlFor={fid('program_id')}
 						error={fieldErrors.program_id}
 						label='Chương trình học'
 						style={full}
 					>
-						<select
+						<select id={fid('program_id')} aria-invalid={!!fieldErrors.program_id || undefined}
 							className={styles.formInput}
 							value={view.program_id}
 							onChange={set('program_id')}
@@ -285,8 +302,8 @@ export function EnrollmentDetailModal({
 							))}
 						</select>
 					</CfgField>
-					<CfgField cfg={cfg} name='progress_status' error={fieldErrors.progress_status} label='Tiến độ'>
-						<select
+					<CfgField cfg={cfg} name='progress_status' htmlFor={fid('progress_status')} error={fieldErrors.progress_status} label='Tiến độ'>
+						<select id={fid('progress_status')} aria-invalid={!!fieldErrors.progress_status || undefined}
 							className={styles.formInput}
 							value={view.progress_status}
 							onChange={set('progress_status')}
@@ -318,12 +335,12 @@ export function EnrollmentDetailModal({
 					{view.progress_status === 'dropped' && (
 						<CfgField
 							cfg={cfg}
-							name='progress_reason'
+							name='progress_reason' htmlFor={fid('progress_reason')}
 							error={fieldErrors.progress_reason}
 							label='Lý do nghỉ học'
 							style={full}
 						>
-							<input
+							<input id={fid('progress_reason')} aria-invalid={!!fieldErrors.progress_reason || undefined}
 								className={styles.formInput}
 								value={view.progress_reason}
 								onChange={set('progress_reason')}
@@ -334,30 +351,30 @@ export function EnrollmentDetailModal({
 					{isPractice && (
 						<>
 							{sub('Thời gian thực hành')}
-							<CfgField cfg={cfg} name='start_date' error={fieldErrors.start_date} label='Bắt đầu thực hành'>
-								<DatePicker
+							<CfgField cfg={cfg} name='start_date' htmlFor={fid('start_date')} error={fieldErrors.start_date} label='Bắt đầu thực hành'>
+								<DatePicker id={fid('start_date')} aria-invalid={!!fieldErrors.start_date || undefined}
 									value={view.start_date}
 									onChange={setDate('start_date')}
 									max={view.end_date || undefined}
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='end_date' error={fieldErrors.end_date} label='Kết thúc thực hành'>
-								<DatePicker
+							<CfgField cfg={cfg} name='end_date' htmlFor={fid('end_date')} error={fieldErrors.end_date} label='Kết thúc thực hành'>
+								<DatePicker id={fid('end_date')} aria-invalid={!!fieldErrors.end_date || undefined}
 									value={view.end_date}
 									onChange={setDate('end_date')}
 									min={view.start_date || undefined}
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='total_duration' error={fieldErrors.total_duration} label='Tổng thời gian thực hành'>
-								<input
+							<CfgField cfg={cfg} name='total_duration' htmlFor={fid('total_duration')} error={fieldErrors.total_duration} label='Tổng thời gian thực hành'>
+								<input id={fid('total_duration')} aria-invalid={!!fieldErrors.total_duration || undefined}
 									className={styles.formInput}
 									value={view.total_duration}
 									onChange={set('total_duration')}
 									placeholder={program?.program_duration ?? 'VD: 12 tháng'}
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='practice_location' error={fieldErrors.practice_location} label='Địa điểm thực hành'>
-								<input
+							<CfgField cfg={cfg} name='practice_location' htmlFor={fid('practice_location')} error={fieldErrors.practice_location} label='Địa điểm thực hành'>
+								<input id={fid('practice_location')} aria-invalid={!!fieldErrors.practice_location || undefined}
 									className={styles.formInput}
 									value={view.practice_location}
 									onChange={set('practice_location')}
@@ -368,35 +385,35 @@ export function EnrollmentDetailModal({
 							{sub('Thông tin in trên giấy tờ (đơn đề nghị, hợp đồng)')}
 							<CfgField
 								cfg={cfg}
-								name='practice_code'
+								name='practice_code' htmlFor={fid('practice_code')}
 								error={fieldErrors.practice_code}
 								label='Mã thực hành'
 							>
-								<input
+								<input id={fid('practice_code')} aria-invalid={!!fieldErrors.practice_code || undefined}
 									className={styles.formInput}
 									value={view.practice_code}
 									onChange={set('practice_code')}
 									placeholder='226.BS'
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='sending_unit' error={fieldErrors.sending_unit} label='Đơn vị cử đi'>
-								<input
+							<CfgField cfg={cfg} name='sending_unit' htmlFor={fid('sending_unit')} error={fieldErrors.sending_unit} label='Đơn vị cử đi'>
+								<input id={fid('sending_unit')} aria-invalid={!!fieldErrors.sending_unit || undefined}
 									className={styles.formInput}
 									value={view.sending_unit}
 									onChange={set('sending_unit')}
 									placeholder='VD: BV YHCT Nghệ An'
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='professional_field' error={fieldErrors.professional_field} label='Lĩnh vực chuyên môn'>
-								<input
+							<CfgField cfg={cfg} name='professional_field' htmlFor={fid('professional_field')} error={fieldErrors.professional_field} label='Lĩnh vực chuyên môn'>
+								<input id={fid('professional_field')} aria-invalid={!!fieldErrors.professional_field || undefined}
 									className={styles.formInput}
 									value={view.professional_field}
 									onChange={set('professional_field')}
 									placeholder='VD: Bác sĩ y khoa'
 								/>
 							</CfgField>
-							<CfgField cfg={cfg} name='practice_form' error={fieldErrors.practice_form} label='Hình thức hành nghề'>
-								<input
+							<CfgField cfg={cfg} name='practice_form' htmlFor={fid('practice_form')} error={fieldErrors.practice_form} label='Hình thức hành nghề'>
+								<input id={fid('practice_form')} aria-invalid={!!fieldErrors.practice_form || undefined}
 									className={styles.formInput}
 									value={view.practice_form}
 									onChange={set('practice_form')}
@@ -408,12 +425,12 @@ export function EnrollmentDetailModal({
 
 					<CfgField
 						cfg={cfg}
-						name='note'
+						name='note' htmlFor={fid('note')}
 						error={fieldErrors.note}
 						label='Ghi chú'
 						style={full}
 					>
-						<input
+						<input id={fid('note')} aria-invalid={!!fieldErrors.note || undefined}
 							className={styles.formInput}
 							value={view.note}
 							onChange={set('note')}

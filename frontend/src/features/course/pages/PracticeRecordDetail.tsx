@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CheckSvg, ChevLSvg, LayersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Button, InlineLoading } from '@/shared/components';
+import { Button, confirmDialog, InlineLoading } from '@/shared/components';
 import crud from '@/shared/components/Table/CrudPage.module.css';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { showToast } from '@/shared/utils/feedback';
@@ -71,7 +71,12 @@ export default function PracticeRecordDetail() {
 
 	const decide = async (status: 'approved' | 'rejected') => {
 		if (!enrollment) return;
-		if (status === 'rejected' && !window.confirm(`Từ chối hồ sơ của ${enrollment.trainee_name}?`)) return;
+		if (status === 'rejected' && !(await confirmDialog({
+				title: 'Từ chối hồ sơ?',
+				message: `Từ chối hồ sơ của ${enrollment.trainee_name}?`,
+				confirmLabel: 'Từ chối',
+				tone: 'danger',
+			}))) return;
 		setBusy(true);
 		try {
 			await decideEnrollment(enrollment.id, status);
@@ -88,7 +93,7 @@ export default function PracticeRecordDetail() {
 	if (notFound) {
 		return (
 			<AdminLayout pageTitle='Không tìm thấy'>
-				<button
+				<button type='button'
 					className={styles.backLink}
 					onClick={back}
 				>

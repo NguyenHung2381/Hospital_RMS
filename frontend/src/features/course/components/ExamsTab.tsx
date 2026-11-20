@@ -11,7 +11,7 @@ import type {
 	PaperType,
 } from '../../exam/types/exam.type';
 import { CODE_MODE_LABEL, EXAM_PART_LABEL, POOL_LABEL } from '../../exam/types/exam.type';
-import { Button, QuestionImageView, QuestionText } from '../../../shared/components';
+import { Button, confirmDialog, QuestionImageView, QuestionText } from '../../../shared/components';
 import styles from '../pages/Courses.module.css';
 
 const STATUS_LABEL: Record<PaperStatus, string> = {
@@ -87,7 +87,7 @@ export function ExamsTab({ courseId, programId }: { courseId: string; programId?
 	if (view === 'attempts' && selectedPaperId) {
 		return (
 			<div>
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					onClick={() => setView('list')}
 					style={{ marginBottom: 12 }}
@@ -116,7 +116,7 @@ export function ExamsTab({ courseId, programId }: { courseId: string; programId?
 									</div>
 								</div>
 								{a.status !== 'in_progress' && (
-									<button
+									<button type='button'
 										className={styles.btnGhost}
 										onClick={() => openGrading(a.id)}
 									>
@@ -184,29 +184,36 @@ export function ExamsTab({ courseId, programId }: { courseId: string; programId?
 								</div>
 							</div>
 							<div style={{ display: 'flex', gap: 6 }}>
-								<button
+								<button type='button'
 									className={styles.btnGhost}
 									onClick={() => openAttempts(p)}
 								>
 									Bài làm
 								</button>
-								<button
+								<button type='button'
 									className={styles.btnGhost}
 									onClick={() => openBuilder(p)}
 								>
 									<IcEdit /> Sửa
 								</button>
-								<div
+								<button
+									type='button'
 									className={styles.actionBtn}
 									title='Xóa đề thi'
+									aria-label={`Xóa đề thi ${p.title}`}
 									onClick={async () => {
-										if (!confirm(`Xóa đề thi "${p.title}"?`)) return;
-										await examApi.removePaper(p.id);
-										loadPapers();
+										const ok = await confirmDialog({
+											title: 'Xóa đề thi?',
+											message: `Xóa đề thi "${p.title}"?`,
+											confirmLabel: 'Xóa',
+											tone: 'danger',
+											onConfirm: () => examApi.removePaper(p.id),
+										});
+										if (ok) loadPapers();
 									}}
 								>
 									<IcTrash />
-								</div>
+								</button>
 							</div>
 						</div>
 					))}
@@ -250,7 +257,7 @@ export function GradingPanel({
 
 	return (
 		<div>
-			<button
+			<button type='button'
 				className={styles.btnGhost}
 				onClick={onBack}
 				style={{ marginBottom: 12 }}
@@ -293,11 +300,12 @@ export function GradingPanel({
 										max={a.points}
 										step={0.5}
 										placeholder='Điểm'
+										aria-label={`Điểm câu ${i + 1}`}
 										value={scores[a.question_id] ?? ''}
 										onChange={(e) => setScores((s) => ({ ...s, [a.question_id]: e.target.value }))}
 										style={{ maxWidth: 100 }}
 									/>
-									<button
+									<button type='button'
 										className={styles.btnGhost}
 										disabled={saving === a.question_id || scores[a.question_id] === ''}
 										onClick={() => void handleGrade(a.question_id)}

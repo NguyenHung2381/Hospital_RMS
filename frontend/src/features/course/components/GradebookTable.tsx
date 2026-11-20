@@ -279,7 +279,7 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 				) : null}
 			</div>
 			<div className={styles.toolbar}>
-				<button
+				<button type='button'
 					className={styles.btnPrimary}
 					disabled={saving || !hasChanges}
 					onClick={() => void save()}
@@ -287,7 +287,7 @@ export function GradebookTable({ book, onSave, fileName, toolbar, rowActions, tr
 					{saving ? 'Đang lưu…' : `Lưu điểm${dirty.rows.length ? ` (${dirty.rows.length})` : ''}`}
 				</button>
 				{hasChanges && (
-					<button
+					<button type='button'
 						className={styles.btnGhost}
 						disabled={saving}
 						onClick={() => setDrafts({})}

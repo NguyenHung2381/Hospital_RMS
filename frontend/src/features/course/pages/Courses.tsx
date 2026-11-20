@@ -1,5 +1,5 @@
 import { SearchInput, SelectionCount, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import { apiClient } from '@/shared/api/axios';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
@@ -148,7 +148,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 			>
 				Link đăng ký
 			</Button>
-			<button
+			<button type='button'
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
@@ -186,6 +186,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 							<button
 								type='button'
 								aria-pressed={view === 'table'}
+								aria-label='Xem dạng bảng'
 								title='Dạng bảng'
 								onClick={() => setView('table')}
 							>
@@ -194,6 +195,7 @@ export default function Courses({ typeId }: { typeId: string }) {
 							<button
 								type='button'
 								aria-pressed={view === 'cards'}
+								aria-label='Xem dạng thẻ'
 								title='Dạng thẻ'
 								onClick={() => setView('cards')}
 							>
@@ -305,13 +307,13 @@ export default function Courses({ typeId }: { typeId: string }) {
 										</td>
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
-											<span
+											<Link
 												className={styles.itemName}
 												title='Mở khóa học'
-												onClick={() => openCourse(c.id)}
+												to={`/admin/courses/${c.id}`}
 											>
 												{c.name}
-											</span>
+											</Link>
 											{meta.length > 0 && <div className={styles.descText}>{meta.join(' · ')}</div>}
 										</td>
 										<td className={`${styles.td} ${styles.nowrap}`}>

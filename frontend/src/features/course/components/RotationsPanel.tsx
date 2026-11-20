@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DatePicker, SearchableSelect } from '@/shared/components';
+import { confirmDialog, DatePicker, SearchableSelect } from '@/shared/components';
 import { ChevDSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
@@ -172,12 +172,16 @@ export function RotationsPanel({
 			</div>
 		);
 
-	const autoArrange = (replace: boolean, carryOver = false) => {
+	const autoArrange = async (replace: boolean, carryOver = false) => {
 		if (
 			replace &&
-			!window.confirm(
-				'Xếp lại sẽ XÓA các vòng chưa có kết quả (kể cả người hướng dẫn) rồi xếp mới; vòng đã Đạt / Không đạt được giữ nguyên. Tiếp tục?',
-			)
+			!(await confirmDialog({
+				title: 'Xếp lại các vòng?',
+				message:
+					'Xếp lại sẽ XÓA các vòng chưa có kết quả (kể cả người hướng dẫn) rồi xếp mới; vòng đã Đạt / Không đạt được giữ nguyên. Tiếp tục?',
+				confirmLabel: 'Xếp lại',
+				tone: 'danger',
+			}))
 		)
 			return;
 		run(
@@ -186,11 +190,16 @@ export function RotationsPanel({
 		);
 	};
 
-	const schedule = () => {
+	const schedule = async () => {
 		if (!startDate) return showToast('error', 'Chọn ngày bắt đầu thực hành trước');
 		if (
 			rows.some((r) => r.start_date && r.result === 'pending') &&
-			!window.confirm('Tính lại sẽ ghi đè ngày của các vòng chưa có kết quả (theo thứ tự hiện tại). Tiếp tục?')
+			!(await confirmDialog({
+				title: 'Tính lại ngày?',
+				message: 'Tính lại sẽ ghi đè ngày của các vòng chưa có kết quả (theo thứ tự hiện tại). Tiếp tục?',
+				confirmLabel: 'Tính lại',
+				tone: 'danger',
+			}))
 		)
 			return;
 		run(async () => {
@@ -215,12 +224,14 @@ export function RotationsPanel({
 			<div className={styles.subToolbar}>
 				<span className={styles.hint}>Bắt đầu thực hành</span>
 				<DatePicker
+					aria-label='Ngày bắt đầu thực hành'
 					value={startDate}
 					onChange={setStartDate}
 					style={{ width: 170, flex: '0 0 auto' }}
 				/>
 				{data.rounds.length > 1 && (
 					<select
+						aria-label='Vòng thực hành đầu tiên'
 						className={styles.subSelect}
 						style={{ flex: '0 1 220px' }}
 						value={firstLesson}
@@ -308,6 +319,7 @@ export function RotationsPanel({
 										type='button'
 										className={styles.actionBtn}
 										disabled={busy || i === 0}
+										aria-label={`Đưa vòng ${i + 1} lên trước`}
 										title='Đưa vòng này lên trước — xong bấm "Tính lại ngày"'
 										onClick={() => run(() => moveRotation(r.id, 'up'))}
 									>
@@ -317,6 +329,7 @@ export function RotationsPanel({
 										type='button'
 										className={styles.actionBtn}
 										disabled={busy || i === rows.length - 1}
+										aria-label={`Đưa vòng ${i + 1} xuống sau`}
 										title='Đưa vòng này xuống sau — xong bấm "Tính lại ngày"'
 										onClick={() => run(() => moveRotation(r.id, 'down'))}
 									>
@@ -351,8 +364,17 @@ export function RotationsPanel({
 										type='button'
 										className={styles.actionBtn}
 										title='Xóa dòng này'
+										aria-label={`Xóa vòng ${i + 1} khỏi hồ sơ`}
 										disabled={busy}
-										onClick={() => window.confirm('Xóa vòng này khỏi hồ sơ?') && run(() => removeRotation(r.id))}
+										onClick={async () => {
+											const ok = await confirmDialog({
+												title: 'Xóa vòng thực hành?',
+												message: 'Xóa vòng này khỏi hồ sơ?',
+												confirmLabel: 'Xóa',
+												tone: 'danger',
+											});
+											if (ok) run(() => removeRotation(r.id));
+										}}
 									>
 										<TrashSvg />
 									</button>
@@ -363,6 +385,7 @@ export function RotationsPanel({
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Khoa</span>
 									<SearchableSelect
+										aria-label={`Khoa của vòng ${i + 1}`}
 										options={[{ id: '', name: '-- Chọn khoa --' }, ...deptOptions(r)]}
 										value={r.department_id ?? ''}
 										disabled={busy}
@@ -374,6 +397,7 @@ export function RotationsPanel({
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Kết quả</span>
 									<select
+										aria-label={`Kết quả vòng ${i + 1}`}
 										className={styles.subSelect}
 										value={r.result}
 										disabled={busy}
@@ -402,6 +426,7 @@ export function RotationsPanel({
 								<div className={styles.rotField}>
 									<span className={styles.rotLabel}>Thời lượng</span>
 									<input
+										aria-label={`Thời lượng vòng ${i + 1}`}
 										className={styles.subSelect}
 										defaultValue={r.duration_text ?? ''}
 										key={`${r.id}-${r.duration_text}`}

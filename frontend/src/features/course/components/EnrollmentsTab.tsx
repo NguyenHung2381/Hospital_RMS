@@ -30,7 +30,7 @@ import {
 } from "../types/course.type";
 import { EnrollmentDetailModal } from "./EnrollmentDetailModal";
 import { CourseProposalsModal } from "./CourseProposalsModal";
-import { Badge } from "@/shared/components";
+import { alertDialog, Badge, confirmDialog } from "@/shared/components";
 import { AddEnrollmentPanel, type RecentAdd } from "./AddEnrollmentPanel";
 import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
@@ -481,25 +481,53 @@ export function EnrollmentsTab({
         ? enrollments.filter((e) => ids.includes(e.id) && blockedReason(e))
         : [];
     if (blocked.length) {
-      const list = blocked
-        .slice(0, 5)
-        .map((e) => `• ${e.trainee_name}: ${blockedReason(e)}`)
-        .join("\n");
-      const more = blocked.length > 5 ? `\n… và ${blocked.length - 5} người khác` : "";
+      // Danh sách ai thiếu gì — dạng <ul> để trình đọc màn hình đọc từng mục
+      const list = (
+        <ul style={{ margin: "8px 0", paddingLeft: 20 }}>
+          {blocked.slice(0, 5).map((e) => (
+            <li key={e.id}>
+              {e.trainee_name}: {blockedReason(e)}
+            </li>
+          ))}
+          {blocked.length > 5 && <li>… và {blocked.length - 5} người khác</li>}
+        </ul>
+      );
       ids = ids.filter((id) => !blocked.some((b) => b.id === id));
       if (!ids.length) {
-        window.alert(
-          `Chưa duyệt được ${blocked.length} đơn đã chọn vì chưa đủ mốc đối chiếu:\n${list}${more}\n\nMở tab "Đơn đăng ký" của từng hồ sơ để đối chiếu.`,
-        );
+        await alertDialog({
+          title: "Chưa duyệt được",
+          message: (
+            <div>
+              Chưa duyệt được {blocked.length} đơn đã chọn vì chưa đủ mốc đối chiếu:
+              {list}
+              Mở tab "Đơn đăng ký" của từng hồ sơ để đối chiếu.
+            </div>
+          ),
+        });
         return;
       }
-      if (
-        !window.confirm(
-          `${blocked.length} đơn chưa đủ mốc đối chiếu sẽ được bỏ qua:\n${list}${more}\n\n${verb} ${ids.length} học viên còn lại?`,
-        )
-      )
-        return;
-    } else if (!window.confirm(`${verb} ${ids.length} học viên đã chọn?`)) return;
+      const ok = await confirmDialog({
+        title: `${verb} các đơn còn lại?`,
+        message: (
+          <div>
+            {blocked.length} đơn chưa đủ mốc đối chiếu sẽ được bỏ qua:
+            {list}
+            {verb} {ids.length} học viên còn lại?
+          </div>
+        ),
+        confirmLabel: verb,
+        tone: status === "rejected" ? "danger" : "default",
+      });
+      if (!ok) return;
+    } else {
+      const ok = await confirmDialog({
+        title: `${verb} học viên đã chọn?`,
+        message: `${verb} ${ids.length} học viên đã chọn?`,
+        confirmLabel: verb,
+        tone: status === "rejected" ? "danger" : "default",
+      });
+      if (!ok) return;
+    }
     const failed = await onDecideBulk(ids, status);
     rowSel.clearSelection();
     [...failed, ...blocked.map((b) => b.id)].forEach(rowSel.toggleSelect);
@@ -517,13 +545,14 @@ export function EnrollmentsTab({
   };
 
   /** Hủy duyệt người đã duyệt (đăng ký cho vui / không đến học) — hỏi lại vì học viên sẽ nhận email. */
-  const unapprove = (en: Enrollment) => {
-    if (
-      window.confirm(
-        `Hủy duyệt ${en.trainee_name}? Học viên chuyển sang nhóm "Từ chối / Hủy duyệt" và nhận email thông báo (nếu có email).`,
-      )
-    )
-      onDecide(en.id, "rejected");
+  const unapprove = async (en: Enrollment) => {
+    const ok = await confirmDialog({
+      title: "Hủy duyệt học viên?",
+      message: `Hủy duyệt ${en.trainee_name}? Học viên chuyển sang nhóm "Từ chối / Hủy duyệt" và nhận email thông báo (nếu có email).`,
+      confirmLabel: "Hủy duyệt",
+      tone: "danger",
+    });
+    if (ok) onDecide(en.id, "rejected");
   };
 
   const bulkRemove = async (ids: string[]) => {
@@ -576,12 +605,13 @@ export function EnrollmentsTab({
   const cancelClass = async () => {
     if (!course || !focusLink) return;
     const label = focusLink.program_code ?? focusLink.program_name;
-    if (
-      !window.confirm(
-        `Hủy mở lớp ${label}? Lớp quay về trạng thái chờ mở, học viên vẫn giữ chỗ và nhận email báo tạm hoãn (nếu có email).`,
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: "Hủy mở lớp?",
+      message: `Hủy mở lớp ${label}? Lớp quay về trạng thái chờ mở, học viên vẫn giữ chỗ và nhận email báo tạm hoãn (nếu có email).`,
+      confirmLabel: "Hủy mở lớp",
+      tone: "danger",
+    });
+    if (!ok) return;
     setCancellingClass(true);
     try {
       await cancelOpenClass(course.id, focusLink.program_id);

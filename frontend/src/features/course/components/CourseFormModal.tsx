@@ -1,5 +1,5 @@
 import { FormField } from '@/shared/components/Input/FormField';
-import React, { useEffect, useState } from 'react';
+import React, { useId, useEffect, useState } from 'react';
 import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { DatePicker, Modal, ModalActions } from '@/shared/components';
 import { Toggle } from '@/shared/components/Input/Toggle';
@@ -38,12 +38,15 @@ function ListEditor({
 	placeholder: string;
 	addLabel: string;
 }) {
+	const labelId = useId();
 	return (
 		<div
 			className={styles.formGroup}
 			style={{ gridColumn: '1 / -1' }}
+			role='group'
+			aria-labelledby={labelId}
 		>
-			<label className={styles.formLabel}>{label}</label>
+			<div id={labelId} className={styles.formLabel}>{label}</div>
 			{items.length === 0 && <div className={styles.hint}>Chưa có mục nào.</div>}
 			{items.length > 0 && (
 				<div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -56,6 +59,7 @@ function ListEditor({
 								{idx + 1}.
 							</span>
 							<input
+								aria-label={`${label} ${idx + 1}`}
 								className={styles.formInput}
 								value={item}
 								onChange={(e) => {
@@ -69,6 +73,7 @@ function ListEditor({
 								type='button'
 								className={`${styles.actionBtn} ${styles.danger}`}
 								title='Xóa mục'
+								aria-label={`Xóa ${label.toLowerCase()} ${idx + 1}`}
 								onClick={() => onChange(items.filter((_, i) => i !== idx))}
 							>
 								<TrashSvg />
@@ -108,6 +113,10 @@ export function CourseFormModal({
 	onSave: (d: CourseFormData) => void;
 	loading: boolean;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [form, setForm] = useState<CourseFormData>(course ? courseToForm(course) : { ...EMPTY_FORM, ...initial });
 	const [forms, setForms] = useState<SimpleItem[]>([]);
 	const [programs, setPrograms] = useState<ProgramOption[]>([]);
@@ -214,8 +223,8 @@ export function CourseFormModal({
 				>
 					1. Thông tin chung
 				</div>
-				<CfgField cfg={cfg} name='training_type_id' error={errors.training_type_id} label='Loại khóa'>
-					<select
+				<CfgField cfg={cfg} name='training_type_id' htmlFor={fid('training_type_id')} error={errors.training_type_id} label='Loại khóa'>
+					<select id={fid('training_type_id')} aria-invalid={!!errors.training_type_id || undefined}
 						className={styles.formInput}
 						value={form.training_type_id}
 						onChange={(e) => changeType(e.target.value)}
@@ -234,12 +243,12 @@ export function CourseFormModal({
 				{form.training_type_id === TRAINING_TYPE.DTLT ? (
 					<CfgField
 						cfg={cfg}
-						name='batch_no'
+						name='batch_no' htmlFor={fid('batch_no')}
 						label='Đợt số'
 						required
 						error={errors.batch_no}
 					>
-						<input
+						<input id={fid('batch_no')} aria-invalid={!!errors.batch_no || undefined}
 							type='number'
 							min={1}
 							className={`${styles.formInput} ${errors.batch_no ? styles.inputError : ''}`}
@@ -251,14 +260,17 @@ export function CourseFormModal({
 				) : (
 					<FormField
 						label='Lịch khóa'
+						htmlFor={fid('is_rolling')}
 					>
 						<div className={`${styles.formInput} ${styles.toggleBox}`}>
 							<Toggle
+								id={fid('is_rolling')}
 								on={form.is_rolling}
 								onChange={() => setForm((f) => ({ ...f, is_rolling: !f.is_rolling }))}
 								title='Mở liên tục'
 							/>
-							<span onClick={() => setForm((f) => ({ ...f, is_rolling: !f.is_rolling }))}>Mở liên tục</span>
+							{/* label gắn với nút công tắc: bấm chữ cũng bật/tắt, trình đọc màn hình đọc đúng tên */}
+							<label htmlFor={fid('is_rolling')}>Mở liên tục</label>
 						</div>
 						<span className={styles.fieldHint}>
 							{form.is_rolling ? 'Mỗi học viên có lịch học riêng' : 'Cả lớp học theo một lịch chung'}
@@ -267,13 +279,13 @@ export function CourseFormModal({
 				)}
 				<CfgField
 					cfg={cfg}
-					name='name'
+					name='name' htmlFor={fid('name')}
 					label='Tên khóa học'
 					required
 					error={errors.name}
 					style={full}
 				>
-					<input
+					<input id={fid('name')} aria-invalid={!!errors.name || undefined}
 						className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
 						value={form.name}
 						onChange={set('name')}
@@ -432,8 +444,8 @@ export function CourseFormModal({
 						<option value='1'>Công khai</option>
 					</select>
 				</FormField>
-				<CfgField cfg={cfg} name='training_form_id' error={errors.training_form_id} label='Hình thức học'>
-					<select
+				<CfgField cfg={cfg} name='training_form_id' htmlFor={fid('training_form_id')} error={errors.training_form_id} label='Hình thức học'>
+					<select id={fid('training_form_id')} aria-invalid={!!errors.training_form_id || undefined}
 						className={styles.formInput}
 						value={form.training_form_id}
 						onChange={set('training_form_id')}
@@ -486,12 +498,12 @@ export function CourseFormModal({
 					<div className={styles.formGrid2}>
 						<CfgField
 							cfg={cfg}
-							name='description'
+							name='description' htmlFor={fid('description')}
 							error={errors.description}
 							label='Mô tả'
 							style={full}
 						>
-							<textarea
+							<textarea id={fid('description')} aria-invalid={!!errors.description || undefined}
 								className={styles.formTextarea}
 								value={form.description}
 								onChange={set('description')}
