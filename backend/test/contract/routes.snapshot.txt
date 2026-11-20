@@ -84,6 +84,7 @@ GET    /api/v1/courses/:id/documents  courses:read
 POST   /api/v1/courses/:id/documents  courses:update
 POST   /api/v1/courses/:id/enrollments  courses:create
 GET    /api/v1/courses/:id/enrollments  courses:read
+POST   /api/v1/courses/:id/enrollments/export-excel  courses:read
 GET    /api/v1/courses/:id/gradebook  courses:read
 GET    /api/v1/courses/:id/grades  courses:read
 PUT    /api/v1/courses/:id/grades/bulk  courses:update
@@ -127,7 +128,6 @@ GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/registration  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/registration/application  courses:read
-PUT    /api/v1/courses/enrollments/:enrollmentId/registration/checks  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/registration/dossier  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/rotations  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/auto  courses:update
@@ -231,7 +231,7 @@ DELETE /api/v1/me/cme-records/:id/result-files/:fileId  authOnly
 POST   /api/v1/me/cme/export-excel  authOnly
 GET    /api/v1/me/course-registrations  authOnly
 GET    /api/v1/me/course-registrations/:enrollmentId/application  authOnly
-POST   /api/v1/me/course-registrations/:enrollmentId/dossier  authOnly
+POST   /api/v1/me/course-registrations/:enrollmentId/files/:kind  authOnly
 GET    /api/v1/me/courses/:id  authOnly
 POST   /api/v1/me/courses/:id/register  authOnly
 GET    /api/v1/me/department-proposals  authOnly
@@ -289,8 +289,10 @@ GET    /api/v1/public/captcha  public
 GET    /api/v1/public/categories  public
 POST   /api/v1/public/course-registration  public
 POST   /api/v1/public/course-registration/:code/application  public
-POST   /api/v1/public/course-registration/:code/dossier  public
+POST   /api/v1/public/course-registration/:code/files/:kind  public
 POST   /api/v1/public/course-registration/:code/status  public
+POST   /api/v1/public/course-registration/draft/application  public
+POST   /api/v1/public/course-registration/draft/proposal  public
 POST   /api/v1/public/course-registration/email-otp  public
 POST   /api/v1/public/course-registration/email-otp/verify  public
 GET    /api/v1/public/course-registration/rules  public
@@ -370,6 +372,7 @@ GET    /api/v1/seminars/:id/required-absentees  seminars:read
 POST   /api/v1/seminars/:id/test-image  seminars:update
 POST   /api/v1/seminars/checkin  authOnly
 GET    /api/v1/seminars/cme-compliance  seminars:cme_manage
+GET    /api/v1/seminars/cme-cycle-compliance  seminars:cme_manage
 POST   /api/v1/seminars/cme-personal/:userId/export-excel  seminars:cme_manage
 GET    /api/v1/seminars/cme-requirements  seminars:cme_manage
 POST   /api/v1/seminars/cme-requirements  seminars:cme_manage
@@ -491,6 +494,8 @@ DELETE /api/v1/training-programs/:id  training_programs:delete
 GET    /api/v1/training-programs/:id  training_programs:read
 PUT    /api/v1/training-programs/:id  training_programs:update
 GET    /api/v1/training-programs/:id/lessons  training_programs:read
+POST   /api/v1/training-programs/:id/lessons/lecturers/import  training_programs:update
+POST   /api/v1/training-programs/:id/lessons/lecturers/template  training_programs:read
 POST   /api/v1/training-programs/:id/lessons/link  training_programs:update
 POST   /api/v1/training-programs/:id/lessons/link-many  training_programs:update
 PUT    /api/v1/training-programs/:id/lessons/reorder  training_programs:update

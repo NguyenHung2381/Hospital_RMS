@@ -23,6 +23,62 @@ export async function safeFetch(input: string, init?: RequestInit): Promise<Resp
 }
 
 /**
+ * POST FormData bằng XMLHttpRequest thay cho fetch(): fetch không báo được đã
+ * gửi bao nhiêu byte, nên upload file lớn / mạng chậm chỉ hiện được hiệu ứng
+ * chạy vô hạn, trông như treo. Trả về Response để nơi gọi xử lý y như fetch.
+ *   - lỗi mạng / quá thời gian → ServiceUnavailableError (như safeFetch)
+ *   - signal bị hủy → DOMException 'AbortError'
+ */
+export function postFormWithProgress(
+	url: string,
+	body: FormData,
+	headers: Record<string, string>,
+	opts: { onProgress?: (loaded: number, total: number) => void; signal?: AbortSignal } = {},
+): Promise<Response> {
+	return new Promise((resolve, reject) => {
+		const aborted = () => new DOMException('Đã hủy tải lên', 'AbortError');
+		if (opts.signal?.aborted) return reject(aborted());
+
+		const xhr = new XMLHttpRequest();
+		xhr.open('POST', url);
+		for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
+		xhr.responseType = 'text';
+
+		const onAbort = () => xhr.abort();
+		opts.signal?.addEventListener('abort', onAbort);
+		const cleanup = () => opts.signal?.removeEventListener('abort', onAbort);
+
+		xhr.upload.onprogress = (e) => {
+			if (e.lengthComputable) opts.onProgress?.(e.loaded, e.total);
+		};
+		xhr.onload = () => {
+			cleanup();
+			// Response không nhận body với các mã "không có nội dung"
+			const noBody = [204, 205, 304].includes(xhr.status);
+			try {
+				resolve(
+					new Response(noBody ? null : xhr.responseText, {
+						status: xhr.status,
+						headers: { 'Content-Type': xhr.getResponseHeader('Content-Type') ?? '' },
+					}),
+				);
+			} catch {
+				reject(new ServiceUnavailableError());
+			}
+		};
+		xhr.onerror = xhr.ontimeout = () => {
+			cleanup();
+			reject(new ServiceUnavailableError());
+		};
+		xhr.onabort = () => {
+			cleanup();
+			reject(aborted());
+		};
+		xhr.send(body);
+	});
+}
+
+/**
  * Đọc body JSON của phản hồi. Body rỗng / không phải JSON:
  *   - phản hồi lỗi (5xx, gateway) → ServiceUnavailableError
  *   - phản hồi 2xx → null (vd 204 No Content)

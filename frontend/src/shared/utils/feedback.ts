@@ -20,13 +20,20 @@ export interface ToastItem {
 	action?: ToastAction;
 }
 
+/** Tiến trình gửi file (cộng dồn mọi lượt upload đang chạy) — null = không có lượt nào. */
+export interface UploadProgress {
+	loaded: number;
+	total: number;
+}
+
 export interface FeedbackState {
 	reads: number;
 	writes: number;
 	toasts: ToastItem[];
+	upload: UploadProgress | null;
 }
 
-let state: FeedbackState = { reads: 0, writes: 0, toasts: [] };
+let state: FeedbackState = { reads: 0, writes: 0, toasts: [], upload: null };
 const listeners = new Set<() => void>();
 
 function setState(patch: Partial<FeedbackState>) {
@@ -51,6 +58,55 @@ export async function trackRequest<T>(kind: RequestKind, run: () => Promise<T>):
 	} finally {
 		setState({ [key]: Math.max(0, state[key] - 1) });
 	}
+}
+
+// ─── Tiến trình upload ───────────────────────────────────────────────────────
+const uploads = new Map<number, { loaded: number; total: number; abort: () => void }>();
+let nextUploadId = 1;
+
+function publishUploads() {
+	let loaded = 0;
+	let total = 0;
+	for (const u of uploads.values()) {
+		loaded += u.loaded;
+		total += u.total;
+	}
+	const next = uploads.size ? { loaded, total } : null;
+	const prev = state.upload;
+	// Sự kiện progress bắn rất dày — chỉ báo cho giao diện khi phần trăm đổi
+	const pct = (p: UploadProgress | null) => (p && p.total ? Math.floor((p.loaded / p.total) * 100) : -1);
+	if (!!prev === !!next && pct(prev) === pct(next) && prev?.total === next?.total) return;
+	setState({ upload: next });
+}
+
+/**
+ * Đăng ký một lượt gửi file để GlobalFeedback hiện phần trăm thật + nút Hủy.
+ * `signal` bị hủy khi người dùng bấm Hủy; gọi `done()` khi request kết thúc.
+ */
+export function beginUpload() {
+	const id = nextUploadId++;
+	const controller = new AbortController();
+	uploads.set(id, { loaded: 0, total: 0, abort: () => controller.abort() });
+	publishUploads();
+	return {
+		signal: controller.signal,
+		progress(loaded: number, total: number) {
+			const u = uploads.get(id);
+			if (!u) return;
+			u.loaded = loaded;
+			u.total = total;
+			publishUploads();
+		},
+		done() {
+			uploads.delete(id);
+			publishUploads();
+		},
+	};
+}
+
+/** Người dùng bấm "Hủy" trên lớp phủ — dừng mọi lượt gửi file đang chạy. */
+export function cancelUploads() {
+	for (const u of uploads.values()) u.abort();
 }
 
 let nextToastId = 1;

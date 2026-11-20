@@ -1,0 +1,68 @@
+/* Nhập giảng viên giảng dạy từng bài của chương trình (LessonLecturerImportModal) */
+.templateRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+.templateRow > span {
+	flex: 1;
+	min-width: 0;
+}
+.templateBtn {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+	flex: none;
+	white-space: nowrap;
+}
+
+.tag {
+	display: inline-block;
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	white-space: nowrap;
+	background: var(--tone-gray-bg);
+	color: var(--tone-gray-fg);
+}
+.tagSet {
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+.tagClear {
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+}
+.tagSkipped {
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+.tagNew {
+	background: var(--tone-blue-bg);
+	color: var(--tone-blue-fg);
+	margin-left: 6px;
+}
+
+.people {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.personError {
+	color: var(--tone-red-fg);
+}
+.personNote {
+	composes: cellSub from '@/shared/components/Table/Table.module.css';
+}
+.rowMuted td {
+	color: var(--color-gray-500);
+}
+.thStatus {
+	width: 120px;
+}
+
+@media (max-width: 640px) {
+	.templateRow {
+		flex-direction: column;
+	}
+}

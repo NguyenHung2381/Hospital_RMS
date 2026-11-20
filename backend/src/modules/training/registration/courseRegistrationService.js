@@ -1,20 +1,16 @@
 // course_registrations — bản khai của 1 lượt ghi danh tạo từ form đăng ký khóa đào tạo
-// liên tục (mã đăng ký, snapshot, cam kết, hóa đơn, mốc đối chiếu, hồ sơ nộp bổ sung).
+// liên tục (mã đăng ký, snapshot, cam kết, hóa đơn). File hồ sơ đính kèm của lượt đăng ký nằm ở
+// registrationFileService (bảng course_registration_files).
 //
 // Cổng công khai, cổng nhân viên và màn duyệt đều đọc / ghi bản khai qua file này.
 // snapshot lưu dạng chuỗi JSON, đọc ra luôn parse thành object.
 const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
-const { getPool, sql, nowSql, updateReturning } = require('../../../config/db');
+const { getPool, sql, nowSql } = require('../../../config/db');
 const { isUniqueViolation, constraintName } = require('../../../utils/dbErrors');
-const { httpError, badRequest } = require('../../../utils/httpError');
-const { moveUploadedFiles, UPLOADS_ROOT } = require('../../../utils/uploadPaths');
-const trainingFileService = require('../trainingFileService');
-const { isPdf } = require('../trainees/traineeProfilePdf');
-const { SNAPSHOT_FIELDS, INVOICE_FIELDS, CHECK_KEYS, SOURCES } = require('./registrationConstants');
+const { badRequest } = require('../../../utils/httpError');
+const { SNAPSHOT_FIELDS, INVOICE_FIELDS, SOURCES } = require('./registrationConstants');
 
-// Loại thực thể của file hồ sơ nộp bổ sung ở training_files (entity_id = enrollment_id)
+// Loại thực thể của file hồ sơ nội viện ở training_files (entity_id = enrollment_id)
 // — tách khỏi 'trainee_document' để file không lẫn vào tab "Hồ sơ" của học viên.
 const DOSSIER_ENTITY = 'course_registration';
 
@@ -206,102 +202,7 @@ const listByStaff = async (userId) => {
 		.request()
 		.input('uid', sql.VarChar(20), userId)
 		.query(`${SELECT_REGISTRATION} WHERE r.staff_user_id = @uid ORDER BY r.created_at DESC`);
-	return r.recordset.map((row) => {
-		const parsed = parseRow(row);
-		return { ...parsed, needs_dossier: parsed.source === 'internal' && !parsed.dossier_file_id };
-	});
-};
-
-/**
- * Ghi / bỏ mốc đối chiếu. Khóa vắng mặt thì giữ nguyên; true ⇒ ghi thời điểm + người
- * đối chiếu (đã có mốc thì giữ mốc cũ), false ⇒ xóa mốc.
- * @param {string} enrollmentId
- * @param {{ id_checked?: boolean, degree_checked?: boolean, proposal_checked?: boolean }} checks
- * @param {string} actorId
- * @returns {Promise<Record<string, any>>} dòng sau khi cập nhật
- */
-const setChecks = async (enrollmentId, checks, actorId) => {
-	const sets = [];
-	for (const key of CHECK_KEYS) {
-		const v = checks?.[key];
-		if (v === undefined) continue;
-		const at = `${key}_at`;
-		const by = `${key}_by`;
-		// Tên cột lấy từ CHECK_KEYS (hằng số), không lấy từ input
-		if (v === true || v === 'true') {
-			sets.push(
-				`${at} = COALESCE(${at}, ${nowSql})`,
-				`${by} = CASE WHEN ${at} IS NULL THEN @actor_id ELSE ${by} END`,
-			);
-		} else {
-			sets.push(`${at} = NULL`, `${by} = NULL`);
-		}
-	}
-	const pool = await getPool();
-	const r = await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.input('actor_id', sql.VarChar(20), actorId || null)
-		.query(
-			updateReturning(
-				`UPDATE course_registrations SET ${[...sets, `updated_at = ${nowSql}`, 'updated_by = @actor_id'].join(', ')}`,
-				'enrollment_id = @id',
-				'enrollment_id',
-			),
-		);
-	if (!r.recordset.length) throw httpError(404, 'Không tìm thấy bản khai đăng ký.');
-	return getByEnrollment(enrollmentId);
-};
-
-/**
- * Lưu file PDF hồ sơ nộp bổ sung (nội viện: đơn + tờ trình đã duyệt). File cũ bị thay.
- * @param {string} enrollmentId
- * @param {{ originalname: string, filename?: string, path?: string, size?: number, mimetype?: string }} file
- * @param {string | null} actorId
- * @returns {Promise<{ file_id: string, dossier_uploaded_at: Date }>}
- */
-const attachDossier = async (enrollmentId, file, actorId) => {
-	const dropUpload = () => (file?.path ? fs.promises.unlink(file.path).catch(() => {}) : null);
-	if (!file || !isPdf(file)) {
-		await dropUpload();
-		throw badRequest('Hồ sơ nộp bổ sung chỉ nhận 1 file PDF (gộp đơn và tờ trình vào một file).');
-	}
-	const pool = await getPool();
-	const current = await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.query('SELECT dossier_file_id FROM course_registrations WHERE enrollment_id = @id');
-	if (!current.recordset.length) {
-		await dropUpload();
-		throw httpError(404, 'Không tìm thấy bản khai đăng ký.');
-	}
-	const oldFileId = current.recordset[0].dossier_file_id;
-
-	// Cùng chỗ với file đào tạo khác: uploads/training/<loại>/<mã>/ — file_url do
-	// saveUploadedFile dựng theo đúng đường này.
-	const dir = path.join(UPLOADS_ROOT, 'training', DOSSIER_ENTITY, enrollmentId);
-	const [moved] = file.path ? await moveUploadedFiles([file], dir) : [file];
-	const saved = await trainingFileService.saveUploadedFile(
-		DOSSIER_ENTITY,
-		enrollmentId,
-		moved,
-		actorId,
-	);
-	const r = await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.input('file_id', sql.VarChar(20), saved.id)
-		.input('actor_id', sql.VarChar(20), actorId || null)
-		.query(
-			updateReturning(
-				`UPDATE course_registrations
-				 SET dossier_file_id = @file_id, dossier_uploaded_at = ${nowSql}, updated_at = ${nowSql}, updated_by = @actor_id`,
-				'enrollment_id = @id',
-				'dossier_uploaded_at',
-			),
-		);
-	if (oldFileId && oldFileId !== saved.id) await trainingFileService.softDelete(oldFileId, actorId);
-	return { file_id: saved.id, dossier_uploaded_at: r.recordset[0]?.dossier_uploaded_at ?? null };
+	return r.recordset.map(parseRow);
 };
 
 const birthYear = (dob) => {
@@ -319,7 +220,7 @@ const birthYear = (dob) => {
  *   department_id: string, department_name: string,
  *   people: Array<{ enrollment_id: string, staff_user_id: string, staff_number: number | null,
  *     full_name: string, birth_year: number | null, qualification: string | null,
- *     enrollment_status: string, dossier_uploaded_at: Date | null, proposal_checked_at: Date | null }>,
+ *     enrollment_status: string, proposal_uploaded_at: Date | null }>,
  * }>>}
  */
 const listInternalGroups = async (filter = {}) => {
@@ -340,7 +241,10 @@ const listInternalGroups = async (filter = {}) => {
 	}
 	const r = await req.query(`
 		SELECT r.enrollment_id, r.staff_user_id, r.staff_number, r.department_id, r.snapshot,
-		       r.dossier_uploaded_at, r.proposal_checked_at, e.status AS enrollment_status,
+		       (SELECT MAX(crf.uploaded_at) FROM course_registration_files crf
+		        JOIN training_files f ON f.id = crf.file_id AND f.is_deleted = 'false'
+		        WHERE crf.enrollment_id = r.enrollment_id AND crf.kind IN ('proposal_approved', 'dossier')) AS proposal_uploaded_at,
+		       e.status AS enrollment_status,
 		       e.course_id, c.name AS course_name, c.start_date, c.end_date,
 		       e.program_id, tp.name AS program_name, tp.tuition_fee, d.name AS department_name
 		FROM course_registrations r
@@ -382,8 +286,7 @@ const listInternalGroups = async (filter = {}) => {
 			birth_year: birthYear(s.dob),
 			qualification: s.qualification || null,
 			enrollment_status: row.enrollment_status,
-			dossier_uploaded_at: row.dossier_uploaded_at ?? null,
-			proposal_checked_at: row.proposal_checked_at ?? null,
+			proposal_uploaded_at: row.proposal_uploaded_at ?? null,
 		});
 	}
 	return [...groups.values()];
@@ -395,8 +298,6 @@ module.exports = {
 	getByEnrollment,
 	getByCode,
 	listByStaff,
-	setChecks,
-	attachDossier,
 	listInternalGroups,
 	// Dùng chung với cổng công khai (mã giả của honeypot, chuẩn hóa mã người dùng gõ)
 	normalizeCode,

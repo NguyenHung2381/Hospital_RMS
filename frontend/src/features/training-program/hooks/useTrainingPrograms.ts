@@ -12,6 +12,7 @@ import {
 	updateTrainingProgram,
 } from '../api/trainingProgramApi';
 import type { DetailTab } from '../components/TrainingProgramDetailModal';
+import { getLessonState, type LessonStateFilter } from '../utils/lessonState';
 import {
 	EMPTY_FORM,
 	getProgramStatus,
@@ -37,6 +38,7 @@ export function useTrainingPrograms() {
 	const [departmentFilter, setDepartmentFilter] = useState('all');
 	const [traineeTypeFilter, setTraineeTypeFilter] = useState('all');
 	const [statusFilter, setStatusFilter] = useState<ProgramStatusFilter>('all');
+	const [lessonFilter, setLessonFilter] = useState<LessonStateFilter>('all');
 	const [modal, setModal] = useState<ModalType>(null);
 	const [editingProgram, setEditingProgram] = useState<TrainingProgram | null>(null);
 	const [deletingProgram, setDeletingProgram] = useState<TrainingProgram | null>(null);
@@ -94,6 +96,7 @@ export function useTrainingPrograms() {
 			if (traineeTypeFilter === 'none' ? typeIds.length : traineeTypeFilter !== 'all' && !typeIds.includes(traineeTypeFilter))
 				return false;
 			if (statusFilter !== 'all' && getProgramStatus(p) !== statusFilter) return false;
+			if (lessonFilter !== 'all' && getLessonState(p).state !== lessonFilter) return false;
 			if (
 				trainingTypeFilter === 'none'
 					? p.training_type_id
@@ -102,13 +105,14 @@ export function useTrainingPrograms() {
 				return false;
 			return true;
 		});
-	}, [programs, search, departmentFilter, traineeTypeFilter, statusFilter, trainingTypeFilter]);
+	}, [programs, search, departmentFilter, traineeTypeFilter, statusFilter, trainingTypeFilter, lessonFilter]);
 
 	const hasActiveFilter =
 		!!search.trim() ||
 		departmentFilter !== 'all' ||
 		traineeTypeFilter !== 'all' ||
 		statusFilter !== 'all' ||
+		lessonFilter !== 'all' ||
 		trainingTypeFilter !== 'all';
 
 	const { page, setPage, pageSize, handlePageSize, totalPages, safePage, paged } =
@@ -139,11 +143,17 @@ export function useTrainingPrograms() {
 		setPage(1);
 	}, [setPage]);
 
+	const handleLessonFilter = useCallback((v: LessonStateFilter) => {
+		setLessonFilter(v);
+		setPage(1);
+	}, [setPage]);
+
 	const clearFilters = useCallback(() => {
 		setSearch('');
 		setDepartmentFilter('all');
 		setTraineeTypeFilter('all');
 		setStatusFilter('all');
+		setLessonFilter('all');
 		setTrainingTypeFilter('all');
 		setPage(1);
 	}, [setPage]);
@@ -241,6 +251,7 @@ export function useTrainingPrograms() {
 		departmentFilter,
 		traineeTypeFilter,
 		statusFilter,
+		lessonFilter,
 		departmentOptions,
 		hasActiveFilter,
 		modal,
@@ -267,6 +278,7 @@ export function useTrainingPrograms() {
 		handleDepartmentFilter,
 		handleTraineeTypeFilter,
 		handleStatusFilter,
+		handleLessonFilter,
 		handleTrainingTypeFilter,
 		clearFilters,
 		handlePageSize,

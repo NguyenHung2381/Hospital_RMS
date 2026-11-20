@@ -1,5 +1,5 @@
-// Hai cấu hình bật/tắt của form đăng ký khóa đào tạo liên tục (TRAINING_REGISTRATION_EMAIL_OTP,
-// TRAINING_REGISTRATION_REQUIRE_CHECKS): chỉ nhận 'true'/'false' khi admin lưu, và đổi xong
+// Cấu hình bật/tắt của form đăng ký khóa đào tạo liên tục (TRAINING_REGISTRATION_EMAIL_OTP):
+// chỉ nhận 'true'/'false' khi admin lưu, và đổi xong
 // thì chỗ đọc (qua systemSettingService.getValue + cache) thấy ngay, không cần khởi động lại.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,11 +15,10 @@ install(async (text, inputs) => {
 require('../../src/modules/events/eventService').broadcast = () => {};
 const svc = require('../../src/modules/settings/systemSettingService');
 const otp = require('../../src/modules/training/registration/registrationEmailOtpService');
-const gate = require('../../src/modules/training/registration/registrationApprovalGate');
 
-const KEYS = ['TRAINING_REGISTRATION_EMAIL_OTP', 'TRAINING_REGISTRATION_REQUIRE_CHECKS'];
+const KEYS = ['TRAINING_REGISTRATION_EMAIL_OTP'];
 
-test('hai khóa nằm trong danh sách cho phép lưu', () => {
+test('khóa nằm trong danh sách cho phép lưu', () => {
 	for (const key of KEYS) assert.equal(svc.isKey(key), true);
 });
 
@@ -36,31 +35,33 @@ test("chỉ nhận 'true' / 'false' (rỗng = bỏ ghi đè); giá trị gõ sai
 	assert.equal(svc.validateSetting('TRAINING_HOLIDAYS', 'bất kỳ'), null);
 });
 
-test('chưa cấu hình ⇒ cả hai mặc định bật', async () => {
+test("công tắc CME tự cộng chỉ nhận 'true' / 'false' (rỗng = bỏ ghi đè)", () => {
+	const CME_KEYS = ['CME_AUTO_TRAINEE', 'CME_AUTO_LECTURER'];
+	for (const key of CME_KEYS) {
+		assert.equal(svc.validateSetting(key, 'true'), null);
+		assert.equal(svc.validateSetting(key, 'false'), null);
+		assert.equal(svc.validateSetting(key, ''), null);
+		assert.equal(svc.validateSetting(key, null), null);
+		for (const bad of ['False', 'TRUE', '0', 'tat', ' false'])
+			assert.match(svc.validateSetting(key, bad) ?? '', /true\/false/);
+	}
+});
+
+test('chưa cấu hình ⇒ mặc định bật', async () => {
 	rows.clear();
 	delete process.env.TRAINING_REGISTRATION_EMAIL_OTP;
-	delete process.env.TRAINING_REGISTRATION_REQUIRE_CHECKS;
 	assert.equal(await otp.isRequired(), true);
-	assert.equal(await gate.requireChecksEnabled(), true);
 });
 
 test('đổi cấu hình có hiệu lực ngay dù cache đã nạp (không cần khởi động lại)', async () => {
 	rows.clear();
 	assert.equal(await otp.isRequired(), true); // nạp cache với bảng trống
-	assert.equal(await gate.requireChecksEnabled(), true);
 
 	await svc.update('TRAINING_REGISTRATION_EMAIL_OTP', 'false', 'admin');
 	assert.equal(await otp.isRequired(), false);
-	assert.equal(await gate.requireChecksEnabled(), true); // khóa kia không bị ảnh hưởng
-
-	await svc.update('TRAINING_REGISTRATION_REQUIRE_CHECKS', 'false', 'admin');
-	assert.equal(await gate.requireChecksEnabled(), false);
 
 	await svc.update('TRAINING_REGISTRATION_EMAIL_OTP', 'true', 'admin');
 	assert.equal(await otp.isRequired(), true);
-
-	await svc.update('TRAINING_REGISTRATION_REQUIRE_CHECKS', '', 'admin'); // bỏ ghi đè
-	assert.equal(await gate.requireChecksEnabled(), true);
 });
 
 test('trang cấu hình đọc lại được giá trị đang áp dụng (effective)', async () => {
@@ -71,8 +72,6 @@ test('trang cấu hình đọc lại được giá trị đang áp dụng (effec
 		all.find((r) => r.setting_key === 'TRAINING_REGISTRATION_EMAIL_OTP').effective,
 		'false',
 	);
-	assert.equal(
-		all.find((r) => r.setting_key === 'TRAINING_REGISTRATION_REQUIRE_CHECKS').effective ?? null,
-		null,
-	);
+	// Khóa đã gỡ không còn trong danh sách cấu hình
+	assert.equal(svc.isKey('TRAINING_REGISTRATION_REQUIRE_CHECKS'), false);
 });

@@ -188,7 +188,7 @@ export function EnrollmentDetailModal({
 	const showLessons = !programChanged && (lessons.length > 0 || (!isPractice && !!enrollment.program_id));
 	const tabs: { key: Tab; label: string }[] = [
 		{ key: 'info', label: dirty ? 'Thông tin hồ sơ •' : 'Thông tin hồ sơ' },
-		// Chỉ lượt ghi danh tạo từ form đăng ký (có bản khai) — đối chiếu trước khi duyệt
+		// Chỉ lượt ghi danh tạo từ form đăng ký (có bản khai) — xem trước khi duyệt
 		...(enrollment.registration ? [{ key: 'registration' as const, label: 'Đơn đăng ký' }] : []),
 		...(isPractice
 			? ([
@@ -440,7 +440,6 @@ export function EnrollmentDetailModal({
 				<RegistrationReviewTab
 					enrollmentId={enrollment.id}
 					traineeName={enrollment.trainee_name}
-					onChanged={onSaved}
 				/>
 			)}
 

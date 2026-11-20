@@ -18,7 +18,12 @@ const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
 const { hasPermission } = require('../../../permissions/authz');
 const { DOC_STATE_SQL, DOC_STATE_WHERE } = require('./traineeDocumentSql');
-const { PROFILE_DOC_TYPE, assertPdf } = require('./traineeProfilePdf');
+const {
+	PROFILE_DOC_TYPE,
+	REGISTRATION_DOC_TYPES,
+	assertPdf,
+	assertPdfOrImage,
+} = require('./traineeProfilePdf');
 const { lockAccountOf } = require('./traineeAccountService');
 
 // extraCols/extraJoins: cột & outerApply thêm cho danh sách lọc theo loại khóa.
@@ -352,10 +357,21 @@ const listDocuments = async (traineeId) => {
 // Hồ sơ học viên = 1 file PDF (doc_type 'profile'). status: 'approved' chỉ dành cho nhân
 // viên đã đăng nhập tải lên; mọi nguồn không xác thực (đăng ký công khai...) phải truyền
 // 'pending' để chờ phòng Đào tạo duyệt.
+// docType: 'profile' (mặc định, chỉ PDF) hoặc 1 trong 4 giấy tờ đăng ký khóa đào tạo liên tục
+// (national_id / degree / license / decision — nhận PDF, JPG, PNG).
+// Trả { id, file_id } của dòng giấy tờ vừa thêm.
 const DOC_STATUSES = ['approved', 'pending'];
-const addDocument = async (traineeId, file, actorId, { status = 'approved' } = {}) => {
+const addDocument = async (
+	traineeId,
+	file,
+	actorId,
+	{ status = 'approved', docType = PROFILE_DOC_TYPE } = {},
+) => {
 	if (!DOC_STATUSES.includes(status)) throw new Error(`Trạng thái giấy tờ không hợp lệ: ${status}`);
-	await assertPdf(file);
+	if (![PROFILE_DOC_TYPE, ...REGISTRATION_DOC_TYPES].includes(docType))
+		throw new Error(`Loại giấy tờ không hợp lệ: ${docType}`);
+	if (docType === PROFILE_DOC_TYPE) await assertPdf(file);
+	else await assertPdfOrImage(file);
 	const pool = await getPool();
 	const savedFile = await trainingFileService.saveUploadedFile(
 		'trainee_document',
@@ -367,7 +383,7 @@ const addDocument = async (traineeId, file, actorId, { status = 'approved' } = {
 	await pool
 		.request()
 		.input('trainee_id', sql.VarChar(20), traineeId)
-		.input('doc_type', sql.VarChar(30), PROFILE_DOC_TYPE)
+		.input('doc_type', sql.VarChar(30), docType)
 		.input('file_id', sql.VarChar(20), savedFile.id)
 		.input('status', sql.VarChar(10), status)
 		.input('actor_id', sql.VarChar(20), actorId)
@@ -376,7 +392,7 @@ const addDocument = async (traineeId, file, actorId, { status = 'approved' } = {
       VALUES (@new_id, @trainee_id, @doc_type, @file_id, @status, @actor_id);
     `);
 	broadcast('update', { entity: 'trainee_document' });
-	return { id: newId };
+	return { id: newId, file_id: savedFile.id };
 };
 
 const removeDocument = async (docId, actorId) => {

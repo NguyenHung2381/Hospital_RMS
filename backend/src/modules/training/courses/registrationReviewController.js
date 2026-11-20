@@ -1,4 +1,4 @@
-// Phòng Đào tạo đối chiếu bản khai đăng ký (tab "Đơn đăng ký" của hồ sơ ghi danh) và
+// Phòng Đào tạo xem bản khai đăng ký (tab "Đơn đăng ký" của hồ sơ ghi danh) và
 // tải Tờ trình theo khoa — registration/registrationReviewService, registrationProposalService.
 const registrationReviewService = require('../registration/registrationReviewService');
 const registrationProposalService = require('../registration/registrationProposalService');
@@ -28,14 +28,6 @@ const sendDocx = (res, out) => {
 
 const getRegistration = asyncHandler(async (req, res) =>
 	success(res, await registrationReviewService.getForReview(req.params.enrollmentId, req.user)),
-);
-
-const setRegistrationChecks = asyncHandler(async (req, res) =>
-	success(
-		res,
-		await registrationReviewService.setChecks(req.params.enrollmentId, req.body, req.user),
-		'Đã lưu mốc đối chiếu',
-	),
 );
 
 const downloadApplication = asyncHandler(async (req, res) => {
@@ -70,7 +62,6 @@ const downloadProposal = asyncHandler(async (req, res) => {
 
 module.exports = {
 	getRegistration,
-	setRegistrationChecks,
 	downloadApplication,
 	getDossier,
 	listProposals,

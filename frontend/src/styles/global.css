@@ -217,7 +217,12 @@ html :where(a[href], button, summary, [role='button'], [role='tab'], [role='menu
 
 	/* Vòng xoay "đang tải" là chuyển động cần thiết (báo hệ thống còn chạy):
 	   giữ lại nhưng quay chậm. Spinner riêng của dự án: xem Loading.module.css */
-	.ant-spin-dot-spin {
+	/* [class*='pinner']: mọi .spinner / .btnSpinner / .spinnerSm… của các
+	   *.module.css (tên đã băm vẫn giữ chữ "spinner", vd _spinner_six3t_148).
+	   Thiếu dòng này thì nút "Đang tải lên…" chỉ còn 1 vòng tròn đứng im,
+	   trông như treo. */
+	.ant-spin-dot-spin,
+	[class*='pinner'] {
 		animation-duration: 2.4s !important;
 		animation-iteration-count: infinite !important;
 	}

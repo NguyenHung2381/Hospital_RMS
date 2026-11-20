@@ -212,6 +212,12 @@ require('../../src/utils/idGenerator').genCourseEnrollmentId = async () => 'DK_N
 const issued = [];
 const certRepo = require('../../src/modules/training/courses/certificateRepository');
 certRepo.findEnrollmentStatus = async () => 'approved';
+// Test về phạm vi quyền, không về điều kiện hoàn thành khóa: coi như khóa GPHN (không áp bảng điểm)
+certRepo.findEnrollmentCourse = async () => ({
+	course_id: 'KH1',
+	training_type_id: 'TRNTP-GPHN',
+	is_rolling: false,
+});
 certRepo.insert = async ({ enrollmentId, actorId }) => {
 	issued.push({ enrollmentId, actorId });
 	return { id: 'CH1', course_id: world.enrollments[enrollmentId].course_id };

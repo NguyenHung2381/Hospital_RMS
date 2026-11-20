@@ -13,25 +13,26 @@ const fs = require('fs');
 const { getPool, sql } = require('../../config/db');
 const { httpError, badRequest } = require('../../utils/httpError');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
-const trainingFileService = require('../training/trainingFileService');
 const courseRegistrationService = require('../training/registration/courseRegistrationService');
 const registrationReviewService = require('../training/registration/registrationReviewService');
 const registrationProposalService = require('../training/registration/registrationProposalService');
-const { isPdf } = require('../training/trainees/traineeProfilePdf');
+const registrationFileService = require('../training/registration/registrationFileService');
+const {
+	UPLOADABLE_KINDS,
+	kindDef,
+	labelOf,
+} = require('../training/registration/registrationFileKinds');
 
 const NOT_FOUND = 'Không tìm thấy đơn đăng ký.';
+// Chỉ đơn còn chờ duyệt / trong danh sách chờ mới nộp hoặc thay hồ sơ được
+const FILE_OPEN_STATUSES = ['pending', 'waitlisted'];
+const DOSSIER_LOCKED =
+	'Đơn đăng ký đã được xử lý. Muốn thay hồ sơ, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.';
 
 // Việc người đăng ký còn phải làm (todo) và việc đang chờ Trung tâm Đào tạo (waiting)
-const nextSteps = (reg) => {
-	const todo = [];
+const nextSteps = (reg, filesMissing = []) => {
+	const todo = filesMissing.map((k) => `Chưa nộp ${labelOf(k)}`);
 	const waiting = [];
-	if (reg.source === 'internal') {
-		if (!reg.dossier_file_id) todo.push('Chưa nộp đơn + tờ trình đã duyệt (gộp 1 file PDF)');
-		else if (!reg.proposal_checked_at) waiting.push('Chờ Trung tâm Đào tạo đối chiếu tờ trình');
-	} else {
-		if (!reg.id_checked_at) waiting.push('Chờ đối chiếu CCCD');
-		if (!reg.degree_checked_at) waiting.push('Chờ đối chiếu văn bằng');
-	}
 	return { todo, waiting };
 };
 
@@ -40,9 +41,12 @@ const listMine = async (user) => {
 	const rows = await courseRegistrationService.listByStaff(user.id);
 	return Promise.all(
 		rows.map(async (r) => {
-			const file = r.dossier_file_id ? await trainingFileService.getById(r.dossier_file_id) : null;
+			const { files, files_missing } = await registrationFileService.describe(r, { withUrl: true });
 			// Đơn đã bị từ chối thì không còn việc gì phải làm
-			const steps = r.enrollment_status === 'rejected' ? { todo: [], waiting: [] } : nextSteps(r);
+			const steps =
+				r.enrollment_status === 'rejected'
+					? { todo: [], waiting: [] }
+					: nextSteps(r, files_missing);
 			return {
 				enrollment_id: r.enrollment_id,
 				registration_code: r.registration_code,
@@ -55,14 +59,9 @@ const listMine = async (user) => {
 				department_id: r.department_id ?? null,
 				enrollment_status: r.enrollment_status ?? null,
 				created_at: r.created_at ?? null,
-				needs_dossier: r.source === 'internal' && !r.dossier_file_id,
-				dossier_uploaded_at: r.dossier_uploaded_at ?? null,
-				dossier: file ? { file_name: file.file_name, file_url: file.file_url } : null,
-				checks: {
-					id_checked: !!r.id_checked_at,
-					degree_checked: !!r.degree_checked_at,
-					proposal_checked: !!r.proposal_checked_at,
-				},
+				can_upload: FILE_OPEN_STATUSES.includes(r.enrollment_status),
+				files,
+				files_missing,
 				todo: steps.todo,
 				waiting: steps.waiting,
 			};
@@ -81,30 +80,38 @@ const getOwn = async (enrollmentId, user) => {
 	return { ...reg, enrollment_id: enrollmentId };
 };
 
-/** Kiểm tra trước multer: bản khai nội viện của chính mình mới nộp hồ sơ bổ sung. */
-const assertCanUploadDossier = async (enrollmentId, user) => {
+/**
+ * Kiểm tra TRƯỚC multer (không file nào xuống đĩa nếu không đạt): bản khai của chính mình
+ * (không thì 404), loại hồ sơ thuộc đối tượng của đơn (400), đơn chưa xử lý (409).
+ * @returns {Promise<Record<string, any>>} bản khai
+ */
+const assertCanUploadFile = async (enrollmentId, kind, user) => {
 	const reg = await getOwn(enrollmentId, user);
-	if (reg.source !== 'internal')
-		throw badRequest('Chỉ đơn đăng ký nội viện mới nộp hồ sơ bổ sung ở đây.');
+	if (!UPLOADABLE_KINDS.includes(kind) || !kindDef(reg.source, kind))
+		throw badRequest('Loại hồ sơ không hợp lệ cho đơn này.');
+	if (!FILE_OPEN_STATUSES.includes(reg.enrollment_status)) throw httpError(409, DOSSIER_LOCKED);
+	return reg;
 };
 
 const myApplication = async (enrollmentId, user) =>
 	registrationReviewService.renderApplicationFor(await getOwn(enrollmentId, user));
 
-/** Nộp (thay) file PDF đơn + tờ trình đã duyệt — chỉ bản khai nội viện của chính mình. */
-const uploadMyDossier = async (enrollmentId, file, user) => {
-	const reg = await getOwn(enrollmentId, user);
-	// multer đã ghi file xuống đĩa trước khi tới đây ⇒ không nhận thì xóa ngay
-	const reject = async (message) => {
-		if (file.path) await fs.promises.unlink(file.path).catch(() => {});
-		throw badRequest(message);
-	};
-	if (reg.source !== 'internal')
-		await reject('Chỉ đơn đăng ký nội viện mới nộp hồ sơ bổ sung ở đây.');
-	if (!isPdf(file)) await reject('Hồ sơ chỉ nhận 1 file PDF (đơn + tờ trình đã duyệt gộp 1 file).');
-	await courseRegistrationService.attachDossier(enrollmentId, file, user.id);
-	const after = await courseRegistrationService.getByEnrollment(enrollmentId);
-	return { uploaded: true, dossier_uploaded_at: after?.dossier_uploaded_at ?? new Date() };
+/**
+ * Nộp (thay) 1 file hồ sơ của bản khai của chính mình. Kiểm lại như assertCanUploadFile (giữa 2
+ * lần kiểm trạng thái đơn có thể đã đổi); không đạt thì xóa file tạm.
+ */
+const uploadMyFile = async (enrollmentId, kind, file, user) => {
+	let reg;
+	let uploaded;
+	try {
+		reg = await assertCanUploadFile(enrollmentId, kind, user);
+		uploaded = await registrationFileService.attach(reg, kind, file, user.id);
+	} catch (err) {
+		if (file?.path) await fs.promises.unlink(file.path).catch(() => {});
+		throw err;
+	}
+	const { files_missing } = await registrationFileService.describe(reg);
+	return { kind, uploaded_at: uploaded.uploaded_at, files_missing };
 };
 
 // ─── Nhóm theo khoa / Tờ trình ──────────────────────────────────────────────
@@ -168,8 +175,7 @@ const departmentProposals = async (user) =>
 			full_name: p.full_name,
 			qualification: p.qualification ?? null,
 			enrollment_status: p.enrollment_status,
-			has_dossier: !!p.dossier_uploaded_at,
-			proposal_checked: !!p.proposal_checked_at,
+			has_proposal: !!p.proposal_uploaded_at,
 			is_me: p.staff_user_id === user.id,
 		})),
 	}));
@@ -197,9 +203,9 @@ module.exports = {
 	nextSteps,
 	listMine,
 	getOwn,
-	assertCanUploadDossier,
+	assertCanUploadFile,
 	myApplication,
-	uploadMyDossier,
+	uploadMyFile,
 	managedDepartments,
 	visibleGroups,
 	departmentProposals,

@@ -79,6 +79,9 @@ const programSelect = `
                     WHERE x.program_id = p.id), tt.name) AS trainee_type_name,
          (SELECT COUNT(*) FROM course_programs cp WHERE cp.program_id = p.id) AS course_count,
          (SELECT COUNT(*) FROM lesson_programs lp WHERE lp.program_id = p.id) AS lesson_count,
+         -- Tổng hợp bài học đã gắn (để trang Chương trình báo thiếu bài học): 1 lần quét lesson_programs
+         -- cho cả 4 số, ép về số (COALESCE → 0 khi chưa có bài; SUM/COUNT trả int8, driver parse sang số).
+         ls.lesson_theory_hours, ls.lesson_practice_hours, ls.theory_lesson_count, ls.rotation_count,
          -- Vòng thực hành GPHN: mỗi vòng 1 khoa (hoặc nhiều khoa để chọn) + thời lượng riêng.
          ${jsonArray(
 						`SELECT lp.id AS link_id, pl.id AS lesson_id, pl.title, pl.duration_value, pl.duration_unit,
@@ -92,6 +95,14 @@ const programSelect = `
 						'lp.display_order, pl.created_at',
 					)} AS rotations
   FROM training_programs p
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(SUM(pl.theory_hours), 0) AS lesson_theory_hours,
+           COALESCE(SUM(pl.practice_hours), 0) AS lesson_practice_hours,
+           COUNT(*) FILTER (WHERE pl.lesson_kind = 'theory') AS theory_lesson_count,
+           COUNT(*) FILTER (WHERE pl.lesson_kind = 'rotation') AS rotation_count
+      FROM lesson_programs lp JOIN program_lessons pl ON pl.id = lp.lesson_id
+     WHERE lp.program_id = p.id
+  ) ls ON TRUE
   LEFT JOIN departments d ON d.id = p.department_id
   LEFT JOIN trainee_types tt ON tt.id = p.trainee_type_id
   LEFT JOIN training_types tp ON tp.id = p.training_type_id
@@ -322,6 +333,7 @@ const listProgramResults = async (programId, actor = null) => {
 };
 
 module.exports = {
+	programSelect,
 	getAll,
 	getById,
 	create,

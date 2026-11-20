@@ -61,36 +61,66 @@ const nationalIdRule = body('national_id')
 		return true;
 	});
 
+// Luật kiểu dữ liệu dùng chung cho đăng ký và đơn nháp
+const fullNameRule = body('full_name')
+	.isString()
+	.trim()
+	.notEmpty()
+	.withMessage('Họ tên không được để trống')
+	.isLength({ max: 150 })
+	.withMessage('Họ tên tối đa 150 ký tự');
+const courseIdRule = body('course_id')
+	.isString()
+	.trim()
+	.notEmpty()
+	.withMessage('Vui lòng chọn khóa học')
+	.isLength({ max: 20 });
+const programIdRule = body('program_id')
+	.optional({ values: 'falsy' })
+	.isString()
+	.isLength({ max: 20 });
+const emailRule = body('email')
+	.optional({ values: 'falsy' })
+	.isString()
+	.trim()
+	.isEmail()
+	.withMessage('Email không hợp lệ')
+	.isLength({ max: 100 });
+const dobRule = body('dob')
+	.optional({ values: 'falsy' })
+	.isISO8601()
+	.withMessage('Ngày sinh không hợp lệ');
+const issuedDateRule = body('national_id_issued_date')
+	.optional({ values: 'falsy' })
+	.isISO8601()
+	.withMessage('Ngày cấp CCCD không hợp lệ');
+const genderRule = body('gender')
+	.optional({ values: 'falsy' })
+	.isIn(['male', 'female', 'other'])
+	.withMessage('Giới tính không hợp lệ');
+const graduatedYearRule = body('graduated_year')
+	.optional({ values: 'falsy' })
+	.isInt({ min: 1900, max: 2100 })
+	.withMessage('Năm tốt nghiệp không hợp lệ');
+const isInvoiceKey = (k) => k.startsWith('invoice_');
+const textRules = (include) =>
+	Object.entries(TEXT_MAX)
+		.filter(([k]) => include(k))
+		.map(([k, max]) => optionalText(k, max));
+
 // Đăng ký (POST /public/course-registration) — body = JSON trong field `data` (multipart)
 const registration = [
 	body('source').isIn(SOURCES).withMessage('Vui lòng chọn nội viện / ngoại viện'),
-	body('full_name')
-		.isString()
-		.trim()
-		.notEmpty()
-		.withMessage('Họ tên không được để trống')
-		.isLength({ max: 150 })
-		.withMessage('Họ tên tối đa 150 ký tự'),
-	body('course_id')
-		.isString()
-		.trim()
-		.notEmpty()
-		.withMessage('Vui lòng chọn khóa học')
-		.isLength({ max: 20 }),
-	body('program_id').optional({ values: 'falsy' }).isString().isLength({ max: 20 }),
+	fullNameRule,
+	courseIdRule,
+	programIdRule,
 	body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
 	// captcha_answer = nonce proof-of-work (Turnstile không có) — utils/captcha.js tự kiểm tra
 	body('rules_accepted').custom(isTrue).withMessage('Vui lòng cam kết thực hiện nội quy lớp học'),
 	body('declared_true')
 		.custom(isTrue)
 		.withMessage('Vui lòng cam kết thông tin đã khai là đúng sự thật'),
-	body('email')
-		.optional({ values: 'falsy' })
-		.isString()
-		.trim()
-		.isEmail()
-		.withMessage('Email không hợp lệ')
-		.isLength({ max: 100 }),
+	emailRule,
 	body('invoice_email')
 		.optional({ values: 'falsy' })
 		.isString()
@@ -98,28 +128,58 @@ const registration = [
 		.isEmail()
 		.withMessage('Email nhận hóa đơn không hợp lệ')
 		.isLength({ max: 100 }),
-	body('dob').optional({ values: 'falsy' }).isISO8601().withMessage('Ngày sinh không hợp lệ'),
+	dobRule,
 	// Có CCCD thì bắt buộc ngày sinh — đối chiếu cấu trúc CCCD và hồ sơ đã có
 	body('dob')
 		.if(body('national_id').trim().notEmpty())
 		.notEmpty()
 		.withMessage('Vui lòng nhập ngày sinh kèm số CCCD/CMND'),
-	body('national_id_issued_date')
-		.optional({ values: 'falsy' })
-		.isISO8601()
-		.withMessage('Ngày cấp CCCD không hợp lệ'),
-	body('gender')
-		.optional({ values: 'falsy' })
-		.isIn(['male', 'female', 'other'])
-		.withMessage('Giới tính không hợp lệ'),
-	body('graduated_year')
-		.optional({ values: 'falsy' })
-		.isInt({ min: 1900, max: 2100 })
-		.withMessage('Năm tốt nghiệp không hợp lệ'),
+	issuedDateRule,
+	genderRule,
+	graduatedYearRule,
 	nationalIdRule,
-	...Object.entries(TEXT_MAX).map(([k, max]) => optionalText(k, max)),
+	...textRules(() => true),
 	staffNumber(internalOnly),
 	body('email_token').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
+];
+
+// Đơn đăng ký nháp (POST /public/course-registration/draft/application): chỉ nội viện, body =
+// đúng dữ liệu người đó vừa gõ ở form. Không captcha / cam kết / email_token / hóa đơn
+// (xem publicCourseRegistrationController — khớp lại mã NV + họ tên ở service). Khóa thừa bị bỏ qua.
+const draftApplication = [
+	body('source')
+		.equals('internal')
+		.withMessage('Chỉ nhân viên nội viện mới tải đơn điền sẵn ở bước này.'),
+	fullNameRule,
+	courseIdRule,
+	programIdRule,
+	emailRule,
+	dobRule,
+	issuedDateRule,
+	genderRule,
+	graduatedYearRule,
+	nationalIdRule,
+	...textRules((k) => !isInvoiceKey(k)),
+	staffNumber(() => true),
+];
+
+// Tờ trình nháp (POST /public/course-registration/draft/proposal): chỉ cần xác định nhân viên + lớp
+const draftProposal = [
+	staffNumber(() => true),
+	body('full_name')
+		.isString()
+		.trim()
+		.notEmpty()
+		.withMessage('Vui lòng nhập họ tên')
+		.isLength({ max: 150 }),
+	body('course_id')
+		.isString()
+		.trim()
+		.notEmpty()
+		.withMessage('Vui lòng chọn khóa học')
+		.isLength({ max: 20 }),
+	programIdRule,
+	dobRule,
 ];
 
 const staffCheck = [
@@ -175,4 +235,12 @@ const secondFactor = [
 	}),
 ];
 
-module.exports = { registration, staffCheck, emailOtpRequest, emailOtpVerify, secondFactor };
+module.exports = {
+	registration,
+	draftApplication,
+	draftProposal,
+	staffCheck,
+	emailOtpRequest,
+	emailOtpVerify,
+	secondFactor,
+};

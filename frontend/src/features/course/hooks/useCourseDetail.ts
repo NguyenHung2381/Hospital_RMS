@@ -276,7 +276,7 @@ export function useCourseDetail(courseId: string) {
 					showToast('info', `Lớp đã đủ sĩ số tối đa — vào danh sách chờ khóa sau (vị trí ${out.waitlist_position ?? '?'})`);
 				await load();
 			} catch (err) {
-				// Kèm tên học viên — lỗi duyệt (vd chưa đủ mốc đối chiếu đơn đăng ký) đọc được ngay
+				// Kèm tên học viên — lỗi duyệt (vd lớp đã đủ sĩ số) đọc được ngay
 				const name = enrollments.find((e) => e.id === enrollmentId)?.trainee_name;
 				const msg = err instanceof Error ? err.message : 'Cập nhật thất bại';
 				setError(name ? `${name}: ${msg}` : msg);
@@ -502,7 +502,8 @@ export function useCourseDetail(courseId: string) {
 			setBusy(true);
 			setError('');
 			try {
-				await apiIssueCertificate(enrollmentId, expiryDate);
+				const r = await apiIssueCertificate(enrollmentId, expiryDate);
+				if (r.cme_error) showToast('error', 'Đã cấp giấy chứng nhận nhưng chưa cập nhật được tín chỉ CME — bấm "Ghi lại CME".');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cấp chứng chỉ thất bại');
@@ -517,7 +518,8 @@ export function useCourseDetail(courseId: string) {
 		async (certId: string) => {
 			setBusy(true);
 			try {
-				await apiRemoveCertificate(certId);
+				const r = await apiRemoveCertificate(certId);
+				if (r.cme_error) showToast('error', 'Đã xóa giấy chứng nhận nhưng chưa cập nhật được tín chỉ CME — bấm "Ghi lại CME".');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Xóa thất bại');
@@ -532,7 +534,8 @@ export function useCourseDetail(courseId: string) {
 		async (certId: string, reason?: string) => {
 			setBusy(true);
 			try {
-				await apiRevokeCertificate(certId, reason);
+				const r = await apiRevokeCertificate(certId, reason);
+				if (r.cme_error) showToast('error', 'Đã thu hồi giấy chứng nhận nhưng chưa cập nhật được tín chỉ CME — bấm "Ghi lại CME".');
 				await load();
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Thu hồi thất bại');

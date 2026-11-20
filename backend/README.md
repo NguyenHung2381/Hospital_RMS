@@ -127,7 +127,7 @@ Hai role: `rms_migrate` (chủ DB, chạy migration / backup) và `rms_app` (ứ
 
 ### Lệnh migration
 
-Chạy trong thư mục `backend` (dev chạy Docker: gõ `npm run migrate -- <lệnh con>` ở thư mục gốc, lệnh chạy trong container `backend` đang chạy). `npm run migrate help` in danh sách.
+Chạy trong thư mục `backend` (dev chạy Docker: gõ `npm run migrate -- <lệnh con>` ở thư mục gốc, lệnh chạy trong container `backend` đang chạy, bằng role `rms_migrate` kể cả khi `backend/.env` dùng `rms_app` — xem `scripts/migrate-dev.js`). `npm run migrate help` in danh sách.
 
 | Lệnh | Việc |
 |------|------|

@@ -91,6 +91,8 @@ test('gán chương trình / khoa cho bài học: xóa cũ rồi 1 câu INSERT',
 		[
 			'DELETE FROM lesson_programs',
 			'INSERT INTO lesson_programs',
+			// Giảng viên của bài ở chương trình vừa bị gỡ thì bỏ theo
+			'DELETE FROM program_lesson_lecturers',
 			'SELECT',
 			'DELETE FROM lesson_departments',
 			'INSERT INTO lesson_departments',

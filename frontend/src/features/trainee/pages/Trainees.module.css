@@ -300,3 +300,16 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
+   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+@keyframes modalPopIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}

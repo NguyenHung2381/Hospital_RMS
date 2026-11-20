@@ -205,12 +205,6 @@ export function useTopicDetail() {
 		}
 	};
 
-	const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const selectedFiles = Array.from(e.target.files ?? []);
-		setPendingFiles((p) => [...p, ...selectedFiles]);
-		e.target.value = '';
-	};
-
 	const handleUpload = async () => {
 		if (!id || !pendingFiles.length) return;
 		setUploading(true);
@@ -314,7 +308,6 @@ export function useTopicDetail() {
 		dragging,
 		setDragging,
 		selectedIds,
-		handleFileSelect,
 		handleUpload,
 		toggleSelect,
 		toggleSelectAll,

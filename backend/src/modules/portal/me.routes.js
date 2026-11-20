@@ -104,10 +104,10 @@ router.post(
 // ─── Đơn đăng ký khóa đào tạo liên tục của tôi (form /dang-ky-khoa-hoc) ───────
 // registrationPortalService: bản khai của người khác / nhóm không được xem trả 404.
 const registrationPortalService = require('./registrationPortalService');
-// Lưu theo lượt ghi danh: uploads/training/course_registration/<enrollmentId>/
-const uploadDossier = require('../../middlewares/uploadTraining').createTrainingUpload(
-	'course_registration',
-);
+// Nộp / thay từng file hồ sơ (PDF / JPG / PNG): uploadRegistration.js ghi tạm, service chuyển
+// sang uploads/training/course_registration/<enrollmentId>/ (nội viện) hoặc hồ sơ học viên (ngoại viện)
+const { registrationFileUpload } = require('../../middlewares/uploadRegistration');
+const { UPLOADABLE_KINDS } = require('../training/registration/registrationFileKinds');
 
 // File .docx tải về (Đơn đăng ký, Tờ trình) — tên có dấu nên dùng filename*
 const sendDocx = (res, out) => {
@@ -132,23 +132,33 @@ router.get(
 		sendDocx(res, await registrationPortalService.myApplication(req.params.enrollmentId, req.user)),
 	),
 );
-// Kiểm tra chủ bản khai TRƯỚC khi multer ghi file; thư mục lưu theo mã ghi danh (req.params.id)
-const ownDossierTarget = asyncHandler(async (req, _res, next) => {
-	await registrationPortalService.assertCanUploadDossier(req.params.enrollmentId, req.user);
-	req.params.id = req.params.enrollmentId;
+// Kiểm tra bản khai của mình / loại hồ sơ / trạng thái đơn TRƯỚC khi multer ghi file
+const ownFileTarget = asyncHandler(async (req, _res, next) => {
+	await registrationPortalService.assertCanUploadFile(
+		req.params.enrollmentId,
+		req.params.kind,
+		req.user,
+	);
 	next();
 });
 router.post(
-	'/course-registrations/:enrollmentId/dossier',
-	ownDossierTarget,
-	uploadDossier.single('file'),
+	'/course-registrations/:enrollmentId/files/:kind',
+	[param('kind').isIn(UPLOADABLE_KINDS).withMessage('Loại hồ sơ không hợp lệ')],
+	validate,
+	ownFileTarget,
+	registrationFileUpload,
 	asyncHandler(async (req, res) => {
 		if (!req.file)
-			return res.status(400).json({ success: false, message: 'Vui lòng chọn file PDF hồ sơ' });
+			return res.status(400).json({ success: false, message: 'Vui lòng chọn file cần nộp.' });
 		return success(
 			res,
-			await registrationPortalService.uploadMyDossier(req.params.enrollmentId, req.file, req.user),
-			'Đã nộp hồ sơ, chờ Trung tâm Đào tạo đối chiếu',
+			await registrationPortalService.uploadMyFile(
+				req.params.enrollmentId,
+				req.params.kind,
+				req.file,
+				req.user,
+			),
+			'Đã nộp hồ sơ, chờ Trung tâm Đào tạo xét duyệt',
 		);
 	}),
 );

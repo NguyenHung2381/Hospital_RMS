@@ -4,19 +4,12 @@ import { readJson, safeFetch } from '@/shared/api/http';
 import { refreshQueued } from '@/shared/api/interceptors';
 import { getToken } from '@/shared/utils/storage';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
+import type { RegistrationFileItem, RegistrationFileKind } from '../../public/api/publicApi';
 import type { EnrollmentStatus } from '../types/course.type';
 
-// ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — phòng Đào tạo đối chiếu trước khi duyệt ──
+// ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — phòng Đào tạo xem trước khi duyệt ──
 
 export type RegistrationSource = 'internal' | 'external';
-export type RegistrationCheckKey = 'id_checked' | 'degree_checked' | 'proposal_checked';
-
-/** Mốc đối chiếu đã đánh dấu: lúc nào, ai. */
-export interface RegistrationCheckInfo {
-	at: string;
-	by: string | null;
-	by_name: string | null;
-}
 
 /** Trường có cả trong bản khai lẫn hồ sơ học viên mà lệch nhau. */
 export interface RegistrationDiff {
@@ -59,14 +52,8 @@ export interface RegistrationReview {
 	verified_email: string | null;
 	email_verified_at: string | null;
 	invoice: Record<string, string | null>;
-	checks: Record<RegistrationCheckKey, RegistrationCheckInfo | null>;
-	/** Điều kiện phải đủ trước khi duyệt: mốc đối chiếu + 'dossier' (nội viện). */
-	required: (RegistrationCheckKey | 'dossier')[];
-	/** false = cấu hình tắt chốt chặn (TRAINING_REGISTRATION_REQUIRE_CHECKS = 'false'). */
-	require_checks: boolean;
-	/** Tên điều kiện còn thiếu để duyệt (rỗng khi đủ hoặc cấu hình tắt). */
-	missing: string[];
-	dossier: RegistrationDossier | null;
+	files: RegistrationFileItem[];
+	files_missing: RegistrationFileKind[];
 	created_at: string | null;
 }
 
@@ -74,13 +61,10 @@ export interface RegistrationReview {
 export interface EnrollmentRegistrationFlag {
 	code: string;
 	source: RegistrationSource;
-	id_checked: boolean;
-	degree_checked: boolean;
-	proposal_checked: boolean;
+	/** true = đã nộp đủ hồ sơ bắt buộc (cả nội viện lẫn ngoại viện) */
 	has_dossier: boolean;
-	require_checks: boolean;
-	missing: string[];
-	ready: boolean;
+	/** Khóa loại còn thiếu */
+	files_missing: string[];
 }
 
 /** 1 nhóm nội viện (khóa + chương trình + khoa) — dữ liệu Tờ trình. */
@@ -104,8 +88,8 @@ export interface ProposalGroup {
 		birth_year: number | null;
 		qualification: string | null;
 		enrollment_status: EnrollmentStatus;
-		dossier_uploaded_at: string | null;
-		proposal_checked_at: string | null;
+		/** Thời điểm nộp Tờ trình đã duyệt (hoặc file gộp cũ) */
+		proposal_uploaded_at: string | null;
 	}[];
 }
 
@@ -113,8 +97,6 @@ const reg = (enrollmentId: string) => `/courses/enrollments/${enrollmentId}/regi
 
 export const getEnrollmentRegistration = (enrollmentId: string) =>
 	apiClient.get<RegistrationReview | null>(reg(enrollmentId));
-export const setRegistrationChecks = (enrollmentId: string, checks: Partial<Record<RegistrationCheckKey, boolean>>) =>
-	apiClient.put<RegistrationReview>(`${reg(enrollmentId)}/checks`, checks);
 export const getRegistrationDossier = (enrollmentId: string) =>
 	apiClient.get<RegistrationDossier>(`${reg(enrollmentId)}/dossier`);
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
@@ -204,14 +186,26 @@ export const REGISTRATION_FIELD_GROUPS: { title: string; keys: string[] }[] = [
 	},
 ];
 
-export const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
-
-/** Tên mốc đối chiếu hiện trên checkbox */
-export const CHECK_LABEL: Record<RegistrationCheckKey, string> = {
-	id_checked: 'Đã đối chiếu CCCD',
-	degree_checked: 'Đã đối chiếu văn bằng',
-	proposal_checked: 'Đã đối chiếu tờ trình (đã duyệt)',
+/** Khớp backend registrationFileKinds.js — tooltip cột danh sách ghi danh (chỉ có files_missing dạng khóa) */
+export const REGISTRATION_FILE_LABELS: Record<string, string> = {
+	application_signed: 'Đơn đăng ký đã ký',
+	proposal_approved: 'Tờ trình đã duyệt',
+	national_id: 'Căn cước công dân',
+	degree: 'Bằng tốt nghiệp',
+	license: 'Chứng chỉ hành nghề',
+	decision: 'Quyết định cử đi học',
+	dossier: 'Hồ sơ nộp bổ sung (đơn + tờ trình, 1 file)',
 };
+
+/** Trạng thái duyệt của 1 file ngoại viện (dòng trainee_documents) */
+export const REVIEW_STATUS_LABEL = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Đã từ chối' } as const;
+export const REVIEW_STATUS_TONE: Record<keyof typeof REVIEW_STATUS_LABEL, BadgeTone> = {
+	pending: 'amber',
+	approved: 'green',
+	rejected: 'red',
+};
+
+export const GENDER_LABEL: Record<string, string> = { male: 'Nam', female: 'Nữ', other: 'Khác' };
 
 /** Tông Badge theo trạng thái ghi danh (nhãn: ENROLLMENT_STATUS_CFG) */
 export const ENROLLMENT_STATUS_TONE: Record<EnrollmentStatus, BadgeTone> = {

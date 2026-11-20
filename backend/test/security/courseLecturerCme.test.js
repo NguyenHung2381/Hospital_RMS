@@ -4,7 +4,9 @@
 //     cme_records:manage, 'approved' nếu có (hành vi của vai trò seed giữ nguyên);
 //   - ON CONFLICT giữ 'rejected', không xóa lý do từ chối; người không có quyền duyệt
 //     không xóa được dòng đã duyệt của GV khác;
-//   - số tiết giảng bị chặn trên theo số tiết của bài / chương trình.
+//   - số tiết giảng bị chặn trên theo số tiết của bài / chương trình;
+//   - "Ghi lại CME" báo lecturers_pending khi dòng giảng viên còn chờ duyệt;
+//   - dòng giảng viên chia tiết theo buổi đã dạy, danh mục DT_KHOAHOC (Phụ lục I mục 1.1).
 // Chạy cả ứng dụng (router + authorizePermission + controller + service) trên CSDL giả.
 process.env.JWT_SECRET = 'test-secret';
 require('../../scripts/lib/static-check-env');
@@ -88,7 +90,22 @@ const log = install(async (text, inputs) => {
 		return [{ id: 'G1', locked_at: null }];
 	if (/LEFT JOIN grades g ON g.enrollment_id = e.id AND g.subject_id IS NULL/.test(text))
 		return [{ total: 1, locked: 1 }];
-	if (/INSERT INTO cme_records/.test(text)) return [{}];
+	// Dữ kiện giờ giảng (courseCmeService.LECTURER_FACTS): GV1 dạy 2/4 buổi đã diễn ra của bài 10 tiết
+	if (/WITH sess AS/.test(text) && /FROM class_sessions cs/.test(text))
+		return [
+			{
+				lesson_id: 'L1',
+				user_id: 'ULEC1',
+				role: 'assistant',
+				assigned_hours: null,
+				lesson_hours: LESSON_HOURS,
+				sessions: '2',
+				lesson_sessions: '4',
+			},
+		];
+	// RETURNING tgt.approval_status: dòng chèn mới mang đúng trạng thái câu INSERT ghi
+	if (/INSERT INTO cme_records/.test(text))
+		return [{ approval_status: /'pending', NULL, NULL/.test(text) ? 'pending' : 'approved' }];
 	return [];
 });
 
@@ -114,7 +131,7 @@ const call = async (who, method, path, body) => {
 		},
 		body: body ? JSON.stringify(body) : undefined,
 	});
-	return { status: res.status, entries: log.slice(n) };
+	return { status: res.status, body: await res.json(), entries: log.slice(n) };
 };
 const lecturerUpsert = (entries) =>
 	entries.find((e) => /INSERT INTO cme_records/.test(e.text) && /course_lecturer/.test(e.text));
@@ -168,12 +185,42 @@ test('M-07: "Ghi lại CME" (courses:approve) không có cme_records:manage → 
 	assert.ok(up);
 	assert.match(normalize(up.text), /'pending'/);
 	assert.doesNotMatch(normalize(up.text), /'approved', @actor_id/);
+	// giao diện được báo dòng giảng viên còn chờ người quản lý CME duyệt; các trường cũ giữ nguyên
+	assert.equal(r.body.data.lecturers_pending, true);
+	assert.equal(r.body.data.lecturers, 1);
+	assert.equal(r.body.data.grades_locked, true);
+	assert.equal(r.body.data.lecturer_enabled, true);
+	assert.equal(r.body.data.trainee_enabled, true);
+	assert.ok('trainees' in r.body.data);
 });
 
 test('M-07: "Ghi lại CME" bởi người quản lý CME → "approved"', async () => {
 	const r = await call('UMGR', 'POST', '/courses/KH0001/cme-sync');
 	assert.equal(r.status, 200);
 	assert.match(normalize(lecturerUpsert(r.entries).text), /'approved', @actor_id/);
+	assert.equal(r.body.data.lecturers_pending, false);
+});
+
+test('A2: dòng giảng viên tính theo buổi đã dạy (GV phụ chưa nhập số tiết vẫn được cộng), mục DT_KHOAHOC', async () => {
+	const r = await call('ULEC1', 'POST', '/courses/KH0001/grades/lock');
+	assert.equal(r.status, 200);
+	const up = lecturerUpsert(r.entries);
+	// 10 tiết × 2/4 buổi = 5 tiết, truyền vào câu ghi qua @rows (JSON)
+	const rows = JSON.parse(up.inputs.rows);
+	assert.deepEqual(
+		rows.map((x) => [x.user_id, x.hours]),
+		[['ULEC1', 5]],
+	);
+	assert.match(rows[0].note, /chia theo 2 buổi đã dạy 5/);
+	// danh mục Phụ lục I mục 1.1 (không còn GIANGDAY), hệ số lấy theo đúng danh mục đó
+	const t = normalize(up.text);
+	assert.match(t, /'DT_KHOAHOC' AS category_id/);
+	assert.match(t, /WHERE id = 'DT_KHOAHOC'/);
+	assert.doesNotMatch(t, /GIANGDAY/);
+	// conflict ghi đè category_id ⇒ dòng cũ GIANGDAY được đổi khi chạy lại
+	assert.match(t.slice(t.indexOf('ON CONFLICT')), /category_id = EXCLUDED\.category_id/);
+	// câu xóa dòng GV không còn giờ giảng dùng cùng danh sách
+	assert.equal(lecturerDelete(r.entries).inputs.rows, up.inputs.rows);
 });
 
 test('M-07: số tiết của bài bị chặn trên theo số tiết bài học (lesson-lecturers)', async () => {

@@ -571,15 +571,6 @@ const SECTIONS: Section[] = [
 						onText: 'Bắt buộc',
 						offText: 'Không bắt buộc',
 					},
-					{
-						key: 'TRAINING_REGISTRATION_REQUIRE_CHECKS',
-						label: 'Đối chiếu hồ sơ trước khi duyệt ghi danh',
-						hint: 'Tắt thì người duyệt có thể duyệt đơn đăng ký mà chưa đánh dấu đối chiếu CCCD, văn bằng, tờ trình đã duyệt và hồ sơ đính kèm.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Bắt buộc',
-						offText: 'Không bắt buộc',
-					},
 				],
 			},
 			{

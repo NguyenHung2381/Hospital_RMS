@@ -1,6 +1,7 @@
 const service = require('./publicPortalService');
 const courseRegistration = require('./publicCourseRegistrationService');
 const emailOtp = require('../training/registration/registrationEmailOtpService');
+const registrationFileService = require('../training/registration/registrationFileService');
 const seminarPublicService = require('../seminars/seminarPublicService');
 const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
 const { success, created, error } = require('../../utils/response');
@@ -45,6 +46,9 @@ const lookup = asyncHandler(async (req, res) => {
 // ⇒ giới hạn theo SỐ CCCD (không theo IP) như tra cứu, chặn dò từ nhiều IP; nội viện
 // giới hạn thêm theo mã NV. Mọi nhánh (kể cả honeypot) trả cùng hình dạng
 // { submitted, registration_code, download_token } + cùng thông điệp.
+// Hồ sơ bắt buộc (files[<kind>]) kiểm TRƯỚC captcha và trước mọi ghi CSDL: thiếu file không đốt
+// lượt captcha / giới hạn theo CCCD, và thông báo không phụ thuộc dữ liệu đã có (không lộ gì).
+// Honeypot vẫn đứng đầu ⇒ bot không kèm file vẫn nhận phản hồi giả.
 const REGISTER_PER_ID_MAX = 5;
 const REGISTER_MESSAGE = 'Đã nhận đăng ký khóa học, vui lòng chờ duyệt.';
 const DAY = 24 * 60 * 60;
@@ -53,6 +57,8 @@ const register = asyncHandler(async (req, res) => {
 	if (req.body.website) {
 		return created(res, courseRegistration.fakeAck(), REGISTER_MESSAGE);
 	}
+	const byKind = registrationFileService.collectByKind(req.files);
+	registrationFileService.assertSubmission(req.body.source, byKind);
 	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
 		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
 	}
@@ -83,7 +89,7 @@ const register = asyncHandler(async (req, res) => {
 	const otpRequired = await emailOtp.isRequired();
 	const emailProof = otpRequired ? emailOtp.readToken(req.body.email_token) : null;
 	if (otpRequired && !emailProof) return error(res, courseRegistration.EMAIL_NOT_VERIFIED, 400);
-	const ack = await service.register(req.body, req.files, req.formCustom, {
+	const ack = await service.register(req.body, byKind, req.formCustom, {
 		otpRequired,
 		emailProof,
 	});

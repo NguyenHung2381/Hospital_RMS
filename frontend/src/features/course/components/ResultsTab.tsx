@@ -35,7 +35,7 @@ const cmeSyncMessage = (r: CourseCmeSyncResult) => {
 		r.trainees == null ? 'học viên: công tắc đang tắt' : `${r.trainees} học viên`,
 		r.lecturers == null
 			? `giảng viên: ${r.lecturer_enabled ? 'điểm chưa khóa' : 'công tắc đang tắt'}`
-			: `${r.lecturers} giảng viên`,
+			: `${r.lecturers} giảng viên${r.lecturers_pending ? ' (chờ người quản lý CME duyệt)' : ''}`,
 	];
 	return `Đã ghi lại CME — ${parts.join(', ')}`;
 };
@@ -153,12 +153,20 @@ export function ResultsTab({
 					<button
 						className={styles.btnPrimary}
 						disabled={busy}
-						onClick={() =>
-							void run(
-								() => issueCertificatesBulk(courseId, certExpiry || undefined),
-								`Đã cấp giấy chứng nhận cho ${toIssue} học viên đạt`,
-							)
-						}
+						onClick={() => {
+							setBusy(true);
+							issueCertificatesBulk(courseId, certExpiry || undefined)
+								.then((r) => {
+									showToast('success', `Đã cấp giấy chứng nhận cho ${r.issued} học viên đạt`);
+									if (r.cme_failed > 0)
+										showToast('error', `${r.cme_failed} giấy chưa ghi được tín chỉ CME — bấm "Ghi lại CME" để chạy lại.`);
+								})
+								.catch((err) => showToast('error', err instanceof Error ? err.message : 'Thao tác thất bại'))
+								.finally(() => {
+									setBusy(false);
+									void Promise.all([load(), d.reload()]);
+								});
+						}}
 					>
 						<BadgeSvg /> Cấp giấy chứng nhận ({toIssue} người đạt{programId ? ' cả khóa' : ''})
 					</button>

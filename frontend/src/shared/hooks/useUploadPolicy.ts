@@ -56,5 +56,16 @@ export function useUploadPolicy({ allowMedia = false } = {}) {
 		if (!allowMedia && file.size > policy.maxSizeMB * 1048576) return `"${file.name}" vượt quá ${policy.maxSizeMB}MB`;
 		return null;
 	};
-	return { ...policy, extensions, accept: extensions.join(','), check };
+	/**
+	 * Lọc file vừa chọn / kéo thả (kéo thả không qua thuộc tính accept): trả về
+	 * các file hợp lệ, gọi onReject(thông báo) cho từng file bị loại — khỏi gửi
+	 * cả file lên máy chủ rồi mới bị từ chối.
+	 */
+	const filterValid = (files: File[], onReject: (message: string) => void): File[] =>
+		files.filter((file) => {
+			const error = check(file);
+			if (error) onReject(error);
+			return !error;
+		});
+	return { ...policy, extensions, accept: extensions.join(','), check, filterValid };
 }

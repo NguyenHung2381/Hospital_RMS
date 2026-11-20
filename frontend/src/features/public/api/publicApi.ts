@@ -17,11 +17,19 @@ async function send(path: string, options: RequestInit = {}): Promise<Response> 
 	});
 }
 
+// Lỗi validator: máy chủ để câu cụ thể ở errors[].msg, còn `message` chỉ là câu chung
+// "Dữ liệu đầu vào không hợp lệ". 'Invalid value' là câu mặc định của express-validator.
+const errorMessage = (json: { message?: string; errors?: { msg?: unknown }[] } | null): string => {
+	const first = json?.errors?.[0]?.msg;
+	if (typeof first === 'string' && first && first !== 'Invalid value') return first;
+	return json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại';
+};
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const res = await send(path, options);
 	const json = await res.json();
 	if (!res.ok || !json.success) {
-		throw new Error(json.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		throw new Error(errorMessage(json));
 	}
 	return json.data as T;
 }
@@ -31,7 +39,7 @@ async function requestBlob(path: string, options: RequestInit = {}): Promise<Blo
 	const res = await send(path, options);
 	if (!res.ok) {
 		const json = await res.json().catch(() => null);
-		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		throw new Error(errorMessage(json));
 	}
 	return res.blob();
 }
@@ -169,11 +177,64 @@ export interface RegisterResult {
 	download_token: string;
 }
 
-export const registerCourse = (data: RegisterPayload, files?: File[]) =>
-	request<RegisterResult>('/course-registration', {
-		method: 'POST',
-		body: buildBody(data, files),
+export type RegistrationFileKind =
+	| 'application_signed'
+	| 'proposal_approved' // nội viện
+	| 'national_id'
+	| 'degree'
+	| 'license'
+	| 'decision'; // ngoại viện
+
+export interface RegistrationFileKindDef {
+	key: RegistrationFileKind;
+	label: string;
+	hint: string;
+	required: boolean;
+}
+
+export interface RegistrationAttachmentRules {
+	/** ['.pdf', '.jpg', '.jpeg', '.png'] */
+	extensions: string[];
+	/** Dung lượng tối đa mỗi file (MB) — = UPLOAD_MAX_MB */
+	max_size_mb: number;
+	kinds: Record<RegistrationSource, RegistrationFileKindDef[]>;
+}
+
+/** 1 dòng hồ sơ của 1 lượt đăng ký. Luôn có đủ các loại của đối tượng (theo thứ tự trong rules),
+ *  thêm dòng 'dossier' ở cuối nếu đơn cũ có file gộp. */
+export interface RegistrationFileItem {
+	kind: RegistrationFileKind | 'dossier';
+	label: string;
+	required: boolean;
+	/** true = file gộp nộp theo cách cũ (chỉ xem, không nộp mới) */
+	legacy: boolean;
+	/** null = chưa nộp (hoặc file đã bị xóa) */
+	uploaded_at: string | null;
+	file_name: string | null;
+	/** Link /uploads có chữ ký. Luôn null ở cổng công khai; null ở quản trị khi thiếu trainees:read_sensitive */
+	file_url: string | null;
+	mime_type: string | null;
+	/** Ngoại viện: trạng thái duyệt của dòng trainee_documents; nội viện / chưa nộp: null */
+	review_status: 'pending' | 'approved' | 'rejected' | null;
+}
+
+/** Kết quả nộp / thay 1 file (công khai và cổng nhân viên) */
+export interface RegistrationFileUploadResult {
+	kind: RegistrationFileKind;
+	uploaded_at: string;
+	/** Khóa loại bắt buộc còn thiếu sau lần nộp này */
+	files_missing: RegistrationFileKind[];
+}
+
+/** Gửi đăng ký: luôn multipart — `data` = JSON form, mỗi loại hồ sơ 1 phần `files[<kind>]` */
+export const registerCourse = (data: RegisterPayload, files: Partial<Record<RegistrationFileKind, File>>) => {
+	const form = new FormData();
+	form.append('data', JSON.stringify(data));
+	(Object.entries(files) as [RegistrationFileKind, File | undefined][]).forEach(([kind, file]) => {
+		if (file) form.append(`files[${kind}]`, file);
 	});
+	return request<RegisterResult>('/course-registration', { method: 'POST', body: form });
+};
 
 export interface CourseRegistrationRules {
 	version: string;
@@ -181,6 +242,7 @@ export interface CourseRegistrationRules {
 	/** Gợi ý "Nơi cấp" CCCD */
 	id_issue_places: string[];
 	email_otp_required: boolean;
+	attachments: RegistrationAttachmentRules;
 }
 export const getCourseRegistrationRules = () => request<CourseRegistrationRules>('/course-registration/rules');
 
@@ -234,12 +296,13 @@ export interface RegistrationStatus {
 	program_name: string | null;
 	enrollment_status: 'pending' | 'approved' | 'rejected' | 'waitlisted' | string;
 	registered_at: string;
-	/** Nội viện chưa nộp tờ trình đã duyệt */
-	needs_dossier: boolean;
-	dossier_uploaded_at: string | null;
-	checks: { id_checked: boolean; degree_checked: boolean; proposal_checked: boolean };
+	/** true khi lượt ghi danh còn pending / waitlisted — được nộp / thay file */
+	can_upload: boolean;
+	/** file_url luôn null ở cổng công khai */
+	files: RegistrationFileItem[];
+	files_missing: RegistrationFileKind[];
 }
-const registrationPath = (code: string, action: 'status' | 'application' | 'dossier') =>
+const registrationPath = (code: string, action: 'status' | 'application') =>
 	`/course-registration/${encodeURIComponent(code)}/${action}`;
 
 export const getRegistrationStatus = (code: string, proof: RegistrationProof) =>
@@ -253,12 +316,65 @@ export const downloadRegistrationApplication = (code: string, proof: Registratio
 		method: 'POST',
 		body: JSON.stringify(proof),
 	});
-/** Nội viện nộp bổ sung bản scan hồ sơ (tờ trình đã duyệt) — đúng 1 file PDF */
-export const uploadRegistrationDossier = (code: string, proof: RegistrationProof, file: File) =>
-	request<{ uploaded: boolean; dossier_uploaded_at: string }>(registrationPath(code, 'dossier'), {
+/** Nộp / thay 1 loại hồ sơ của đơn (chỉ khi lượt ghi danh còn chờ duyệt) */
+export const uploadRegistrationFile = (
+	code: string,
+	proof: RegistrationProof,
+	kind: RegistrationFileKind,
+	file: File,
+) => {
+	const form = new FormData();
+	form.append('data', JSON.stringify(proof));
+	form.append('file', file);
+	return request<RegistrationFileUploadResult>(`/course-registration/${encodeURIComponent(code)}/files/${kind}`, {
 		method: 'POST',
-		body: buildBody(proof, [file]),
+		body: form,
 	});
+};
+
+/** Đơn đăng ký nháp (nội viện) — chưa có mã đăng ký; khóa trường thừa bị máy chủ bỏ qua */
+export interface DraftApplicationPayload {
+	source: 'internal';
+	course_id: string;
+	program_id?: string;
+	staff_number: string;
+	full_name: string;
+	dob?: string;
+	gender?: string;
+	ethnicity?: string;
+	hometown?: string;
+	national_id?: string;
+	national_id_issued_date?: string;
+	national_id_issued_place?: string;
+	permanent_address?: string;
+	address?: string;
+	phone?: string;
+	email?: string;
+	graduated_school?: string;
+	graduated_year?: number;
+	graduated_major?: string;
+	degree_number?: string;
+	degree_registry_number?: string;
+	work_specialty?: string;
+	work_seniority?: string;
+	trainee_type_id?: string;
+}
+
+export interface DraftProposalPayload {
+	course_id: string;
+	program_id?: string;
+	staff_number: string;
+	full_name: string;
+	/** Để in năm sinh trong bảng danh sách */
+	dob?: string;
+}
+
+/** Đơn đăng ký nháp (.docx, điền sẵn, chưa có mã) — không cần captcha, máy chủ bắt khớp lại mã NV + họ tên */
+export const downloadDraftApplication = (data: DraftApplicationPayload) =>
+	requestBlob('/course-registration/draft/application', { method: 'POST', body: JSON.stringify(data) });
+/** Tờ trình + Bảng phân tích nhu cầu nháp (.docx) */
+export const downloadDraftProposal = (data: DraftProposalPayload) =>
+	requestBlob('/course-registration/draft/proposal', { method: 'POST', body: JSON.stringify(data) });
 
 export interface LookupResult {
 	full_name: string;

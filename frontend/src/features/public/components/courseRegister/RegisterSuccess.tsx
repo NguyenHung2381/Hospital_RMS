@@ -50,8 +50,9 @@ export function RegisterSuccess({ done, onRestart }: { done: RegisterDone; onRes
 				Đã gửi đăng ký thành công
 			</h2>
 			<p className={s.doneText}>
-				Bước tiếp theo là in đơn đăng ký bên dưới và ký tên. Phòng Đào tạo sẽ xét duyệt và liên hệ với bạn qua số điện
-				thoại hoặc email đã khai.
+				{internal
+					? 'Hồ sơ của bạn đã được gửi kèm đăng ký. Phòng Đào tạo sẽ kiểm tra và liên hệ với bạn qua số điện thoại hoặc email đã khai.'
+					: 'Bước tiếp theo là in đơn đăng ký bên dưới và ký tên. Phòng Đào tạo sẽ xét duyệt và liên hệ với bạn qua số điện thoại hoặc email đã khai.'}
 			</p>
 
 			<div className={s.codeCard}>
@@ -87,27 +88,31 @@ export function RegisterSuccess({ done, onRestart }: { done: RegisterDone; onRes
 				code={done.code}
 				proof={{ download_token: done.downloadToken }}
 			/>
-			<p className={s.hint}>Nút tải dùng được trong khoảng 30 phút. Sau đó vào trang tra cứu bằng mã đăng ký và số CCCD.</p>
+			<p className={s.hint}>
+				{internal
+					? 'Đơn này có in mã đăng ký, chỉ để bạn lưu — bản đã ký bạn đã nộp ở bước Hồ sơ đính kèm.'
+					: 'Nút tải dùng được trong khoảng 30 phút. Sau đó vào trang tra cứu bằng mã đăng ký và số CCCD.'}
+			</p>
 
 			<section className={s.nextSteps}>
 				<h3 className={s.nextTitle}>Việc cần làm tiếp theo</h3>
 				{internal ? (
 					<ol className={s.nextList}>
-						<li>Tải đơn, in ra và ký tên.</li>
-						<li>Nộp đơn cho khoa/phòng của bạn để làm tờ trình đề nghị cử đi học.</li>
+						<li>Đã nộp kèm: Đơn đăng ký đã ký và Tờ trình đã duyệt.</li>
+						<li>Chờ Phòng Đào tạo xét duyệt; kết quả báo qua email / điện thoại.</li>
 						<li>
-							Khi tờ trình đã được Ban giám đốc duyệt, vào trang tra cứu đơn đăng ký (nhập mã đăng ký và số CCCD)
-							và tải bản scan PDF lên.
+							Cần thay file (ảnh mờ, nhầm file)? Khi đơn còn chờ duyệt, vào trang Tra cứu đơn đăng ký (mã đăng ký + số
+							CCCD) hoặc mục "Đơn đăng ký của tôi" ở cổng nhân viên.
 						</li>
 					</ol>
 				) : (
 					<ol className={s.nextList}>
-						<li>Tải đơn, in ra và ký tên.</li>
+						<li>Đã nộp kèm: căn cước công dân, bằng tốt nghiệp, chứng chỉ hành nghề, quyết định cử đi học.</li>
+						<li>Tải đơn, in ra, ký tên và mang đến nộp vào ngày khai giảng{done.start ? ` (${formatDateOr(done.start)})` : ''}.</li>
 						<li>
-							Mang đơn đã ký đến vào ngày khai giảng{done.start ? ` (${formatDateOr(done.start)})` : ''} để nộp cho Phòng
-							Đào tạo.
+							Theo dõi kết quả và thay file khi cần ở trang Tra cứu đơn đăng ký (mã đăng ký + số CCCD), khi đơn còn chờ
+							duyệt.
 						</li>
-						<li>Theo dõi kết quả xét duyệt bằng mã đăng ký và số CCCD ở trang tra cứu.</li>
 					</ol>
 				)}
 			</section>

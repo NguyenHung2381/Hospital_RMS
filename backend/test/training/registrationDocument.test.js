@@ -1,6 +1,7 @@
 // Đơn đăng ký + Tờ trình khóa đào tạo liên tục (registrationDocumentService):
 // mở lại file .docx sinh ra, kiểm XML hợp lệ, giá trị đúng chỗ, không sót thẻ,
-// dòng chấm cho ô thiếu dữ liệu. Hàm thuần — không cần CSDL.
+// dòng chấm cho ô thiếu dữ liệu. Đơn nháp (chưa có mã đăng ký) và tờ trình nháp (bảng phân tích để
+// trống). Hàm thuần — không cần CSDL.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -301,6 +302,84 @@ test('tờ trình: năm lấy theo data.year, ưu tiên hơn ngày bắt đầu;
 	assert.ok(text.includes('Nghệ An, ngày…… tháng……. năm 2030'));
 	const needs = rows(xml).find((r) => r.length === 8 && r[2].startsWith('Siêu âm'));
 	assert.deepEqual(needs.slice(3), ['', '', '5', '', '']);
+});
+
+// ─── Đơn nháp / tờ trình nháp ───────────────────────────────────────────────
+test('đơn nháp: không có dòng "Mã đăng ký", ngày lập để trống, không dòng chấm thừa, tên file -ban-nhap', async () => {
+	const out = await renderApplication({
+		...APP_FULL,
+		registration_code: null,
+		created_at: null,
+		draft: true,
+	});
+	assert.equal(out.mime, DOCX_MIME);
+	assert.equal(out.filename, 'Don-dang-ky-Nguyen-Van-Anh-ban-nhap.docx');
+	assert.match(out.filename, /-ban-nhap\.docx$/);
+	const xml = documentXml(out.buffer);
+	noLeftoverTags(xml);
+	assert.doesNotMatch(xml, /Mã đăng ký/, 'XML không còn chuỗi "Mã đăng ký"');
+	const lines = paragraphs(xml);
+	assert.ok(!lines.some((l) => /Mã đăng ký/.test(l)));
+	// Đoạn văn cũ của dòng mã vẫn còn (rỗng) ⇒ chiều cao trang như đơn thật, không in dòng chấm
+	assert.equal(lines[lines.length - 1].trim(), '');
+	assert.equal(lines.filter((l) => l.includes(BLANK)).length, 0, 'đủ dữ liệu ⇒ hết dòng chấm');
+	assert.match(
+		lines.find((l) => l.startsWith('Nghệ An, ngày')),
+		/^Nghệ An, ngày\s+tháng\s+năm\s*$/,
+	);
+	// Đơn thật cùng dữ liệu: nhiều hơn đúng 1 đoạn chữ ("Mã đăng ký: …") — phần còn lại y hệt
+	const real = paragraphs(documentXml((await renderApplication(APP_FULL)).buffer));
+	assert.equal(real.length, lines.length, 'cùng số đoạn văn');
+	assert.deepEqual(
+		lines.slice(0, -1).filter((l) => !l.startsWith('Nghệ An, ngày')),
+		real.slice(0, -1).filter((l) => !l.startsWith('Nghệ An, ngày')),
+	);
+	// Không làm hỏng đơn thật sau khi đã dựng bản nháp (cache riêng)
+	assert.equal(real[real.length - 1], 'Mã đăng ký: DK-2026-000123');
+});
+
+test('đơn nháp: draft không phải true thì vẫn là đơn thật; mẫu gốc vẫn chứa đúng chuỗi mã đăng ký', async () => {
+	const out = await renderApplication({ ...APP_FULL, draft: false });
+	assert.equal(out.filename, 'Don-dang-ky-Nguyen-Van-Anh-DK-2026-000123.docx');
+	// Chặn đổi mẫu âm thầm: đơn nháp dựa vào đúng chuỗi này trong mẫu
+	const tpl = new PizZip(fs.readFileSync(path.join(TEMPLATE_DIR, 'don-dang-ky-dtlt.docx')));
+	assert.ok(
+		tpl.file('word/document.xml').asText().includes('Mã đăng ký: {ma_dang_ky}'),
+		'mẫu đơn phải chứa nguyên chuỗi "Mã đăng ký: {ma_dang_ky}" trong 1 thẻ w:t',
+	);
+});
+
+test('tờ trình nháp (blank_analysis): đúng 1 người, mọi ô bảng phân tích để trống kể cả số đề xuất', async () => {
+	const out = await renderProposal({
+		...PROPOSAL,
+		people: [
+			{ staff_number: 101, full_name: 'Lê Văn A', birth_year: 1985, qualification: 'BSCKI' },
+		],
+		blank_analysis: true,
+	});
+	const xml = documentXml(out.buffer);
+	noLeftoverTags(xml);
+	const table = rows(xml);
+	const header = table.findIndex((r) => r[0] === 'TT');
+	assert.deepEqual(table[header + 1], ['1', '101', 'Lê Văn A', '1985', 'BSCKI']);
+	assert.notEqual(table[header + 2]?.length, 5, 'bảng người có đúng 1 dòng');
+	// Bảng phân tích: tên lớp giữ, kỹ thuật / có chứng chỉ / đề xuất / khoa khác / lý do đều rỗng
+	// (PROPOSAL có sẵn analysis — blank_analysis phải thắng)
+	const needs = table.find((r) => r.length === 8 && r[2].startsWith('Siêu âm tim cơ bản'));
+	assert.deepEqual(needs, ['', '', 'Siêu âm tim cơ bản', '', '', '', '', '']);
+	assert.doesNotMatch(xml, /Triển khai kỹ thuật mới|Siêu âm tim qua thành ngực/);
+
+	// Không bật cờ ⇒ như cũ: số đề xuất mặc định = số người
+	const normal = await renderProposal({
+		...PROPOSAL,
+		people: [
+			{ staff_number: 101, full_name: 'Lê Văn A', birth_year: 1985, qualification: 'BSCKI' },
+		],
+	});
+	const nrow = rows(documentXml(normal.buffer)).find(
+		(r) => r.length === 8 && r[2].startsWith('Siêu âm tim cơ bản'),
+	);
+	assert.equal(nrow[5], '1');
 });
 
 test('mẫu: docxtemplater không báo lỗi cú pháp thẻ ở cả hai mẫu', () => {

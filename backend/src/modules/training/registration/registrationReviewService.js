@@ -1,6 +1,5 @@
-// Phòng Đào tạo đối chiếu bản khai (form đăng ký khóa đào tạo liên tục) với hồ sơ học
-// viên + giấy tờ trước khi duyệt: bản khai đã parse, chỗ lệch so với hồ sơ, mốc đối
-// chiếu (ai / lúc nào), hồ sơ PDF nộp bổ sung, Đơn đăng ký (.docx).
+// Phòng Đào tạo xem bản khai (form đăng ký khóa đào tạo liên tục) trước khi duyệt: bản
+// khai đã parse, chỗ lệch so với hồ sơ học viên, file hồ sơ đính kèm, Đơn đăng ký (.docx).
 // Bản khai đọc / ghi qua courseRegistrationService; Đơn sinh bằng
 // registrationDocumentService — file này chỉ gom dữ liệu.
 const { getPool, sql } = require('../../../config/db');
@@ -8,8 +7,8 @@ const { httpError } = require('../../../utils/httpError');
 const { hasPermission } = require('../../../permissions/authz');
 const courseRegistrationService = require('./courseRegistrationService');
 const registrationDocumentService = require('./registrationDocumentService');
-const approvalGate = require('./registrationApprovalGate');
-const { TRAINEE_FIELDS, INVOICE_FIELDS, CHECK_KEYS } = require('./registrationConstants');
+const registrationFileService = require('./registrationFileService');
+const { TRAINEE_FIELDS, INVOICE_FIELDS } = require('./registrationConstants');
 
 // ─── So sánh bản khai ↔ hồ sơ học viên ──────────────────────────────────────
 const DATE_FIELDS = new Set(['dob', 'national_id_issued_date']);
@@ -80,7 +79,7 @@ const computeDiffs = (snapshot, profile) => {
 	return diffs;
 };
 
-// ─── Đọc bản khai cho màn đối chiếu ─────────────────────────────────────────
+// ─── Đọc bản khai cho màn xem bản khai ─────────────────────────────────────────
 const maskId = (v) => {
 	if (!v) return v;
 	const s = String(v);
@@ -89,7 +88,7 @@ const maskId = (v) => {
 
 const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensitive');
 
-// Tên khóa / chương trình / khoa / đối tượng / người đối chiếu + file hồ sơ — 1 câu
+// Tên khóa / chương trình / khoa / đối tượng — 1 câu
 const loadContext = async (enrollmentId, reg) => {
 	const snap = reg.snapshot ?? {};
 	const pool = await getPool();
@@ -97,27 +96,17 @@ const loadContext = async (enrollmentId, reg) => {
 		.request()
 		.input('id', sql.VarChar(20), enrollmentId)
 		.input('reg_dept', sql.VarChar(20), reg.department_id || snap.department_id || null)
-		.input('reg_type', sql.VarChar(20), snap.trainee_type_id || null)
-		.input('id_by', sql.VarChar(20), reg.id_checked_by || null)
-		.input('degree_by', sql.VarChar(20), reg.degree_checked_by || null)
-		.input('proposal_by', sql.VarChar(20), reg.proposal_checked_by || null)
-		.input('dossier_id', sql.VarChar(20), reg.dossier_file_id || null).query(`
+		.input('reg_type', sql.VarChar(20), snap.trainee_type_id || null).query(`
       SELECT e.course_id, c.name AS course_name, e.program_id, tp.name AS program_name,
              e.status AS enrollment_status, e.trainee_id,
              (SELECT name FROM departments WHERE id = @reg_dept) AS department_name,
              (SELECT name FROM departments WHERE id = t.department_id) AS profile_department_name,
              (SELECT name FROM trainee_types WHERE id = @reg_type) AS trainee_type_name,
-             (SELECT name FROM trainee_types WHERE id = t.trainee_type_id) AS profile_trainee_type_name,
-             (SELECT full_name FROM users WHERE id = @id_by) AS id_checked_by_name,
-             (SELECT full_name FROM users WHERE id = @degree_by) AS degree_checked_by_name,
-             (SELECT full_name FROM users WHERE id = @proposal_by) AS proposal_checked_by_name,
-             f.id AS dossier_file_id, f.file_name AS dossier_file_name, f.file_url AS dossier_file_url,
-             f.mime_type AS dossier_mime_type, f.file_size AS dossier_file_size
+             (SELECT name FROM trainee_types WHERE id = t.trainee_type_id) AS profile_trainee_type_name
       FROM course_enrollments e
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
       LEFT JOIN training_programs tp ON tp.id = e.program_id
-      LEFT JOIN training_files f ON f.id = @dossier_id AND f.is_deleted = 'false'
       WHERE e.id = @id`);
 	return r.recordset[0] ?? null;
 };
@@ -133,33 +122,24 @@ const loadProfile = async (enrollmentId) => {
 	return r.recordset[0] ?? null;
 };
 
-const checkInfo = (reg, ctx, key) => {
-	const base = key.replace(/_checked$/, '');
-	const at = reg[`${base}_checked_at`];
-	return at
-		? {
-				at,
-				by: reg[`${base}_checked_by`] ?? null,
-				by_name: ctx?.[`${base}_checked_by_name`] ?? null,
-			}
-		: null;
-};
-
 /**
- * Bản khai + chỗ lệch với hồ sơ + mốc đối chiếu. Không có bản khai ⇒ null.
- * Người thiếu quyền trainees:read_sensitive: CCCD bị che, không nhận link hồ sơ PDF.
+ * Bản khai + chỗ lệch với hồ sơ. Không có bản khai ⇒ null.
+ * Người thiếu quyền trainees:read_sensitive: CCCD bị che, file hồ sơ không có link xem (file_url null).
  * @param {string} enrollmentId
  * @param {any} actor req.user
  */
 const getForReview = async (enrollmentId, actor) => {
 	const reg = await courseRegistrationService.getByEnrollment(enrollmentId);
 	if (!reg) return null;
-	const [ctx, profile, enabled] = await Promise.all([
+	const sensitive = canReadSensitive(actor);
+	const [ctx, profile, { files, files_missing }] = await Promise.all([
 		loadContext(enrollmentId, reg),
 		loadProfile(enrollmentId),
-		approvalGate.requireChecksEnabled(),
+		registrationFileService.describe(
+			{ ...reg, enrollment_id: enrollmentId },
+			{ withUrl: sensitive },
+		),
 	]);
-	const sensitive = canReadSensitive(actor);
 	const snapshot = { ...(reg.snapshot ?? {}) };
 	let diffs = computeDiffs(snapshot, profile).map((d) => {
 		if (d.key === 'department_id')
@@ -184,7 +164,6 @@ const getForReview = async (enrollmentId, actor) => {
 				: d,
 		);
 	}
-	const missing = approvalGate.missingChecks(reg);
 	return {
 		enrollment_id: enrollmentId,
 		registration_code: reg.registration_code,
@@ -206,39 +185,10 @@ const getForReview = async (enrollmentId, actor) => {
 		verified_email: reg.verified_email ?? null,
 		email_verified_at: reg.email_verified_at ?? null,
 		invoice: Object.fromEntries(INVOICE_FIELDS.map((k) => [k, reg[k] ?? null])),
-		checks: Object.fromEntries(CHECK_KEYS.map((k) => [k, checkInfo(reg, ctx, k)])),
-		required: approvalGate.requiredKeys(reg.source),
-		require_checks: enabled,
-		missing: enabled ? missing.map((m) => m.label) : [],
-		dossier:
-			reg.dossier_file_id && ctx?.dossier_file_id
-				? {
-						file_id: ctx.dossier_file_id,
-						file_name: ctx.dossier_file_name,
-						file_url: sensitive ? ctx.dossier_file_url : null,
-						mime_type: ctx.dossier_mime_type,
-						file_size: ctx.dossier_file_size,
-						uploaded_at: reg.dossier_uploaded_at ?? null,
-					}
-				: null,
+		files,
+		files_missing,
 		created_at: reg.created_at ?? null,
 	};
-};
-
-/**
- * Ghi / bỏ mốc đối chiếu rồi trả lại bản khai như getForReview.
- * @param {string} enrollmentId
- * @param {{ id_checked?: boolean, degree_checked?: boolean, proposal_checked?: boolean }} checks
- * @param {any} actor
- */
-const setChecks = async (enrollmentId, checks, actor) => {
-	const reg = await courseRegistrationService.getByEnrollment(enrollmentId);
-	if (!reg) throw httpError(404, 'Lượt ghi danh này không có bản khai đăng ký.');
-	const clean = {};
-	for (const k of CHECK_KEYS) if (typeof checks?.[k] === 'boolean') clean[k] = checks[k];
-	if (!Object.keys(clean).length) throw httpError(400, 'Chưa chọn mốc đối chiếu nào.');
-	await courseRegistrationService.setChecks(enrollmentId, clean, actor.id);
-	return getForReview(enrollmentId, actor);
 };
 
 /**
@@ -267,19 +217,18 @@ const applicationForEnrollment = async (enrollmentId) => {
 	return renderApplicationFor({ ...reg, enrollment_id: enrollmentId });
 };
 
-// File PDF hồ sơ nộp bổ sung — trả đường dẫn /uploads (response tự ký link có hạn)
+// File PDF hồ sơ nộp bổ sung theo cách cũ (kind = 'dossier') — trả đường dẫn /uploads (response tự ký link có hạn)
 const dossierForEnrollment = async (enrollmentId) => {
-	const reg = await courseRegistrationService.getByEnrollment(enrollmentId);
-	if (!reg?.dossier_file_id) throw httpError(404, 'Chưa có hồ sơ nộp bổ sung.');
-	const ctx = await loadContext(enrollmentId, reg);
-	if (!ctx?.dossier_file_id) throw httpError(404, 'Chưa có hồ sơ nộp bổ sung.');
+	const rows = await registrationFileService.listFiles(enrollmentId);
+	const row = rows.find((r) => r.kind === 'dossier');
+	if (!row) throw httpError(404, 'Chưa có hồ sơ nộp bổ sung.');
 	return {
-		file_id: ctx.dossier_file_id,
-		file_name: ctx.dossier_file_name,
-		file_url: ctx.dossier_file_url,
-		mime_type: ctx.dossier_mime_type,
-		file_size: ctx.dossier_file_size,
-		uploaded_at: reg.dossier_uploaded_at ?? null,
+		file_id: row.file_id,
+		file_name: row.file_name,
+		file_url: row.file_url,
+		mime_type: row.mime_type,
+		file_size: row.file_size,
+		uploaded_at: row.uploaded_at ?? null,
 	};
 };
 
@@ -287,7 +236,6 @@ module.exports = {
 	normalizeValue,
 	computeDiffs,
 	getForReview,
-	setChecks,
 	renderApplicationFor,
 	applicationForEnrollment,
 	dossierForEnrollment,

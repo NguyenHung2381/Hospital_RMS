@@ -84,8 +84,6 @@ const INVOICE_FIELDS = [
 	'invoice_email',
 ];
 
-const CHECK_KEYS = ['id_checked', 'degree_checked', 'proposal_checked'];
-
 module.exports = {
 	RULES_VERSION,
 	CLASS_RULES,
@@ -94,5 +92,4 @@ module.exports = {
 	SNAPSHOT_FIELDS,
 	TRAINEE_FIELDS,
 	INVOICE_FIELDS,
-	CHECK_KEYS,
 };

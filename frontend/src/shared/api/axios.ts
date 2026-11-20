@@ -1,7 +1,7 @@
-import { trackRequest } from '../utils/feedback';
+import { beginUpload, trackRequest } from '../utils/feedback';
 import { clearAuth, getToken, updateStoredUser } from '../utils/storage';
 import { BASE_URL } from './endpoints';
-import { readJson, safeFetch } from './http';
+import { postFormWithProgress, readJson, safeFetch } from './http';
 import { handle401, refreshQueued } from './interceptors';
 
 // Khớp FORCE_PASSWORD_PATH (app/router/authHelpers.ts) — không import từ router
@@ -101,40 +101,52 @@ async function requestBlob(path: string, body: unknown): Promise<Blob> {
 	return res.blob();
 }
 
+// Gửi bằng XHR (không phải fetch) để GlobalFeedback hiện phần trăm đã gửi thật
+// và người dùng hủy được giữa chừng — xem postFormWithProgress (http.ts).
 async function requestForm<T>(path: string, body: FormData): Promise<T> {
-	const token = getToken();
-	const res = await safeFetch(`${BASE_URL}/api/v1${path}`, {
-		method: 'POST',
-		body,
-		headers: token ? { Authorization: `Bearer ${token}` } : {},
-	});
+	const upload = beginUpload();
+	const send = (token: string | null) =>
+		postFormWithProgress(
+			`${BASE_URL}/api/v1${path}`,
+			body,
+			token ? { Authorization: `Bearer ${token}` } : {},
+			{ onProgress: upload.progress, signal: upload.signal },
+		);
 
-	if (res.status === 401) {
-		const newToken = await refreshQueued();
-		if (newToken) {
-			const retryRes = await safeFetch(`${BASE_URL}/api/v1${path}`, {
-				method: 'POST',
-				body,
-				headers: { Authorization: `Bearer ${newToken}` },
-			});
-			const retryJson = await readJson(retryRes);
-			if (!retryRes.ok || !retryJson?.success)
-				throw new Error(retryJson?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
-			return retryJson.data as T;
+	try {
+		const res = await send(getToken());
+
+		if (res.status === 401) {
+			const newToken = await refreshQueued();
+			if (newToken) {
+				const retryRes = await send(newToken);
+				const retryJson = await readJson(retryRes);
+				if (!retryRes.ok || !retryJson?.success)
+					throw new Error(retryJson?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+				return retryJson.data as T;
+			}
+			clearAuth();
+			window.location.href = '/login';
+			throw new Error('Phiên đăng nhập đã hết hạn');
 		}
-		clearAuth();
-		window.location.href = '/login';
-		throw new Error('Phiên đăng nhập đã hết hạn');
+
+		const json = await readJson(res);
+		checkPasswordChangeRequired(res.status, json);
+
+		if (!res.ok || !json?.success) {
+			throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		}
+
+		return json.data as T;
+	} catch (err) {
+		// Người dùng bấm Hủy trên lớp phủ — đổi sang Error thường để nơi gọi hiện đúng câu này
+		if (err instanceof DOMException && err.name === 'AbortError') {
+			throw new Error('Đã hủy tải lên', { cause: err });
+		}
+		throw err;
+	} finally {
+		upload.done();
 	}
-
-	const json = await readJson(res);
-	checkPasswordChangeRequired(res.status, json);
-
-	if (!res.ok || !json?.success) {
-		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
-	}
-
-	return json.data as T;
 }
 
 // ─── GET: gộp request trùng + cache danh mục ─────────────────────────────────

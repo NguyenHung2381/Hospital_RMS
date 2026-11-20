@@ -31,6 +31,27 @@ const findEnrollmentStatus = async (enrollmentId) => {
 	return r.recordset[0]?.status ?? null;
 };
 
+// Khóa của lượt ghi danh (course_id + loại khóa) để biết khóa có bảng điểm LT/TH hay không;
+// null nếu không có đăng ký.
+const findEnrollmentCourse = async (enrollmentId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
+    SELECT e.course_id, c.training_type_id, c.is_rolling
+    FROM course_enrollments e JOIN courses c ON c.id = e.course_id
+    WHERE e.id = @id`);
+	return r.recordset[0] ?? null;
+};
+
+// Trạng thái giấy ('active' | 'revoked'); null nếu không có giấy này.
+const findStatusById = async (certId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), certId)
+		.query('SELECT status FROM certificates WHERE id = @id');
+	return r.recordset[0]?.status ?? null;
+};
+
 // Cấp chứng chỉ: số CC<năm><4 số> (genCertificateNo) + mã (genCertificateId).
 // Trả { id, cert_no, course_id }; null nếu đăng ký này đã có chứng chỉ. Kiểm tra nằm trong
 // chính câu INSERT (… WHERE NOT EXISTS); 2 request cùng lúc thì UNIQUE uq_cert_enrollment chặn.
@@ -87,4 +108,12 @@ const revoke = async ({ certId, reason, actorId }) => {
 	return r.rowsAffected[0] ?? 0;
 };
 
-module.exports = { listByCourse, findEnrollmentStatus, insert, deleteById, revoke };
+module.exports = {
+	listByCourse,
+	findEnrollmentStatus,
+	findEnrollmentCourse,
+	findStatusById,
+	insert,
+	deleteById,
+	revoke,
+};

@@ -7,15 +7,25 @@
 //     và hồ sơ đó có ngày sinh; KHÔNG cập nhật hồ sơ đã có bằng dữ liệu form;
 //   - bản khai (snapshot) chỉ chứa đúng dữ liệu người đó vừa gửi — đơn in từ snapshot;
 //   - tra cứu / tải đơn theo mã đăng ký luôn đòi yếu tố thứ hai trong body (CCCD, email
-//     hoặc download_token của chính lượt đó); sai mã hay sai yếu tố thứ hai đều 404 như nhau.
+//     hoặc download_token của chính lượt đó); sai mã hay sai yếu tố thứ hai đều 404 như nhau;
+//   - hồ sơ bắt buộc (registrationFileKinds.js) được kiểm TRƯỚC khi ghi CSDL và chỉ gắn vào
+//     đơn sau cùng (sau bản khai) — nhánh queueUnverified gắn vào hồ sơ MỚI, không vào hồ sơ
+//     của người khác.
 const crypto = require('crypto');
-const path = require('path');
+const fsp = require('fs/promises');
 const { getPool, sql } = require('../../config/db');
 const traineeService = require('../training/trainees/traineeService');
 const courseEnrollmentService = require('../training/courses/courseEnrollmentService');
 const courseService = require('../training/courses/courseService');
 const courseRegistrationService = require('../training/registration/courseRegistrationService');
 const registrationDocumentService = require('../training/registration/registrationDocumentService');
+const registrationFileService = require('../training/registration/registrationFileService');
+const {
+	REGISTRATION_FILE_EXTENSIONS,
+	publicKinds,
+	kindDef,
+} = require('../training/registration/registrationFileKinds');
+const uploadPolicy = require('../../utils/uploadPolicy');
 const emailOtp = require('../training/registration/registrationEmailOtpService');
 const {
 	RULES_VERSION,
@@ -32,15 +42,11 @@ const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { norm } = require('../../utils/vietnameseText');
 const { maskEmail } = require('../../utils/maskEmail');
 const { signToken, verifyToken } = require('../../utils/keys');
-const { moveUploadedFiles, UPLOADS_ROOT } = require('../../utils/uploadPaths');
 const { httpError, badRequest } = require('../../utils/httpError');
-const { isPdf } = require('../training/trainees/traineeProfilePdf');
 
 const DOWNLOAD_PURPOSE = 'registration-download';
 const DOWNLOAD_TTL = '30m';
 const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
-
-const hasFiles = (files) => Array.isArray(files) && files.length > 0;
 
 const clean = (v) => {
 	if (v === undefined || v === null) return null;
@@ -126,6 +132,11 @@ const getRules = async () => ({
 	rules: CLASS_RULES,
 	id_issue_places: ID_ISSUE_PLACES,
 	email_otp_required: await emailOtp.isRequired(),
+	attachments: {
+		extensions: REGISTRATION_FILE_EXTENSIONS,
+		max_size_mb: (await uploadPolicy.getPolicy()).maxSizeMB,
+		kinds: publicKinds(),
+	},
 });
 
 // Nội viện: gửi mã tới email trong hồ sơ nhân sự nếu có email thật, không thì tới email
@@ -212,19 +223,10 @@ const notifyReceived = (to, { fullName, code, courseName, programId }) => {
 
 // ─── Ngoại viện ─────────────────────────────────────────────────────────────
 
-// Hồ sơ học viên (1 file PDF) đính kèm khi đăng ký — cùng chỗ lưu với tab "Hồ sơ" của học
-// viên. Người gửi không đăng nhập ⇒ luôn 'pending' (chờ phòng Đào tạo duyệt).
-const attachTraineeDocuments = async (traineeId, files) => {
-	const dir = path.join(UPLOADS_ROOT, 'training', 'trainee_document', traineeId);
-	const moved = await moveUploadedFiles(files, dir);
-	for (const f of moved) {
-		await traineeService.addDocument(traineeId, f, null, { status: 'pending' });
-	}
-};
-
-// Ghi danh + bản khai + trường tùy chỉnh + giấy tờ cho 1 hồ sơ học viên.
+// Ghi danh + bản khai + trường tùy chỉnh + giấy tờ (vào hồ sơ học viên của chính lượt ghi danh,
+// trạng thái 'pending') cho 1 hồ sơ học viên.
 const enrollTrainee = async (ctx, traineeId) => {
-	const { data, files, custom } = ctx;
+	const { data, byKind, custom } = ctx;
 	const enrollment = await courseEnrollmentService.registerTrainee(
 		data.course_id,
 		traineeId,
@@ -247,7 +249,12 @@ const enrollTrainee = async (ctx, traineeId) => {
 		null,
 	);
 	await formCustomValueService.save('course_registration', enrollment.id, custom);
-	if (hasFiles(files)) await attachTraineeDocuments(traineeId, files);
+	// Bước CUỐI: lỗi 409 ở các bước trên vẫn chuyển sang queueUnverified với file chưa bị chuyển đi
+	await registrationFileService.attachAll(
+		{ enrollment_id: enrollment.id, source: 'external', trainee_id: traineeId },
+		byKind,
+		null,
+	);
 	return { ...reg, verified_email: ctx.verifiedEmail };
 };
 
@@ -267,7 +274,7 @@ const queueUnverified = async (ctx) => {
 	return enrollTrainee(ctx, trainee.id);
 };
 
-const registerExternal = async (data, files, custom, { otpRequired, emailProof }) => {
+const registerExternal = async (data, byKind, custom, { otpRequired, emailProof }) => {
 	if (otpRequired && !emailOtp.tokenMatchesEmail(emailProof, data.email))
 		throw httpError(400, EMAIL_NOT_VERIFIED);
 	const snapshot = buildSnapshot(data, { internal: false });
@@ -275,7 +282,7 @@ const registerExternal = async (data, files, custom, { otpRequired, emailProof }
 	for (const k of INVOICE_FIELDS) invoice[k] = clean(data[k]);
 	const ctx = {
 		data,
-		files,
+		byKind,
 		custom,
 		snapshot,
 		invoice,
@@ -323,7 +330,7 @@ const registerExternal = async (data, files, custom, { otpRequired, emailProof }
 // ─── Nội viện ───────────────────────────────────────────────────────────────
 // Không tin form cho khoa / trình độ: khớp lại mã NV + họ tên, lấy từ hồ sơ nhân sự.
 // Ghi danh bằng registerStaff (dùng / tạo hồ sơ học viên gắn staff_user_id).
-const registerInternal = async (data, files, custom, { otpRequired, emailProof }) => {
+const registerInternal = async (data, byKind, custom, { otpRequired, emailProof }) => {
 	const u = await findStaff(data.full_name, data.staff_number);
 	const staffEmail = realEmail(u.email);
 	if (otpRequired) {
@@ -370,23 +377,18 @@ const registerInternal = async (data, files, custom, { otpRequired, emailProof }
 		null,
 	);
 	await formCustomValueService.save('course_registration', enrollment.id, custom);
-	// Nội viện: file gửi kèm (nếu có) là hồ sơ nộp bổ sung của lượt này
-	if (hasFiles(files)) await courseRegistrationService.attachDossier(enrollment.id, files[0], null);
+	// Đơn đã ký + tờ trình đã duyệt — gắn sau cùng, vào đúng lượt ghi danh này
+	await registrationFileService.attachAll(
+		{ enrollment_id: enrollment.id, source: 'internal', trainee_id: enrollment.trainee_id ?? null },
+		byKind,
+		null,
+	);
 	return { ...reg, verified_email: verifiedEmail };
 };
 
-/**
- * Đăng ký khóa học công khai. Mọi nhánh trả cùng hình dạng phản hồi.
- * @param {Record<string, any>} data body đã qua validator + formConfigGuard
- * @param {Array<{ originalname: string, filename?: string, path?: string, size?: number, mimetype?: string }> | undefined} files tối đa 1 PDF
- * @param {Record<string, any> | null} custom trường tùy chỉnh (Cấu hình form 'course_registration')
- * @param {{ otpRequired?: boolean, emailProof?: { eh: string, sid: string | null } | null }} [opts]
- *   controller đọc email_token; otpRequired = bắt email của bản khai khớp token
- * @returns {Promise<{ submitted: boolean, registration_code: string, download_token: string }>}
- */
-const register = async (data, files, custom = null, opts = {}) => {
-	const otp = { otpRequired: !!opts.otpRequired, emailProof: opts.emailProof || null };
-	const course = await courseService.getById(data.course_id);
+// Khóa học phải tồn tại, mở đăng ký công khai và đang trong thời gian đăng ký
+const getOpenCourse = async (courseId) => {
+	const course = await courseService.getById(courseId);
 	// courses.status chỉ còn cờ 'cancelled' (trạng thái hiển thị tự suy từ ngày tháng)
 	if (!course || course.status === 'cancelled' || !course.is_public_registration) {
 		throw httpError(404, 'Khóa học không tồn tại hoặc đã đóng đăng ký.');
@@ -394,16 +396,57 @@ const register = async (data, files, custom = null, opts = {}) => {
 	if (!course.enrollment_open) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
-	// Kiểm trước khi tạo hồ sơ / ghi danh — tránh ghi danh xong mới báo sai file
-	if (hasFiles(files)) {
-		if (files.length > 1) throw badRequest('Chỉ đính kèm 1 file PDF hồ sơ học viên.');
-		if (!files.every(isPdf)) throw badRequest('Hồ sơ học viên chỉ nhận file PDF.');
-	}
+	return course;
+};
+
+/**
+ * Khóa đang mở đăng ký + chương trình đã chọn (tên, học phí). Khóa có chương trình thì phải
+ * chọn đúng 1 chương trình thuộc khóa; khóa không có chương trình ⇒ program_name / tuition_fee null.
+ * @param {string} courseId
+ * @param {string | null | undefined} programId
+ * @returns {Promise<{ course: Record<string, any>, program_name: string | null, tuition_fee: number | null }>}
+ */
+const loadOpenCourse = async (courseId, programId) => {
+	const course = await getOpenCourse(courseId);
+	const pool = await getPool();
+	const r = await pool.request().input('c', sql.VarChar(20), course.id ?? courseId).query(`
+		SELECT cp.program_id, tp.name, tp.tuition_fee
+		FROM course_programs cp
+		JOIN training_programs tp ON tp.id = cp.program_id
+		WHERE cp.course_id = @c`);
+	const programs = r.recordset;
+	if (!programs.length) return { course, program_name: null, tuition_fee: null };
+	if (!programId) throw badRequest('Vui lòng chọn chương trình của khóa học.');
+	const p = programs.find((x) => x.program_id === programId);
+	if (!p) throw badRequest('Chương trình không thuộc khóa học đã chọn.');
+	return {
+		course,
+		program_name: p.name ?? null,
+		tuition_fee:
+			p.tuition_fee === null || p.tuition_fee === undefined ? null : Number(p.tuition_fee),
+	};
+};
+
+/**
+ * Đăng ký khóa học công khai. Mọi nhánh trả cùng hình dạng phản hồi.
+ * @param {Record<string, any>} data body đã qua validator + formConfigGuard
+ * @param {Record<string, { originalname: string, filename?: string, path?: string, size?: number, mimetype?: string }>} byKind
+ *   file hồ sơ theo loại (registrationFileService.collectByKind)
+ * @param {Record<string, any> | null} custom trường tùy chỉnh (Cấu hình form 'course_registration')
+ * @param {{ otpRequired?: boolean, emailProof?: { eh: string, sid: string | null } | null }} [opts]
+ *   controller đọc email_token; otpRequired = bắt email của bản khai khớp token
+ * @returns {Promise<{ submitted: boolean, registration_code: string, download_token: string }>}
+ */
+const register = async (data, byKind, custom = null, opts = {}) => {
+	const otp = { otpRequired: !!opts.otpRequired, emailProof: opts.emailProof || null };
+	const course = await getOpenCourse(data.course_id);
+	// Kiểm lần 2 (controller đã kiểm) trước khi tạo hồ sơ / ghi danh — tránh ghi danh xong mới báo sai file
+	registrationFileService.assertSubmission(data.source, byKind ?? {});
 
 	const internal = data.source === 'internal';
 	const reg = internal
-		? await registerInternal(data, files, custom, otp)
-		: await registerExternal(data, files, custom, otp);
+		? await registerInternal(data, byKind ?? {}, custom, otp)
+		: await registerExternal(data, byKind ?? {}, custom, otp);
 
 	// Chỉ gửi tới email ĐÃ xác minh (tắt OTP thì không gửi — tránh dùng form gửi thư tới người khác)
 	notifyReceived(reg.verified_email, {
@@ -460,35 +503,38 @@ const resolveAccess = async (code, body) => {
 	return reg;
 };
 
-const getStatus = (reg) => ({
-	registration_code: reg.registration_code,
-	full_name: reg.snapshot?.full_name ?? null,
-	source: reg.source,
-	course_name: reg.course_name ?? null,
-	program_name: reg.program_name ?? null,
-	enrollment_status: reg.enrollment_status ?? null,
-	registered_at: reg.registered_at ?? reg.created_at ?? null,
-	needs_dossier: reg.source === 'internal' && !reg.dossier_file_id,
-	dossier_uploaded_at: reg.dossier_uploaded_at ?? null,
-	checks: {
-		id_checked: !!reg.id_checked_at,
-		degree_checked: !!reg.degree_checked_at,
-		proposal_checked: !!reg.proposal_checked_at,
-	},
-});
+// Chỉ đơn còn chờ duyệt / trong danh sách chờ mới nộp hoặc thay hồ sơ được
+const UPLOAD_OPEN_STATUSES = ['pending', 'waitlisted'];
+
+const getStatus = async (reg) => {
+	const { files, files_missing } = await registrationFileService.describe(reg, { withUrl: false });
+	return {
+		registration_code: reg.registration_code,
+		full_name: reg.snapshot?.full_name ?? null,
+		source: reg.source,
+		course_name: reg.course_name ?? null,
+		program_name: reg.program_name ?? null,
+		enrollment_status: reg.enrollment_status ?? null,
+		registered_at: reg.registered_at ?? reg.created_at ?? null,
+		can_upload: UPLOAD_OPEN_STATUSES.includes(reg.enrollment_status),
+		files,
+		files_missing,
+	};
+};
+
+const traineeTypeNameOf = async (typeId) => {
+	if (!typeId) return null;
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), String(typeId))
+		.query('SELECT name FROM trainee_types WHERE id = @id');
+	return r.recordset[0]?.name ?? null;
+};
 
 // Gom tên khóa / chương trình / khoa / đối tượng rồi giao cho mẫu Word (registrationDocumentService)
 const renderApplication = async (reg) => {
-	let traineeTypeName = null;
-	const typeId = reg.snapshot?.trainee_type_id;
-	if (typeId) {
-		const pool = await getPool();
-		const r = await pool
-			.request()
-			.input('id', sql.VarChar(20), String(typeId))
-			.query('SELECT name FROM trainee_types WHERE id = @id');
-		traineeTypeName = r.recordset[0]?.name ?? null;
-	}
+	const traineeTypeName = await traineeTypeNameOf(reg.snapshot?.trainee_type_id);
 	return registrationDocumentService.renderApplication({
 		source: reg.source,
 		registration_code: reg.registration_code,
@@ -501,19 +547,85 @@ const renderApplication = async (reg) => {
 	});
 };
 
-// Đúng 1 file PDF. Phòng Đào tạo đã đối chiếu tờ trình thì không cho thay qua cổng
-// công khai (thay file đã đối chiếu phải qua phòng Đào tạo).
-const uploadDossier = async (reg, files) => {
-	if (!Array.isArray(files) || files.length !== 1)
-		throw badRequest('Vui lòng đính kèm đúng 1 file PDF (gộp đơn và tờ trình vào một file).');
-	if (!isPdf(files[0])) throw badRequest('Hồ sơ nộp bổ sung chỉ nhận file PDF.');
-	if (reg.proposal_checked_at)
-		throw httpError(
-			409,
-			'Hồ sơ đã được phòng Đào tạo đối chiếu. Muốn thay file, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.',
+// Đơn đăng ký nháp (nội viện, chưa có mã đăng ký): điền sẵn từ chính dữ liệu người đó vừa gõ
+// + khoa / trình độ lấy từ hồ sơ nhân sự (khớp lại mã NV + họ tên, như lúc gửi đăng ký). Ngày
+// lập đơn để trống cho người ký tự ghi.
+const renderDraftApplication = async (data) => {
+	const u = await findStaff(data.full_name, data.staff_number);
+	const { course, program_name } = await loadOpenCourse(data.course_id, data.program_id);
+	const snapshot = {
+		...buildSnapshot(data, { internal: true }),
+		staff_number: u.staff_number,
+		department_id: u.department_id ?? undefined,
+		qualification: u.qualification ?? undefined,
+	};
+	return registrationDocumentService.renderApplication({
+		source: 'internal',
+		registration_code: null,
+		created_at: null,
+		snapshot,
+		course_name: course.name,
+		program_name,
+		department_name: u.department_name ?? null,
+		trainee_type_name: await traineeTypeNameOf(clean(data.trainee_type_id)),
+		draft: true,
+	});
+};
+
+const birthYearOf = (dob) => {
+	const y = dob ? Number(String(dob).slice(0, 4)) : NaN;
+	return Number.isInteger(y) && y > 1900 ? y : null;
+};
+
+// Tờ trình nháp + Bảng phân tích nhu cầu (nội viện): đúng 1 người (người đăng ký), mọi ô của
+// bảng phân tích để trống — không lộ số liệu nội bộ của khoa cho người chưa đăng nhập.
+const renderDraftProposal = async (data) => {
+	const u = await findStaff(data.full_name, data.staff_number);
+	const { course, program_name, tuition_fee } = await loadOpenCourse(
+		data.course_id,
+		data.program_id,
+	);
+	const out = await registrationDocumentService.renderProposal({
+		department_name: u.department_name ?? '',
+		course_name: course.name,
+		program_name,
+		start_date: course.start_date,
+		end_date: course.end_date,
+		tuition_fee,
+		year: new Date().getFullYear(),
+		people: [
+			{
+				staff_number: u.staff_number,
+				full_name: u.full_name,
+				birth_year: birthYearOf(data.dob),
+				qualification: u.qualification ?? null,
+			},
+		],
+		blank_analysis: true,
+	});
+	return { ...out, filename: `${out.filename.slice(0, -'.docx'.length)}-ban-nhap.docx` };
+};
+
+// Nộp / thay 1 file hồ sơ. Đơn đã được xử lý (không còn chờ duyệt / danh sách chờ) thì không
+// cho thay hồ sơ qua cổng công khai — phải qua phòng Đào tạo.
+const uploadFile = async (reg, kind, file) => {
+	if (!file) throw badRequest('Vui lòng chọn file cần nộp.');
+	// multer đã ghi file tạm — kiểm không đạt thì xóa ngay (cleanupTmp cũng dọn khi trả response)
+	const reject = async (err) => {
+		if (file.path) await fsp.unlink(file.path).catch(() => {});
+		throw err;
+	};
+	if (!kindDef(reg.source, kind)) await reject(badRequest('Loại hồ sơ không hợp lệ cho đơn này.'));
+	if (!UPLOAD_OPEN_STATUSES.includes(reg.enrollment_status))
+		await reject(
+			httpError(
+				409,
+				'Đơn đăng ký đã được xử lý. Muốn thay hồ sơ, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.',
+			),
 		);
-	const r = await courseRegistrationService.attachDossier(reg.enrollment_id, files[0], null);
-	return { uploaded: true, dossier_uploaded_at: r.dossier_uploaded_at ?? null };
+	const { uploaded_at } = await registrationFileService.attach(reg, kind, file, null);
+	const { files_missing } = await registrationFileService.describe(reg);
+	return { kind, uploaded_at, files_missing };
 };
 
 module.exports = {
@@ -526,7 +638,10 @@ module.exports = {
 	resolveAccess,
 	getStatus,
 	renderApplication,
-	uploadDossier,
+	renderDraftApplication,
+	renderDraftProposal,
+	loadOpenCourse,
+	uploadFile,
 	readDownloadToken,
 	EMAIL_NOT_VERIFIED,
 	NOT_FOUND,

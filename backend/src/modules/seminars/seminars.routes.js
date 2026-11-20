@@ -3,9 +3,12 @@ const { body } = require('express-validator');
 const ctrl = require('./seminarController');
 const participantService = require('./seminarParticipantService');
 const cmeRequirementService = require('../cme/cmeRequirementService');
+const cmeCycleService = require('../cme/cmeCycleService');
+const { cycleComplianceQuery } = require('../cme/cmeCycleValidators');
 const cmePersonalExport = require('../cme/cmePersonalExportController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
+const { validateRequest } = require('../../middlewares/validateRequest');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
@@ -99,7 +102,7 @@ router.post(
 	ctrl.importListExcel,
 );
 
-// LƯU Ý: các route path cố định (/cme-requirements, /cme-compliance) PHẢI
+// LƯU Ý: các route path cố định (/cme-requirements, /cme-compliance, /cme-cycle-compliance) PHẢI
 // đăng ký TRƯỚC router.get('/:id', ...) bên dưới — nếu không Express sẽ khớp
 // nhầm vào /:id (vd coi "cme-requirements" là 1 seminar id).
 router.get(
@@ -148,6 +151,17 @@ router.get(
 			return res.status(400).json({ success: false, message: 'Thiếu tham số year' });
 		}
 		return success(res, await cmeRequirementService.getComplianceReport(req.query.year));
+	}),
+);
+
+// Tiến độ 120 giờ tín chỉ / 05 năm liên tục của từng người hành nghề (cmeCycleService)
+router.get(
+	'/cme-cycle-compliance',
+	authenticate,
+	canCme,
+	validateRequest({ query: cycleComplianceQuery }),
+	asyncHandler(async (req, res) => {
+		return success(res, await cmeCycleService.getCycleReport(req.valid?.query));
 	}),
 );
 

@@ -1201,7 +1201,7 @@ const run = async (t, db, { skip = [] } = {}) => {
 				else {
 					assert.equal(r.role, 'Giảng viên');
 					assert.match(r.title, /^Giảng dạy: \S/);
-					assert.match(r.note, /^Tự động khi khóa điểm — \S+ tiết$/);
+					assert.match(r.note, /^Tự động khi khóa điểm — \S+ tiết giảng \(.+\)$/);
 				}
 			}
 		}

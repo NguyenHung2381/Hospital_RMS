@@ -74,6 +74,70 @@ const assertLessonInput = (data) => {
 		throw httpError(400, 'Đơn vị thời lượng không hợp lệ');
 };
 
+// ─── Giảng viên giảng dạy từng bài của chương trình (program_lesson_lecturers) ──
+// Dự kiến giảng dạy ở mức chương trình (nhập từ Excel — programLessonLecturerImportService),
+// khác lecturer_assignments là phân công thật của 1 khóa học. role: 'main' = GV chính
+// (mỗi bài tối đa 1, uq_pll_main) | 'assistant' = GV phụ. Chỉ lấy dòng của bài còn gắn
+// vào chương trình. Xem 2026-12-30_giang_vien_bai_hoc_chuong_trinh.
+const listLessonLecturers = async (programId) => {
+	const pool = await getPool();
+	const r = await pool.request().input('program_id', sql.VarChar(20), programId).query(`
+    SELECT pll.lesson_id, pll.lecturer_id, pll.role,
+           l.full_name, l.academic_degree, l.academic_rank, l.is_active
+    FROM program_lesson_lecturers pll
+    JOIN lecturers l ON l.id = pll.lecturer_id
+    WHERE pll.program_id = @program_id
+      AND EXISTS (SELECT 1 FROM lesson_programs lp
+                  WHERE lp.program_id = pll.program_id AND lp.lesson_id = pll.lesson_id)
+    ORDER BY CASE WHEN pll.role = 'main' THEN 0 ELSE 1 END, l.full_name
+  `);
+	return r.recordset;
+};
+
+/**
+ * Đặt lại toàn bộ giảng viên của 1 bài trong 1 chương trình.
+ * data = { main: lecturer_id | null, assistants: [lecturer_id] } — GV chính trùng
+ * người với GV phụ thì chỉ giữ vai trò chính. Không tự broadcast (nơi gọi nhập cả lô).
+ */
+const setLessonLecturers = async (programId, lessonId, data, actorId) => {
+	const main = data.main || null;
+	const assistants = [...new Set((data.assistants || []).filter((id) => id && id !== main))];
+	const rows = [
+		...(main ? [{ lecturer_id: main, role: 'main' }] : []),
+		...assistants.map((id) => ({ lecturer_id: id, role: 'assistant' })),
+	];
+	await withTransaction(async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('program_id', sql.VarChar(20), programId)
+				.input('lesson_id', sql.VarChar(20), lessonId);
+		await req().query(
+			'DELETE FROM program_lesson_lecturers WHERE program_id = @program_id AND lesson_id = @lesson_id',
+		);
+		for (const row of rows)
+			await req()
+				.input('lecturer_id', sql.VarChar(20), row.lecturer_id)
+				.input('role', sql.VarChar(10), row.role)
+				.input('actor_id', sql.VarChar(20), actorId).query(`
+          INSERT INTO program_lesson_lecturers (program_id, lesson_id, lecturer_id, role, created_by)
+          VALUES (@program_id, @lesson_id, @lecturer_id, @role, @actor_id)`);
+	});
+};
+
+// Bài đã gỡ khỏi chương trình thì bỏ luôn giảng viên của bài ở chương trình đó.
+const pruneLessonLecturers = async (lessonId) => {
+	const pool = await getPool();
+	await pool.request().input('lesson_id', sql.VarChar(20), lessonId).query(`
+    DELETE FROM program_lesson_lecturers
+    WHERE lesson_id = @lesson_id
+      AND NOT EXISTS (SELECT 1 FROM lesson_programs lp
+                      WHERE lp.program_id = program_lesson_lecturers.program_id
+                        AND lp.lesson_id = program_lesson_lecturers.lesson_id)
+  `);
+};
+
+// Mỗi bài kèm `lecturers` ([{ lecturer_id, full_name, academic_degree, role }], GV chính trước).
 const listLessons = async (programId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('program_id', sql.VarChar(20), programId).query(`
@@ -87,7 +151,13 @@ const listLessons = async (programId) => {
     WHERE lp.program_id = @program_id
     ORDER BY lp.display_order ASC, pl.created_at ASC
   `);
-	return r.recordset;
+	if (!r.recordset.length) return r.recordset;
+	const byLesson = new Map();
+	for (const { lesson_id, ...lecturer } of await listLessonLecturers(programId)) {
+		if (!byLesson.has(lesson_id)) byLesson.set(lesson_id, []);
+		byLesson.get(lesson_id).push(lecturer);
+	}
+	return r.recordset.map((row) => ({ ...row, lecturers: byLesson.get(row.lesson_id) || [] }));
 };
 
 // Toàn bộ bài học đang có (không phân biệt chương trình) — nguồn cho picker
@@ -192,6 +262,7 @@ const setLessonPrograms = async (lessonId, programIds, actorId) => {
         SELECT ${newIdSql('LP', 18)}, @lesson_id, tp.id, j.idx, @actor_id
         FROM ${jsonValues('@ids', { withIndex: true })} j JOIN training_programs tp ON tp.id = j.value
       `);
+	await pruneLessonLecturers(lessonId);
 	broadcast('update', { entity: 'program_lesson' });
 	return getLessonProgramIds(lessonId);
 };
@@ -313,6 +384,13 @@ const updateLessonLink = async (linkId, data, actorId) => {
 // lại/gắn tiếp hoặc xóa hẳn thủ công, nên không cần tự dọn ở đây nữa.
 const unlinkLesson = async (linkId) => {
 	const pool = await getPool();
+	// Giảng viên của bài ở chương trình này bỏ theo (trước khi mất dòng lượt gắn)
+	await pool.request().input('id', sql.VarChar(20), linkId).query(`
+    DELETE FROM program_lesson_lecturers
+    WHERE EXISTS (SELECT 1 FROM lesson_programs lp
+                  WHERE lp.id = @id AND lp.program_id = program_lesson_lecturers.program_id
+                    AND lp.lesson_id = program_lesson_lecturers.lesson_id)
+  `);
 	await pool
 		.request()
 		.input('id', sql.VarChar(20), linkId)
@@ -469,6 +547,8 @@ const incrementLessonDocumentDownload = async (docId) => {
 
 module.exports = {
 	setLessonDepartments,
+	listLessonLecturers,
+	setLessonLecturers,
 	listLessons,
 	listAllLessons,
 	createLesson,

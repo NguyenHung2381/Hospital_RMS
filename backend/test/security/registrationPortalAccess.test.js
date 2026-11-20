@@ -1,6 +1,7 @@
 // Quyền theo bản ghi ở cổng nhân viên cho đơn đăng ký khóa đào tạo liên tục:
-//   - /me/course-registrations/:enrollmentId/(application|dossier): chỉ chủ bản khai
-//     (staff_user_id); bản khai của người khác trả 404 và KHÔNG ghi file nào xuống đĩa;
+//   - /me/course-registrations/:enrollmentId/(application|files/:kind): chỉ chủ bản khai
+//     (staff_user_id); bản khai của người khác trả 404, loại hồ sơ không thuộc đối tượng 400,
+//     đơn đã xử lý 409 — cả 3 đều chặn TRƯỚC multer nên KHÔNG file nào xuống đĩa;
 //   - /me/department-proposals(+/document): tài khoản khoa, trưởng khoa của chính khoa đó,
 //     hoặc người có bản khai trong đúng nhóm đó; còn lại 404 / không thấy nhóm.
 // Router thật gắn vào Express, CSDL giả; service bản khai / giấy tờ bị thay.
@@ -32,6 +33,7 @@ const REGS = {
 		source: 'internal',
 		department_id: 'K1',
 		registration_code: 'DKA',
+		enrollment_status: 'pending',
 	},
 	E_A2: {
 		enrollment_id: 'E_A2',
@@ -39,6 +41,8 @@ const REGS = {
 		source: 'external',
 		department_id: null,
 		registration_code: 'DKA2',
+		enrollment_status: 'pending',
+		trainee_id: 'HV_A2',
 	},
 	E_C: {
 		enrollment_id: 'E_C',
@@ -63,8 +67,7 @@ const person = (enrollmentId, uid, name) => ({
 	birth_year: 1990,
 	qualification: 'BS',
 	enrollment_status: 'pending',
-	dossier_uploaded_at: null,
-	proposal_checked_at: null,
+	proposal_uploaded_at: null,
 });
 const GROUPS = [
 	{
@@ -96,6 +99,9 @@ const GROUPS = [
 	},
 ];
 
+// enrollment_id → các dòng course_registration_files còn hiệu lực
+const FILE_ROWS = {};
+
 install(async (text, inputs) => {
 	// registrationPortalService.managedDepartments — mô phỏng đúng các điều kiện của câu SQL
 	if (/LEFT JOIN departments d ON d\.dept_account_id = u\.id/.test(text)) {
@@ -110,10 +116,13 @@ install(async (text, inputs) => {
 			},
 		];
 	}
+	// registrationFileService.listFiles — hồ sơ đã nộp của từng lượt
+	if (/FROM course_registration_files crf\s+JOIN training_files/.test(text))
+		return FILE_ROWS[inputs.id] ?? [];
 	// Vai trò trưởng khoa (roleCodes.roleIdOf)
 	if (/FROM roles/.test(text)) return [{ id: 'VT_HEAD', code: 'dept_head' }];
 	// registrationReviewService.loadContext (Đơn đăng ký)
-	if (/AS id_checked_by_name/.test(text))
+	if (/AS profile_department_name/.test(text))
 		return [{ course_name: 'Khóa 1', program_name: 'CT 1', department_name: 'Khoa Một' }];
 	return [];
 });
@@ -131,7 +140,7 @@ auth.authenticate = (req, _res, next) => {
 };
 
 const regService = require('../../src/modules/training/registration/courseRegistrationService');
-const calls = { attachDossier: [], renderApplication: [], renderProposal: [], listByStaff: [] };
+const calls = { attach: [], renderApplication: [], renderProposal: [], listByStaff: [] };
 regService.getByEnrollment = async (id) => (REGS[id] ? { ...REGS[id], snapshot: {} } : null);
 regService.listByStaff = async (uid) => {
 	calls.listByStaff.push(uid);
@@ -144,9 +153,17 @@ regService.listInternalGroups = async ({ courseId, departmentId, programId } = {
 			(!departmentId || g.department_id === departmentId) &&
 			(!programId || g.program_id === programId),
 	);
-regService.attachDossier = async (id, file, actorId) => {
-	calls.attachDossier.push({ id, actorId, name: file.originalname });
-	return { file_id: 'TF1' };
+// Ghi file hồ sơ: thay bằng bản ghi nhận lời gọi (kiểm đúng mã đơn + loại + người nộp)
+const regFileService = require('../../src/modules/training/registration/registrationFileService');
+regFileService.attach = async (reg, kind, file, actorId) => {
+	calls.attach.push({
+		id: reg.enrollment_id,
+		source: reg.source,
+		kind,
+		actorId,
+		name: file.originalname,
+	});
+	return { kind, uploaded_at: new Date('2026-11-19T08:00:00Z') };
 };
 const docService = require('../../src/modules/training/registration/registrationDocumentService');
 docService.renderApplication = async (data) => {
@@ -186,10 +203,16 @@ const filesUnder = (dir) =>
 				)
 		: [];
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
-const upload = (uid, enrollmentId, name = 'ho-so.pdf', bytes = PDF) => {
+const upload = (
+	uid,
+	enrollmentId,
+	kind = 'application_signed',
+	name = 'ho-so.pdf',
+	bytes = PDF,
+) => {
 	const form = new FormData();
 	form.append('file', new Blob([bytes], { type: 'application/pdf' }), name);
-	return fetch(`${base}/course-registrations/${enrollmentId}/dossier`, {
+	return fetch(`${base}/course-registrations/${enrollmentId}/files/${kind}`, {
 		method: 'POST',
 		body: form,
 		headers: { 'x-user': uid },
@@ -197,13 +220,81 @@ const upload = (uid, enrollmentId, name = 'ho-so.pdf', bytes = PDF) => {
 };
 
 // ─── Bản khai của tôi ───────────────────────────────────────────────────────
-test('danh sách bản khai chỉ lấy theo tài khoản đang đăng nhập', async () => {
+test('danh sách bản khai chỉ lấy theo tài khoản đang đăng nhập; đúng hình dạng, việc cần làm = Chưa nộp <nhãn>', async () => {
 	const res = await get('U_A', '/course-registrations');
 	assert.equal(res.status, 200);
 	const { data } = await res.json();
 	assert.deepEqual(data.map((r) => r.enrollment_id).sort(), ['E_A', 'E_A2']);
-	assert.equal(data.find((r) => r.enrollment_id === 'E_A').needs_dossier, true);
 	assert.equal(calls.listByStaff.at(-1), 'U_A');
+	const mine = data.find((r) => r.enrollment_id === 'E_A');
+	assert.deepEqual(Object.keys(mine).sort(), [
+		'can_upload',
+		'channel',
+		'course_id',
+		'course_name',
+		'created_at',
+		'department_id',
+		'enrollment_id',
+		'enrollment_status',
+		'files',
+		'files_missing',
+		'program_id',
+		'program_name',
+		'registration_code',
+		'source',
+		'todo',
+		'waiting',
+	]);
+	assert.equal(mine.can_upload, true);
+	assert.deepEqual(
+		mine.files.map((x) => [x.kind, x.uploaded_at]),
+		[
+			['application_signed', null],
+			['proposal_approved', null],
+		],
+	);
+	assert.deepEqual(mine.files_missing, ['application_signed', 'proposal_approved']);
+	assert.deepEqual(mine.todo, ['Chưa nộp Đơn đăng ký đã ký', 'Chưa nộp Tờ trình đã duyệt']);
+	const ext = data.find((r) => r.enrollment_id === 'E_A2');
+	assert.deepEqual(ext.files_missing, ['national_id', 'degree', 'license', 'decision']);
+	assert.equal(ext.todo.length, 4);
+	assert.equal(ext.todo[0], 'Chưa nộp Căn cước công dân');
+});
+
+test('danh sách bản khai: file đã nộp có link (của chính mình); đơn cũ có file gộp ⇒ đủ hồ sơ; đơn bị từ chối ⇒ không còn việc', async () => {
+	FILE_ROWS.E_A = [
+		{
+			kind: 'dossier',
+			uploaded_at: new Date('2026-11-01T00:00:00Z'),
+			file_id: 'TF9',
+			file_name: 'gop.pdf',
+			file_url: '/uploads/training/course_registration/E_A/gop.pdf',
+			mime_type: 'application/pdf',
+			review_status: null,
+		},
+	];
+	try {
+		let { data } = await (await get('U_A', '/course-registrations')).json();
+		let mine = data.find((r) => r.enrollment_id === 'E_A');
+		assert.deepEqual(mine.files_missing, []);
+		assert.deepEqual(mine.todo, []);
+		const legacy = mine.files.at(-1);
+		assert.equal(legacy.kind, 'dossier');
+		assert.equal(legacy.legacy, true);
+		assert.equal(legacy.file_url, '/uploads/training/course_registration/E_A/gop.pdf');
+		assert.equal(mine.files.length, 3, '2 loại của nội viện + dòng file gộp cũ');
+
+		FILE_ROWS.E_A = [];
+		REGS.E_A.enrollment_status = 'rejected';
+		({ data } = await (await get('U_A', '/course-registrations')).json());
+		mine = data.find((r) => r.enrollment_id === 'E_A');
+		assert.equal(mine.can_upload, false);
+		assert.deepEqual(mine.todo, []);
+		assert.equal(mine.files_missing.length, 2, 'vẫn báo thiếu nhưng không còn việc cần làm');
+	} finally {
+		REGS.E_A.enrollment_status = 'pending';
+		delete FILE_ROWS.E_A;
+	}
 });
 
 test('tải Đơn của người khác / bản khai không gắn nhân viên ⇒ 404; của mình ⇒ .docx', async () => {
@@ -220,28 +311,97 @@ test('tải Đơn của người khác / bản khai không gắn nhân viên ⇒
 });
 
 test('nộp hồ sơ cho bản khai của người khác ⇒ 404, không ghi file nào xuống đĩa', async () => {
-	calls.attachDossier.length = 0;
+	calls.attach.length = 0;
 	for (const id of ['E_C', 'E_EXT', 'E_NONE']) {
 		const res = await upload('U_A', id);
 		assert.equal(res.status, 404, id);
 	}
-	assert.equal(calls.attachDossier.length, 0);
+	assert.equal(calls.attach.length, 0);
 	assert.deepEqual(filesUnder(UPLOADS), []);
 });
 
-test('nộp hồ sơ cho bản khai ngoại viện của chính mình ⇒ 400 trước khi nhận file', async () => {
-	const res = await upload('U_A', 'E_A2');
-	assert.equal(res.status, 400);
-	assert.deepEqual(filesUnder(UPLOADS), []);
+test('loại hồ sơ không thuộc đối tượng của đơn ⇒ 400 trước khi nhận file; loại lạ ⇒ 400 bởi validator', async () => {
+	// Nội viện nộp loại của ngoại viện, ngoại viện nộp loại của nội viện
+	for (const [id, kind] of [
+		['E_A', 'national_id'],
+		['E_A2', 'application_signed'],
+		['E_A2', 'proposal_approved'],
+	]) {
+		const res = await upload('U_A', id, kind);
+		assert.equal(res.status, 400, `${id}/${kind}`);
+		assert.equal((await res.json()).message, 'Loại hồ sơ không hợp lệ cho đơn này.');
+	}
+	for (const kind of ['dossier', 'khong-co']) {
+		const res = await upload('U_A', 'E_A', kind);
+		assert.equal(res.status, 400, kind);
+		// Lỗi validator: message chung của validate(), câu riêng nằm ở errors[].msg
+		assert.equal((await res.json()).errors[0].msg, 'Loại hồ sơ không hợp lệ');
+	}
+	assert.deepEqual(filesUnder(UPLOADS), [], 'không file nào xuống đĩa');
+	assert.equal(calls.attach.length, 0);
 });
 
-test('nộp PDF cho bản khai nội viện của chính mình ⇒ gọi attachDossier đúng người, đúng mã', async () => {
-	calls.attachDossier.length = 0;
-	const res = await upload('U_A', 'E_A');
+test('đơn đã được duyệt ⇒ 409 trước multer: không ghi file xuống đĩa, không gọi attach', async () => {
+	calls.attach.length = 0;
+	REGS.E_A.enrollment_status = 'approved';
+	try {
+		const before = filesUnder(UPLOADS);
+		const res = await upload('U_A', 'E_A');
+		assert.equal(res.status, 409);
+		assert.match((await res.json()).message, /Đơn đăng ký đã được xử lý/);
+		assert.deepEqual(calls.attach, []);
+		assert.deepEqual(filesUnder(UPLOADS), before);
+	} finally {
+		REGS.E_A.enrollment_status = 'pending';
+	}
+});
+
+test('nộp file cho bản khai của chính mình ⇒ attach đúng mã đơn + loại + user.id; trả { kind, uploaded_at, files_missing }', async () => {
+	calls.attach.length = 0;
+	let res = await upload('U_A', 'E_A', 'proposal_approved');
 	assert.equal(res.status, 200, await res.clone().text());
-	const { data } = await res.json();
-	assert.equal(data.uploaded, true);
-	assert.deepEqual(calls.attachDossier, [{ id: 'E_A', actorId: 'U_A', name: 'ho-so.pdf' }]);
+	const first = await res.json();
+	let { data } = first;
+	assert.equal(first.message, 'Đã nộp hồ sơ, chờ Trung tâm Đào tạo xét duyệt');
+	assert.deepEqual(Object.keys(data).sort(), ['files_missing', 'kind', 'uploaded_at']);
+	assert.equal(data.kind, 'proposal_approved');
+	assert.deepEqual(data.files_missing, ['application_signed', 'proposal_approved']);
+	// Ngoại viện (đơn của chính mình) — loại của ngoại viện, truyền cả trainee_id cho attach
+	res = await upload('U_A', 'E_A2', 'degree');
+	assert.equal(res.status, 200, await res.clone().text());
+	({ data } = await res.json());
+	assert.equal(data.kind, 'degree');
+	assert.deepEqual(calls.attach, [
+		{ id: 'E_A', source: 'internal', kind: 'proposal_approved', actorId: 'U_A', name: 'ho-so.pdf' },
+		{ id: 'E_A2', source: 'external', kind: 'degree', actorId: 'U_A', name: 'ho-so.pdf' },
+	]);
+	// File tạm do multer ghi bị dọn khi trả response (attach đã được thay nên không ai chuyển file đi)
+	await new Promise((r) => setTimeout(r, 50));
+	assert.deepEqual(filesUnder(UPLOADS), []);
+});
+
+test('nộp file: không kèm file ⇒ 400; đuôi ngoài PDF / JPG / PNG ⇒ 400 và không xuống đĩa', async () => {
+	calls.attach.length = 0;
+	let res = await fetch(`${base}/course-registrations/E_A/files/application_signed`, {
+		method: 'POST',
+		headers: { 'x-user': 'U_A' },
+	});
+	assert.equal(res.status, 400);
+	assert.equal((await res.json()).message, 'Vui lòng chọn file cần nộp.');
+	res = await upload('U_A', 'E_A', 'application_signed', 'don.docx');
+	assert.equal(res.status, 400);
+	assert.equal((await res.json()).message, 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.');
+	assert.equal(calls.attach.length, 0);
+	await new Promise((r) => setTimeout(r, 50));
+	assert.deepEqual(filesUnder(UPLOADS), []);
+});
+
+test('route /dossier cũ đã bỏ', async () => {
+	const res = await fetch(`${base}/course-registrations/E_A/dossier`, {
+		method: 'POST',
+		headers: { 'x-user': 'U_A' },
+	});
+	assert.equal(res.status, 404);
 });
 
 // ─── Nhóm theo khoa / Tờ trình ──────────────────────────────────────────────
@@ -252,6 +412,28 @@ const groupsOf = async (uid) => {
 		.map((g) => `${g.course_id}/${g.program_id ?? '-'}/${g.department_id}`)
 		.sort();
 };
+
+test('nhóm theo khoa: people trả has_proposal (đã nộp Tờ trình đã duyệt), không còn has_dossier', async () => {
+	GROUPS[0].people[0].proposal_uploaded_at = new Date('2026-11-10T00:00:00Z');
+	try {
+		const res = await get('U_A', '/department-proposals');
+		const [g] = (await res.json()).data;
+		assert.deepEqual(Object.keys(g.people[0]).sort(), [
+			'enrollment_id',
+			'enrollment_status',
+			'full_name',
+			'has_proposal',
+			'is_me',
+			'qualification',
+			'staff_number',
+		]);
+		assert.equal(g.people[0].has_proposal, true);
+		const other = await get('U_HEAD2', '/department-proposals');
+		assert.equal((await other.json()).data[0].people[0].has_proposal, false);
+	} finally {
+		GROUPS[0].people[0].proposal_uploaded_at = null;
+	}
+});
 
 test('danh sách nhóm: người đăng ký chỉ thấy nhóm của mình; khoa / trưởng khoa thấy mọi nhóm của khoa', async () => {
 	assert.deepEqual(await groupsOf('U_A'), ['C1/P1/K1']);

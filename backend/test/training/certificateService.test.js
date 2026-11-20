@@ -15,11 +15,18 @@ require('../../src/config/logger').error = (msg) => loggedErrors.push(msg);
 // CME đi kèm giấy (courseCmeService) — thay bằng hàm ghi lại lời gọi, không đụng DB
 const cme = require('../../src/modules/training/courses/courseCmeService');
 const cmeCalls = [];
+// Kết quả hoàn thành lấy từ gradebookService.enrollmentOutcome — thay bằng hàm giả
+const gradebook = require('../../src/modules/training/courses/gradebookService');
+let outcome = { locked: true, result: 'pass', reasons: [] };
+gradebook.enrollmentOutcome = async () => outcome;
+const LT_COURSE = { course_id: 'KH01', training_type_id: 'TRNTP-DTLT', is_rolling: false };
 cme.syncTrainees = async (...args) => cmeCalls.push(['syncTrainees', ...args]);
 cme.withdrawForCertificate = async (...args) => cmeCalls.push(['withdrawForCertificate', ...args]);
 
 // Thay toàn bộ hàm của repository cho từng test; ghi lại lời gọi
 const fakeRepo = (impl) => {
+	impl = { findEnrollmentCourse: () => LT_COURSE, ...impl };
+	outcome = { locked: true, result: 'pass', reasons: [] };
 	const calls = [];
 	for (const name of Object.keys(repo)) {
 		repo[name] = async (...args) => {
@@ -41,8 +48,8 @@ test('cấp chứng chỉ cho đăng ký đã duyệt: ghi đúng năm hiện t�
 		insert: () => ({ id: 'CERT01', cert_no: 'CC20260001' }),
 	});
 	const cert = await service.issueCertificate('DK01', 'NV01', '2027-12-31');
-	assert.deepEqual(cert, { id: 'CERT01', cert_no: 'CC20260001' });
-	assert.deepEqual(calls[1], [
+	assert.deepEqual(cert, { id: 'CERT01', cert_no: 'CC20260001', cme_error: null });
+	assert.deepEqual(calls.at(-1), [
 		'insert',
 		{
 			enrollmentId: 'DK01',
@@ -69,6 +76,48 @@ test('không có đăng ký ⇒ 404; chưa duyệt ⇒ 409; cả hai không ghi 
 		['findEnrollmentStatus'],
 	);
 	assert.deepEqual(events, []);
+});
+
+test('chưa khóa điểm ⇒ 409, không ghi gì', async () => {
+	const calls = fakeRepo({ findEnrollmentStatus: () => 'approved' });
+	outcome = { locked: false, result: 'pass', reasons: [] };
+	await rejectsWith(service.issueCertificate('DK01', 'NV01'), 409, /chưa được khóa/);
+	assert.ok(!calls.some((c) => c[0] === 'insert'));
+	assert.deepEqual(events, []);
+});
+
+test('chưa đạt / chưa đủ điểm ⇒ 409, kèm lý do', async () => {
+	const calls = fakeRepo({ findEnrollmentStatus: () => 'approved' });
+	outcome = { locked: true, result: 'fail', reasons: ['Vắng thi lý thuyết'] };
+	await rejectsWith(service.issueCertificate('DK01', 'NV01'), 409, /chưa đạt.*Vắng thi lý thuyết/);
+	outcome = { locked: true, result: null, reasons: [] };
+	await rejectsWith(service.issueCertificate('DK01', 'NV01'), 409, /chưa có đủ điểm/);
+	assert.ok(!calls.some((c) => c[0] === 'insert'));
+});
+
+test('khóa GPHN / rolling không có bảng điểm ⇒ không áp điều kiện điểm', async () => {
+	for (const course of [
+		{ course_id: 'KH02', training_type_id: 'TRNTP-GPHN', is_rolling: false },
+		{ course_id: 'KH03', training_type_id: 'TRNTP-CTCV', is_rolling: true },
+	]) {
+		fakeRepo({
+			findEnrollmentCourse: () => course,
+			findEnrollmentStatus: () => 'approved',
+			insert: () => ({ id: 'CERT09', cert_no: 'CC20260009', course_id: course.course_id }),
+		});
+		outcome = { locked: false, result: null, reasons: [] };
+		assert.equal((await service.issueCertificate('DK09', 'NV01')).id, 'CERT09');
+	}
+});
+
+test('cấp hàng loạt (verified) không kiểm lại bảng điểm từng người', async () => {
+	const calls = fakeRepo({
+		findEnrollmentStatus: () => 'approved',
+		insert: () => ({ id: 'CERT10', cert_no: 'CC20260010', course_id: 'KH01' }),
+	});
+	outcome = { locked: false, result: null, reasons: [] };
+	await service.issueCertificate('DK10', 'NV01', null, { verified: true });
+	assert.ok(!calls.some((c) => c[0] === 'findEnrollmentCourse'));
 });
 
 test('đăng ký đã có chứng chỉ (repository trả null) ⇒ 409, không phát sự kiện', async () => {
@@ -100,13 +149,32 @@ test('CME đi kèm giấy: cấp ⇒ ghi CME hồ sơ đó; thu hồi ⇒ thu h�
 	await service.revokeCertificate('C1', 'cấp nhầm', 'NV01');
 	assert.deepEqual(cmeCalls, [['withdrawForCertificate', 'C1', 'NV01', { reason: 'cấp nhầm' }]]);
 
-	const calls = fakeRepo({ deleteById: () => cmeCalls.push(['deleteById']) });
+	const calls = fakeRepo({
+		findStatusById: () => 'revoked',
+		deleteById: () => cmeCalls.push(['deleteById']),
+	});
 	await service.removeCertificate('C1', 'NV01');
 	assert.deepEqual(cmeCalls, [
 		['withdrawForCertificate', 'C1', 'NV01', { remove: true }],
 		['deleteById'],
 	]);
-	assert.deepEqual(calls, [['deleteById', 'C1']]);
+	assert.deepEqual(calls, [
+		['findStatusById', 'C1'],
+		['deleteById', 'C1'],
+	]);
+});
+
+test('xóa cứng: giấy còn hiệu lực ⇒ 409, không tìm thấy ⇒ 404; không xóa, không đụng CME', async () => {
+	const calls = fakeRepo({ findStatusById: () => 'active' });
+	await rejectsWith(service.removeCertificate('C1', 'NV01'), 409, /thu hồi trước/);
+	assert.deepEqual(
+		calls.map((c) => c[0]),
+		['findStatusById'],
+	);
+	fakeRepo({ findStatusById: () => null });
+	await rejectsWith(service.removeCertificate('C2', 'NV01'), 404, /Không tìm thấy chứng chỉ/);
+	assert.deepEqual(cmeCalls, []);
+	assert.deepEqual(events, []);
 });
 
 test('ghi CME lỗi không làm hỏng việc cấp giấy', async () => {
@@ -121,9 +189,28 @@ test('ghi CME lỗi không làm hỏng việc cấp giấy', async () => {
 		});
 		const cert = await service.issueCertificate('DK02', 'NV01');
 		assert.equal(cert.id, 'CERT02');
+		assert.equal(cert.cme_error, 'DB lỗi');
 		assert.match(loggedErrors.at(-1), /\[course-cme\] cấp giấy: DB lỗi/);
 		assert.deepEqual(events, ['certificate']);
 	} finally {
 		cme.syncTrainees = orig;
+	}
+});
+
+test('thu hồi / xóa giấy: lỗi ghi CME vẫn thành công và trả cme_error', async () => {
+	const orig = cme.withdrawForCertificate;
+	cme.withdrawForCertificate = async () => {
+		throw new Error('CME hỏng');
+	};
+	try {
+		fakeRepo({ revoke: () => 1 });
+		assert.deepEqual(await service.revokeCertificate('C1', 'x', 'NV01'), { cme_error: 'CME hỏng' });
+		fakeRepo({ findStatusById: () => 'revoked', deleteById: () => {} });
+		assert.deepEqual(await service.removeCertificate('C1', 'NV01'), { cme_error: 'CME hỏng' });
+		cme.withdrawForCertificate = orig;
+		fakeRepo({ revoke: () => 1 });
+		assert.deepEqual(await service.revokeCertificate('C1', 'x', 'NV01'), { cme_error: null });
+	} finally {
+		cme.withdrawForCertificate = orig;
 	}
 });

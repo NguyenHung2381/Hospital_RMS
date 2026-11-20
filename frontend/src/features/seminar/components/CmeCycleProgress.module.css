@@ -1,0 +1,53 @@
+.wrap {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	min-width: 140px;
+}
+
+.label {
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-800);
+	font-variant-numeric: tabular-nums;
+}
+
+.label strong {
+	font-weight: var(--font-weight-bold);
+}
+
+.track {
+	height: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-200);
+	overflow: hidden;
+}
+
+.fill {
+	height: 100%;
+	border-radius: var(--radius-full);
+	transition: width 0.3s;
+}
+
+.met {
+	background: var(--color-primary);
+}
+
+.on_track {
+	background: var(--color-gray-400);
+}
+
+.at_risk {
+	background: var(--color-warning);
+}
+
+.overdue_window {
+	background: var(--color-error);
+}
+
+.large .track {
+	height: 10px;
+}
+
+.large .label {
+	font-size: var(--font-size-sm);
+}

@@ -1,0 +1,73 @@
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+}
+.group {
+	margin: 0;
+	padding: var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	min-width: 0;
+}
+.legend {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	width: 100%;
+	padding: 0 var(--space-1);
+	font-size: var(--font-size-sm);
+	font-weight: 600;
+	color: var(--color-gray-700);
+}
+.legendTools {
+	display: inline-flex;
+	gap: var(--space-3);
+}
+.link {
+	padding: 0;
+	border: 0;
+	background: none;
+	font-size: var(--font-size-xs);
+	color: var(--color-primary-dark);
+	cursor: pointer;
+}
+.link:hover:not(:disabled) {
+	text-decoration: underline;
+}
+.link:disabled {
+	color: var(--color-gray-500);
+	cursor: default;
+}
+.option {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	padding: 4px 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-900);
+	cursor: pointer;
+}
+.option input {
+	margin-top: 3px;
+	flex: none;
+}
+.list {
+	max-height: 200px;
+	overflow-y: auto;
+}
+.statusRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-4);
+}
+.reason {
+	margin: 0;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--tone-amber-border, var(--color-gray-200));
+	border-radius: var(--radius-lg);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-xs);
+}

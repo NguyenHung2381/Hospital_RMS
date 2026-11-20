@@ -1,5 +1,6 @@
 // Cổng công khai — đăng ký khóa đào tạo liên tục: nội quy, tra nhân viên nội viện, OTP
-// email, tra cứu / tải đơn / nộp hồ sơ theo mã đăng ký. Gửi đăng ký: publicPortalController.register.
+// email, tra cứu / tải đơn / nộp hồ sơ theo mã đăng ký, đơn + tờ trình nháp của nội viện.
+// Gửi đăng ký: publicPortalController.register.
 // Ngoài rate-limit theo IP ở route, mỗi ĐỐI TƯỢNG (mã NV, email, mã đăng ký) bị giới hạn
 // riêng (attemptLimiter, khóa đã băm) — đổi IP liên tục vẫn không dò được.
 const service = require('./publicCourseRegistrationService');
@@ -15,6 +16,7 @@ const STAFF_CHECK_PER_STAFF_MAX = 10;
 const OTP_PER_EMAIL_MAX = 5;
 const OTP_PER_STAFF_MAX = 5;
 const CODE_PER_CODE_MAX = 20;
+const DRAFT_PER_STAFF_MAX = 20;
 const CAPTCHA_FAILED = 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.';
 
 const getRules = asyncHandler(async (_req, res) => {
@@ -80,13 +82,11 @@ const withRegistration = async (req, res) => {
 const getStatus = asyncHandler(async (req, res) => {
 	const reg = await withRegistration(req, res);
 	if (!reg) return;
-	success(res, service.getStatus(reg));
+	success(res, await service.getStatus(reg));
 });
 
-const downloadApplication = asyncHandler(async (req, res) => {
-	const reg = await withRegistration(req, res);
-	if (!reg) return;
-	const out = await service.renderApplication(reg);
+// File .docx tải về — tên có dấu nên dùng filename*
+const sendDocx = (res, out) => {
 	res.setHeader('Content-Type', out.mime);
 	res.setHeader(
 		'Content-Disposition',
@@ -95,12 +95,38 @@ const downloadApplication = asyncHandler(async (req, res) => {
 	res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
 	res.setHeader('Cache-Control', 'no-store');
 	res.end(out.buffer);
-});
+};
 
-const uploadDossier = asyncHandler(async (req, res) => {
+const downloadApplication = asyncHandler(async (req, res) => {
 	const reg = await withRegistration(req, res);
 	if (!reg) return;
-	success(res, await service.uploadDossier(reg, req.files), 'Đã nộp hồ sơ bổ sung.');
+	sendDocx(res, await service.renderApplication(reg));
+});
+
+// Đơn / tờ trình nháp của nội viện: không captcha (captcha chỉ dùng 1 lần, cần cho lúc gửi đăng
+// ký) nhưng phải khớp lại mã NV + họ tên (service) và bị giới hạn theo mã NV — dùng chung 1 bộ đếm.
+const hitDraftLimit = async (req, res) => {
+	const sn = String(req.body.staff_number).trim();
+	if (await attempts.hit('course-reg-draft', sn, DRAFT_PER_STAFF_MAX, HOUR)) return true;
+	error(res, 'Mã nhân viên này đã tạo giấy tờ quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
+	return false;
+};
+
+const draftApplication = asyncHandler(async (req, res) => {
+	if (!(await hitDraftLimit(req, res))) return;
+	sendDocx(res, await service.renderDraftApplication(req.body));
+});
+
+const draftProposal = asyncHandler(async (req, res) => {
+	if (!(await hitDraftLimit(req, res))) return;
+	sendDocx(res, await service.renderDraftProposal(req.body));
+});
+
+// Nộp / thay 1 file hồ sơ theo mã đăng ký (+ yếu tố thứ hai trong field data)
+const uploadFile = asyncHandler(async (req, res) => {
+	const reg = await withRegistration(req, res);
+	if (!reg) return;
+	success(res, await service.uploadFile(reg, req.params.kind, req.file), 'Đã nộp hồ sơ.');
 });
 
 module.exports = {
@@ -110,5 +136,7 @@ module.exports = {
 	verifyEmailOtp,
 	getStatus,
 	downloadApplication,
-	uploadDossier,
+	draftApplication,
+	draftProposal,
+	uploadFile,
 };

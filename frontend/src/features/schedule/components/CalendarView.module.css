@@ -530,3 +530,14 @@
 	vertical-align: 2px;
 }
 
+
+/* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
+   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+@keyframes modalFadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

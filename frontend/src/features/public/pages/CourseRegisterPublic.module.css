@@ -1151,3 +1151,179 @@
 	background: var(--color-primary-dark);
 	color: var(--color-white);
 }
+
+/* ── Hồ sơ đính kèm: mỗi loại 1 ô ───────────────── */
+.slotGrid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--space-4);
+}
+.slot {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	min-width: 0;
+	padding: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+.slotError {
+	border-color: var(--tone-red-border);
+}
+.slotHead {
+	display: flex;
+	align-items: baseline;
+	gap: var(--space-2);
+}
+.slotLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.slot > .hint {
+	margin: 0;
+	line-height: 1.5;
+}
+.slotStatus {
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+	color: var(--color-gray-600);
+}
+.slotStatusOk {
+	color: var(--tone-green-fg);
+}
+.slotStatusBad {
+	color: var(--tone-red-fg);
+}
+.slotDrop {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2) var(--space-3);
+	padding: var(--space-3);
+	border: 1px dashed var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	transition:
+		border-color 0.15s var(--ease-out),
+		background 0.15s var(--ease-out);
+}
+.slotDropActive {
+	border-color: var(--color-primary-dark);
+	background: var(--color-white);
+}
+.slotDropIcon {
+	display: inline-flex;
+	color: var(--color-primary-dark);
+}
+.slotDropIcon svg {
+	width: 20px;
+	height: 20px;
+}
+.slotDropText {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.slotFile {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.slotFileIcon {
+	flex: none;
+	display: inline-flex;
+	color: var(--color-primary-dark);
+}
+.slotFileIcon svg {
+	width: 20px;
+	height: 20px;
+}
+.slotFileInfo {
+	flex: 1;
+	min-width: 0;
+}
+.slotFileName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-800);
+}
+.slotFileSize {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.slotLimit {
+	margin: 0;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+.slotActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	margin-top: var(--space-1);
+}
+.slotDrop .ghostBtn {
+	min-height: 44px;
+}
+.slotFile .linkBtn {
+	min-height: 44px;
+	padding: 0 var(--space-2);
+}
+
+/* Khối tải giấy tờ đã điền sẵn (nội viện) */
+.draftDocs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	margin-bottom: var(--space-5);
+	padding: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+.draftTitle {
+	margin: 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.draftSteps {
+	margin: 0;
+	padding-left: var(--space-5);
+	font-size: var(--font-size-sm);
+	line-height: 1.6;
+	color: var(--color-gray-800);
+}
+.draftButtons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
+}
+.attachTitle {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+@media (min-width: 768px) {
+	.slotGrid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+@media (max-width: 480px) {
+	.slotFile {
+		flex-wrap: wrap;
+	}
+	.draftButtons > * {
+		flex: 1 1 100%;
+	}
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DocSvg, UsersSvg } from '@/assets/icons';
 import { Badge, InlineLoading, Modal } from '@/shared/components';
+import { formatDateVN } from '@/shared/utils/formatDate';
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import {
@@ -110,7 +111,7 @@ export function CourseProposalsModal({
 																</Badge>
 															</td>
 															<td className={tbl.td}>
-																{p.proposal_checked_at ? 'Đã đối chiếu' : p.dossier_uploaded_at ? 'Đã nộp, chờ đối chiếu' : 'Chưa nộp'}
+																{p.proposal_uploaded_at ? `Đã nộp ${formatDateVN(p.proposal_uploaded_at)}` : 'Chưa nộp'}
 															</td>
 														</tr>
 												))}

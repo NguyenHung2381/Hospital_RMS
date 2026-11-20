@@ -2,8 +2,14 @@ import { apiClient } from '../../../shared/api/axios';
 import type { CourseDisplayStatus, DocType, EnrollmentStatus, ExamType, ProgressStatus, RotationResult, SourceType } from '../../course/types/course.type';
 import type { AvailablePaper } from '../../exam/types/exam.type';
 import type { CmeStatus, ParticipationType, SeminarEventType, SeminarScope } from '../../seminar/types/seminar.type';
-import type { PublicCourse } from '../../public/api/publicApi';
+import type {
+	PublicCourse,
+	RegistrationFileItem,
+	RegistrationFileKind,
+	RegistrationFileUploadResult,
+} from '../../public/api/publicApi';
 import type { CmeSourceType } from '../../seminar/types/cmeRecord.type';
+import type { CmeCycleBasis, CmeCycleStatus } from '../../seminar/api/cmeRequirementApi';
 import type { CustomValues } from '../../../shared/formConfig/types';
 import { getBlob } from '../../course/api/registrationApi';
 
@@ -152,6 +158,24 @@ export interface MyCmeCategory {
 	unit_label: string | null;
 }
 
+/** Chu kỳ cập nhật kiến thức y khoa liên tục của chính người dùng (Thông tư 32/2023/TT-BYT Điều 3). */
+export interface MyCmeCycle {
+	/** YYYY-MM-DD */
+	cycle_start: string;
+	/** YYYY-MM-DD */
+	cycle_end: string;
+	basis: CmeCycleBasis;
+	cycle_years: number;
+	license_no: string | null;
+	required: number;
+	earned: number;
+	/** Phần của earned đến từ ghi nhận không có ngày */
+	earned_undated: number;
+	missing: number;
+	days_left: number;
+	status: CmeCycleStatus;
+}
+
 export interface MyCme {
 	/** null = toàn bộ các năm */
 	year: number | null;
@@ -159,6 +183,8 @@ export interface MyCme {
 	earned_credits: number;
 	seminars: MyCmeSeminar[];
 	records: MyCmeRecord[];
+	/** null = không tính được chu kỳ → ẩn khối chu kỳ */
+	cycle?: MyCmeCycle | null;
 }
 
 export interface MyCourseDocument {
@@ -271,12 +297,12 @@ export interface MyCourseRegistration {
 	department_id: string | null;
 	enrollment_status: EnrollmentStatus | null;
 	created_at: string | null;
-	/** Nội viện chưa nộp PDF đơn + tờ trình đã duyệt */
-	needs_dossier: boolean;
-	dossier_uploaded_at: string | null;
-	dossier: { file_name: string; file_url: string } | null;
-	checks: { id_checked: boolean; degree_checked: boolean; proposal_checked: boolean };
-	/** Việc mình còn phải làm */
+	/** pending / waitlisted — được nộp / thay file */
+	can_upload: boolean;
+	/** file_url có chữ ký (file của chính mình) */
+	files: RegistrationFileItem[];
+	files_missing: RegistrationFileKind[];
+	/** "Chưa nộp <nhãn>" cho từng loại còn thiếu; đơn bị từ chối ⇒ [] */
 	todo: string[];
 	/** Việc đang chờ Trung tâm Đào tạo */
 	waiting: string[];
@@ -300,8 +326,8 @@ export interface MyDepartmentProposal {
 		full_name: string;
 		qualification: string | null;
 		enrollment_status: EnrollmentStatus;
-		has_dossier: boolean;
-		proposal_checked: boolean;
+		/** Đã nộp Tờ trình đã duyệt (hoặc file gộp cũ) */
+		has_proposal: boolean;
 		is_me: boolean;
 	}[];
 }
@@ -310,11 +336,12 @@ export const getMyCourseRegistrations = () => apiClient.get<MyCourseRegistration
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
 export const myApplicationUrl = (enrollmentId: string) => `/api/v1/me/course-registrations/${enrollmentId}/application`;
 export const downloadMyApplication = (enrollmentId: string) => getBlob(`/me/course-registrations/${enrollmentId}/application`);
-export const uploadMyRegistrationDossier = (enrollmentId: string, file: File) => {
+/** Nộp / thay 1 loại hồ sơ của đơn mình (chỉ khi đơn còn chờ duyệt) */
+export const uploadMyRegistrationFile = (enrollmentId: string, kind: RegistrationFileKind, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postForm<{ uploaded: true; dossier_uploaded_at: string }>(
-		`/me/course-registrations/${enrollmentId}/dossier`,
+	return apiClient.postForm<RegistrationFileUploadResult>(
+		`/me/course-registrations/${enrollmentId}/files/${kind}`,
 		form,
 	);
 };

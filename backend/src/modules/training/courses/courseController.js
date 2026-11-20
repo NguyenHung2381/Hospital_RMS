@@ -172,15 +172,7 @@ const bulkDecideEnrollments = asyncHandler(async (req, res) => {
 		req.user.id,
 		req.body.note,
 	);
-	// Đăng ký chưa đủ mốc đối chiếu bị bỏ qua (results[i].skipped + missing), không làm hỏng cả lô
-	const skipped = results.filter((r) => r.skipped).length;
-	return success(
-		res,
-		results,
-		skipped
-			? `Đã xử lý ${results.filter((r) => !r.error).length}/${results.length}; bỏ qua ${skipped} đăng ký chưa đủ mốc đối chiếu`
-			: 'Đã xử lý hàng loạt',
-	);
+	return success(res, results, 'Đã xử lý hàng loạt');
 });
 
 const removeEnrollment = asyncHandler(async (req, res) => {
@@ -413,7 +405,8 @@ const issueCertificatesBulk = asyncHandler(async (req, res) => {
 		req.user.id,
 		req.body?.expiry_date || null,
 	);
-	return success(res, r, `Đã cấp ${r.issued} giấy chứng nhận`);
+	const cmeNote = r.cme_failed ? ` (${r.cme_failed} giấy ghi CME lỗi, cần ghi lại CME)` : '';
+	return success(res, r, `Đã cấp ${r.issued} giấy chứng nhận${cmeNote}`);
 });
 
 const removeGrade = asyncHandler(async (req, res) => {
@@ -440,13 +433,17 @@ const issueCertificate = asyncHandler(async (req, res) => {
 });
 
 const removeCertificate = asyncHandler(async (req, res) => {
-	await certificateService.removeCertificate(req.params.certId, req.user.id);
-	return success(res, null, 'Đã xóa chứng chỉ');
+	const r = await certificateService.removeCertificate(req.params.certId, req.user.id);
+	return success(res, r, 'Đã xóa chứng chỉ');
 });
 
 const revokeCertificate = asyncHandler(async (req, res) => {
-	await certificateService.revokeCertificate(req.params.certId, req.body.reason, req.user.id);
-	return success(res, null, 'Đã thu hồi chứng chỉ');
+	const r = await certificateService.revokeCertificate(
+		req.params.certId,
+		req.body.reason,
+		req.user.id,
+	);
+	return success(res, r, 'Đã thu hồi chứng chỉ');
 });
 
 module.exports = {

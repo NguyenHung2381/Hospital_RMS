@@ -1,17 +1,15 @@
 /* Keyframes phải khai báo ngay trong module — Vite scope luôn tên keyframes
  * trong shorthand `animation:` (xem Loading.module.css). */
+/* Chỉ animate transform/opacity (chạy trên compositor) — animate left/right hay
+ * background-position bắt trình duyệt dựng lại layout/paint mỗi khung hình, giật
+ * ngay khi luồng chính bận (đang gửi file lớn, đang render lại danh sách). */
 @keyframes slide {
 	0% {
-		left: -35%;
-		right: 100%;
+		transform: translateX(-100%);
 	}
-	60% {
-		left: 100%;
-		right: -90%;
-	}
+	60%,
 	100% {
-		left: 100%;
-		right: -90%;
+		transform: translateX(250%);
 	}
 }
 
@@ -60,8 +58,9 @@
 	position: absolute;
 	top: 0;
 	bottom: 0;
+	left: 0;
+	width: 40%;
 	background: linear-gradient(90deg, var(--color-primary-light), var(--color-primary));
-	box-shadow: 0 0 8px rgba(10, 155, 74, 0.6);
 	animation: slide 1.3s cubic-bezier(0.65, 0.05, 0.35, 1) infinite;
 }
 
@@ -73,8 +72,10 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(13, 24, 32, 0.28);
-	backdrop-filter: blur(1.5px);
+	/* KHÔNG dùng backdrop-filter: lớp phủ này luôn nằm trên modal/drawer vốn đã
+	 * blur nền, bên dưới lại có spinner/thanh tiến trình đang chạy — trình duyệt
+	 * phải blur lại cả màn hình mỗi khung hình, gây giật khi upload. */
+	background: rgba(13, 24, 32, 0.4);
 	cursor: progress;
 	animation: fadeIn 0.2s ease-out;
 }
@@ -99,6 +100,61 @@
 	border: 3px solid var(--color-primary-pale);
 	border-top-color: var(--color-primary);
 	animation: spin 0.7s linear infinite;
+	flex-shrink: 0;
+}
+
+/* ─── Tiến trình gửi file (phần trăm thật từ XHR) ───────────────────────── */
+.uploadCard {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 12px;
+	width: min(380px, calc(100vw - 32px));
+	cursor: default;
+}
+
+.uploadHead {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.uploadTitle {
+	flex: 1;
+	min-width: 0;
+	line-height: 1.4;
+}
+
+.uploadPct {
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+	color: var(--color-primary-dark);
+}
+
+.uploadTrack {
+	height: 6px;
+	border-radius: var(--radius-full);
+	background: var(--color-gray-200);
+	overflow: hidden;
+}
+
+.uploadFill {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--color-primary);
+	transform-origin: left center;
+	transition: transform 0.2s linear;
+}
+
+.uploadFoot {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 32px;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-normal);
+	font-variant-numeric: tabular-nums;
+	color: var(--color-gray-500);
 }
 
 /* ─── Toast ─────────────────────────────────────────────────────────────── */

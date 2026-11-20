@@ -167,7 +167,7 @@ export interface Enrollment {
 	progress_reason: string | null;
 	/** Vị trí trong danh sách chờ đợt sau (khóa tuyển sinh). */
 	waitlist_position?: number | null;
-	/** Bản khai từ form đăng ký (/dang-ky-khoa-hoc): mốc đối chiếu, điều kiện còn thiếu để duyệt.
+	/** Bản khai từ form đăng ký (/dang-ky-khoa-hoc): tóm tắt mã đăng ký, đối tượng, đã nộp hồ sơ hay chưa.
 	 *  null = ghi danh hộ / nhập Excel (không có bản khai). */
 	registration?: EnrollmentRegistrationFlag | null;
 }

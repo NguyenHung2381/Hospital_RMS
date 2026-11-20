@@ -1,4 +1,5 @@
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
+import { notify } from '@/shared/utils/feedback';
 import { BASE_URL } from '../../../shared/api/axios';
 import type { TopicFile } from '../../topics/types/topic.type';
 import {
@@ -23,7 +24,6 @@ type Props = {
 	dragging: boolean;
 	setDragging: React.Dispatch<React.SetStateAction<boolean>>;
 	selectedIds: Set<string>;
-	handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
 	handleUpload: () => void;
 	toggleSelect: (id: string) => void;
 	toggleSelectAll: () => void;
@@ -46,7 +46,6 @@ export default function FilesTab({
 	dragging,
 	setDragging,
 	selectedIds,
-	handleFileSelect,
 	handleUpload,
 	toggleSelect,
 	toggleSelectAll,
@@ -55,6 +54,11 @@ export default function FilesTab({
 	handleBulkDownload,
 }: Props) {
 	const uploadPolicy = useUploadPolicy();
+	// Kiểm tra định dạng / dung lượng ngay lúc chọn — file sai báo luôn, không đưa vào danh sách chờ
+	const addFiles = (list: File[]) => {
+		const valid = uploadPolicy.filterValid(list, notify.error);
+		if (valid.length) setPendingFiles((prev) => [...prev, ...valid]);
+	};
 	return (
 		<>
 			{canUploadFiles ? (
@@ -65,7 +69,10 @@ export default function FilesTab({
 						accept={uploadPolicy.accept}
 						multiple
 						style={{ display: 'none' }}
-						onChange={handleFileSelect}
+						onChange={(e) => {
+							addFiles(Array.from(e.target.files ?? []));
+							e.target.value = '';
+						}}
 					/>
 					<div
 						className={`${styles.uploadZone} ${dragging ? styles.uploadZoneActive : ''}`}
@@ -78,8 +85,7 @@ export default function FilesTab({
 						onDrop={(e) => {
 							e.preventDefault();
 							setDragging(false);
-							const f = Array.from(e.dataTransfer.files);
-							if (f.length) setPendingFiles((p) => [...p, ...f]);
+							addFiles(Array.from(e.dataTransfer.files));
 						}}
 					>
 						<div className={styles.uploadZoneIcon}>
@@ -89,14 +95,17 @@ export default function FilesTab({
 							Kéo thả file vào đây hoặc <span>chọn từ máy tính</span>
 						</div>
 						<div className={styles.uploadZoneHint}>
-							PDF, Word, Excel, ZIP, hình ảnh — tối đa 150 MB/file
+							Tối đa {uploadPolicy.maxSizeMB} MB mỗi file
 						</div>
 						<div className={styles.uploadZoneFormats}>
-							<span className={styles.formatBadge}>pdf</span>
-							<span className={styles.formatBadge}>word</span>
-							<span className={styles.formatBadge}>excel</span>
-							<span className={styles.formatBadge}>zip/rar</span>
-							<span className={styles.formatBadge}>image</span>
+							{uploadPolicy.extensions.map((ext) => (
+								<span
+									key={ext}
+									className={styles.formatBadge}
+								>
+									{ext.slice(1)}
+								</span>
+							))}
 						</div>
 					</div>
 				</>

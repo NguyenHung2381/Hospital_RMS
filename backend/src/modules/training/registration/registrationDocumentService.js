@@ -85,10 +85,30 @@ const shortSlug = (s, max = 40) => {
 	return cut.slice(0, Math.max(cut.lastIndexOf('-'), 1)).replace(/-+$/, '');
 };
 
+// Đơn nháp (chưa có mã đăng ký): dựng từ mẫu 'application' trong bộ nhớ, bỏ chuỗi mã đăng ký —
+// KHÔNG sửa file mẫu. Đoạn văn chứa chuỗi đó vẫn còn (chỉ rỗng) nên chiều cao trang y hệt.
+const CODE_LINE = 'Mã đăng ký: {ma_dang_ky}';
+
+const buildApplicationDraft = () => {
+	const zip = new PizZip(loadTemplate('application'));
+	const xml = zip.file('word/document.xml').asText();
+	if (!xml.includes(CODE_LINE))
+		throw new Error(
+			'Mẫu đơn không còn dòng "Mã đăng ký: {ma_dang_ky}" — kiểm tra lại scripts/build-registration-templates.js',
+		);
+	zip.file('word/document.xml', xml.replace(CODE_LINE, ''));
+	return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+};
+
 const templateCache = new Map();
 const loadTemplate = (key) => {
 	if (!templateCache.has(key)) {
-		templateCache.set(key, fs.readFileSync(path.join(TEMPLATE_DIR, TEMPLATES[key])));
+		templateCache.set(
+			key,
+			key === 'application_draft'
+				? buildApplicationDraft()
+				: fs.readFileSync(path.join(TEMPLATE_DIR, TEMPLATES[key])),
+		);
 	}
 	return templateCache.get(key);
 };
@@ -126,7 +146,9 @@ const parseSnapshot = (s) => {
  *   program_name?: string | null,
  *   department_name?: string | null,
  *   trainee_type_name?: string | null,
- * }} data
+ *   draft?: boolean,
+ * }} data draft = true: đơn nháp cho người chưa có mã đăng ký — bỏ dòng "Mã đăng ký", ngày lập đơn
+ *   để trống, tên file kết thúc -ban-nhap.docx
  * @returns {Promise<{ buffer: Buffer, filename: string, mime: string }>}
  */
 const renderApplication = async (data) => {
@@ -170,6 +192,13 @@ const renderApplication = async (data) => {
 		ma_dang_ky: orBlank(data.registration_code, ''),
 	};
 
+	if (data.draft === true) {
+		return {
+			buffer: render('application_draft', fields),
+			filename: `Don-dang-ky-${slug(fullName) || 'nguoi-dang-ky'}-ban-nhap.docx`,
+			mime: DOCX_MIME,
+		};
+	}
 	const code = slug(data.registration_code);
 	return {
 		buffer: render('application', fields),
@@ -196,7 +225,8 @@ const renderApplication = async (data) => {
  *     in_other_training_count?: number | null,
  *     reason?: string | null,
  *   },
- * }} data
+ *   blank_analysis?: boolean,
+ * }} data blank_analysis = true: mọi ô của Bảng phân tích nhu cầu để trống (kể cả số người đề xuất)
  * @returns {Promise<{ buffer: Buffer, filename: string, mime: string }>}
  */
 const renderProposal = async (data) => {
@@ -218,8 +248,9 @@ const renderProposal = async (data) => {
 				qualification: str(p.qualification),
 			}))
 		: [{ stt: '', staff_number: '', full_name: '', birth_year: '', qualification: '' }];
-	// Số người đề xuất mặc định = số người trong danh sách
-	const proposed = a.proposed_count ?? (people.length || null);
+	// Số người đề xuất mặc định = số người trong danh sách (tờ trình nháp thì để trống)
+	const blank = data.blank_analysis === true;
+	const proposed = blank ? null : (a.proposed_count ?? (people.length || null));
 
 	const fields = {
 		khoa_hoa: dept ? dept.toUpperCase() : BLANK,
@@ -231,11 +262,11 @@ const renderProposal = async (data) => {
 		kinh_phi: orBlank(money(data.tuition_fee)),
 		people: rows,
 		// Bảng phân tích: ô không có dữ liệu để trống cho khoa ghi tay
-		ky_thuat: str(a.technique),
-		co_chung_chi: str(a.certified_count),
+		ky_thuat: blank ? '' : str(a.technique),
+		co_chung_chi: blank ? '' : str(a.certified_count),
 		de_xuat: str(proposed),
-		khoa_khac: str(a.in_other_training_count),
-		ly_do: str(a.reason),
+		khoa_khac: blank ? '' : str(a.in_other_training_count),
+		ly_do: blank ? '' : str(a.reason),
 	};
 
 	const khoaSlug = slug(dept) || 'khoa';

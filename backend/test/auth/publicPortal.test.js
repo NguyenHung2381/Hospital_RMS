@@ -145,10 +145,27 @@ test('đăng ký: CCCD đã có hồ sơ mà sai ngày sinh/họ tên thì khôn
 
 test('đăng ký: hồ sơ cũ không có ngày sinh — không gắn và không đính giấy tờ vào hồ sơ đó', async () => {
 	const before = log.length;
+	const pdf = (name) => ({
+		originalname: name,
+		filename: 'x-' + name,
+		size: 1,
+		mimetype: 'application/pdf',
+	});
 	const r = await portal.register(
-		{ course_id: 'KH1', full_name: 'X', national_id: NO_DOB.national_id, dob: '1990-01-01' },
-		[{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' }],
-		['national_id'],
+		{
+			source: 'external',
+			course_id: 'KH1',
+			full_name: 'X',
+			national_id: NO_DOB.national_id,
+			dob: '1990-01-01',
+		},
+		{
+			national_id: pdf('cccd.pdf'),
+			degree: pdf('bang.pdf'),
+			license: pdf('cchn.pdf'),
+			decision: pdf('qd.pdf'),
+		},
+		null,
 	);
 	assertAck(r);
 	assert.ok(
@@ -158,5 +175,10 @@ test('đăng ký: hồ sơ cũ không có ngày sinh — không gắn và không
 				(q) => /INSERT INTO trainee_documents/i.test(q.text) && q.inputs.trainee_id === NO_DOB.id,
 			),
 		'không ghi giấy tờ vào hồ sơ cũ',
+	);
+	assert.equal(
+		log.slice(before).filter((q) => /INSERT INTO trainee_documents/i.test(q.text)).length,
+		4,
+		'4 giấy tờ vào hồ sơ mới',
 	);
 });

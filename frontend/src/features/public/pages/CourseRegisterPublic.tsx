@@ -13,10 +13,10 @@ import {
 	registerCourse,
 	type CourseRegistrationRules,
 	type PublicCourse,
+	type RegistrationFileKind,
 	type RegistrationSource,
 	type TraineeTypeOption,
 } from '../api/publicApi';
-import type { Attachment } from '../components/AttachmentPicker';
 import { RegisterProvider } from '../components/courseRegister/registerContext';
 import { RegisterSuccess, type RegisterDone } from '../components/courseRegister/RegisterSuccess';
 import { StepAttach } from '../components/courseRegister/StepAttach';
@@ -29,6 +29,7 @@ import { useCaptcha } from '../hooks/useCaptcha';
 import { useEmailOtp } from '../hooks/useEmailOtp';
 import {
 	EMPTY_FORM,
+	buildDraftPayload,
 	buildPayload,
 	clearDraft,
 	draftHasInput,
@@ -56,7 +57,7 @@ const STEPS = [
 	{ label: 'Nội quy lớp học', desc: 'Đọc kỹ nội quy rồi xác nhận cam kết thực hiện.' },
 	{ label: 'Đối tượng đăng ký', desc: 'Cho chúng tôi biết bạn là nhân viên bệnh viện hay đến từ đơn vị khác.' },
 	{ label: 'Thông tin học viên', desc: 'Dùng để lập hồ sơ học viên, in đơn và cấp chứng chỉ — vui lòng nhập chính xác.' },
-	{ label: 'Hồ sơ đính kèm', desc: 'Gộp giấy tờ vào 1 file PDF rồi đính kèm.' },
+	{ label: 'Hồ sơ đính kèm', desc: 'Đính kèm đủ các giấy tờ bắt buộc (PDF, JPG hoặc PNG).' },
 	{ label: 'Xem lại và gửi', desc: 'Kiểm tra lần cuối, xác minh email và gửi đăng ký.' },
 ] as const;
 
@@ -78,13 +79,14 @@ export default function CourseRegisterPublic() {
 		return d && draftHasInput(d) && (!wanted || wanted === d.courseId) ? d : null;
 	});
 	const [restored, setRestored] = useState(!!draft);
+	const restoredNeedsFiles = !!draft && draft.reached >= 4;
 
 	const [courses, setCourses] = useState<PublicCourse[]>([]);
 	const [traineeTypes, setTraineeTypes] = useState<TraineeTypeOption[]>([]);
 	const [courseId, setCourseId] = useState(draft?.courseId ?? '');
 	const [programId, setProgramId] = useState(draft?.programId ?? '');
 	const [courseQuery, setCourseQuery] = useState('');
-	const [attachments, setAttachments] = useState<Attachment[]>([]);
+	const [attachments, setAttachments] = useState<Partial<Record<RegistrationFileKind, File>>>({});
 	const captcha = useCaptcha();
 	const otp = useEmailOtp();
 	const [form, setForm] = useState<RegForm>(() => ({
@@ -103,7 +105,8 @@ export default function CourseRegisterPublic() {
 	const [linkMissing, setLinkMissing] = useState(false);
 	const [rules, setRules] = useState<CourseRegistrationRules | null>(null);
 	const [rulesError, setRulesError] = useState('');
-	const [step, setStep] = useState(draft?.step ?? 0);
+	// File đính kèm không bao giờ được lưu: bản nháp đã tới bước ≥ 5 thì về bước "Hồ sơ đính kèm" để chọn lại
+	const [step, setStep] = useState(Math.min(draft?.step ?? 0, 4));
 	const [reached, setReached] = useState(draft?.reached ?? 0);
 	const [submitting, setSubmitting] = useState(false);
 	const [errorsState, setErrors] = useState<Errors>({});
@@ -292,6 +295,11 @@ export default function CourseRegisterPublic() {
 					: 'Vui lòng nhập mã nhân viên và họ tên';
 		} else if (i === 3) {
 			Object.assign(e, validateInfo(cfg, form, custom));
+		} else if (i === 4) {
+			if (!rules) e.attachments = 'Chưa tải được danh sách hồ sơ, vui lòng thử lại';
+			else
+				for (const k of rules.attachments.kinds[form.source as RegistrationSource] ?? [])
+					if (k.required && !attachments[k.key]) e[`file_${k.key}`] = `Vui lòng đính kèm ${k.label.toLowerCase()}`;
 		} else if (i === LAST) {
 			if (otpRequired && !otp.verifiedFor(form.email)) e.email_otp = 'Vui lòng xác minh email trước khi gửi đăng ký';
 			if (!form.declared_true) e.declared_true = 'Bạn cần xác nhận cam kết thông tin đúng sự thật để gửi đăng ký';
@@ -379,7 +387,7 @@ export default function CourseRegisterPublic() {
 				...captcha.payload,
 			});
 			// Máy chủ trả cùng 1 hình dạng cho mọi trường hợp (không lộ CCCD / mã nhân viên đã có hay chưa)
-			const res = await registerCourse(payload, attachments.map((a) => a.file));
+			const res = await registerCourse(payload, attachments);
 			clearDraft();
 			setDone({
 				code: res.registration_code,
@@ -399,7 +407,7 @@ export default function CourseRegisterPublic() {
 			});
 			setForm(EMPTY_FORM);
 			setCustomState({});
-			setAttachments([]);
+			setAttachments({});
 			setStaff(null);
 			otp.reset();
 			window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
@@ -421,6 +429,7 @@ export default function CourseRegisterPublic() {
 	const restart = () => {
 		clearDraft();
 		setDone(null);
+		setAttachments({});
 		setErrors({});
 		setServerError('');
 		setStaffError('');
@@ -439,6 +448,7 @@ export default function CourseRegisterPublic() {
 		setStaffError('');
 		setErrors({});
 		setInvoiceOpen(false);
+		setAttachments({});
 		otp.reset();
 		setStep(0);
 		setReached(0);
@@ -447,6 +457,8 @@ export default function CourseRegisterPublic() {
 
 	const changeSource = (source: RegistrationSource) => {
 		setForm((f) => ({ ...f, source }));
+		// Hồ sơ theo từng đối tượng — đổi đối tượng thì bỏ file đã chọn
+		setAttachments({});
 		setErrors({});
 		setStaffError('');
 	};
@@ -472,7 +484,7 @@ export default function CourseRegisterPublic() {
 		reached > 1 && form.rules_accepted,
 		reached > 2 && !!form.source && (!internal || staffOk),
 		reached > 3,
-		reached > 4,
+		reached > 4 && !Object.keys(stepErrors(4)).length,
 		false,
 	];
 	const errorCount = Object.values(errors).filter(Boolean).length;
@@ -541,7 +553,10 @@ export default function CourseRegisterPublic() {
 							className={s.restoreNotice}
 							role='status'
 						>
-							<span>Đã khôi phục thông tin bạn nhập dở trước khi tải lại trang.</span>
+							<span>
+								Đã khôi phục thông tin bạn nhập dở trước khi tải lại trang.
+								{restoredNeedsFiles && ' File đính kèm không được giữ lại — vui lòng chọn lại ở bước "Hồ sơ đính kèm".'}
+							</span>
 							<button
 								type='button'
 								className={s.linkBtn}
@@ -647,11 +662,56 @@ export default function CourseRegisterPublic() {
 										onInvoiceOpen={setInvoiceOpen}
 									/>
 								)}
-								{step === 4 && form.source && (
+								{step === 4 && form.source && !rules && (
+									<div
+										id='f-attachments'
+										className={s.note}
+										role={errors.attachments || rulesError ? 'alert' : 'status'}
+									>
+										{rulesError || errors.attachments || 'Đang tải danh sách hồ sơ...'}{' '}
+										{rulesError && (
+											<button
+												type='button'
+												className={s.linkBtn}
+												onClick={loadRules}
+											>
+												Thử lại
+											</button>
+										)}
+									</div>
+								)}
+								{step === 4 && form.source && rules && (
 									<StepAttach
 										source={form.source}
-										value={attachments}
-										onChange={setAttachments}
+										rules={rules.attachments}
+										files={attachments}
+										onFile={(kind, file) => {
+											setAttachments((a) => {
+												const next = { ...a };
+												if (file) next[kind] = file;
+												else delete next[kind];
+												return next;
+											});
+											clearError(`file_${kind}`);
+										}}
+										errors={errors}
+										draft={
+											internal && staffOk && staff
+												? {
+														application: buildDraftPayload(cfg, form, staff, {
+															course_id: courseId,
+															program_id: programId || undefined,
+														}),
+														proposal: {
+															course_id: courseId,
+															program_id: programId || undefined,
+															staff_number: staff.staff_number,
+															full_name: staff.info.full_name,
+															dob: form.dob || undefined,
+														},
+													}
+												: undefined
+										}
 									/>
 								)}
 								{step === LAST && (
@@ -664,6 +724,7 @@ export default function CourseRegisterPublic() {
 										staff={staffOk ? staff : null}
 										traineeTypes={traineeTypes}
 										attachments={attachments}
+										fileKinds={rules?.attachments.kinds[form.source as RegistrationSource] ?? []}
 										onEdit={goTo}
 										otp={otp}
 										otpRequired={otpRequired}

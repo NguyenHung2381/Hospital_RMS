@@ -132,7 +132,6 @@ export default function TopicDetail() {
 						dragging={d.dragging}
 						setDragging={d.setDragging}
 						selectedIds={d.selectedIds}
-						handleFileSelect={d.handleFileSelect}
 						handleUpload={d.handleUpload}
 						toggleSelect={d.toggleSelect}
 						toggleSelectAll={d.toggleSelectAll}

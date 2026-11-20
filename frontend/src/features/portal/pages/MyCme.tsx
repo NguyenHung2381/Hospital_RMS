@@ -9,6 +9,7 @@ import { CME_STATUS_LABELS, EVENT_TYPE_LABELS, PARTICIPATION_LABELS } from '../.
 import { CME_SOURCE_LABEL } from '../../seminar/types/cmeRecord.type';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import MyCmeRecordModal from '../components/MyCmeRecordModal';
+import MyCmeCycleCard from '../components/MyCmeCycleCard';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import {
 	addMyCmeResultFile,
@@ -175,6 +176,8 @@ export default function MyCme() {
 
 			{data && (
 				<div className={styles.stack}>
+					<MyCmeCycleCard cycle={data.cycle} />
+
 					<Card>
 						<Card.Header
 							icon={<BarChartSvg />}

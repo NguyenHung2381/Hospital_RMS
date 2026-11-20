@@ -66,8 +66,6 @@ const KEYS = [
 	// Form đăng ký khóa đào tạo liên tục — public/publicPortalService.js, training/registration/
 	// 'false' ⇒ không bắt xác minh email bằng OTP trước khi gửi đăng ký (mặc định bật)
 	'TRAINING_REGISTRATION_EMAIL_OTP',
-	// 'false' ⇒ duyệt ghi danh không đòi đủ mốc đối chiếu CCCD / văn bằng / tờ trình (mặc định bật)
-	'TRAINING_REGISTRATION_REQUIRE_CHECKS',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',
@@ -93,12 +91,14 @@ const KEYS = [
 ];
 const isKey = (key) => KEYS.includes(key);
 
-// Khóa bật/tắt của form đăng ký ĐTLT: người đọc chỉ coi đúng chuỗi 'false' là tắt, nên
-// giá trị gõ sai (vd "False", "0", "tat") sẽ bị hiểu là BẬT hoặc lệch giữa hai nơi đọc —
-// chỉ nhận 'true'/'false' (rỗng = bỏ ghi đè, về mặc định bật).
+// Các khóa bật/tắt (công tắc): người đọc chỉ coi đúng chuỗi 'false' là tắt, nên giá trị gõ sai
+// (vd "False", "0", "tat") sẽ bị hiểu là BẬT hoặc lệch giữa hai nơi đọc — chỉ nhận
+// 'true'/'false' (rỗng = bỏ ghi đè, về mặc định bật). Gồm công tắc form đăng ký ĐTLT và
+// công tắc tự cộng tín chỉ CME (training/courses/courseCmeService.js).
 const BOOLEAN_KEYS = new Set([
 	'TRAINING_REGISTRATION_EMAIL_OTP',
-	'TRAINING_REGISTRATION_REQUIRE_CHECKS',
+	'CME_AUTO_TRAINEE',
+	'CME_AUTO_LECTURER',
 ]);
 // null = hợp lệ; ngược lại là thông báo lỗi (dùng khi admin lưu cấu hình)
 const validateSetting = (key, value) => {

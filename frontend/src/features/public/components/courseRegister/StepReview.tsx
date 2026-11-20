@@ -4,7 +4,12 @@ import type { CustomValues } from '@/shared/formConfig/types';
 import type { FormConfig } from '@/shared/formConfig/useFormConfig';
 import { formatDateOr } from '../../../../shared/utils/formatDate';
 import { genderLabel } from '../../../../shared/utils/gender';
-import type { PublicCourse, PublicProgram } from '../../api/publicApi';
+import type {
+	PublicCourse,
+	PublicProgram,
+	RegistrationFileKind,
+	RegistrationFileKindDef,
+} from '../../api/publicApi';
 import type { useEmailOtp } from '../../hooks/useEmailOtp';
 import {
 	HOSPITAL,
@@ -15,7 +20,7 @@ import {
 	type RegForm,
 	type StaffMatch,
 } from '../../utils/courseRegisterFields';
-import type { Attachment } from '../AttachmentPicker';
+import { formatFileSize } from '../../utils/registrationFiles';
 import styles from '../../pages/PublicPortal.module.css';
 import s from '../../pages/CourseRegisterPublic.module.css';
 
@@ -29,7 +34,9 @@ interface Props {
 	custom: CustomValues;
 	staff: StaffMatch | null;
 	traineeTypes: { id: string; name: string }[];
-	attachments: Attachment[];
+	attachments: Partial<Record<RegistrationFileKind, File>>;
+	/** Các loại hồ sơ của đối tượng đã chọn (từ rules.attachments.kinds) */
+	fileKinds: RegistrationFileKindDef[];
 	/** Quay về bước n (0-based) để sửa */
 	onEdit: (step: number) => void;
 	otp: Otp;
@@ -77,6 +84,7 @@ export function StepReview({
 	staff,
 	traineeTypes,
 	attachments,
+	fileKinds,
 	onEdit,
 	otp,
 	otpRequired,
@@ -248,11 +256,17 @@ export function StepReview({
 				step={4}
 				onEdit={onEdit}
 			>
-				<Row
-					label='File PDF'
-					value={attachments[0]?.file.name}
-					empty='Không đính kèm'
-				/>
+				{fileKinds.map((k) => {
+					const file = attachments[k.key];
+					return (
+						<Row
+							key={k.key}
+							label={k.label}
+							value={file ? `${file.name} · ${formatFileSize(file.size)}` : ''}
+							empty='Chưa đính kèm'
+						/>
+					);
+				})}
 			</Group>
 
 			{otpRequired && (

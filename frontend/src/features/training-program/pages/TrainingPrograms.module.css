@@ -566,6 +566,14 @@
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
 }
+/* Giảng viên của bài trong chương trình: "GV chính: … · GV phụ: …" */
+.lessonLecturers + .lessonLecturers::before {
+	content: ' · ';
+}
+.lessonLecturers b {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+}
 .subEmpty {
 	text-align: center;
 	padding: var(--space-6);
@@ -686,10 +694,53 @@
 }
 .importPreview .table thead th { position: sticky; top: 0; z-index: 1; }
 .durationWarn { color: var(--tone-red-fg); font-size: var(--font-size-xs); margin-top: var(--space-1); }
+.creditWarn { color: var(--status-warning-fg); font-size: var(--font-size-xs); margin-top: var(--space-1); }
 /* Thân modal là flex dọc — không cho các khối xem trước co lại */
 .noticeBox, .warnList, .importPreview { flex: none; }
 
 /* Cột tên chương trình đủ rộng để tên dài không xuống 4 dòng */
 .thProgram {
 	min-width: 340px;
+}
+
+/* Cột Bài học: số bài + nhãn cảnh báo khi chưa đủ (tone amber / red, không dùng magenta) */
+.lessonCell {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	font-size: var(--font-size-sm);
+	cursor: default;
+}
+.lessonWarnShort,
+.lessonWarnNone {
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-semibold);
+	line-height: 1.4;
+	padding: 2px 8px;
+	border-radius: var(--radius-full);
+	white-space: nowrap;
+}
+.lessonWarnShort {
+	background: var(--tone-amber-bg);
+	border: 1px solid var(--tone-amber-border);
+	color: var(--tone-amber-fg);
+}
+.lessonWarnNone {
+	background: var(--tone-red-bg);
+	border: 1px solid var(--tone-red-border);
+	color: var(--tone-red-fg);
+}
+
+/* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
+   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+@keyframes modalPopIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }

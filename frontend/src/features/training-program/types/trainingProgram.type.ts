@@ -61,6 +61,12 @@ export interface TrainingProgram {
 	created_at: string;
 	course_count?: number;
 	lesson_count?: number;
+	/** Tổng tiết lý thuyết / thực hành của các bài đã gắn vào chương trình. */
+	lesson_theory_hours?: number;
+	lesson_practice_hours?: number;
+	/** Số bài kiểu 'theory' / số vòng thực hành (kiểu 'rotation'). */
+	theory_lesson_count?: number;
+	rotation_count?: number;
 	/** Vòng thực hành (GPHN) theo thứ tự — mỗi vòng 1 khoa (hoặc vài khoa để chọn) + thời lượng riêng. */
 	rotations?: ProgramRotation[];
 	/** Trường tùy chỉnh (Cấu hình form 'training_program') */
@@ -152,6 +158,16 @@ export interface Lesson {
 	custom?: CustomValues;
 }
 
+/** Giảng viên giảng dạy 1 bài của chương trình (nhập từ Excel ở tab "Bài học"). */
+export interface ProgramLessonLecturer {
+	lecturer_id: string;
+	full_name: string;
+	academic_degree: string | null;
+	academic_rank: string | null;
+	is_active: boolean;
+	role: 'main' | 'assistant';
+}
+
 export interface ProgramLessonLink {
 	id: string; // id của lượt gắn (lesson_programs), KHÔNG phải id bài học
 	program_id: string;
@@ -172,6 +188,8 @@ export interface ProgramLessonLink {
 	department_names: string | null;
 	display_order: number;
 	created_at: string;
+	/** Giảng viên của bài trong chương trình này — giảng viên chính đứng đầu. */
+	lecturers?: ProgramLessonLecturer[];
 	custom?: CustomValues;
 }
 

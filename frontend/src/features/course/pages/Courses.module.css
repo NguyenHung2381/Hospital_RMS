@@ -1305,18 +1305,20 @@
 .regPill:hover {
 	border-color: var(--color-gray-400);
 }
-/* Việc đang chờ chính người xem (phòng Đào tạo đối chiếu) — màu hồng, chỉ hiện khi > 0 */
-.regPillPending {
-	border-color: var(--tone-pink-border);
-	background: var(--tone-pink-bg);
-	color: var(--tone-pink-fg);
-}
-.regPillReady {
-	border-color: var(--tone-green-border);
-	background: var(--tone-green-bg);
-	color: var(--tone-green-fg);
-}
 .regPillActive {
 	outline: 2px solid var(--color-gray-700);
 	outline-offset: 1px;
+}
+
+/* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
+   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+@keyframes modalPopIn {
+	from {
+		opacity: 0;
+		transform: translateY(12px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }

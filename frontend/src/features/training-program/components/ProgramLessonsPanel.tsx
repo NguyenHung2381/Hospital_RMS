@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { DocSvg, EditSvg, LinkSvg, MoreVSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import { DocSvg, EditSvg, LinkSvg, MoreVSvg, PlusSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { useRowSelection } from '@/shared/hooks/useRowSelection';
 import { BulkButton, SelectCheckbox } from '@/shared/components/Table/RowSelect';
 import { getAllLessons, getLessons, linkLessons, reorderLessons, unlinkLesson } from '../api/trainingProgramApi';
@@ -11,12 +11,29 @@ import {
 	formatDuration,
 	LESSON_KIND_LABEL,
 	type Lesson,
+	type ProgramLessonLecturer,
 	type ProgramLessonLink,
 	type TrainingProgram,
 } from '../types/trainingProgram.type';
 import { LessonDocumentsModal } from './LessonDocumentsModal';
+import { LessonLecturerImportModal } from './LessonLecturerImportModal';
 import { LessonFormModal } from './LessonFormModal';
 import styles from '../pages/TrainingPrograms.module.css';
+
+// "GV chính: A" / "GV phụ: B, C" — nhóm nào không có người thì bỏ
+const lecturerGroups = (lecturers: ProgramLessonLecturer[]) =>
+	[
+		{ label: 'GV chính', role: 'main' },
+		{ label: 'GV phụ', role: 'assistant' },
+	]
+		.map((g) => ({
+			label: g.label,
+			names: lecturers
+				.filter((l) => l.role === g.role)
+				.map((l) => l.full_name)
+				.join(', '),
+		}))
+		.filter((g) => g.names);
 
 function SortableLessonRow({
 	link,
@@ -81,6 +98,18 @@ function SortableLessonRow({
 					)}
 					{link.description ? ` — ${link.description}` : ''}
 				</div>
+				{!!link.lecturers?.length && (
+					<div className={styles.subRowMeta}>
+						{lecturerGroups(link.lecturers).map((g) => (
+							<span
+								key={g.label}
+								className={styles.lessonLecturers}
+							>
+								{g.label}: <b>{g.names}</b>
+							</span>
+						))}
+					</div>
+				)}
 			</div>
 			<button
 				className={styles.btnGhost}
@@ -116,6 +145,7 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 	const [error, setError] = useState('');
 	const [docsLesson, setDocsLesson] = useState<{ id: string; title: string } | null>(null);
 	const [formModal, setFormModal] = useState<{ mode: 'add' | 'edit'; lesson?: ProgramLessonLink } | null>(null);
+	const [importingLecturers, setImportingLecturers] = useState(false);
 
 	const load = useCallback(() => {
 		return Promise.all([getLessons(program.id), getAllLessons()])
@@ -228,6 +258,15 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 				>
 					<PlusSvg /> Thêm bài học mới
 				</button>
+				{links.some((l) => l.lesson_kind !== 'rotation') && (
+					<button
+						className={styles.btnGhost}
+						disabled={busy}
+						onClick={() => setImportingLecturers(true)}
+					>
+						<UploadSvg /> Nhập giảng viên từ Excel
+					</button>
+				)}
 			</div>
 
 			{attachableLessons.length > 0 && (
@@ -296,6 +335,14 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 					defaultProgramId={program.id}
 					onClose={() => setFormModal(null)}
 					onSaved={load}
+				/>
+			)}
+
+			{importingLecturers && (
+				<LessonLecturerImportModal
+					program={program}
+					onClose={() => setImportingLecturers(false)}
+					onImported={load}
 				/>
 			)}
 

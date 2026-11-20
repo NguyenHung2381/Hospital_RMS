@@ -1,5 +1,6 @@
 // Hồi quy đợt rà soát bảo mật run-4 cho luồng đăng ký khóa học công khai (ẩn danh), chạy trên CSDL giả:
-//   M-03 giấy tờ tải lên qua cổng công khai luôn 'pending' (không nhận mặc định 'approved' của bảng);
+//   M-03 giấy tờ tải lên qua cổng công khai luôn 'pending' (không nhận mặc định 'approved' của bảng),
+//        đúng doc_type theo loại (CCCD / bằng / chứng chỉ hành nghề / quyết định cử đi học);
 //        nhân viên tải lên (addDocument không truyền status) vẫn 'approved'.
 //   L-06 chỉ gắn vào hồ sơ đã có khi CCCD + ngày sinh + họ tên (chuẩn hóa) đều khớp và hồ sơ có ngày sinh;
 //        mọi nhánh trả CÙNG hình dạng phản hồi { submitted, registration_code, download_token } —
@@ -60,9 +61,20 @@ const portal = require('../../src/modules/public/publicPortalService');
 const controller = require('../../src/modules/public/publicPortalController');
 const { httpError } = require('../../src/utils/httpError');
 
-const FILE = [
-	{ originalname: 'cccd.pdf', filename: 'x.pdf', size: 1, mimetype: 'application/pdf' },
-];
+const fakeFile = (name, mimetype = 'application/pdf') => ({
+	originalname: name,
+	filename: `x-${name}`,
+	size: 1,
+	mimetype,
+});
+// Ngoại viện: đủ 4 giấy tờ bắt buộc (registrationFileKinds.js), mỗi loại 1 file
+const FILE = {
+	national_id: fakeFile('cccd.pdf'),
+	degree: fakeFile('bang.jpg', 'image/jpeg'),
+	license: fakeFile('cchn.png', 'image/png'),
+	decision: fakeFile('quyet-dinh.pdf'),
+};
+const DOC_TYPES = ['national_id', 'degree', 'license', 'decision'];
 const reset = () => {
 	created.length = 0;
 	enrolled.length = 0;
@@ -71,7 +83,8 @@ const reset = () => {
 };
 const docInserts = () => log.filter((q) => /INSERT INTO trainee_documents/i.test(q.text));
 const regInserts = () => log.filter((q) => /INSERT INTO course_registrations/i.test(q.text));
-const base = (over) => ({ course_id: 'KH1', ...over });
+const crfInserts = () => log.filter((q) => /INSERT INTO course_registration_files/i.test(q.text));
+const base = (over) => ({ source: 'external', course_id: 'KH1', ...over });
 // Hình dạng phản hồi chung của mọi nhánh: đúng 3 khóa, không enrollment_id / mã học viên / lỗi 409
 const assertAck = (r, name) => {
 	assert.deepEqual(
@@ -97,13 +110,28 @@ test('M-03: giấy tờ đính kèm khi đăng ký công khai luôn là pending 
 		null,
 	);
 	const docs = docInserts();
-	assert.equal(docs.length, 1);
-	assert.equal(docs[0].inputs.status, 'pending');
-	assert.equal(docs[0].inputs.trainee_id, 'HV1');
-	assert.match(
-		docs[0].text,
-		/status/,
-		'INSERT phải ghi status tường minh, không dựa vào mặc định của bảng',
+	assert.equal(docs.length, 4, '4 giấy tờ → 4 dòng trainee_documents');
+	for (const d of docs) {
+		assert.equal(d.inputs.status, 'pending');
+		assert.equal(d.inputs.trainee_id, 'HV1');
+		assert.match(
+			d.text,
+			/status/,
+			'INSERT phải ghi status tường minh, không dựa vào mặc định của bảng',
+		);
+	}
+	assert.deepEqual(
+		docs.map((d) => d.inputs.doc_type),
+		DOC_TYPES,
+		'mỗi giấy tờ đúng doc_type của loại',
+	);
+	assert.deepEqual(
+		crfInserts().map((q) => [
+			q.inputs.kind,
+			q.inputs.doc_id === docs[DOC_TYPES.indexOf(q.inputs.kind)].inputs.new_id,
+		]),
+		DOC_TYPES.map((k) => [k, true]),
+		'course_registration_files trỏ đúng dòng giấy tờ',
 	);
 });
 
@@ -115,9 +143,11 @@ test('M-03: CCCD chưa có hồ sơ → hồ sơ mới, giấy tờ vẫn pendin
 		['national_id'],
 	);
 	const docs = docInserts();
-	assert.equal(docs.length, 1);
-	assert.equal(docs[0].inputs.status, 'pending');
-	assert.equal(docs[0].inputs.trainee_id, 'HV-NEW1');
+	assert.equal(docs.length, 4);
+	for (const d of docs) {
+		assert.equal(d.inputs.status, 'pending');
+		assert.equal(d.inputs.trainee_id, 'HV-NEW1');
+	}
 });
 
 test('M-03: nhân viên đã đăng nhập tải giấy tờ (addDocument mặc định) vẫn approved; status lạ bị từ chối', async () => {
@@ -132,18 +162,63 @@ test('M-03: nhân viên đã đăng nhập tải giấy tờ (addDocument mặc 
 	);
 });
 
-test('Hồ sơ học viên chỉ nhận 1 file PDF: file khác PDF / nhiều file bị từ chối trước khi tạo hồ sơ', async () => {
+test('addDocument: docType lạ bị từ chối; profile chỉ nhận PDF; 4 loại giấy tờ đăng ký nhận cả JPG / PNG', async () => {
 	reset();
+	await assert.rejects(
+		traineeService.addDocument('HV1', fakeFile('a.pdf'), 'U1', { docType: 'passport' }),
+		/Loại giấy tờ không hợp lệ: passport/,
+	);
+	// profile (mặc định) vẫn chỉ nhận PDF
 	await assert.rejects(traineeService.addDocument('HV1', { originalname: 'cccd.jpg' }, 'U1'), {
 		statusCode: 400,
 	});
+	await assert.rejects(
+		traineeService.addDocument('HV1', fakeFile('cccd.jpg'), 'U1', { docType: 'profile' }),
+		{ statusCode: 400 },
+	);
+	assert.equal(docInserts().length, 0, 'file sai không được ghi');
+	// 4 loại giấy tờ: JPG / PNG được nhận; trả cả id dòng giấy tờ lẫn id file
+	const out = await traineeService.addDocument('HV1', fakeFile('cccd.jpg', 'image/jpeg'), null, {
+		status: 'pending',
+		docType: 'national_id',
+	});
+	assert.match(out.id, /^HS/);
+	assert.equal(out.file_id, 'F1');
+	await traineeService.addDocument('HV1', fakeFile('bang.png', 'image/png'), null, {
+		status: 'pending',
+		docType: 'degree',
+	});
+	assert.deepEqual(
+		docInserts().map((d) => d.inputs.doc_type),
+		['national_id', 'degree'],
+	);
+	await assert.rejects(
+		traineeService.addDocument('HV1', fakeFile('cccd.docx'), null, {
+			status: 'pending',
+			docType: 'national_id',
+		}),
+		{ statusCode: 400 },
+	);
+});
+
+test('Đuôi ngoài PDF / JPG / PNG, thiếu hoặc thừa loại hồ sơ bị từ chối trước khi tạo hồ sơ học viên', async () => {
+	reset();
 	const form = base({ full_name: 'Người Mới', national_id: '000000000777', dob: '1990-01-01' });
-	await assert.rejects(portal.register(form, [{ ...FILE[0], originalname: 'anh.png' }], null), {
+	await assert.rejects(portal.register(form, { ...FILE, degree: fakeFile('bang.docx') }, null), {
+		statusCode: 400,
+		message: 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.',
+	});
+	const { decision: _d, ...missing } = FILE;
+	await assert.rejects(portal.register(form, missing, null), {
+		statusCode: 400,
+		message: 'Vui lòng đính kèm đủ hồ sơ bắt buộc: Quyết định cử đi học.',
+	});
+	await assert.rejects(portal.register(form, { ...FILE, dossier: fakeFile('x.pdf') }, null), {
 		statusCode: 400,
 	});
-	await assert.rejects(portal.register(form, [FILE[0], FILE[0]], null), { statusCode: 400 });
 	assert.equal(created.length, 0, 'không được tạo hồ sơ khi file sai');
 	assert.equal(docInserts().length, 0);
+	assert.equal(regInserts().length, 0);
 });
 
 // ─── L-06 ────────────────────────────────────────────────────────────────────
@@ -197,7 +272,8 @@ test('L-06: chỉ gắn vào hồ sơ đã có khi khớp đủ CCCD + ngày sin
 	);
 	assert.deepEqual(enrolled, ['HV1']);
 	assert.equal(created.length, 0);
-	assert.equal(docInserts()[0].inputs.trainee_id, 'HV1');
+	assert.equal(docInserts().length, 4);
+	for (const d of docInserts()) assert.equal(d.inputs.trainee_id, 'HV1');
 });
 
 test('L-06: sai ngày sinh / sai họ tên / hồ sơ cũ thiếu ngày sinh ⇒ không đụng hồ sơ đã có, không đính giấy tờ vào đó', async () => {
@@ -216,6 +292,7 @@ test('L-06: sai ngày sinh / sai họ tên / hồ sơ cũ thiếu ngày sinh ⇒
 		assert.equal(created[0].national_id, null, `${name}: không chiếm CCCD của hồ sơ có sẵn`);
 		assert.match(created[0].notes, /chưa xác minh/);
 		assert.deepEqual(enrolled, [created[0].id], name);
+		assert.equal(docInserts().length, 4, `${name}: đủ 4 giấy tờ`);
 		for (const d of docInserts())
 			assert.equal(d.inputs.trainee_id, created[0].id, `${name}: giấy tờ phải gắn vào hồ sơ mới`);
 	}
@@ -224,11 +301,15 @@ test('L-06: sai ngày sinh / sai họ tên / hồ sơ cũ thiếu ngày sinh ⇒
 test('L-06: ghi danh hồ sơ khớp bị 409 ⇒ không lộ lỗi, chuyển thành đăng ký chưa xác minh', async () => {
 	reset();
 	enrollError = httpError(409, 'Học viên đang theo học chương trình "X" (Khóa Y)');
-	const r = await portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên']), null, null);
+	const r = await portal.register(base(CASES['khớp đủ CCCD + ngày sinh + họ tên']), FILE, null);
 	assertAck(r, '409');
 	assert.ok(!enrolled.includes('HV1'), 'không ghi danh vào hồ sơ có sẵn');
 	assert.equal(created.length, 1, 'lưu thành đăng ký chưa xác minh cho phòng Đào tạo');
 	assert.equal(created[0].national_id, null);
+	// File chỉ được gắn sau cùng — nhánh 409 chuyển sang hồ sơ mới nên file vào hồ sơ mới, 4 dòng duy nhất
+	assert.equal(docInserts().length, 4);
+	for (const d of docInserts()) assert.equal(d.inputs.trainee_id, created[0].id);
+	assert.equal(crfInserts().length, 4);
 });
 
 test('L-06: lỗi không phụ thuộc hồ sơ (khóa đóng đăng ký) vẫn báo như cũ', async () => {
@@ -259,7 +340,7 @@ test('L-06: honeypot trả cùng hình dạng + thông điệp với đăng ký 
 				return res;
 			},
 		};
-		const req = { body, files: [], ip: '127.0.0.1' };
+		const req = { body, files: undefined, ip: '127.0.0.1' };
 		await new Promise((resolve, reject) => {
 			controller.register(req, res, reject);
 			const t = setInterval(() => out?.body && (clearInterval(t), resolve()), 5);

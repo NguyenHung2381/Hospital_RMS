@@ -30,11 +30,13 @@ import {
 } from "../types/course.type";
 import { EnrollmentDetailModal } from "./EnrollmentDetailModal";
 import { CourseProposalsModal } from "./CourseProposalsModal";
+import { EnrollmentExportModal } from "./EnrollmentExportModal";
 import { Badge } from "@/shared/components";
 import { AddEnrollmentPanel, type RecentAdd } from "./AddEnrollmentPanel";
 import { PracticeBookImportModal } from "./PracticeBookImportModal";
 import { savePracticeBook } from "../utils/practiceDocuments";
 import { autoArrangeCourse, cancelOpenClass, removeEnrollment } from "../api/courseApi";
+import { REGISTRATION_FILE_LABELS } from "../api/registrationApi";
 import { ClassDatesModal } from "./ClassDatesModal";
 import { WaitlistCandidatesPanel } from "./WaitlistCandidatesPanel";
 import { ProgramFilter } from "./ProgramFilter";
@@ -79,24 +81,20 @@ const LIST_VIEWS: { key: ListView; label: string; /** Ẩn lựa chọn khi khô
 const isListView = (v: string | null): v is ListView =>
   LIST_VIEWS.some((t) => t.key === v);
 
-/** Đăng ký chờ duyệt có bản khai (form /dang-ky-khoa-hoc): sẵn sàng duyệt / chờ phòng Đào tạo
- *  đối chiếu / chờ người đăng ký nộp hồ sơ. null = không có bản khai hoặc không chờ duyệt. */
-type RegState = "ready" | "check" | "dossier";
-const regState = (e: Enrollment): RegState | null => {
+/** Bản khai (form /dang-ky-khoa-hoc) còn thiếu hồ sơ bắt buộc — cả nội viện lẫn ngoại viện.
+ *  null = không có bản khai, đã đủ hồ sơ, hoặc đơn đã xử lý xong (đã duyệt / từ chối: không
+ *  nộp bổ sung được nữa — đơn gửi trước khi bắt buộc hồ sơ không bị gắn nhãn thiếu). */
+type RegState = "dossier";
+const regMissing = (e: Enrollment): RegState | null => {
   const r = e.registration;
-  if (!r || e.status !== "pending") return null;
-  if (r.ready) return "ready";
-  return r.source === "internal" && !r.has_dossier ? "dossier" : "check";
+  const open = e.status === "pending" || e.status === "waitlisted";
+  return r && open && !r.has_dossier ? "dossier" : null;
 };
-/** Còn thiếu điều kiện duyệt (backend sẽ chặn) — kể cả người bị từ chối được duyệt lại. */
-const blockedReason = (e: Enrollment) =>
-  e.registration && !e.registration.ready
-    ? `còn thiếu ${e.registration.missing.join(", ")}`
-    : null;
+/** Chỉ đơn đang chờ duyệt mới đếm / lọc theo "thiếu hồ sơ" (còn nộp bổ sung được). */
+const regState = (e: Enrollment): RegState | null =>
+  e.status === "pending" ? regMissing(e) : null;
 const REG_STATE_TEXT: Record<RegState, string> = {
-  ready: "Sẵn sàng duyệt",
-  check: "Chờ đối chiếu",
-  dossier: "Chờ nộp hồ sơ",
+  dossier: "Thiếu hồ sơ",
 };
 
 /** Lọc nguồn học viên: nội viện (nhân viên bệnh viện) / ngoại viện. */
@@ -188,7 +186,8 @@ export function EnrollmentsTab({
   const [exporting, setExporting] = useState(false);
   const [arranging, setArranging] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
-  // Lọc nhanh đăng ký chờ duyệt theo tình trạng bản khai (bấm vào ô đếm phía trên bảng)
+  const [exportOpen, setExportOpen] = useState(false);
+  // Lọc nhanh đăng ký chờ duyệt theo tình trạng hồ sơ (bấm vào ô đếm phía trên bảng)
   const [regFilter, setRegFilter] = useState<RegState | null>(null);
   const [adding, setAdding] = useState(enrollments.length === 0);
   const detail = enrollments.find((e) => e.id === detailId) ?? null;
@@ -274,9 +273,9 @@ export function EnrollmentsTab({
           ).includes(q)),
     );
   }, [enrollments, search, view, regFilter]);
-  // Đếm đăng ký chờ duyệt theo tình trạng bản khai (toàn khóa / chương trình đang làm việc)
+  // Đếm đăng ký chờ duyệt theo tình trạng hồ sơ (toàn khóa / chương trình đang làm việc)
   const regCounts = useMemo(() => {
-    const c: Record<RegState, number> = { ready: 0, check: 0, dossier: 0 };
+    const c: Record<RegState, number> = { dossier: 0 };
     for (const en of enrollments) {
       const st = regState(en);
       if (st) c[st]++;
@@ -473,47 +472,12 @@ export function EnrollmentsTab({
   const rejectVerb = allSelected(selectedToReject, "approved") ? "Hủy duyệt" : "Từ chối";
 
   const bulkDecide = async (status: "approved" | "rejected") => {
-    let ids = status === "approved" ? selectedToApprove : selectedToReject;
+    const ids = status === "approved" ? selectedToApprove : selectedToReject;
     const verb = status === "approved" ? approveVerb : rejectVerb;
-    // Duyệt: đơn chưa đủ mốc đối chiếu bị backend chặn ⇒ tách ra trước, nói rõ ai thiếu gì
-    const blocked =
-      status === "approved"
-        ? enrollments.filter((e) => ids.includes(e.id) && blockedReason(e))
-        : [];
-    if (blocked.length) {
-      const list = blocked
-        .slice(0, 5)
-        .map((e) => `• ${e.trainee_name}: ${blockedReason(e)}`)
-        .join("\n");
-      const more = blocked.length > 5 ? `\n… và ${blocked.length - 5} người khác` : "";
-      ids = ids.filter((id) => !blocked.some((b) => b.id === id));
-      if (!ids.length) {
-        window.alert(
-          `Chưa duyệt được ${blocked.length} đơn đã chọn vì chưa đủ mốc đối chiếu:\n${list}${more}\n\nMở tab "Đơn đăng ký" của từng hồ sơ để đối chiếu.`,
-        );
-        return;
-      }
-      if (
-        !window.confirm(
-          `${blocked.length} đơn chưa đủ mốc đối chiếu sẽ được bỏ qua:\n${list}${more}\n\n${verb} ${ids.length} học viên còn lại?`,
-        )
-      )
-        return;
-    } else if (!window.confirm(`${verb} ${ids.length} học viên đã chọn?`)) return;
+    if (!window.confirm(`${verb} ${ids.length} học viên đã chọn?`)) return;
     const failed = await onDecideBulk(ids, status);
     rowSel.clearSelection();
-    [...failed, ...blocked.map((b) => b.id)].forEach(rowSel.toggleSelect);
-  };
-
-  /** Duyệt 1 đơn: chưa đủ mốc đối chiếu thì mở thẳng tab "Đơn đăng ký" thay vì gửi lên để bị từ chối. */
-  const approveOne = (en: Enrollment) => {
-    const reason = blockedReason(en);
-    if (reason) {
-      showToast("info", `Chưa duyệt được ${en.trainee_name}: ${reason}.`);
-      openDetail(en.id, "registration");
-      return;
-    }
-    onDecide(en.id, "approved");
+    failed.forEach(rowSel.toggleSelect);
   };
 
   /** Hủy duyệt người đã duyệt (đăng ký cho vui / không đến học) — hỏi lại vì học viên sẽ nhận email. */
@@ -528,9 +492,18 @@ export function EnrollmentsTab({
 
   const bulkRemove = async (ids: string[]) => {
     let failed = 0;
-    for (const id of ids) await removeEnrollment(id).catch(() => failed++);
+    // Giữ lý do của lỗi đầu tiên (vd đã cấp giấy chứng nhận nên không xóa được)
+    let reason = "";
+    for (const id of ids)
+      await removeEnrollment(id).catch((err) => {
+        failed++;
+        if (!reason && err instanceof Error) reason = ` — ${err.message}`;
+      });
     if (failed)
-      showToast("error", `Không xóa được ${failed}/${ids.length} đăng ký`);
+      showToast(
+        "error",
+        `Không xóa được ${failed}/${ids.length} đăng ký${reason}`,
+      );
     onSaved();
   };
 
@@ -656,20 +629,19 @@ export function EnrollmentsTab({
             {en.is_internal ? "Nội viện" : "Ngoại viện"}
           </span>
           {(() => {
-            const st = regState(en);
+            const st = regMissing(en);
             if (!st || !en.registration) return null;
+            const missing = en.registration.files_missing
+              .map((k) => REGISTRATION_FILE_LABELS[k] ?? k)
+              .join(", ");
             return (
               <button
                 type="button"
                 className={styles.regTagBtn}
-                title={
-                  st === "ready"
-                    ? "Đủ mốc đối chiếu — có thể duyệt"
-                    : `Còn thiếu: ${en.registration.missing.join(", ")} — bấm để mở đơn đăng ký`
-                }
+                title={`Còn thiếu: ${missing} — bấm để mở đơn đăng ký`}
                 onClick={() => openDetail(en.id, "registration")}
               >
-                <Badge tone={st === "ready" ? "green" : st === "check" ? "amber" : "gray"}>
+                <Badge tone="amber">
                   {REG_STATE_TEXT[st]}
                 </Badge>
               </button>
@@ -775,15 +747,9 @@ export function EnrollmentsTab({
             )}
             {(en.status === "pending" || en.status === "rejected") && (
               <RowAction
-                title={
-                  blockedReason(en)
-                    ? `Chưa duyệt được — ${blockedReason(en)} (bấm để mở đơn đăng ký)`
-                    : en.status === "rejected"
-                      ? "Duyệt lại"
-                      : "Duyệt"
-                }
+                title={en.status === "rejected" ? "Duyệt lại" : "Duyệt"}
                 disabled={busy}
-                onClick={() => approveOne(en)}
+                onClick={() => onDecide(en.id, "approved")}
               >
                 <CheckSvg />
               </RowAction>
@@ -933,6 +899,17 @@ export function EnrollmentsTab({
                 </button>
               </>
             )}
+            {course && (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                disabled={busy}
+                onClick={() => setExportOpen(true)}
+                title="Xuất danh sách học viên ra Excel (toàn khóa hoặc theo từng chương trình)"
+              >
+                Xuất danh sách
+              </button>
+            )}
             {hasInternalRegistrations && course && (
               <button
                 type="button"
@@ -1048,31 +1025,19 @@ export function EnrollmentsTab({
             )}
           </div>
           {(view === "pending" || view === "all") &&
-            regCounts.ready + regCounts.check + regCounts.dossier > 0 && (
+            regCounts.dossier > 0 && (
               <div className={styles.regSummary} aria-label="Tình trạng đơn đăng ký chờ duyệt">
-                {(
-                  [
-                    // Chờ phòng Đào tạo đối chiếu = việc của người đang xem ⇒ màu hồng (chỉ khi > 0)
-                    ["check", `${regCounts.check} đơn chờ bạn đối chiếu`, styles.regPillPending],
-                    ["ready", `${regCounts.ready} đơn sẵn sàng duyệt`, styles.regPillReady],
-                    ["dossier", `${regCounts.dossier} đơn chờ người đăng ký nộp hồ sơ`, ""],
-                  ] as const
-                )
-                  .filter(([key]) => regCounts[key] > 0)
-                  .map(([key, text, tone]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={regFilter === key}
-                      className={`${styles.regPill} ${tone} ${regFilter === key ? styles.regPillActive : ""}`}
-                      onClick={() => {
-                        setRegFilter((f) => (f === key ? null : key));
-                        resetPage();
-                      }}
-                    >
-                      {text}
-                    </button>
-                  ))}
+                <button
+                  type="button"
+                  aria-pressed={regFilter === "dossier"}
+                  className={`${styles.regPill} ${regFilter === "dossier" ? styles.regPillActive : ""}`}
+                  onClick={() => {
+                    setRegFilter((f) => (f === "dossier" ? null : "dossier"));
+                    resetPage();
+                  }}
+                >
+                  {regCounts.dossier} đơn chờ người đăng ký nộp hồ sơ
+                </button>
               </div>
             )}
           {focusClass && (
@@ -1188,6 +1153,18 @@ export function EnrollmentsTab({
           mode={classModal}
           onClose={() => setClassModal(null)}
           onSaved={onSaved}
+        />
+      )}
+      {exportOpen && course && (
+        <EnrollmentExportModal
+          courseId={course.id}
+          courseName={course.name}
+          programs={programLinks.map((l) => ({
+            id: l.program_id,
+            code: l.program_code ?? null,
+            name: l.program_name,
+          }))}
+          onClose={() => setExportOpen(false)}
         />
       )}
       {proposalsOpen && course && (

@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { dismissToast, feedbackStore } from '../../utils/feedback';
+import { cancelUploads, dismissToast, feedbackStore } from '../../utils/feedback';
 import styles from './GlobalFeedback.module.css';
 
 // Chỉ hiện chỉ báo khi tác vụ chạy đủ lâu — request nhanh không gây nhấp nháy.
 const BAR_DELAY_MS = 200;
 const OVERLAY_DELAY_MS = 400;
+const UPLOAD_MIN_BYTES = 256 * 1024;
+
+const fmtMB = (bytes: number) => `${(bytes / 1048576).toFixed(1).replace('.', ',')} MB`;
 
 function useDelayedFlag(active: boolean, delay: number) {
 	const [shown, setShown] = useState(false);
@@ -47,12 +50,18 @@ const icons = {
  *   - toast từ notify.success / notify.error
  */
 export function GlobalFeedback() {
-	const { reads, writes, toasts } = useSyncExternalStore(
+	const { reads, writes, toasts, upload } = useSyncExternalStore(
 		feedbackStore.subscribe,
 		feedbackStore.getSnapshot,
 	);
 	const showBar = useDelayedFlag(reads + writes > 0, BAR_DELAY_MS);
 	const showOverlay = useDelayedFlag(writes > 0, OVERLAY_DELAY_MS);
+
+	// Form nhỏ không kèm file gửi xong gần như tức thì — chỉ hiện tiến trình khi đáng kể
+	const uploading = upload && upload.total >= UPLOAD_MIN_BYTES ? upload : null;
+	const pct = uploading ? Math.min(100, Math.floor((uploading.loaded / uploading.total) * 100)) : 0;
+	// Gửi đủ byte rồi nhưng máy chủ còn kiểm tra định dạng, quét virus, ghi CSDL
+	const sent = !!uploading && uploading.loaded >= uploading.total;
 
 	return (
 		<>
@@ -60,10 +69,46 @@ export function GlobalFeedback() {
 
 			{showOverlay && (
 				<div className={styles.overlay} aria-live='polite' aria-busy='true'>
-					<div className={styles.savingCard}>
-						<div className={styles.spinner} />
-						Đang xử lý dữ liệu, vui lòng chờ…
-					</div>
+					{uploading ? (
+						<div className={`${styles.savingCard} ${styles.uploadCard}`}>
+							<div className={styles.uploadHead}>
+								<div className={styles.spinner} />
+								<span className={styles.uploadTitle}>
+									{sent ? 'Đã gửi xong, máy chủ đang kiểm tra và lưu file…' : 'Đang tải file lên…'}
+								</span>
+								{!sent && (
+									<span className={styles.uploadPct} aria-hidden='true'>
+										{pct}%
+									</span>
+								)}
+							</div>
+							<div
+								className={styles.uploadTrack}
+								role='progressbar'
+								aria-label='Tiến trình tải lên'
+								aria-valuemin={0}
+								aria-valuemax={100}
+								aria-valuenow={pct}
+							>
+								<div className={styles.uploadFill} style={{ transform: `scaleX(${pct / 100})` }} />
+							</div>
+							<div className={styles.uploadFoot}>
+								<span aria-hidden='true'>
+									{fmtMB(uploading.loaded)} / {fmtMB(uploading.total)}
+								</span>
+								{!sent && (
+									<button type='button' className={styles.action} onClick={cancelUploads}>
+										Hủy
+									</button>
+								)}
+							</div>
+						</div>
+					) : (
+						<div className={styles.savingCard}>
+							<div className={styles.spinner} />
+							Đang xử lý dữ liệu, vui lòng chờ…
+						</div>
+					)}
 				</div>
 			)}
 

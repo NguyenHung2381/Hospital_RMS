@@ -227,7 +227,6 @@ export function TopicDrawer({
 							setDragging={d.setDragging}
 							selectedIds={d.selectedIds}
 							setSelectedIds={d.setSelectedIds}
-							handleFileSelect={d.handleFileSelect}
 							removePending={d.removePending}
 							toggleSelect={d.toggleSelect}
 							toggleSelectAll={d.toggleSelectAll}

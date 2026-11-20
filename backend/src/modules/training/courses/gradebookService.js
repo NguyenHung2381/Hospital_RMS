@@ -503,15 +503,31 @@ const history = async (enrollmentId) => {
 	return r.recordset;
 };
 
+// Kết quả hoàn thành của 1 lượt ghi danh đã duyệt — certificateService kiểm điều kiện cấp
+// giấy. { locked, result: 'pass'|'fail'|null, reasons }; null nếu lượt không thuộc khóa
+// hoặc chưa được duyệt. Dùng đúng evaluateRow như bảng điểm.
+const enrollmentOutcome = async (courseId, enrollmentId) => {
+	const [rules, [row]] = await Promise.all([loadRules(), loadRows(courseId, [enrollmentId])]);
+	if (!row) return null;
+	const c = evaluateRow(row, rules);
+	return { locked: !!row.locked_at, result: c.result, reasons: c.reasons };
+};
+
 // ─── Cấp giấy chứng nhận hàng loạt cho người Đạt (bảng điểm đã khóa) ─────────
 const issueCertificatesForPassed = async (courseId, actorId, expiryDate) => {
 	const book = await getGradebook(courseId);
 	if (!book.locked) throw httpError(409, 'Cần khóa điểm trước khi cấp giấy chứng nhận hàng loạt.');
 	const targets = book.rows.filter((r) => r.computed.result === 'pass' && !r.certificate_id);
 	const issued = [];
+	// verified: vừa kiểm bảng điểm đã khóa + kết quả Đạt ở trên, khỏi tính lại từng người
 	for (const r of targets)
-		issued.push(await certificateService.issueCertificate(r.enrollment_id, actorId, expiryDate));
-	return { issued: issued.length };
+		issued.push(
+			await certificateService.issueCertificate(r.enrollment_id, actorId, expiryDate, {
+				verified: true,
+			}),
+		);
+	// cme_failed: số giấy đã cấp nhưng ghi CME lỗi — giao diện báo cán bộ ghi lại CME
+	return { issued: issued.length, cme_failed: issued.filter((c) => c.cme_error).length };
 };
 
 module.exports = {
@@ -526,5 +542,6 @@ module.exports = {
 	retake,
 	history,
 	issueCertificatesForPassed,
+	enrollmentOutcome,
 	recompute,
 };

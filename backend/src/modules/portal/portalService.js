@@ -17,6 +17,7 @@ const practiceResultService = require('../training/courses/practiceResultService
 const trainingProgramService = require('../training/programs/trainingProgramService');
 const { httpError } = require('../../utils/httpError');
 const { getUserCme } = require('../cme/cmeUserService');
+const { getUserCycleSafe } = require('../cme/cmeCycleService');
 
 const VN_TODAY = vnTodaySql;
 const UPCOMING_DAYS = 30;
@@ -273,7 +274,15 @@ const registerCourse = async (courseId, actor, programId = null) => {
 
 // CME của tôi trong 1 năm (cmeUserService.getUserCme). Kèm vé QR hội nghị đã tự đăng
 // ký ở cổng công khai — mở lại vé khi lỡ đóng trang / mất ảnh QR (đã đăng nhập = chính chủ).
-const getMyCme = (actor, year) => getUserCme(actor.id, year, { withTicket: true });
+// Kèm khối `cycle`: tiến độ đủ 120 giờ trong 05 năm liên tục của chính người dùng (cmeCycleService),
+// không phụ thuộc `year`. Không tính được thì cycle = null, phần còn lại của trang vẫn trả bình thường.
+const getMyCme = async (actor, year) => {
+	const [cme, cycle] = await Promise.all([
+		getUserCme(actor.id, year, { withTicket: true }),
+		getUserCycleSafe(actor.id),
+	]);
+	return { ...cme, cycle };
+};
 
 // Danh mục quy đổi để người dùng chọn khi tự khai CME
 const getCmeCategories = async () => {

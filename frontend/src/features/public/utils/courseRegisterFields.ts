@@ -3,7 +3,12 @@ import type { CustomValues, FieldRules, FieldType, ResolvedField } from '@/share
 import type { FormConfig } from '@/shared/formConfig/useFormConfig';
 import { GENDER_OPTIONS } from '@/shared/utils/gender';
 import { checkNationalId, NATIONAL_ID_ISSUE_MESSAGE } from '@/shared/utils/nationalId';
-import type { RegisterPayload, RegistrationSource, RegistrationStaff } from '../api/publicApi';
+import type {
+	DraftApplicationPayload,
+	RegisterPayload,
+	RegistrationSource,
+	RegistrationStaff,
+} from '../api/publicApi';
 
 export const HOSPITAL = 'Bệnh viện Hữu nghị Đa khoa Nghệ An';
 
@@ -235,9 +240,32 @@ export function buildPayload(
 	} as RegisterPayload;
 }
 
+/** Dữ liệu để máy chủ điền sẵn Đơn đăng ký nháp (nội viện) — như buildPayload nhưng không captcha / cam kết /
+ *  honeypot / hóa đơn / trường tùy chỉnh. Chỉ dùng khi staff đã khớp hồ sơ nhân sự. */
+export function buildDraftPayload(
+	cfg: FormConfig,
+	form: RegForm,
+	staff: StaffMatch,
+	extra: Pick<DraftApplicationPayload, 'course_id' | 'program_id'>,
+): DraftApplicationPayload {
+	const out: Record<string, unknown> = {};
+	for (const key of infoKeysFor('internal')) {
+		if (!resolveField(cfg, key).visible && key !== 'full_name') continue;
+		const v = form[key].trim();
+		if (v) out[key] = key === 'graduated_year' ? Number(v) : v;
+	}
+	return {
+		...out,
+		full_name: staff.info.full_name,
+		staff_number: staff.staff_number,
+		source: 'internal',
+		...extra,
+	} as DraftApplicationPayload;
+}
+
 // ─── Bản nháp trong sessionStorage ────────────────────────────────────────────
-// Chỉ chữ người dùng đã nhập — không file đính kèm, không token xác minh email, không
-// mã captcha. Đóng tab là mất; gửi xong thì xóa.
+// Chỉ chữ người dùng đã nhập — không file đính kèm (file không bao giờ được lưu), không token
+// xác minh email, không mã captcha. Đóng tab là mất; gửi xong thì xóa.
 
 const DRAFT_KEY = 'dtlt-register-draft-v1';
 

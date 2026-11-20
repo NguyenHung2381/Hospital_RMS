@@ -1,41 +1,44 @@
-import { useState } from 'react';
-import { AlertSvg, CheckCircleSvg, CheckSmSvg, SearchSvg, UploadSvg } from '@/assets/icons';
+import { useState, type ReactNode } from 'react';
+import { AlertSvg, CheckCircleSvg, SearchSvg, UploadSvg } from '@/assets/icons';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { ENROLLMENT_STATUS_CFG, type EnrollmentStatus } from '../../course/types/course.type';
 import { formatDateOr } from '../../../shared/utils/formatDate';
 import {
 	getRegistrationStatus,
-	uploadRegistrationDossier,
+	uploadRegistrationFile,
+	type RegistrationFileItem,
+	type RegistrationFileKind,
 	type RegistrationProof,
 	type RegistrationStatus,
 } from '../api/publicApi';
+import { REGISTRATION_FILE_EXTENSIONS } from '../utils/registrationFiles';
 import { ApplicationActions } from './ApplicationActions';
-import { AttachmentPicker, type Attachment } from './AttachmentPicker';
+import { FileSlot } from './courseRegister/FileSlot';
 import styles from '../pages/PublicPortal.module.css';
 import s from '../pages/CourseRegisterPublic.module.css';
 import r from './RegistrationLookup.module.css';
 
-interface Step {
-	label: string;
-	done: boolean;
-	/** Chữ phụ cho trạng thái (vd: ngày nộp) */
-	note?: string;
-}
+const REVIEW_LABEL = { pending: 'Chờ duyệt', approved: 'Đã duyệt' } as const;
 
-// Các mốc xử lý theo đối tượng: ngoại viện đối chiếu CCCD + văn bằng; nội viện nhận tờ trình + bản scan
-function progressSteps(st: RegistrationStatus): Step[] {
-	if (st.source === 'external')
-		return [
-			{ label: st.checks.id_checked ? 'Đã đối chiếu căn cước công dân' : 'Chờ đối chiếu căn cước công dân', done: st.checks.id_checked },
-			{ label: st.checks.degree_checked ? 'Đã đối chiếu văn bằng' : 'Chờ đối chiếu văn bằng', done: st.checks.degree_checked },
-		];
-	return [
-		{ label: st.checks.proposal_checked ? 'Đã kiểm tra tờ trình' : 'Chờ kiểm tra tờ trình', done: st.checks.proposal_checked },
-		{
-			label: st.dossier_uploaded_at ? 'Đã nộp bản scan tờ trình' : 'Chưa nộp bản scan tờ trình',
-			done: !!st.dossier_uploaded_at,
-			note: st.dossier_uploaded_at ? formatDateOr(st.dossier_uploaded_at) : undefined,
-		},
-	];
+// Dòng trạng thái của 1 loại hồ sơ theo dữ liệu máy chủ
+function fileStatus(item: RegistrationFileItem): ReactNode {
+	if (item.legacy) return `File gộp nộp trước đây${item.uploaded_at ? ` · ${formatDateOr(item.uploaded_at)}` : ''}`;
+	if (item.uploaded_at && item.review_status === 'rejected')
+		return <span className={s.slotStatusBad}>Bị từ chối — vui lòng nộp lại</span>;
+	if (!item.uploaded_at) return 'Chưa nộp';
+	const review = item.review_status && item.review_status !== 'rejected' ? REVIEW_LABEL[item.review_status] : null;
+	return (
+		<>
+			Đã nộp {formatDateOr(item.uploaded_at)}
+			{item.file_name ? ` · ${item.file_name}` : ''}
+			{review && (
+				<>
+					{' · '}
+					<span className={item.review_status === 'approved' ? s.slotStatusOk : undefined}>{review}</span>
+				</>
+			)}
+		</>
+	);
 }
 
 // Tra cứu đơn đăng ký bằng mã đăng ký + số CCCD (gửi trong body, không đưa lên URL)
@@ -47,10 +50,12 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 	const [status, setStatus] = useState<RegistrationStatus | null>(null);
 	// Yếu tố đã dùng tra cứu thành công — dùng lại để tải đơn / nộp hồ sơ, chỉ nằm trong bộ nhớ
 	const [proof, setProof] = useState<RegistrationProof | null>(null);
-	const [files, setFiles] = useState<Attachment[]>([]);
-	const [uploading, setUploading] = useState(false);
-	const [uploadError, setUploadError] = useState('');
-	const [uploadedNow, setUploadedNow] = useState(false);
+	const [picked, setPicked] = useState<Partial<Record<RegistrationFileKind, File>>>({});
+	// Loại hồ sơ đang nộp (bận theo từng ô), lỗi từng ô, thông báo nộp xong
+	const [uploading, setUploading] = useState<RegistrationFileKind | null>(null);
+	const [slotErrors, setSlotErrors] = useState<Partial<Record<RegistrationFileKind, string>>>({});
+	const [uploadedLabel, setUploadedLabel] = useState('');
+	const policy = useUploadPolicy();
 
 	const search = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -62,9 +67,9 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 		setError('');
 		setStatus(null);
 		setProof(null);
-		setUploadedNow(false);
-		setUploadError('');
-		setFiles([]);
+		setUploadedLabel('');
+		setSlotErrors({});
+		setPicked({});
 		try {
 			const p = { national_id: id };
 			setStatus(await getRegistrationStatus(c, p));
@@ -76,23 +81,52 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 		}
 	};
 
-	const upload = async () => {
-		if (!status || !proof || !files[0]) return setUploadError('Vui lòng chọn file PDF cần nộp');
-		setUploading(true);
-		setUploadError('');
+	const upload = async (item: RegistrationFileItem) => {
+		const kind = item.kind as RegistrationFileKind;
+		const file = picked[kind];
+		if (!status || !proof || !file) return setSlotErrors((e) => ({ ...e, [kind]: 'Vui lòng chọn file cần nộp' }));
+		setUploading(kind);
+		setSlotErrors((e) => ({ ...e, [kind]: undefined }));
+		setUploadedLabel('');
 		try {
-			const res = await uploadRegistrationDossier(status.registration_code, proof, files[0].file);
-			setStatus({ ...status, needs_dossier: false, dossier_uploaded_at: res.dossier_uploaded_at });
-			setUploadedNow(true);
-			setFiles([]);
+			const res = await uploadRegistrationFile(status.registration_code, proof, kind, file);
+			// Cập nhật tại chỗ từ phản hồi nộp file. Không gọi lại tra cứu: mỗi lượt tra cứu tốn 1 lượt
+			// giới hạn theo mã, hết lượt thì file đã lưu mà trang lại báo lỗi.
+			setStatus(
+				(s) =>
+					s && {
+						...s,
+						files_missing: res.files_missing,
+						files: s.files.map((it) =>
+							it.kind === res.kind
+								? {
+										...it,
+										uploaded_at: res.uploaded_at,
+										file_name: file.name,
+										mime_type: file.type || it.mime_type,
+										// File ngoại viện vừa nộp luôn chờ phòng Đào tạo duyệt
+										review_status: s.source === 'external' ? 'pending' : null,
+									}
+								: it,
+						),
+					},
+			);
+			setPicked((p) => ({ ...p, [kind]: undefined }));
+			setUploadedLabel(item.label);
 		} catch (err) {
-			setUploadError(err instanceof Error ? err.message : 'Gửi hồ sơ thất bại, vui lòng thử lại');
+			setSlotErrors((e) => ({
+				...e,
+				[kind]: err instanceof Error ? err.message : 'Gửi hồ sơ thất bại, vui lòng thử lại',
+			}));
 		} finally {
-			setUploading(false);
+			setUploading(null);
 		}
 	};
 
 	const cfg = status ? ENROLLMENT_STATUS_CFG[status.enrollment_status as EnrollmentStatus] : undefined;
+	const missingLabels = status
+		? status.files.filter((it) => !it.legacy && status.files_missing.includes(it.kind as RegistrationFileKind)).map((it) => it.label)
+		: [];
 
 	return (
 		<>
@@ -201,64 +235,76 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 						</div>
 					</dl>
 
-					<h3 className={r.subTitle}>Tiến độ xử lý hồ sơ</h3>
-					<ul className={r.steps}>
-						{progressSteps(status).map((st) => (
-							<li
-								key={st.label}
-								className={st.done ? r.stepDone : r.stepWait}
-							>
-								<span className={r.stepIcon}>{st.done && <CheckSmSvg />}</span>
-								<span>
-									{st.label}
-									{st.note && <span className={r.stepNote}> · {st.note}</span>}
-								</span>
-							</li>
-						))}
-					</ul>
-
-					{status.needs_dossier && (
+					<h3 className={r.subTitle}>Hồ sơ đính kèm</h3>
+					{status.can_upload && missingLabels.length > 0 && (
 						<div className={r.todo}>
-							<h3 className={r.todoTitle}>Việc bạn cần làm: nộp bản scan tờ trình đã duyệt</h3>
-							<p className={r.todoText}>
-								Khi khoa/phòng đã có tờ trình được Ban giám đốc duyệt, hãy scan thành 1 file PDF và tải lên ở đây.
-							</p>
-							<AttachmentPicker
-								value={files}
-								onChange={(f) => {
-									setFiles(f);
-									setUploadError('');
-								}}
-								maxFiles={1}
-								extensions={['.pdf']}
-								hint='1 file PDF'
-							/>
-							{uploadError && (
-								<div
-									className={s.fieldError}
-									role='alert'
-								>
-									{uploadError}
-								</div>
-							)}
-							<button
-								type='button'
-								className={s.submitBtn}
-								onClick={upload}
-								disabled={uploading || files.length === 0}
-							>
-								<UploadSvg />
-								{uploading ? 'Đang gửi...' : 'Gửi hồ sơ'}
-							</button>
+							<h4 className={r.todoTitle}>Việc bạn cần làm: nộp {missingLabels.length} giấy tờ còn thiếu</h4>
+							<ul className={r.todoList}>
+								{missingLabels.map((label) => (
+									<li key={label}>{label}</li>
+								))}
+							</ul>
 						</div>
 					)}
-					{uploadedNow && (
+					{uploadedLabel && (
 						<div
 							className={`${styles.alertBox} ${styles.alertSuccess}`}
 							role='status'
 						>
-							<CheckCircleSvg /> Đã nhận hồ sơ của bạn. Phòng Đào tạo sẽ kiểm tra và cập nhật tiến độ.
+							<CheckCircleSvg /> Đã nhận file {uploadedLabel}.
 						</div>
+					)}
+					<div className={s.slotGrid}>
+						{status.files.map((item) => {
+							const kind = item.kind as RegistrationFileKind;
+							const editable = status.can_upload && !item.legacy;
+							if (!editable)
+								return (
+									<div
+										key={item.kind}
+										className={s.slot}
+									>
+										<span className={s.slotLabel}>{item.label}</span>
+										<div className={s.slotStatus}>{fileStatus(item)}</div>
+									</div>
+								);
+							const file = picked[kind] ?? null;
+							return (
+								<FileSlot
+									key={item.kind}
+									kind={kind}
+									label={item.label}
+									required={item.required}
+									file={file}
+									onChange={(f) => {
+										setPicked((p) => ({ ...p, [kind]: f ?? undefined }));
+										setSlotErrors((e) => ({ ...e, [kind]: undefined }));
+									}}
+									error={slotErrors[kind]}
+									extensions={REGISTRATION_FILE_EXTENSIONS}
+									maxSizeMB={policy.maxSizeMB}
+									status={fileStatus(item)}
+									disabled={uploading !== null}
+									actions={
+										<button
+											type='button'
+											className={s.submitBtn}
+											onClick={() => void upload(item)}
+											disabled={uploading !== null || !file}
+											aria-label={`${item.uploaded_at ? 'Nộp lại' : 'Nộp'} ${item.label}`}
+										>
+											<UploadSvg />
+											{uploading === kind ? 'Đang gửi...' : item.uploaded_at ? 'Nộp lại' : 'Nộp'}
+										</button>
+									}
+								/>
+							);
+						})}
+					</div>
+					{!status.can_upload && (
+						<p className={s.hint}>
+							Đơn đã được xử lý — muốn thay hồ sơ, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.
+						</p>
 					)}
 
 					{proof && (

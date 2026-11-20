@@ -1,0 +1,117 @@
+.root {
+	overflow-x: clip;
+}
+
+.desc {
+	margin: 0 0 var(--space-3);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+
+.tableCard {
+	composes: tableCard from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeader {
+	composes: tableHeader from '../../../shared/components/Table/Table.module.css';
+}
+.tableHeaderLeft {
+	composes: tableHeaderLeft from '../../../shared/components/Table/Table.module.css';
+}
+.tableTitle {
+	composes: tableTitle from '../../../shared/components/Table/Table.module.css';
+}
+.tableCount {
+	composes: tableCount from '../../../shared/components/Table/Table.module.css';
+}
+.tableControls {
+	composes: tableControls from '../../../shared/components/Table/Table.module.css';
+}
+.filterSelect {
+	composes: filterSelect from '../../../shared/components/Table/Table.module.css';
+}
+.tabsRow {
+	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
+}
+.tab {
+	composes: tab from '../../../shared/components/Table/Table.module.css';
+}
+.tabActive {
+	composes: tabActive from '../../../shared/components/Table/Table.module.css';
+}
+.tabBadge {
+	composes: tabBadge from '../../../shared/components/Table/Table.module.css';
+}
+.tableWrap {
+	composes: tableWrap from '../../../shared/components/Table/Table.module.css';
+}
+.table {
+	composes: table from '../../../shared/components/Table/Table.module.css';
+	min-width: 980px;
+}
+.scopeCheck {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	cursor: pointer;
+	user-select: none;
+}
+
+.name {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.sub {
+	margin-top: 2px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+.muted {
+	color: var(--color-gray-500);
+}
+
+.num {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.cycleRange {
+	white-space: nowrap;
+}
+
+.notice {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	margin-bottom: var(--space-3);
+	border: 1px solid var(--tone-amber-border);
+	border-radius: var(--radius-lg);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-sm);
+}
+
+.notice svg {
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.noticeRetry {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+	.tableHeader {
+		padding: var(--space-3) var(--space-4);
+	}
+	.tabsRow {
+		padding: 0 var(--space-4);
+	}
+}

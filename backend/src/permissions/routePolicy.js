@@ -59,8 +59,12 @@ module.exports = {
 			'Cổng công khai — trạng thái đăng ký theo mã + CCCD/email/download_token trong body (sai mã hay sai yếu tố đều 404, giới hạn theo mã)',
 		[`POST ${API}/public/course-registration/:code/application`]:
 			'Cổng công khai — tải Đơn đăng ký (.docx) theo mã + yếu tố thứ hai trong body (giới hạn theo mã)',
-		[`POST ${API}/public/course-registration/:code/dossier`]:
-			'Cổng công khai — nộp 1 file PDF hồ sơ bổ sung theo mã + yếu tố thứ hai trong body (giới hạn theo mã)',
+		[`POST ${API}/public/course-registration/draft/application`]:
+			'Cổng công khai — Đơn đăng ký nháp (.docx) của nội viện: phải khớp lại mã NV + họ tên (sai ⇒ 404 chung), không trả gì ngoài dữ liệu người đó vừa gõ + khoa / trình độ như staff-check, rate-limit theo IP + theo mã NV',
+		[`POST ${API}/public/course-registration/draft/proposal`]:
+			'Cổng công khai — Tờ trình nháp + Bảng phân tích để trống (.docx) của nội viện: khớp lại mã NV + họ tên, chỉ 1 người (chính người đó), rate-limit theo IP + theo mã NV',
+		[`POST ${API}/public/course-registration/:code/files/:kind`]:
+			'Cổng công khai — nộp / thay 1 file hồ sơ (PDF / JPG / PNG, secureUpload) theo mã + yếu tố thứ hai trong body, chỉ khi đơn còn chờ duyệt (giới hạn theo mã)',
 		[`GET ${API}/public/topic-rounds`]: 'Cổng công khai — đợt đang mở',
 		[`GET ${API}/public/topic-rounds/by-token/:token`]:
 			'Cổng công khai — đợt theo link đăng ký (có rate-limit)',
@@ -129,8 +133,8 @@ module.exports = {
 			'Đơn đăng ký khóa học của chính mình (courseRegistrationService.listByStaff(req.user.id))',
 		[`GET ${API}/me/course-registrations/:enrollmentId/application`]:
 			'Tải Đơn đăng ký của chính mình — bản khai có staff_user_id khác req.user.id trả 404 (registrationPortalService.getOwn)',
-		[`POST ${API}/me/course-registrations/:enrollmentId/dossier`]:
-			'Nộp PDF đơn + tờ trình đã duyệt cho bản khai nội viện của chính mình — kiểm chủ bản khai trước khi multer ghi file',
+		[`POST ${API}/me/course-registrations/:enrollmentId/files/:kind`]:
+			'Nộp / thay 1 file hồ sơ (PDF / JPG / PNG) cho bản khai của chính mình — kiểm chủ bản khai, loại hồ sơ, trạng thái đơn trước khi multer ghi file (registrationPortalService.assertCanUploadFile)',
 		[`GET ${API}/me/department-proposals`]:
 			'Nhóm đăng ký theo khoa: chỉ tài khoản khoa / trưởng khoa của khoa đó hoặc người có bản khai trong nhóm (registrationPortalService.visibleGroups)',
 		[`GET ${API}/me/department-proposals/document`]:

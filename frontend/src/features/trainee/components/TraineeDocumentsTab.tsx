@@ -75,7 +75,9 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 		<>
 			<div className={ds.summary}>
 				<TraineeDocStateBadge state={data.state} />
-				<span>{meta.hint}. Học viên chỉ cần nộp 1 file PDF gộp đủ thông tin.</span>
+				<span>
+					{meta.hint}. Hồ sơ gồm 1 file PDF tổng hợp, hoặc các giấy tờ học viên nộp khi đăng ký khóa đào tạo liên tục.
+				</span>
 			</div>
 
 			{canEdit && (
@@ -131,7 +133,7 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 									{doc.file_name}
 								</a>
 								<span className={styles.subRowMeta}>
-									{doc.doc_type_name ? `${doc.doc_type_name} (nộp theo loại cũ) · ` : ''}
+									{doc.doc_type_name ? `${doc.doc_type_name} · ` : ''}
 									{formatDate(doc.created_at)} · {DOC_STATUS_LABEL[doc.status]}
 									{doc.review_note ? ` · ${doc.review_note}` : ''}
 								</span>

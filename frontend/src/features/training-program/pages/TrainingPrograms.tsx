@@ -25,6 +25,14 @@ import {
 	type ProgramRotation,
 	type ProgramStatusFilter,
 } from '../types/trainingProgram.type';
+import {
+	getLessonState,
+	LESSON_STATE_LABELS,
+	lessonStateBadge,
+	lessonStateTitle,
+	type LessonState,
+	type LessonStateFilter,
+} from '../utils/lessonState';
 import styles from './TrainingPrograms.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
@@ -126,6 +134,18 @@ export default function TrainingPrograms() {
 		{ header: 'Thứ tự', key: 'display_order', value: (x) => x.display_order },
 		{ header: 'Mô tả', key: 'description', value: (x) => x.description },
 		{ header: 'Số bài học', value: (x) => x.lesson_count ?? 0 },
+		// Chỉ xuất (không có key ⇒ không dùng khi nhập)
+		{
+			header: 'Tình trạng bài học',
+			value: (x) => {
+				const s = getLessonState(x).state;
+				return s === 'ok' ? 'Đủ' : LESSON_STATE_LABELS[s];
+			},
+		},
+		{
+			header: 'Số tiết bài học (LT/TH)',
+			value: (x) => `${x.lesson_theory_hours ?? 0}/${x.lesson_practice_hours ?? 0}`,
+		},
 		{ header: 'Số khóa học', value: (x) => x.course_count ?? 0 },
 	];
 
@@ -265,6 +285,22 @@ export default function TrainingPrograms() {
 								</option>
 							))}
 						</select>
+						<select
+							className={`${styles.filterSelect} ${d.lessonFilter !== 'all' ? styles.filterActive : ''}`}
+							data-active={d.lessonFilter !== 'all' ? 'true' : undefined}
+							value={d.lessonFilter}
+							onChange={(e) => d.handleLessonFilter(e.target.value as LessonStateFilter)}
+						>
+							<option value='all'>Tất cả bài học</option>
+							{(Object.keys(LESSON_STATE_LABELS) as LessonState[]).map((v) => (
+								<option
+									key={v}
+									value={v}
+								>
+									{LESSON_STATE_LABELS[v]}
+								</option>
+							))}
+						</select>
 						{d.hasActiveFilter && (
 							<button
 								type='button'
@@ -293,6 +329,7 @@ export default function TrainingPrograms() {
 							<th className={`${styles.th} ${styles.thProgram}`}>Chương trình</th>
 							<th className={styles.th}>Khoa / Phòng</th>
 							<th className={styles.th}>Đối tượng</th>
+							<th className={styles.th}>Bài học</th>
 							<th className={styles.th}>Trạng thái</th>
 							<th className={`${styles.th} ${styles.thRight}`}>Thao tác</th>
 						</tr>
@@ -301,11 +338,11 @@ export default function TrainingPrograms() {
 						{d.isLoadingData ? (
 							<SkeletonTable
 								rows={d.pageSize || 8}
-								cols={7}
+								cols={8}
 							/>
 						) : d.filtered.length === 0 ? (
 							<TableEmpty
-								colSpan={7}
+								colSpan={8}
 								title='Không tìm thấy chương trình đào tạo'
 								desc={d.hasActiveFilter ? 'Thử thay đổi từ khóa hoặc bộ lọc' : 'Chưa có chương trình nào'}
 							/>
@@ -354,6 +391,25 @@ export default function TrainingPrograms() {
 										</td>
 										<td className={styles.td}>
 											<TraineeTypeChips names={p.trainee_type_name} />
+										</td>
+										<td className={styles.td}>
+											{(() => {
+												const ls = getLessonState(p);
+												const badge = lessonStateBadge(ls);
+												return (
+													<div
+														className={styles.lessonCell}
+														title={lessonStateTitle(p, ls)}
+													>
+														<span>{p.lesson_count ?? 0} bài</span>
+														{badge && (
+															<span className={ls.state === 'none' ? styles.lessonWarnNone : styles.lessonWarnShort}>
+																{badge}
+															</span>
+														)}
+													</div>
+												);
+											})()}
 										</td>
 										<td className={styles.td}>
 											{getProgramStatus(p) === 'active' ? (

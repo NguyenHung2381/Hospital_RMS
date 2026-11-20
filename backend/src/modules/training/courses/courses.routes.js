@@ -5,6 +5,7 @@ const practiceCtrl = require('./practiceRecordController');
 const waitlistCtrl = require('./waitlistController');
 const cmeCtrl = require('./courseCmeController');
 const registrationCtrl = require('./registrationReviewController');
+const enrollmentExportCtrl = require('./enrollmentExportController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -220,6 +221,29 @@ router.post(
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 router.get('/:id/enrollments', authorizePermission(['courses', 'read']), ctrl.listEnrollments);
+// Xuất danh sách học viên của khóa ra Excel (toàn khóa hoặc mỗi chương trình một sheet)
+router.post(
+	'/:id/enrollments/export-excel',
+	authorizePermission(['courses', 'read']),
+	[
+		body('mode').optional().isIn(['course', 'program']).withMessage('Cách xuất không hợp lệ'),
+		body('program_ids')
+			.optional()
+			.isArray({ max: 200 })
+			.withMessage('Danh sách chương trình không hợp lệ'),
+		body('program_ids.*').optional().isString().isLength({ max: 20 }),
+		body('statuses')
+			.optional()
+			.isArray({ max: 4 })
+			.withMessage('Danh sách trạng thái không hợp lệ'),
+		body('statuses.*')
+			.optional()
+			.isIn(['pending', 'approved', 'rejected', 'waitlisted'])
+			.withMessage('Trạng thái ghi danh không hợp lệ'),
+	],
+	validate,
+	enrollmentExportCtrl.exportEnrollments,
+);
 router.post(
 	'/:id/enrollments',
 	authorizePermission(['courses', 'create']),
@@ -260,24 +284,12 @@ router.delete(
 	authorizePermission(['courses', 'delete']),
 	ctrl.removeEnrollment,
 );
-// ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — đối chiếu trước khi duyệt ─────
+// ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — xem trước khi duyệt ─────
 // Đơn (.docx) và hồ sơ PDF có CCCD ⇒ controller đòi thêm trainees:read_sensitive.
 router.get(
 	'/enrollments/:enrollmentId/registration',
 	authorizePermission(['courses', 'read']),
 	registrationCtrl.getRegistration,
-);
-router.put(
-	'/enrollments/:enrollmentId/registration/checks',
-	authorizePermission(['courses', 'update']),
-	[
-		body(['id_checked', 'degree_checked', 'proposal_checked'])
-			.optional()
-			.isBoolean({ strict: true })
-			.withMessage('Mốc đối chiếu phải là true / false'),
-	],
-	validate,
-	registrationCtrl.setRegistrationChecks,
 );
 router.get(
 	'/enrollments/:enrollmentId/registration/application',

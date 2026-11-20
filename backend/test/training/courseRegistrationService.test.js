@@ -1,5 +1,5 @@
 // courseRegistrationService (bản khai đăng ký khóa đào tạo liên tục) trên CSDL giả:
-// mã đăng ký, lọc snapshot, hóa đơn chỉ ngoại viện, đọc theo mã, mốc đối chiếu, gom Tờ trình.
+// mã đăng ký, lọc snapshot, hóa đơn chỉ ngoại viện, đọc theo mã, gom Tờ trình.
 process.env.JWT_SECRET = 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -98,23 +98,6 @@ test('getByCode: không phân biệt hoa thường, bỏ khoảng trắng và d�
 	rows = [];
 });
 
-test('setChecks: true ghi mốc (giữ mốc cũ), false xóa, khóa vắng mặt giữ nguyên; không có bản khai ⇒ 404', async () => {
-	rows = [{ enrollment_id: 'E1', snapshot: '{}' }];
-	log.length = 0;
-	await svc.setChecks('E1', { id_checked: true, degree_checked: false }, 'QL1');
-	const q = log.find((x) => /UPDATE course_registrations SET/.test(x.text));
-	assert.match(q.text, /id_checked_at = COALESCE\(id_checked_at, /);
-	assert.match(
-		q.text,
-		/id_checked_by = CASE WHEN id_checked_at IS NULL THEN @actor_id ELSE id_checked_by END/,
-	);
-	assert.match(q.text, /degree_checked_at = NULL, degree_checked_by = NULL/);
-	assert.doesNotMatch(q.text, /proposal_checked/);
-	assert.equal(q.inputs.actor_id, 'QL1');
-	rows = [];
-	await assert.rejects(svc.setChecks('E9', { id_checked: true }, 'QL1'), { statusCode: 404 });
-});
-
 test('listInternalGroups: gom theo khóa + chương trình + khoa; họ tên / năm sinh / trình độ lấy từ bản khai', async () => {
 	const base = {
 		course_id: 'KH1',
@@ -126,8 +109,7 @@ test('listInternalGroups: gom theo khóa + chương trình + khoa; họ tên / n
 		tuition_fee: '1500000',
 		department_name: 'Khoa Nội',
 		enrollment_status: 'pending',
-		dossier_uploaded_at: null,
-		proposal_checked_at: null,
+		proposal_uploaded_at: null,
 	};
 	rows = [
 		{
@@ -136,6 +118,7 @@ test('listInternalGroups: gom theo khóa + chương trình + khoa; họ tên / n
 			staff_user_id: 'U1',
 			staff_number: 1,
 			department_id: 'K1',
+			proposal_uploaded_at: new Date('2026-11-10T08:00:00Z'),
 			snapshot: JSON.stringify({ full_name: 'A', dob: '1990-02-03', qualification: 'BS' }),
 		},
 		{
@@ -167,6 +150,11 @@ test('listInternalGroups: gom theo khóa + chương trình + khoa; họ tên / n
 	assert.match(q.text, /e\.course_id = @course_id/);
 	assert.match(q.text, /r\.department_id = @department_id/);
 	assert.match(q.text, /e\.program_id = @program_id/);
+	// Thời điểm nộp Tờ trình đã duyệt (hoặc file gộp cũ), file chưa xóa — đọc từ course_registration_files
+	assert.match(q.text, /MAX\(crf\.uploaded_at\)/);
+	assert.match(q.text, /crf\.kind IN \('proposal_approved', 'dossier'\)/);
+	assert.match(q.text, /f\.is_deleted = 'false'/);
+	assert.doesNotMatch(q.text, /dossier_uploaded_at/);
 	assert.equal(groups.length, 2);
 	assert.equal(groups[0].tuition_fee, 1500000);
 	assert.deepEqual(
@@ -176,6 +164,11 @@ test('listInternalGroups: gom theo khóa + chương trình + khoa; họ tên / n
 			['B', null, null],
 		],
 	);
+	assert.deepEqual(
+		groups[0].people.map((p) => p.proposal_uploaded_at),
+		[new Date('2026-11-10T08:00:00Z'), null],
+	);
+	assert.equal('dossier_uploaded_at' in groups[0].people[0], false);
 	assert.equal(groups[1].department_name, 'Khoa Ngoại');
 	rows = [];
 });

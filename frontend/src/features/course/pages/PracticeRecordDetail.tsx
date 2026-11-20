@@ -11,6 +11,7 @@ import { formatDateVN } from '@/shared/utils/formatDate';
 import { decideEnrollment, getCourse, getEnrollment, getProgramLinks } from '../api/courseApi';
 import { PracticeDocumentsBar } from '../components/PracticeDocumentsBar';
 import { PracticeRecordInfo } from '../components/PracticeRecordInfo';
+import { RegistrationReviewTab } from '../components/RegistrationReviewTab';
 import { RotationsPanel } from '../components/RotationsPanel';
 import {
 	ENROLLMENT_STATUS_CFG,
@@ -23,20 +24,25 @@ import {
 import styles from './Courses.module.css';
 import local from './PracticeRecords.module.css';
 
-type Tab = 'info' | 'rotations' | 'documents';
+type Tab = 'info' | 'registration' | 'rotations' | 'documents';
 const TABS: { key: Tab; label: string }[] = [
 	{ key: 'info', label: 'Thông tin hồ sơ' },
+	// Chỉ hiện khi lượt ghi danh tạo từ form /dang-ky-khoa-hoc (có bản khai + hồ sơ đính kèm)
+	{ key: 'registration', label: 'Đơn đăng ký' },
 	{ key: 'rotations', label: 'Vòng thực hành' },
 	{ key: 'documents', label: 'In giấy tờ' },
 ];
 
-/** Trang 1 hồ sơ thực hành GPHN (thay modal): thông tin hồ sơ tự lưu · vòng thực hành · in giấy tờ. */
+/** Trang 1 hồ sơ thực hành GPHN (thay modal): thông tin hồ sơ tự lưu · đơn đăng ký (nếu có) ·
+ *  vòng thực hành · in giấy tờ. */
 export default function PracticeRecordDetail() {
 	const { enrollmentId = '' } = useParams();
 	const navigate = useNavigate();
 	const [params, setParams] = useSearchParams();
-	const tab: Tab = TABS.find((t) => t.key === params.get('tab'))?.key ?? 'info';
 	const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+	// Ghi danh hộ / nhập Excel không có bản khai ⇒ không có tab "Đơn đăng ký" (link ?tab=registration về tab đầu)
+	const tabs = TABS.filter((t) => t.key !== 'registration' || !!enrollment?.registration);
+	const tab: Tab = tabs.find((t) => t.key === params.get('tab'))?.key ?? 'info';
 	const [course, setCourse] = useState<Course | null>(null);
 	const [links, setLinks] = useState<CourseProgramLink[]>([]);
 	const [notFound, setNotFound] = useState(false);
@@ -104,6 +110,11 @@ export default function PracticeRecordDetail() {
 	const status = enrollment ? ENROLLMENT_STATUS_CFG[enrollment.status] : null;
 	const approved = enrollment?.status === 'approved';
 	const who = enrollment ? enrollment.practice_code || enrollment.trainee_name : '';
+	// Còn nộp bổ sung được (chờ duyệt / danh sách chờ) mà chưa đủ hồ sơ bắt buộc
+	const filesMissing =
+		!!enrollment?.registration &&
+		!enrollment.registration.has_dossier &&
+		(enrollment.status === 'pending' || enrollment.status === 'waitlisted');
 
 	return (
 		<AdminLayout
@@ -190,7 +201,7 @@ export default function PracticeRecordDetail() {
 						className={crud.tabs}
 						role='tablist'
 					>
-						{TABS.map((t) => (
+						{tabs.map((t) => (
 							<button
 								key={t.key}
 								type='button'
@@ -201,6 +212,7 @@ export default function PracticeRecordDetail() {
 							>
 								{t.label}
 								{t.key === 'rotations' && <span>({enrollment.rotation_total})</span>}
+								{t.key === 'registration' && filesMissing && <span className={local.warn}>Thiếu hồ sơ</span>}
 							</button>
 						))}
 					</div>
@@ -213,6 +225,15 @@ export default function PracticeRecordDetail() {
 							canEdit={canEdit}
 							onSaved={onSaved}
 						/>
+					)}
+					{tab === 'registration' && (
+						<div className={local.panel}>
+							<RegistrationReviewTab
+								key={enrollment.id}
+								enrollmentId={enrollment.id}
+								traineeName={enrollment.trainee_name}
+							/>
+						</div>
 					)}
 					{tab === 'rotations' && (
 						<div className={local.panel}>

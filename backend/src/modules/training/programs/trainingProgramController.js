@@ -1,7 +1,8 @@
 const trainingProgramService = require('./trainingProgramService');
 const programCatalogImportService = require('./programCatalogImportService');
 const { hasPermission } = require('../../../permissions/authz');
-const { success, created, notFound } = require('../../../utils/response');
+const lessonLecturerImportService = require('./programLessonLecturerImportService');
+const { success, created, notFound, sendWorkbook } = require('../../../utils/response');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
@@ -61,6 +62,29 @@ const importCatalog = asyncHandler(async (req, res) => {
 			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
 			// Route chỉ yêu cầu quyền tạo; ghi đè chương trình/vòng đã có cần thêm quyền sửa.
 			canUpdate: hasPermission(req.user, 'training_programs', 'update'),
+		},
+		req.user.id,
+	);
+	return success(res, out);
+});
+
+// ─── Giảng viên giảng dạy từng bài của chương trình (nhập Excel) ─────────────
+const lessonLecturerTemplate = asyncHandler(async (req, res) => {
+	const { workbook, fileName } = await lessonLecturerImportService.buildTemplate(req.params.id);
+	return sendWorkbook(res, workbook, fileName);
+});
+
+const importLessonLecturers = asyncHandler(async (req, res) => {
+	if (!req.file) {
+		return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
+	}
+	const out = await lessonLecturerImportService.importExcel(
+		{
+			programId: req.params.id,
+			buffer: req.file.buffer,
+			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			// Route chỉ yêu cầu quyền sửa chương trình; tạo giảng viên mới cần thêm quyền thêm giảng viên.
+			canCreateLecturer: hasPermission(req.user, 'lecturers', 'create'),
 		},
 		req.user.id,
 	);
@@ -200,6 +224,8 @@ module.exports = {
 	updateOne,
 	removeOne,
 	importCatalog,
+	lessonLecturerTemplate,
+	importLessonLecturers,
 	listLessons,
 	listAllLessons,
 	createLesson,

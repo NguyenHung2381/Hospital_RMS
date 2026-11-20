@@ -17,7 +17,7 @@
  *     security: []
  *     responses:
  *       200:
- *         description: "{ version (phiên bản nội quy ghi vào bản khai), rules[], id_issue_places[], email_otp_required (Cấu hình hệ thống TRAINING_REGISTRATION_EMAIL_OTP, mặc định true) }"
+ *         description: "{ version (phiên bản nội quy ghi vào bản khai), rules[], id_issue_places[], email_otp_required (Cấu hình hệ thống TRAINING_REGISTRATION_EMAIL_OTP, mặc định true), attachments: { extensions: ['.pdf','.jpg','.jpeg','.png'], max_size_mb (= UPLOAD_MAX_MB), kinds: { internal: [{ key, label, hint, required }], external: [...] } } — hồ sơ bắt buộc theo đối tượng }"
  *       403:
  *         description: Module Đào tạo đang tắt (MODULE_DISABLED)
  *       429:
@@ -131,9 +131,13 @@
  *     tags: [Public]
  *     security: []
  *     description: >
- *       Body gửi dạng multipart/form-data: toàn bộ dữ liệu form là chuỗi JSON trong field
- *       `data`; hồ sơ học viên (ngoại viện) hoặc hồ sơ nộp bổ sung (nội viện) là đúng 1 file PDF
- *       trong field `files`. Không đính kèm file thì gửi application/json với cùng các trường.
+ *       Body BẮT BUỘC là multipart/form-data: toàn bộ dữ liệu form là chuỗi JSON trong field
+ *       `data`; mỗi loại hồ sơ bắt buộc là 1 phần file riêng tên `files[<kind>]` (PDF, JPG hoặc PNG,
+ *       mỗi file tối đa UPLOAD_MAX_MB). Nội viện: files[application_signed] (Đơn đăng ký đã ký) và
+ *       files[proposal_approved] (Tờ trình đã duyệt). Ngoại viện: files[national_id], files[degree],
+ *       files[license], files[decision]. Thiếu loại bắt buộc, gửi loại của đối tượng kia hoặc request
+ *       không phải multipart ⇒ 400 trước khi kiểm captcha / giới hạn / ghi dữ liệu (honeypot vẫn đứng
+ *       đầu). Danh sách loại lấy từ GET /public/course-registration/rules (attachments.kinds).
  *       Khi Cấu hình hệ thống TRAINING_REGISTRATION_EMAIL_OTP bật (mặc định) thì bắt buộc
  *       email_token (xem email-otp/verify). Mọi nhánh — kể cả bot bị chặn bằng honeypot —
  *       đều trả cùng hình dạng phản hồi và cùng thông điệp.
@@ -152,14 +156,16 @@
  *               data:
  *                 type: string
  *                 description: "Chuỗi JSON gồm các trường bên dưới (bắt buộc khi gửi multipart)"
- *               files:
- *                 type: array
- *                 maxItems: 1
- *                 items: { type: string, format: binary }
- *                 description: Tối đa 1 file PDF (dung lượng theo Cấu hình hệ thống UPLOAD_MAX_MB)
+ *               "files[application_signed]": { type: string, format: binary, description: 'Nội viện — Đơn đăng ký đã ký' }
+ *               "files[proposal_approved]": { type: string, format: binary, description: 'Nội viện — Tờ trình đã duyệt' }
+ *               "files[national_id]": { type: string, format: binary, description: 'Ngoại viện — Căn cước công dân' }
+ *               "files[degree]": { type: string, format: binary, description: 'Ngoại viện — Bằng tốt nghiệp' }
+ *               "files[license]": { type: string, format: binary, description: 'Ngoại viện — Chứng chỉ hành nghề' }
+ *               "files[decision]": { type: string, format: binary, description: 'Ngoại viện — Quyết định cử đi học' }
  *         application/json:
  *           schema:
  *             type: object
+ *             description: Cùng các trường của field data (chỉ để mô tả; request thật phải là multipart kèm file hồ sơ)
  *             required: [source, full_name, course_id, captcha_token, rules_accepted, declared_true]
  *             properties:
  *               source: { type: string, enum: [internal, external] }
@@ -204,7 +210,7 @@
  *       201:
  *         description: "Đã nhận đăng ký, chờ duyệt — { submitted: true, registration_code, download_token }"
  *       400:
- *         description: Dữ liệu không hợp lệ (trả errors theo từng trường), captcha sai, thiếu email_token hoặc email chưa xác minh, hoặc field data không đọc được
+ *         description: "Dữ liệu không hợp lệ (trả errors theo từng trường), thiếu hồ sơ bắt buộc ('Vui lòng đính kèm đủ hồ sơ bắt buộc: …'), hồ sơ không thuộc đối tượng đã chọn, file không phải PDF / JPG / PNG, mỗi loại quá 1 file, captcha sai, thiếu email_token hoặc email chưa xác minh, hoặc field data không đọc được"
  *       403:
  *         description: Khóa hiện không trong thời gian đăng ký, hoặc module Đào tạo đang tắt
  *       404:
@@ -240,7 +246,7 @@
  *               download_token: { type: string, maxLength: 2000 }
  *     responses:
  *       200:
- *         description: "{ registration_code, full_name, source, course_name, program_name, enrollment_status, registered_at, needs_dossier (nội viện chưa nộp hồ sơ bổ sung), dossier_uploaded_at, checks: { id_checked, degree_checked, proposal_checked } }"
+ *         description: "{ registration_code, full_name, source, course_name, program_name, enrollment_status, registered_at, can_upload (đơn còn pending / waitlisted), files[] (mỗi loại hồ sơ của đối tượng: kind, label, required, legacy, uploaded_at, file_name, file_url luôn null, mime_type, review_status), files_missing[] (khóa loại bắt buộc còn thiếu; file ngoại viện bị từ chối tính là thiếu) }"
  *       400:
  *         description: Không có yếu tố thứ hai nào trong body
  *       404:
@@ -287,42 +293,130 @@
 
 /**
  * @swagger
- * /public/course-registration/{code}/dossier:
+ * /public/course-registration/{code}/files/{kind}:
  *   post:
- *     summary: Nộp (thay) hồ sơ PDF bổ sung — đơn và tờ trình đã duyệt gộp một file
+ *     summary: Nộp (thay) 1 file hồ sơ của lượt đăng ký
  *     tags: [Public]
  *     security: []
  *     description: >
  *       Multipart: field `data` là chuỗi JSON chứa yếu tố thứ hai (national_id, email hoặc download_token),
- *       field `files` là đúng một file PDF. Yếu tố thứ hai đọc từ field `data`, không đọc từ body ngoài multipart.
- *       Nếu phòng Đào tạo đã đối chiếu tờ trình thì không cho thay qua cổng công khai (409).
+ *       field `file` là đúng một file PDF, JPG hoặc PNG. Yếu tố thứ hai đọc từ field `data`, không đọc từ
+ *       body ngoài multipart. Chỉ nhận khi đơn còn chờ duyệt hoặc trong danh sách chờ; đơn đã được xử lý thì
+ *       không cho thay qua cổng công khai (409). Nội viện: file cũ cùng loại bị xóa; ngoại viện: file vào
+ *       hồ sơ học viên (chờ duyệt), dòng hồ sơ cũ còn chờ duyệt bị thay, đã duyệt / từ chối được giữ lại.
  *     parameters:
  *       - { in: path, name: code, required: true, schema: { type: string, minLength: 1, maxLength: 32 }, description: Mã đăng ký }
+ *       - in: path
+ *         name: kind
+ *         required: true
+ *         schema: { type: string, enum: [application_signed, proposal_approved, national_id, degree, license, decision] }
+ *         description: Loại hồ sơ (phải thuộc đối tượng của đơn)
  *     requestBody:
  *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [data, files]
+ *             required: [data, file]
  *             properties:
  *               data:
  *                 type: string
  *                 description: 'Chuỗi JSON, ví dụ {"email":"..."} hoặc {"download_token":"..."}'
- *               files:
- *                 type: array
- *                 maxItems: 1
- *                 items: { type: string, format: binary }
- *                 description: Đúng một file PDF
+ *               file: { type: string, format: binary, description: Đúng một file PDF / JPG / PNG }
  *     responses:
  *       200:
- *         description: "Đã nộp hồ sơ bổ sung — { uploaded: true, dossier_uploaded_at }"
+ *         description: "Đã nộp hồ sơ — { kind, uploaded_at, files_missing[] }"
  *       400:
- *         description: Không đúng một file, file không phải PDF, hoặc field data không đọc được
+ *         description: Loại hồ sơ không hợp lệ (cho đơn này), không có file, file không phải PDF / JPG / PNG, thiếu yếu tố thứ hai, hoặc field data không đọc được
  *       404:
  *         description: Không tìm thấy đăng ký khớp mã và yếu tố thứ hai
  *       409:
- *         description: Phòng Đào tạo đã đối chiếu tờ trình — muốn thay file phải liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến
+ *         description: Đơn đăng ký đã được xử lý — muốn thay file phải liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến
  *       429:
  *         description: Mã đăng ký đã được tra quá 20 lần trong 1 giờ, hoặc quá 20 lượt trong 15 phút theo IP
+ */
+
+/**
+ * @swagger
+ * /public/course-registration/draft/application:
+ *   post:
+ *     summary: Tải Đơn đăng ký nháp (.docx) điền sẵn — chỉ nội viện, chưa có mã đăng ký
+ *     tags: [Public]
+ *     security: []
+ *     description: >
+ *       Body JSON là dữ liệu người đó vừa gõ ở form (khóa thừa bị bỏ qua), source phải là internal.
+ *       Không cần captcha nhưng phải khớp lại mã nhân viên + họ tên (sai ⇒ 404 chung) và bị giới hạn theo
+ *       IP (30 lượt / 15 phút) và theo mã NV (20 lượt / giờ, dùng chung với Tờ trình nháp). Đơn không có dòng
+ *       "Mã đăng ký", ngày lập đơn để trống. Khóa học phải đang mở đăng ký công khai.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [source, course_id, staff_number, full_name]
+ *             properties:
+ *               source: { type: string, enum: [internal] }
+ *               course_id: { type: string, maxLength: 20 }
+ *               program_id: { type: string, maxLength: 20, description: Bắt buộc khi khóa có chương trình }
+ *               staff_number: { type: string, description: 1–9 chữ số }
+ *               full_name: { type: string, maxLength: 150 }
+ *               dob: { type: string, format: date }
+ *               national_id: { type: string }
+ *               email: { type: string, format: email }
+ *               phone: { type: string, maxLength: 20 }
+ *     responses:
+ *       200:
+ *         description: File Đơn đăng ký nháp (.docx), tên Don-dang-ky-<họ-tên>-ban-nhap.docx
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+ *             schema: { type: string, format: binary }
+ *       400:
+ *         description: Dữ liệu không hợp lệ, source không phải internal, thiếu hoặc sai chương trình của khóa
+ *       403:
+ *         description: Khóa hiện không trong thời gian đăng ký
+ *       404:
+ *         description: Không tìm thấy nhân viên khớp mã NV + họ tên; hoặc khóa không tồn tại / đã đóng đăng ký
+ *       429:
+ *         description: Quá 30 lượt trong 15 phút theo IP, hoặc mã NV đã tạo giấy tờ quá 20 lần trong 1 giờ
+ */
+
+/**
+ * @swagger
+ * /public/course-registration/draft/proposal:
+ *   post:
+ *     summary: Tải Tờ trình nháp + Bảng phân tích nhu cầu (.docx) — chỉ nội viện
+ *     tags: [Public]
+ *     security: []
+ *     description: >
+ *       Tờ trình ghi đúng 1 người (người đăng ký) của khoa lấy từ hồ sơ nhân sự; mọi ô của Bảng phân tích
+ *       nhu cầu để trống. Kinh phí lấy học phí chương trình, ngày lớp lấy ngày bắt đầu / kết thúc của khóa.
+ *       Cùng giới hạn và cách khớp nhân viên như Đơn đăng ký nháp.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [course_id, staff_number, full_name]
+ *             properties:
+ *               course_id: { type: string, maxLength: 20 }
+ *               program_id: { type: string, maxLength: 20 }
+ *               staff_number: { type: string }
+ *               full_name: { type: string, maxLength: 150 }
+ *               dob: { type: string, format: date, description: Để in năm sinh trong bảng danh sách }
+ *     responses:
+ *       200:
+ *         description: File Tờ trình nháp (.docx), tên To-trinh-<khoa>-<lớp>-ban-nhap.docx
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+ *             schema: { type: string, format: binary }
+ *       400:
+ *         description: Dữ liệu không hợp lệ, thiếu hoặc sai chương trình của khóa
+ *       403:
+ *         description: Khóa hiện không trong thời gian đăng ký
+ *       404:
+ *         description: Không tìm thấy nhân viên khớp mã NV + họ tên; hoặc khóa không tồn tại / đã đóng đăng ký
+ *       429:
+ *         description: Quá 30 lượt trong 15 phút theo IP, hoặc mã NV đã tạo giấy tờ quá 20 lần trong 1 giờ
  */

@@ -2,16 +2,23 @@ import { useRef, useState } from 'react';
 import { DocSvg, FileTextSvg, UsersSvg } from '@/assets/icons';
 import { Badge, Button, Card } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
+import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import { ENROLLMENT_STATUS_CFG } from '../../course/types/course.type';
 import { ENROLLMENT_STATUS_TONE } from '../../course/api/registrationApi';
+import type { RegistrationFileItem, RegistrationFileKind } from '../../public/api/publicApi';
+import {
+	checkRegistrationFile,
+	REGISTRATION_ACCEPT,
+	REGISTRATION_FILE_EXTENSIONS,
+} from '../../public/utils/registrationFiles';
 import {
 	downloadDepartmentProposal,
 	downloadMyApplication,
 	myApplicationUrl,
-	uploadMyRegistrationDossier,
+	uploadMyRegistrationFile,
 	type MyCourseRegistration,
 	type MyDepartmentProposal,
 } from '../api/meApi';
@@ -28,12 +35,13 @@ const classTitle = (course: string | null, program: string | null) =>
 	[course ?? 'Khóa học', program].filter(Boolean).join(' · ');
 
 /** "Đơn đăng ký của tôi": đơn đã gửi qua form /dang-ky-khoa-hoc, việc còn phải làm, tải / xem đơn,
- *  nộp PDF đơn + tờ trình đã duyệt (nội viện). */
+ *  nộp / thay từng loại hồ sơ bắt buộc (PDF, JPG hoặc PNG). */
 export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegistration[]; onChanged: () => void }) {
 	const [viewer, setViewer] = useState<Viewer | null>(null);
 	const [busy, setBusy] = useState<string | null>(null);
 	const fileRef = useRef<HTMLInputElement>(null);
-	const target = useRef<MyCourseRegistration | null>(null);
+	const target = useRef<{ reg: MyCourseRegistration; item: RegistrationFileItem } | null>(null);
+	const policy = useUploadPolicy();
 	const todoCount = items.reduce((n, r) => n + r.todo.length, 0);
 
 	const download = async (r: MyCourseRegistration) => {
@@ -47,22 +55,23 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 		}
 	};
 
-	const pickFile = (r: MyCourseRegistration) => {
-		target.current = r;
+	const pickFile = (reg: MyCourseRegistration, item: RegistrationFileItem) => {
+		target.current = { reg, item };
 		fileRef.current?.click();
 	};
 
 	const upload = async (file: File) => {
-		const r = target.current;
-		if (!r) return;
-		if (!/\.pdf$/i.test(file.name)) {
-			showToast('error', 'Hồ sơ chỉ nhận file PDF (đơn + tờ trình đã duyệt gộp 1 file).');
+		const t = target.current;
+		if (!t) return;
+		const problem = checkRegistrationFile(file, REGISTRATION_FILE_EXTENSIONS, policy.maxSizeMB);
+		if (problem) {
+			showToast('error', problem);
 			return;
 		}
-		setBusy(`up-${r.enrollment_id}`);
+		setBusy(`up-${t.reg.enrollment_id}-${t.item.kind}`);
 		try {
-			await uploadMyRegistrationDossier(r.enrollment_id, file);
-			showToast('success', 'Đã nộp hồ sơ, chờ Trung tâm Đào tạo đối chiếu.');
+			await uploadMyRegistrationFile(t.reg.enrollment_id, t.item.kind as RegistrationFileKind, file);
+			showToast('success', `Đã nộp ${t.item.label}, chờ Trung tâm Đào tạo xét duyệt.`);
 			onChanged();
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Nộp hồ sơ thất bại');
@@ -91,7 +100,6 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 			<Card.Body>
 				<div className={styles.list}>
 					{items.map((r) => {
-						const open = r.enrollment_status !== 'rejected';
 						return (
 							<div
 								key={r.enrollment_id}
@@ -111,11 +119,6 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 										</span>
 									)}
 									<span>{r.source === 'internal' ? 'Nội viện' : 'Ngoại viện'}</span>
-									{r.dossier_uploaded_at && (
-										<span>
-											Đã nộp hồ sơ: <b>{formatDateVN(r.dossier_uploaded_at)}</b>
-										</span>
-									)}
 								</div>
 								{r.todo.map((t) => (
 									<div
@@ -126,6 +129,54 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 									</div>
 								))}
 								{r.waiting.length > 0 && <div className={own.waiting}>{r.waiting.join(' · ')}</div>}
+								<ul
+									className={own.files}
+									aria-label={`Hồ sơ đính kèm của đơn ${r.registration_code}`}
+								>
+									{r.files.map((it) => {
+										const rejected = it.review_status === 'rejected';
+										const uploadBusy = busy === `up-${r.enrollment_id}-${it.kind}`;
+										return (
+											<li
+												key={it.kind}
+												className={own.fileRow}
+											>
+												<span className={own.fileLabel}>{it.label}</span>
+												<span className={rejected ? own.fileBad : it.uploaded_at ? own.fileOk : own.fileMissing}>
+													{it.legacy
+														? 'File gộp nộp trước đây'
+														: !it.uploaded_at
+															? 'Chưa nộp'
+															: rejected
+																? 'Bị từ chối — vui lòng nộp lại'
+																: `Đã nộp ${formatDateVN(it.uploaded_at)}`}
+												</span>
+												<span className={own.fileActions}>
+													{it.file_url && (
+														<Button
+															size='sm'
+															variant='secondary'
+															onClick={() => setViewer({ url: it.file_url!, name: `${it.label} — ${r.registration_code}`, isWord: false })}
+														>
+															Xem
+														</Button>
+													)}
+													{r.can_upload && !it.legacy && (
+														<Button
+															size='sm'
+															variant={!it.uploaded_at || rejected ? 'primary' : 'secondary'}
+															loading={uploadBusy}
+															disabled={busy !== null && !uploadBusy}
+															onClick={() => pickFile(r, it)}
+														>
+															{it.uploaded_at ? 'Nộp lại' : 'Nộp'}
+														</Button>
+													)}
+												</span>
+											</li>
+										);
+									})}
+								</ul>
 								<div className={own.actions}>
 									<Button
 										size='sm'
@@ -148,25 +199,6 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 									>
 										<DocSvg /> Tải đơn (.docx)
 									</Button>
-									{r.dossier && (
-										<Button
-											size='sm'
-											variant='secondary'
-											onClick={() => setViewer({ url: r.dossier!.file_url, name: r.dossier!.file_name, isWord: false })}
-										>
-											Xem hồ sơ đã nộp
-										</Button>
-									)}
-									{r.source === 'internal' && open && (
-										<Button
-											size='sm'
-											variant={r.needs_dossier ? 'primary' : 'secondary'}
-											loading={busy === `up-${r.enrollment_id}`}
-											onClick={() => pickFile(r)}
-										>
-											{r.dossier ? 'Nộp lại hồ sơ PDF' : 'Nộp hồ sơ PDF'}
-										</Button>
-									)}
 								</div>
 							</div>
 						);
@@ -174,14 +206,14 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 				</div>
 				{items.some((r) => r.source === 'internal') && (
 					<div className={own.hint}>
-						Nội viện: tải đơn, in và ký → khoa lập tờ trình (tải ở mục "Đăng ký cùng lớp trong khoa") → trình Ban Giám đốc duyệt →
-						scan đơn và tờ trình đã duyệt thành 1 file PDF rồi bấm "Nộp hồ sơ PDF".
+						Nội viện: tải đơn, in và ký → khoa lập tờ trình (tải ở mục "Đăng ký cùng lớp trong khoa") → trình Ban giám đốc duyệt →
+						nộp từng file ở danh sách trên (PDF, JPG hoặc PNG).
 					</div>
 				)}
 				<input
 					ref={fileRef}
 					type='file'
-					accept='application/pdf,.pdf'
+					accept={REGISTRATION_ACCEPT}
 					className={own.hiddenInput}
 					onChange={(e) => {
 						const f = e.target.files?.[0];
@@ -272,7 +304,7 @@ export function DepartmentProposalsCard({ groups }: { groups: MyDepartmentPropos
 											<th>Họ tên</th>
 											<th>Trình độ</th>
 											<th>Trạng thái</th>
-											<th>Hồ sơ nộp bổ sung</th>
+											<th>Tờ trình đã duyệt</th>
 										</tr>
 									</thead>
 									<tbody>
@@ -286,7 +318,7 @@ export function DepartmentProposalsCard({ groups }: { groups: MyDepartmentPropos
 												</td>
 												<td>{p.qualification ?? '—'}</td>
 												<td>{statusBadge(p.enrollment_status)}</td>
-												<td>{p.proposal_checked ? 'Đã đối chiếu' : p.has_dossier ? 'Đã nộp' : 'Chưa nộp'}</td>
+												<td>{p.has_proposal ? 'Đã nộp' : 'Chưa nộp'}</td>
 											</tr>
 										))}
 									</tbody>

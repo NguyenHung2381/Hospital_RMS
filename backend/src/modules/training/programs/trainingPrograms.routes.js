@@ -135,6 +135,21 @@ router.post(
 	validate,
 	ctrl.linkLessons,
 );
+// Giảng viên giảng dạy từng bài của chương trình, nhập từ Excel (mỗi dòng 1 bài: giảng
+// viên chính / phụ). Tên chưa có trong danh mục Giảng viên thì tạo mới — cần thêm
+// lecturers:create (controller truyền canCreateLecturer vào service), thiếu thì bỏ qua dòng.
+// File mẫu điền sẵn các bài của chương trình; POST như các route xuất file khác.
+router.post(
+	'/:id/lessons/lecturers/template',
+	authorizePermission(['training_programs', 'read']),
+	ctrl.lessonLecturerTemplate,
+);
+router.post(
+	'/:id/lessons/lecturers/import',
+	authorizePermission(['training_programs', 'update']),
+	uploadExcel.single('file'),
+	ctrl.importLessonLecturers,
+);
 router.put(
 	'/:id/lessons/reorder',
 	authorizePermission(['training_programs', 'update']),

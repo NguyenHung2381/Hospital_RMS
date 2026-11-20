@@ -8,8 +8,15 @@ const { formConfigGuard } = require('../forms/formConfigGuard');
 const ctrl = require('./publicPortalController');
 const regCtrl = require('./publicCourseRegistrationController');
 const regValidators = require('./courseRegistration.validators');
-// Hồ sơ đính kèm (multipart: field `data` = JSON form + `files`) — tùy chọn
+// Hồ sơ đính kèm đề tài (multipart: field `data` = JSON form + `files`) — tùy chọn
 const { publicUpload } = require('../../middlewares/uploadPublic');
+// Hồ sơ BẮT BUỘC của đăng ký khóa đào tạo liên tục: mỗi loại 1 phần `files[<kind>]` (gửi đăng ký)
+// hoặc 1 phần `file` (nộp / thay theo mã đăng ký) — PDF / JPG / PNG
+const {
+	registrationFormUpload,
+	registrationFileUpload,
+} = require('../../middlewares/uploadRegistration');
+const { UPLOADABLE_KINDS } = require('../training/registration/registrationFileKinds');
 const uploadPolicy = require('../../utils/uploadPolicy');
 const { success } = require('../../utils/response');
 const { requireModule } = require('../../middlewares/moduleGuard');
@@ -137,7 +144,22 @@ const regCodeLimiter = rateLimit({
 	legacyHeaders: false,
 	message: { success: false, message: 'Quá nhiều lượt tra cứu. Vui lòng thử lại sau ít phút.' },
 });
+// Đơn / tờ trình nháp của nội viện: sinh .docx tốn CPU ⇒ giới hạn riêng theo IP (ngoài giới hạn theo mã NV)
+const regDraftLimiter = rateLimit({
+	name: 'courseRegDraft',
+	windowMs: 15 * 60 * 1000,
+	limit: 30,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {
+		success: false,
+		message: 'Quá nhiều lượt tạo giấy tờ. Vui lòng thử lại sau ít phút.',
+	},
+});
 const registrationCode = param('code').isString().isLength({ min: 1, max: 32 });
+const registrationFileKind = param('kind')
+	.isIn(UPLOADABLE_KINDS)
+	.withMessage('Loại hồ sơ không hợp lệ');
 
 router.get('/course-registration/rules', training, regRulesLimiter, regCtrl.getRules);
 router.post(
@@ -168,11 +190,28 @@ router.post(
 	'/course-registration',
 	training,
 	registerLimiter,
-	publicUpload,
+	registrationFormUpload,
 	regValidators.registration,
 	validate,
 	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),
 	ctrl.register,
+);
+// Khai báo TRƯỚC các route /course-registration/:code/... — nếu không, /:code/application bắt mất "draft"
+router.post(
+	'/course-registration/draft/application',
+	training,
+	regDraftLimiter,
+	regValidators.draftApplication,
+	validate,
+	regCtrl.draftApplication,
+);
+router.post(
+	'/course-registration/draft/proposal',
+	training,
+	regDraftLimiter,
+	regValidators.draftProposal,
+	validate,
+	regCtrl.draftProposal,
 );
 router.post(
 	'/course-registration/:code/status',
@@ -191,13 +230,15 @@ router.post(
 	regCtrl.downloadApplication,
 );
 router.post(
-	'/course-registration/:code/dossier',
+	'/course-registration/:code/files/:kind',
 	training,
 	regCodeLimiter,
-	publicUpload,
-	[registrationCode, ...regValidators.secondFactor],
+	[registrationCode, registrationFileKind],
 	validate,
-	regCtrl.uploadDossier,
+	registrationFileUpload,
+	regValidators.secondFactor,
+	validate,
+	regCtrl.uploadFile,
 );
 
 // ─── Đăng ký đề tài công khai (rút gọn, không cần đăng nhập) ────────────────

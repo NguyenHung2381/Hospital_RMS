@@ -1,5 +1,5 @@
 import { notify } from '../../../shared/utils/feedback';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BASE_URL } from '../../../shared/api/axios';
 import {
 	addTopicMember,
@@ -154,12 +154,6 @@ export function useTopicDrawer(topic: Topic) {
 		} finally {
 			setGrantingIds(new Set());
 		}
-	};
-
-	const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
-		const selected = Array.from(e.target.files ?? []);
-		setPendingFiles((prev) => [...prev, ...selected]);
-		e.target.value = '';
 	};
 
 	const removePending = (idx: number) =>
@@ -317,7 +311,6 @@ export function useTopicDrawer(topic: Topic) {
 		canGrantAccountsNoEmail,
 		handleGrantAccountsNoEmail,
 		handleGrantSingleMember,
-		handleFileSelect,
 		removePending,
 		handleUpload,
 		toggleSelect,

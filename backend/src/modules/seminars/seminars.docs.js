@@ -183,6 +183,35 @@
 
 /**
  * @swagger
+ * /seminars/cme-cycle-compliance:
+ *   get:
+ *     summary: Tiến độ đủ 120 giờ tín chỉ trong 05 năm liên tục của từng người hành nghề
+ *     tags: [Seminars]
+ *     description: >
+ *       Căn cứ Thông tư 32/2023/TT-BYT Điều 3, Luật KBCB 2023 Điều 27, 32. Chu kỳ (CME_CYCLE_YEARS, mặc định 5 năm)
+ *       tính từ ngày cấp giấy phép hành nghề (basis = license; cấp 15/03/2019 → chu kỳ hiện tại 15/03/2024 – 14/03/2029);
+ *       người chưa có ngày cấp tính theo N năm lịch gần nhất tới hết năm nay (basis = calendar). required = CME_MIN_HOURS
+ *       (mặc định 120). earned = giờ cme_records đã duyệt (theo activity_date) + seminar_participants đã cấp CME
+ *       (theo cme_issued_date) rơi trong chu kỳ; dòng không có ngày thì rơi về theo cột năm. Bỏ tài khoản khoa/phòng
+ *       dùng chung. status: met | on_track | at_risk (thiếu, còn ≤ 12 tháng) | overdue_window (thiếu, còn ≤ 60 ngày — mốc nộp hồ sơ gia hạn). basis = calendar (chưa có ngày cấp giấy phép): thiếu giờ luôn là at_risk vì chưa rõ hạn.
+ *       Khác /seminars/cme-compliance (theo từng năm, ngưỡng nhập tay ở cme_requirements).
+ *     parameters:
+ *       - { in: query, name: scope, schema: { type: string, enum: [licensed, all], default: licensed }, description: "licensed = chỉ người có hồ sơ giấy phép hành nghề; all = mọi nhân sự đang hoạt động" }
+ *       - { in: query, name: department_id, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: string }, description: "1 hoặc nhiều trạng thái cách nhau dấu phẩy, vd at_risk,overdue_window" }
+ *       - { in: query, name: search, schema: { type: string }, description: "Tên, số giấy phép hoặc mã nhân viên" }
+ *       - { in: query, name: sort, schema: { type: string, enum: [urgency, name], default: urgency } }
+ *       - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+ *       - { in: query, name: limit, schema: { type: integer, minimum: 0, maximum: 1000, default: 20 }, description: "0 = lấy tất cả" }
+ *     responses:
+ *       200:
+ *         description: "{ data: [{ id, full_name, staff_number, department_id, department_name, license_no, cycle_start, cycle_end, basis, required, earned, earned_undated, missing, days_left, status }], pagination: { page, limit, total }, summary: { total, met, on_track, at_risk, overdue_window }, meta: { today, cycle_years, required_hours, renewal_window_days, at_risk_months } }"
+ *       400:
+ *         description: Tham số không hợp lệ
+ */
+
+/**
+ * @swagger
  * /seminars/cme-personal/{userId}/export-excel:
  *   post:
  *     summary: Xuất phiếu theo dõi tín chỉ CME của 1 nhân sự (Excel, kèm tổng hợp 5 năm)

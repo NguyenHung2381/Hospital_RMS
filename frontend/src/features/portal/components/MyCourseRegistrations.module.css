@@ -10,6 +10,56 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
+.files {
+	display: flex;
+	flex-direction: column;
+	margin: var(--space-3) 0 0;
+	padding: 0;
+	list-style: none;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+}
+.fileRow {
+	display: grid;
+	grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--space-2) var(--space-3);
+	padding: var(--space-2) var(--space-3);
+}
+.fileRow + .fileRow {
+	border-top: 1px solid var(--color-gray-200);
+}
+.fileLabel {
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.fileOk,
+.fileMissing,
+.fileBad {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.fileOk {
+	color: var(--tone-green-fg);
+}
+.fileBad {
+	color: var(--tone-red-fg);
+}
+.fileActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--space-2);
+}
+@media (max-width: 640px) {
+	.fileRow {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.fileActions {
+		justify-content: flex-start;
+	}
+}
 .actions {
 	display: flex;
 	flex-wrap: wrap;

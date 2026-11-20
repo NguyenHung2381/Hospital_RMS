@@ -22,6 +22,7 @@ import {
 	type CmeComplianceRow,
 	type CmeRequirement,
 } from '../api/cmeRequirementApi';
+import CmeCycleView from '../components/CmeCycleView';
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
@@ -36,6 +37,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
 type TabKey = 'compliance' | 'requirements';
+type ViewMode = 'cycle' | 'year';
 
 const EMPTY_FORM = { department_id: '', required_credits: '', note: '' };
 
@@ -100,6 +102,8 @@ const requirementText = (r: CmeRequirement) => `${r.department_name ?? 'Toàn vi
 
 export default function CmeCompliance() {
 	const [year, setYear] = useState(CURRENT_YEAR);
+	const [view, setView] = useState<ViewMode>('cycle');
+	const [cycleYears, setCycleYears] = useState(5);
 	const [tab, setTab] = useState<TabKey>('compliance');
 	const [requirements, setRequirements] = useState<CmeRequirement[]>([]);
 	const [compliance, setCompliance] = useState<CmeComplianceRow[]>([]);
@@ -332,236 +336,275 @@ export default function CmeCompliance() {
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
 			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
 			headerActions={
-				<Button
-					variant='secondary'
-					icon={<DownloadSvg />}
-					onClick={openPersonModal}
-					title='Xuất báo cáo CME (Excel) của một nhân sự bất kỳ'
-				>
-					Xuất CME cá nhân
-				</Button>
+				// Xuất Excel là báo cáo theo năm — không áp dụng cho chế độ chu kỳ
+				view === 'year' ? (
+					<Button
+						variant='secondary'
+						icon={<DownloadSvg />}
+						onClick={openPersonModal}
+						title='Xuất báo cáo CME (Excel) của một nhân sự bất kỳ'
+					>
+						Xuất CME cá nhân
+					</Button>
+				) : undefined
 			}
 		>
-			{error && (
+			<div
+				className={styles.tabs}
+				role='tablist'
+				aria-label='Chế độ xem'
+			>
+				{(
+					[
+						{ key: 'cycle', label: `Chu kỳ ${cycleYears} năm` },
+						{ key: 'year', label: 'Theo năm' },
+					] as { key: ViewMode; label: string }[]
+				).map((v) => (
+					<button
+						key={v.key}
+						type='button'
+						role='tab'
+						aria-selected={view === v.key}
+						className={`${styles.tab} ${view === v.key ? styles.tabActive : ''}`}
+						onClick={() => setView(v.key)}
+					>
+						{v.label}
+					</button>
+				))}
+			</div>
+
+			{view === 'cycle' && (
+				<CmeCycleView
+					departments={departments}
+					onCycleYears={setCycleYears}
+				/>
+			)}
+
+			{view === 'year' && error && (
 				<div className={`${styles.noticeBox} ${styles.noticeWarn}`}>
 					<AlertSvg /> {error}
 				</div>
 			)}
 
-			<div className={styles.tabs}>
-				{(
-					[
-						{ key: 'compliance', label: `Nhân sự chưa đạt (${compliance.length})` },
-						{ key: 'requirements', label: `Cấu hình ngưỡng (${requirements.length})` },
-					] as { key: TabKey; label: string }[]
-				).map((t) => (
-					<button
-						key={t.key}
-						type='button'
-						className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
-						onClick={() => setTab(t.key)}
-					>
-						{t.label}
-					</button>
-				))}
-			</div>
-
-			{tab === 'compliance' && (
-				<div className={styles.tableCard}>
-					<div className={styles.tableHeader}>
-						<div className={styles.tableHeaderLeft}>
-							<span className={styles.tableTitle}>Nhân sự chưa đạt ngưỡng năm {year}</span>
-							<span className={styles.tableCount}>{compList.total} người</span>
-						</div>
-						<div className={styles.tableControls}>
-							{renderSearch(compList.search, compList.setSearch, 'Tìm theo họ tên, khoa/phòng...')}
-							{yearSelect}
-							<select
-								className={styles.filterSelect}
-								value={compDept}
-								onChange={(e) => setCompDept(e.target.value)}
-								title='Khoa / Phòng'
+			{view === 'year' && (
+				<>
+					<div className={styles.tabs}>
+						{(
+							[
+								{ key: 'compliance', label: `Nhân sự chưa đạt (${compliance.length})` },
+								{ key: 'requirements', label: `Cấu hình ngưỡng (${requirements.length})` },
+							] as { key: TabKey; label: string }[]
+						).map((t) => (
+							<button
+								key={t.key}
+								type='button'
+								className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+								onClick={() => setTab(t.key)}
 							>
-								<option value=''>Tất cả khoa/phòng</option>
-								{compDeptOptions.map((d) => (
-									<option
-										key={d.id}
-										value={d.id}
+								{t.label}
+							</button>
+						))}
+					</div>
+
+					{tab === 'compliance' && (
+						<div className={styles.tableCard}>
+							<div className={styles.tableHeader}>
+								<div className={styles.tableHeaderLeft}>
+									<span className={styles.tableTitle}>Nhân sự chưa đạt ngưỡng năm {year}</span>
+									<span className={styles.tableCount}>{compList.total} người</span>
+								</div>
+								<div className={styles.tableControls}>
+									{renderSearch(compList.search, compList.setSearch, 'Tìm theo họ tên, khoa/phòng...')}
+									{yearSelect}
+									<select
+										className={styles.filterSelect}
+										value={compDept}
+										onChange={(e) => setCompDept(e.target.value)}
+										title='Khoa / Phòng'
 									>
-										{d.name}
-									</option>
-								))}
-							</select>
-						</div>
-					</div>
+										<option value=''>Tất cả khoa/phòng</option>
+										{compDeptOptions.map((d) => (
+											<option
+												key={d.id}
+												value={d.id}
+											>
+												{d.name}
+											</option>
+										))}
+									</select>
+								</div>
+							</div>
 
-					<div className={styles.tableWrap}>
-						<table className={styles.table}>
-							<thead>
-								<tr>
-									<th className={tbl.thIdx}>STT</th>
-									<th>Họ tên</th>
-									<th>Khoa / Phòng</th>
-									<th>Đã đạt</th>
-									<th>Yêu cầu</th>
-									<th>Còn thiếu</th>
-									<th className={styles.thRight}>Thao tác</th>
-								</tr>
-							</thead>
-							<tbody>
-								{loading ? (
-									<SkeletonTable
-										rows={6}
-										cols={7}
-									/>
-								) : compList.total === 0 ? (
-									compList.search || compDept ? (
-										emptyRow(7, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
-									) : requirements.length === 0 ? (
-										emptyRow(
-											7,
-											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
-											'Thêm ngưỡng ở tab "Cấu hình ngưỡng" để hệ thống đối chiếu',
-										)
-									) : (
-										emptyRow(7, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
-									)
-								) : (
-									compList.paged.map((row, i) => (
-										<tr key={row.id}>
-											<td className={tbl.tdIdx}>{(compList.pagination.page - 1) * compList.pagination.rowsPerPage + i + 1}</td>
-											<td><span className={tbl.cellTitle}>{row.full_name}</span></td>
-											<td className={styles.muted}>{row.department_name ?? '—'}</td>
-											<td>{row.earned_credits}</td>
-											<td>{row.required_credits}</td>
-											<td>
-												<Badge tone='red'>
-													{(row.required_credits - row.earned_credits).toFixed(1)} tín chỉ
-												</Badge>
-											</td>
-											<td className={styles.tdRight}>
-												<div className={styles.actionBtns}>
-													<button
-														className={styles.actionBtn}
-														title='Xuất phiếu CME cá nhân (Excel)'
-														disabled={exportingId !== null}
-														onClick={() => exportPerson(row.id, row.full_name, year)}
-													>
-														{exportingId === row.id ? <span className={styles.spinner} /> : <DownloadSvg />}
-													</button>
-												</div>
-											</td>
+							<div className={styles.tableWrap}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th className={tbl.thIdx}>STT</th>
+											<th>Họ tên</th>
+											<th>Khoa / Phòng</th>
+											<th>Đã đạt</th>
+											<th>Yêu cầu</th>
+											<th>Còn thiếu</th>
+											<th className={styles.thRight}>Thao tác</th>
 										</tr>
-									))
-								)}
-							</tbody>
-						</table>
-					</div>
+									</thead>
+									<tbody>
+										{loading ? (
+											<SkeletonTable
+												rows={6}
+												cols={7}
+											/>
+										) : compList.total === 0 ? (
+											compList.search || compDept ? (
+												emptyRow(7, 'Không tìm thấy nhân sự phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
+											) : requirements.length === 0 ? (
+												emptyRow(
+													7,
+													`Chưa cấu hình ngưỡng CME cho năm ${year}`,
+													'Thêm ngưỡng ở tab "Cấu hình ngưỡng" để hệ thống đối chiếu',
+												)
+											) : (
+												emptyRow(7, 'Tất cả nhân sự đã đạt ngưỡng CME', undefined, true)
+											)
+										) : (
+											compList.paged.map((row, i) => (
+												<tr key={row.id}>
+													<td className={tbl.tdIdx}>{(compList.pagination.page - 1) * compList.pagination.rowsPerPage + i + 1}</td>
+													<td><span className={tbl.cellTitle}>{row.full_name}</span></td>
+													<td className={styles.muted}>{row.department_name ?? '—'}</td>
+													<td>{row.earned_credits}</td>
+													<td>{row.required_credits}</td>
+													<td>
+														<Badge tone='red'>
+															{(row.required_credits - row.earned_credits).toFixed(1)} tín chỉ
+														</Badge>
+													</td>
+													<td className={styles.tdRight}>
+														<div className={styles.actionBtns}>
+															<button
+																className={styles.actionBtn}
+																title='Xuất phiếu CME cá nhân (Excel)'
+																disabled={exportingId !== null}
+																onClick={() => exportPerson(row.id, row.full_name, year)}
+															>
+																{exportingId === row.id ? <span className={styles.spinner} /> : <DownloadSvg />}
+															</button>
+														</div>
+													</td>
+												</tr>
+											))
+										)}
+									</tbody>
+								</table>
+							</div>
 
-										<Pagination
-						{...compList.pagination}
-						itemLabel='nhân sự'
-					/>
-				</div>
-			)}
-
-			{tab === 'requirements' && (
-				<div className={styles.tableCard}>
-					<div className={styles.tableHeader}>
-						<div className={styles.tableHeaderLeft}>
-							<span className={styles.tableTitle}>Ngưỡng tín chỉ CME năm {year}</span>
-							<span className={styles.tableCount}>{reqList.total} ngưỡng</span>
+												<Pagination
+								{...compList.pagination}
+								itemLabel='nhân sự'
+							/>
 						</div>
-						<div className={styles.tableControls}>
-							{renderSearch(reqList.search, reqList.setSearch, 'Tìm theo khoa/phòng, ghi chú...')}
-							{yearSelect}
-							<select
-								className={styles.filterSelect}
-								value={reqScope}
-								onChange={(e) => setReqScope(e.target.value as typeof reqScope)}
-								title='Phạm vi áp dụng'
-							>
-								<option value=''>Mọi phạm vi</option>
-								<option value='hospital'>Toàn viện</option>
-								<option value='department'>Theo khoa/phòng</option>
-							</select>
-							<Button
-								size='sm'
-								icon={<PlusSvg />}
-								onClick={openCreate}
-							>
-								Thêm ngưỡng
-							</Button>
-						</div>
-					</div>
+					)}
 
-					<div className={styles.tableWrap}>
-						<table className={styles.table}>
-							<thead>
-								<tr>
-									<th className={tbl.thIdx}>STT</th>
-									<th>Phạm vi</th>
-									<th>Tín chỉ yêu cầu</th>
-									<th>Ghi chú</th>
-									<th className={styles.thRight}>Thao tác</th>
-								</tr>
-							</thead>
-							<tbody>
-								{loading ? (
-									<SkeletonTable
-										rows={4}
-										cols={5}
-									/>
-								) : reqList.total === 0 ? (
-									reqList.search || reqScope ? (
-										emptyRow(5, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
-									) : (
-										emptyRow(
-											5,
-											`Chưa cấu hình ngưỡng CME cho năm ${year}`,
-											'Bấm "Thêm ngưỡng" để đặt số tín chỉ tối thiểu cho toàn viện hoặc từng khoa',
-										)
-									)
-								) : (
-									reqList.paged.map((r, i) => (
-										<tr key={r.id}>
-											<td className={tbl.tdIdx}>{(reqList.pagination.page - 1) * reqList.pagination.rowsPerPage + i + 1}</td>
-											<td>{r.department_name ?? <Badge tone='blue'>Toàn viện</Badge>}</td>
-											<td>
-												<strong>{r.required_credits}</strong> tín chỉ
-											</td>
-											<td className={styles.muted}>{r.note || '—'}</td>
-											<td className={styles.tdRight}>
-												<RowActions>
-													<RowAction
-														title='Sửa ngưỡng'
-														disabled={saving}
-														onClick={() => openEdit(r)}
-													>
-														<EditSvg />
-													</RowAction>
-													<RowAction
-														title='Xóa ngưỡng'
-														danger
-														disabled={saving}
-														onClick={() => handleDelete(r)}
-													>
-														<TrashSvg />
-													</RowAction>
-												</RowActions>
-											</td>
+					{tab === 'requirements' && (
+						<div className={styles.tableCard}>
+							<div className={styles.tableHeader}>
+								<div className={styles.tableHeaderLeft}>
+									<span className={styles.tableTitle}>Ngưỡng tín chỉ CME năm {year}</span>
+									<span className={styles.tableCount}>{reqList.total} ngưỡng</span>
+								</div>
+								<div className={styles.tableControls}>
+									{renderSearch(reqList.search, reqList.setSearch, 'Tìm theo khoa/phòng, ghi chú...')}
+									{yearSelect}
+									<select
+										className={styles.filterSelect}
+										value={reqScope}
+										onChange={(e) => setReqScope(e.target.value as typeof reqScope)}
+										title='Phạm vi áp dụng'
+									>
+										<option value=''>Mọi phạm vi</option>
+										<option value='hospital'>Toàn viện</option>
+										<option value='department'>Theo khoa/phòng</option>
+									</select>
+									<Button
+										size='sm'
+										icon={<PlusSvg />}
+										onClick={openCreate}
+									>
+										Thêm ngưỡng
+									</Button>
+								</div>
+							</div>
+
+							<div className={styles.tableWrap}>
+								<table className={styles.table}>
+									<thead>
+										<tr>
+											<th className={tbl.thIdx}>STT</th>
+											<th>Phạm vi</th>
+											<th>Tín chỉ yêu cầu</th>
+											<th>Ghi chú</th>
+											<th className={styles.thRight}>Thao tác</th>
 										</tr>
-									))
-								)}
-							</tbody>
-						</table>
-					</div>
+									</thead>
+									<tbody>
+										{loading ? (
+											<SkeletonTable
+												rows={4}
+												cols={5}
+											/>
+										) : reqList.total === 0 ? (
+											reqList.search || reqScope ? (
+												emptyRow(5, 'Không tìm thấy ngưỡng phù hợp', 'Thử đổi từ khóa hoặc bộ lọc')
+											) : (
+												emptyRow(
+													5,
+													`Chưa cấu hình ngưỡng CME cho năm ${year}`,
+													'Bấm "Thêm ngưỡng" để đặt số tín chỉ tối thiểu cho toàn viện hoặc từng khoa',
+												)
+											)
+										) : (
+											reqList.paged.map((r, i) => (
+												<tr key={r.id}>
+													<td className={tbl.tdIdx}>{(reqList.pagination.page - 1) * reqList.pagination.rowsPerPage + i + 1}</td>
+													<td>{r.department_name ?? <Badge tone='blue'>Toàn viện</Badge>}</td>
+													<td>
+														<strong>{r.required_credits}</strong> tín chỉ
+													</td>
+													<td className={styles.muted}>{r.note || '—'}</td>
+													<td className={styles.tdRight}>
+														<RowActions>
+															<RowAction
+																title='Sửa ngưỡng'
+																disabled={saving}
+																onClick={() => openEdit(r)}
+															>
+																<EditSvg />
+															</RowAction>
+															<RowAction
+																title='Xóa ngưỡng'
+																danger
+																disabled={saving}
+																onClick={() => handleDelete(r)}
+															>
+																<TrashSvg />
+															</RowAction>
+														</RowActions>
+													</td>
+												</tr>
+											))
+										)}
+									</tbody>
+								</table>
+							</div>
 
-										<Pagination
-						{...reqList.pagination}
-						itemLabel='ngưỡng'
-					/>
-				</div>
+												<Pagination
+								{...reqList.pagination}
+								itemLabel='ngưỡng'
+							/>
+						</div>
+					)}
+
+				</>
 			)}
 
 			<Modal

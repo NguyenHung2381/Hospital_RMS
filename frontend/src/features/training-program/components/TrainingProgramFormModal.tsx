@@ -130,6 +130,14 @@ export function TrainingProgramFormModal({
 		return parts.length ? parts.join(' + ') : 'không thi phần nào';
 	})();
 
+	// Giờ tín chỉ để trống ⇒ hệ thống lấy tổng LT + TH; khác tổng thì chỉ cảnh báo (không chặn lưu)
+	const theoryPracticeTotal = (Number(form.theory_hours) || 0) + (Number(form.practice_hours) || 0);
+	const creditMismatch =
+		form.credit_hours.trim() !== '' &&
+		Number(form.credit_hours) > 0 &&
+		theoryPracticeTotal > 0 &&
+		Number(form.credit_hours) !== theoryPracticeTotal;
+
 	const validate = () => {
 		const err: Record<string, string> = cfg.validate({ ...form }, custom, { mode: mode === 'add' ? 'create' : 'edit' });
 		if (!form.code.trim()) err.code ||= 'Vui lòng nhập mã chương trình';
@@ -266,9 +274,18 @@ export function TrainingProgramFormModal({
 					cfg={cfg}
 					name='credit_hours'
 					label='Số giờ tín chỉ'
+					hint='Để trống = số tiết lý thuyết + thực hành (1 tiết = 1 giờ tín chỉ, Thông tư 32/2023/TT-BYT)'
 					error={errors.credit_hours}
 				>
-					{numberInput('credit_hours', 'VD: 24', '0.5')}
+					<>
+						{numberInput('credit_hours', String(theoryPracticeTotal), '0.5')}
+						{creditMismatch && (
+							<div className={styles.creditWarn}>
+								Khác số tiết của chương trình ({theoryPracticeTotal} tiết). Theo Thông tư 32/2023/TT-BYT, 1 tiết = 1 giờ
+								tín chỉ.
+							</div>
+						)}
+					</>
 				</CfgField>
 				<CfgField
 					cfg={cfg}

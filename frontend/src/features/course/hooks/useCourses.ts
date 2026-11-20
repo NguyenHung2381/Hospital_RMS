@@ -138,9 +138,15 @@ export function useCourses(trainingTypeId = '') {
 			if (!ids.length) return;
 			setLoading(true);
 			try {
-				const { okIds, failedCount } = await runBulk(ids, deleteCourse);
+				const { okIds, failedCount, results } = await runBulk(ids, deleteCourse);
 				setModal(null);
-				showToast(failedCount ? 'error' : 'success', bulkToast('xóa', okIds.size, failedCount, 'khóa học'));
+				// Kèm lý do của lỗi đầu tiên (vd khóa đã cấp giấy chứng nhận nên không xóa được)
+				const firstError = results.find((r) => r.status === 'rejected');
+				const reason = firstError?.reason instanceof Error ? ` — ${firstError.reason.message}` : '';
+				showToast(
+					failedCount ? 'error' : 'success',
+					bulkToast('xóa', okIds.size, failedCount, 'khóa học') + reason,
+				);
 				refreshData();
 			} finally {
 				setLoading(false);

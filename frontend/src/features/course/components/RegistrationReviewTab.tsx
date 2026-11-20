@@ -8,15 +8,15 @@ import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import { cx } from '@/shared/utils/cx';
 import {
-	CHECK_LABEL,
 	GENDER_LABEL,
 	REGISTRATION_FIELD_GROUPS,
 	REGISTRATION_FIELD_LABELS,
+	REGISTRATION_FILE_LABELS,
+	REVIEW_STATUS_LABEL,
+	REVIEW_STATUS_TONE,
 	downloadRegistrationApplication,
 	getEnrollmentRegistration,
 	registrationApplicationUrl,
-	setRegistrationChecks,
-	type RegistrationCheckKey,
 	type RegistrationReview,
 } from '../api/registrationApi';
 import styles from './RegistrationReviewTab.module.css';
@@ -24,7 +24,7 @@ import cs from '../pages/Courses.module.css';
 
 const DATE_KEYS = new Set(['dob', 'national_id_issued_date']);
 
-// Mốc thời gian của bản khai (gửi, cam kết, xác minh email, đối chiếu, nộp hồ sơ) lưu GIỜ VN,
+// Mốc thời gian của bản khai (gửi, cam kết, xác minh email, nộp hồ sơ) lưu GIỜ VN,
 // driver gắn nhãn UTC (backend/README.md, mục Giờ) ⇒ đọc theo múi UTC. formatDateTimeVN dành
 // cho cột lưu giờ UTC thật — dùng ở đây sẽ cộng thêm 7 giờ.
 const formatStamp = (iso: string | null | undefined): string => {
@@ -52,29 +52,20 @@ const show = (r: RegistrationReview, key: string, value: unknown): string => {
 	return String(value);
 };
 
-/** Mốc đối chiếu hiện theo đối tượng: ngoại viện CCCD + văn bằng; nội viện tờ trình. */
-const checkKeysFor = (r: RegistrationReview): RegistrationCheckKey[] =>
-	r.source === 'internal' ? ['proposal_checked'] : ['id_checked', 'degree_checked'];
-
 // Tab "Đơn đăng ký" của hồ sơ ghi danh: dữ liệu người đăng ký đã khai (nhóm như trên form),
-// chỗ lệch với hồ sơ học viên, 3 mốc đối chiếu (lưu ngay khi đánh dấu), hồ sơ PDF nộp bổ sung,
-// Đơn đăng ký (.docx). Đủ mốc mới duyệt được (backend chặn — TRAINING_REGISTRATION_REQUIRE_CHECKS).
+// chỗ lệch với hồ sơ học viên, hồ sơ đính kèm (từng loại), Đơn đăng ký (.docx). Chỉ để xem —
+// duyệt / từ chối ở danh sách ghi danh, không có điều kiện nào chặn việc duyệt.
 export function RegistrationReviewTab({
 	enrollmentId,
 	traineeName,
-	onChanged,
 }: {
 	enrollmentId: string;
 	traineeName: string;
-	/** Gọi sau khi đổi mốc đối chiếu — nạp lại danh sách để cập nhật "sẵn sàng duyệt". */
-	onChanged: () => void;
 }) {
 	const perm = usePermission();
-	const canEdit = perm.has('courses:update');
 	const canSensitive = perm.has('trainees:read_sensitive');
 	const [data, setData] = useState<RegistrationReview | null>(null);
 	const [loadError, setLoadError] = useState('');
-	const [saving, setSaving] = useState<RegistrationCheckKey | null>(null);
 	const [downloading, setDownloading] = useState(false);
 	const [viewer, setViewer] = useState<{ url: string; name: string; isWord: boolean } | null>(null);
 
@@ -95,19 +86,6 @@ export function RegistrationReviewTab({
 	if (loadError) return <div className={cs.errorBanner}>{loadError}</div>;
 	if (!data) return <InlineLoading />;
 
-	const toggle = async (key: RegistrationCheckKey, value: boolean) => {
-		setSaving(key);
-		try {
-			setData(await setRegistrationChecks(enrollmentId, { [key]: value }));
-			showToast('success', value ? `${CHECK_LABEL[key]} — đã lưu` : 'Đã bỏ mốc đối chiếu');
-			onChanged();
-		} catch (err) {
-			showToast('error', err instanceof Error ? err.message : 'Không lưu được mốc đối chiếu');
-		} finally {
-			setSaving(null);
-		}
-	};
-
 	const download = async () => {
 		setDownloading(true);
 		try {
@@ -121,7 +99,6 @@ export function RegistrationReviewTab({
 
 	const diffs = new Map(data.diffs.map((d) => [d.key, d]));
 	const invoice = Object.entries(data.invoice).filter(([, v]) => v);
-	const blocked = data.require_checks && data.missing.length > 0;
 
 	return (
 		<div className={styles.wrap}>
@@ -134,78 +111,69 @@ export function RegistrationReviewTab({
 				{data.channel === 'portal' && <span>Qua cổng nhân viên</span>}
 			</div>
 
-			{!data.require_checks ? (
-				<div className={styles.note}>Cấu hình hệ thống đang tắt yêu cầu đối chiếu trước khi duyệt — các mốc dưới đây chỉ để theo dõi.</div>
-			) : blocked ? (
-				<div className={cx(styles.note, styles.noteWarn)}>Chưa duyệt được — còn thiếu: {data.missing.join(', ')}.</div>
-			) : (
-				<div className={cx(styles.note, styles.noteOk)}>Đã đủ điều kiện duyệt.</div>
-			)}
-
 			<section className={styles.section}>
-				<h3 className={styles.sectionTitle}>Đối chiếu giấy tờ</h3>
-				<div className={styles.checks}>
-					{checkKeysFor(data).map((key) => {
-						const info = data.checks[key];
-						return (
-							<div
-								key={key}
-								className={styles.checkRow}
-							>
-								<label className={styles.checkLabel}>
-									<input
-										type='checkbox'
-										checked={!!info}
-										disabled={!canEdit || saving !== null}
-										onChange={(e) => void toggle(key, e.target.checked)}
-									/>
-									{CHECK_LABEL[key]}
-								</label>
-								<span className={styles.checkMeta}>
-									{saving === key
-										? 'Đang lưu…'
-										: info
-											? `${info.by_name ?? info.by ?? 'Không rõ người đánh dấu'} · ${formatStamp(info.at)}`
-											: 'Chưa đối chiếu'}
+				<h3 className={styles.sectionTitle}>Hồ sơ đính kèm</h3>
+				{data.files_missing.length > 0 && (
+					<div className={cx(styles.note, styles.noteWarn)}>
+						Còn thiếu:{' '}
+						{data.files_missing
+							.map((k) => data.files.find((f) => f.kind === k)?.label ?? REGISTRATION_FILE_LABELS[k] ?? k)
+							.join(', ')}
+						.
+					</div>
+				)}
+				<ul className={styles.fileList}>
+					{data.files.map((f) => (
+						<li
+							key={f.kind}
+							className={styles.fileRow}
+						>
+							<span className={styles.fileLabel}>
+								{f.label}
+								{f.legacy && ' (nộp theo cách cũ)'}
+							</span>
+							{f.uploaded_at ? (
+								<span className={styles.meta}>
+									{f.file_name}
+									{` · nộp ${formatStamp(f.uploaded_at)}`}
 								</span>
-							</div>
-						);
-					})}
-					{(data.source === 'internal' || data.dossier) && (
-						<div className={styles.checkRow}>
-							<span className={styles.checkLabel}>Hồ sơ nộp bổ sung (đơn + tờ trình đã duyệt):</span>
-							{data.dossier ? (
-								<>
-									<span className={styles.checkMeta}>
-										{data.dossier.file_name}
-										{data.dossier.uploaded_at && ` · nộp ${formatStamp(data.dossier.uploaded_at)}`}
-									</span>
-									{data.dossier.file_url && (
-										<button
-											type='button'
-											className={cs.linkBtn}
-											onClick={() =>
-												setViewer({ url: data.dossier!.file_url!, name: data.dossier!.file_name, isWord: false })
-											}
-										>
-											Xem PDF
-										</button>
-									)}
-								</>
 							) : (
-								<span className={styles.checkMeta}>Người đăng ký chưa nộp</span>
+								<span className={cx(styles.meta, styles.empty)}>Chưa nộp</span>
 							)}
-						</div>
-					)}
-				</div>
-				{!canEdit && <div className={cs.hint}>Cần quyền sửa khóa học để đánh dấu đối chiếu.</div>}
-				{canEdit && <div className={cs.hint}>Mỗi mốc được lưu ngay khi đánh dấu — không cần bấm "Lưu hồ sơ".</div>}
+							{f.review_status && (
+								<Badge tone={REVIEW_STATUS_TONE[f.review_status]}>{REVIEW_STATUS_LABEL[f.review_status]}</Badge>
+							)}
+							{f.file_url && (
+								<button
+									type='button'
+									className={cs.linkBtn}
+									onClick={() => setViewer({ url: f.file_url!, name: `${f.label} — ${traineeName}`, isWord: false })}
+								>
+									Xem
+								</button>
+							)}
+						</li>
+					))}
+				</ul>
+				{!canSensitive && data.files.some((f) => f.uploaded_at) && (
+					<p className={cx(cs.hint, styles.fileHint)}>Cần quyền xem dữ liệu nhạy cảm của học viên để xem file.</p>
+				)}
+				{data.source === 'external' && (
+					<p className={cx(cs.hint, styles.fileHint)}>
+						Các file này cũng nằm ở tab Hồ sơ của học viên — duyệt / từ chối từng file ở đó.
+					</p>
+				)}
+				{data.source === 'external' && data.files.every((f) => !f.uploaded_at) && (
+					<div className={styles.note}>
+						Đơn gửi trước khi áp dụng hồ sơ bắt buộc — file (nếu có) nằm ở tab Hồ sơ của học viên.
+					</div>
+				)}
 			</section>
 
 			{data.diffs.length > 0 && (
 				<div className={cx(styles.note, styles.noteWarn)}>
-					{data.diffs.length} trường khác với hồ sơ học viên đang lưu (tô màu bên dưới). Đối chiếu giấy tờ rồi sửa hồ sơ học viên nếu cần —
-					hệ thống không tự ghi đè hồ sơ bằng dữ liệu form.
+					{data.diffs.length} trường khác với hồ sơ học viên đang lưu (tô màu bên dưới). Kiểm tra rồi sửa hồ sơ học viên nếu cần — hệ
+					thống không tự ghi đè hồ sơ bằng dữ liệu form.
 				</div>
 			)}
 
@@ -265,14 +233,14 @@ export function RegistrationReviewTab({
 						<dt>Email đã xác minh</dt>
 						<dd>
 							{data.verified_email ?? <span className={styles.empty}>Không xác minh (cấu hình tắt OTP)</span>}
-							{data.email_verified_at && <span className={styles.checkMeta}> · {formatStamp(data.email_verified_at)}</span>}
+							{data.email_verified_at && <span className={styles.meta}> · {formatStamp(data.email_verified_at)}</span>}
 						</dd>
 					</div>
 					<div className={styles.field}>
 						<dt>Cam kết nội quy / thông tin đúng sự thật</dt>
 						<dd>
 							{data.rules_accepted_at ? `Đã cam kết ${formatStamp(data.rules_accepted_at)}` : 'Chưa ghi nhận'}
-							{data.rules_version && <span className={styles.checkMeta}> · nội quy bản {data.rules_version}</span>}
+							{data.rules_version && <span className={styles.meta}> · nội quy bản {data.rules_version}</span>}
 						</dd>
 					</div>
 				</dl>
@@ -300,7 +268,9 @@ export function RegistrationReviewTab({
 						</button>
 					</>
 				) : (
-					<span className={cs.hint}>Đơn và hồ sơ PDF có số CCCD — cần quyền xem dữ liệu nhạy cảm của học viên để xem / tải.</span>
+					<span className={cs.hint}>
+						Đơn và hồ sơ đính kèm có số CCCD — cần quyền xem dữ liệu nhạy cảm của học viên để xem / tải.
+					</span>
 				)}
 			</div>
 

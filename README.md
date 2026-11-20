@@ -150,6 +150,8 @@ docker compose down                  # dừng, giữ volume
 npm run migrate -- status            # (ở thư mục gốc) chạy lệnh migrate trong container backend
 ```
 
+`npm run migrate` ở thư mục gốc (`scripts/migrate-dev.js`) luôn chạy bằng role migration `rms_migrate`. Khi `backend/.env` dùng role khác (vd `rms_app`, không có quyền tạo bảng), script lấy mật khẩu `rms_migrate` từ `MIGRATION_DB_PASSWORD` hoặc file pgpass trên máy host rồi truyền vào container cho riêng lệnh đó; không tìm thấy thì chạy bằng role trong `backend/.env`.
+
 | Địa chỉ | Nội dung |
 |---|---|
 | `http://localhost:5173` | Giao diện web |

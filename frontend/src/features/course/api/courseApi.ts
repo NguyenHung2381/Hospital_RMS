@@ -375,12 +375,16 @@ export const retakeGrade = (enrollmentId: string, part: GradePart) =>
 export const getGradeHistory = (enrollmentId: string) =>
 	apiClient.get<GradeHistoryItem[]>(`/courses/enrollments/${enrollmentId}/grades/history`);
 export const issueCertificatesBulk = (courseId: string, expiryDate?: string) =>
-	apiClient.post<{ issued: number }>(`/courses/${courseId}/certificates/bulk`, { expiry_date: expiryDate || null });
+	apiClient.post<{ issued: number; cme_failed: number }>(`/courses/${courseId}/certificates/bulk`, {
+		expiry_date: expiryDate || null,
+	});
 
-/** Ghi lại CME tự động của khóa (courseCmeService) — null = không chạy (công tắc tắt / điểm chưa khóa). */
+/** Ghi lại CME tự động của khóa (courseCmeService) — null = không chạy (công tắc tắt / điểm chưa khóa).
+ *  lecturers_pending = true: dòng CME giảng viên đang chờ người quản lý CME duyệt, chưa được cộng. */
 export interface CourseCmeSyncResult {
 	trainees: number | null;
 	lecturers: number | null;
+	lecturers_pending: boolean;
 	trainee_enabled: boolean;
 	lecturer_enabled: boolean;
 	grades_locked: boolean;
@@ -393,14 +397,17 @@ export const getCertificates = (courseId: string) =>
 	apiClient.get<Certificate[]>(`/courses/${courseId}/certificates`);
 
 export const issueCertificate = (enrollmentId: string, expiryDate?: string) =>
-	apiClient.post<{ id: string; cert_no: string }>('/courses/certificates', {
+	apiClient.post<{ id: string; cert_no: string; cme_error: string | null }>('/courses/certificates', {
 		enrollment_id: enrollmentId,
 		expiry_date: expiryDate || null,
 	});
 
-export const removeCertificate = (certId: string) => apiClient.delete<null>(`/courses/certificates/${certId}`);
+export const removeCertificate = (certId: string) =>
+	apiClient.delete<{ cme_error: string | null }>(`/courses/certificates/${certId}`);
 export const revokeCertificate = (certId: string, reason?: string) =>
-	apiClient.patch<null>(`/courses/certificates/${certId}/revoke`, { reason: reason || null });
+	apiClient.patch<{ cme_error: string | null }>(`/courses/certificates/${certId}/revoke`, {
+		reason: reason || null,
+	});
 
 /** Người chờ từ đợt trước (nội viện, cùng chương trình) — gợi ý ở tab Học viên của đợt mới. */
 export interface WaitlistCandidate {

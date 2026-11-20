@@ -283,10 +283,6 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
-	// Lượt ghi danh có bản khai: chưa đủ mốc đối chiếu thì chưa duyệt được (quyết định 6).
-	// Đã duyệt rồi (duyệt lại không đổi gì) thì không chặn; từ chối không bao giờ bị chặn.
-	if (decision === 'approved' && row.status !== 'approved')
-		await approvalGate.assertApprovable(enrollmentId);
 	// Duyệt hồ sơ cũ (ghi danh trước khi người đó được phân công giảng dạy) cũng phải chặn.
 	if (decision === 'approved') await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
 
@@ -370,24 +366,14 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 	};
 };
 
-// Lỗi ở 1 đăng ký không dừng cả lô. Đăng ký chưa đủ mốc đối chiếu được đánh dấu
-// skipped + missing để giao diện liệt kê "bỏ qua vì còn thiếu …".
+// Lỗi ở 1 đăng ký không dừng cả lô.
 const bulkDecideEnrollments = async (ids, decision, actorId, note) => {
 	const results = [];
 	for (const id of ids) {
 		try {
 			results.push(await decideEnrollment(id, decision, actorId, note));
 		} catch (err) {
-			results.push(
-				err.code === approvalGate.CHECKS_MISSING
-					? {
-							id,
-							error: err.message,
-							skipped: true,
-							missing: (err.missing ?? []).map((m) => m.label),
-						}
-					: { id, error: err.message },
-			);
+			results.push({ id, error: err.message });
 		}
 	}
 	return results;
@@ -401,12 +387,21 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
     SELECT e.program_id, e.course_id, e.status, c.training_type_id, c.is_rolling
     FROM course_enrollments e JOIN courses c ON c.id = e.course_id WHERE e.id = @id`);
+	// Đã cấp giấy chứng nhận (còn hiệu lực hay đã thu hồi) thì không xóa — khóa ngoại sẽ xóa
+	// theo giấy mà CME tự động vẫn còn, và mất hồ sơ (TT 32/2023 Điều 9.4). Kiểm ngay trong
+	// câu DELETE; 0 dòng vì có giấy ⇒ ném 409, transaction rollback (kể cả điểm danh đã xóa).
 	await withTransaction(async (tx) => {
-		for (const stmt of [
-			'DELETE FROM attendance WHERE enrollment_id = @id',
-			'DELETE FROM course_enrollments WHERE id = @id',
-		])
-			await tx.request().input('id', sql.VarChar(20), enrollmentId).query(stmt);
+		const run = (text) => tx.request().input('id', sql.VarChar(20), enrollmentId).query(text);
+		await run('DELETE FROM attendance WHERE enrollment_id = @id');
+		const del = await run(`DELETE FROM course_enrollments WHERE id = @id
+      AND NOT EXISTS (SELECT 1 FROM certificates ce WHERE ce.enrollment_id = @id)`);
+		if (del.rowsAffected[0]) return;
+		const cert = await run('SELECT 1 AS x FROM certificates WHERE enrollment_id = @id');
+		if (cert.recordset[0])
+			throw httpError(
+				409,
+				'Học viên đã được cấp giấy chứng nhận, không thể xóa lượt ghi danh. Hãy thu hồi giấy chứng nhận thay vì xóa.',
+			);
 	});
 	await formCustomValueService.remove('course_registration', enrollmentId);
 	await formCustomValueService.remove('enrollment', enrollmentId);

@@ -230,6 +230,57 @@ export const importProgramCatalog = (file: File, dryRun: boolean) => {
 	return apiClient.postForm<CatalogImportResult>('/training-programs/import-catalog', form);
 };
 
+// ─── Nhập giảng viên giảng dạy từng bài của chương trình từ Excel ──────────
+export interface LessonLecturerImportPerson {
+	name: string;
+	degree: string | null;
+	/** 'existing' = đã có trong danh mục Giảng viên · 'new' = sẽ tạo · 'error' = không xác định được */
+	status: 'existing' | 'new' | 'error';
+	/** Giảng viên mới: có khớp được nhân sự để gắn tài khoản không. */
+	has_account?: boolean;
+	note: string | null;
+}
+export interface LessonLecturerImportRow {
+	row: number;
+	lesson_id: string;
+	code: string | null;
+	title: string;
+	/** set = đặt lại giảng viên · clear = gỡ hết · unchanged = giống hiện tại · skipped = bỏ qua (xem cảnh báo) */
+	status: 'set' | 'clear' | 'unchanged' | 'skipped';
+	main: LessonLecturerImportPerson | null;
+	assistants: LessonLecturerImportPerson[];
+	current_count: number;
+}
+export interface LessonLecturerImportResult {
+	dry_run: boolean;
+	summary: {
+		lessons_total: number;
+		lessons_set: number;
+		lessons_cleared: number;
+		lessons_unchanged: number;
+		lessons_skipped: number;
+		lecturers_new: number;
+		lecturers_linked: number;
+	};
+	lessons: LessonLecturerImportRow[];
+	lecturers_created?: number;
+	warnings: string[];
+}
+
+export const importLessonLecturers = (programId: string, file: File, dryRun: boolean) => {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('dry_run', dryRun ? '1' : '0');
+	return apiClient.postForm<LessonLecturerImportResult>(
+		`/training-programs/${programId}/lessons/lecturers/import`,
+		form,
+	);
+};
+
+/** File mẫu .xlsx điền sẵn các bài của chương trình và giảng viên đang gán. */
+export const downloadLessonLecturerTemplate = (programId: string) =>
+	apiClient.postBlob(`/training-programs/${programId}/lessons/lecturers/template`, {});
+
 // ─── Kết quả học tập theo chương trình (view chỉ-đọc) ──────────────────────
 export const getProgramResults = (programId: string) =>
 	apiClient.get<ProgramResultRow[]>(`/training-programs/${programId}/results`);

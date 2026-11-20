@@ -38,12 +38,20 @@ const [precheck, multerMw, verify] = secureUpload(instance, { quota: false }).ar
 
 // File tạm chưa được service chuyển đi (lỗi validate, sai captcha, honeypot,
 // lỗi nghiệp vụ...) ⇒ xóa khi trả response. File đã chuyển thì unlink lỗi ENOENT, bỏ qua.
+// Nhận cả req.file (single), req.files dạng mảng (array) lẫn dạng object (fields).
+const tmpFiles = (req) => {
+	if (req.file) return [req.file];
+	if (Array.isArray(req.files)) return req.files;
+	if (req.files && typeof req.files === 'object') return Object.values(req.files).flat();
+	return [];
+};
+
 const cleanupTmp = (req, res, next) => {
 	let done = false;
 	const cleanup = () => {
 		if (done) return;
 		done = true;
-		for (const f of Array.isArray(req.files) ? req.files : []) {
+		for (const f of tmpFiles(req)) {
 			if (f.path) fs.promises.unlink(f.path).catch(() => {});
 		}
 	};
@@ -70,4 +78,11 @@ const parseDataField = (req, _res, next) => {
 
 const publicUpload = [cleanupTmp, precheck, multerMw, verify, parseDataField];
 
-module.exports = { publicUpload, moveUploadedFiles, UPLOADS_ROOT, MAX_FILES };
+module.exports = {
+	publicUpload,
+	cleanupTmp,
+	parseDataField,
+	moveUploadedFiles,
+	UPLOADS_ROOT,
+	MAX_FILES,
+};
