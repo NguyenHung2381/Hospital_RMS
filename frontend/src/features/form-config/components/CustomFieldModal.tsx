@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button, Modal } from '../../../shared/components';
 import { FormField } from '../../../shared/components/Input/FormField';
 import { Toggle } from '../../../shared/components/Input/Toggle';
@@ -60,6 +60,11 @@ export function CustomFieldModal({
 }) {
 	const [f, setF] = useState<CustomFieldDef>(initial ?? { key: '', label: '', type: 'text', required: false });
 	const [error, setError] = useState('');
+	const labelRef = useRef<HTMLInputElement>(null);
+	// Đưa con trỏ vào ô tên trường khi mở (không dùng autoFocus để Modal còn nhớ chỗ trả focus khi đóng)
+	useEffect(() => {
+		labelRef.current?.focus();
+	}, []);
 	const set = (patch: Partial<CustomFieldDef>) => setF((x) => ({ ...x, ...patch }));
 	const hasOptions = f.type === 'select' || f.type === 'multiselect';
 	const options: FieldOption[] = f.options ?? [];
@@ -139,12 +144,12 @@ export function CustomFieldModal({
 				>
 					<input
 						id='cf-label'
+						ref={labelRef}
 						className={m.formInput}
 						value={f.label}
 						maxLength={200}
 						placeholder='vd: Mã ORCID chủ nhiệm'
 						onChange={(e) => set({ label: e.target.value })}
-						autoFocus
 					/>
 				</FormField>
 				<FormField
@@ -190,6 +195,7 @@ export function CustomFieldModal({
 								key={v.key}
 								type='button'
 								className={cx(s.variantChip, on && s.variantChipOn)}
+								aria-pressed={on}
 								onClick={() => {
 									const next = on ? variants.filter((x) => x !== v.key) : [...variants, v.key];
 									if (next.length) set({ variants: next });
@@ -226,6 +232,7 @@ export function CustomFieldModal({
 									className={m.formInput}
 									value={o.label}
 									maxLength={200}
+									aria-label={`Lựa chọn ${i + 1}`}
 									placeholder={`Lựa chọn ${i + 1}`}
 									onChange={(e) => setOption(i, e.target.value)}
 								/>
@@ -233,6 +240,7 @@ export function CustomFieldModal({
 									type='button'
 									className={s.iconBtn}
 									title='Xóa lựa chọn'
+									aria-label={`Xóa lựa chọn ${i + 1}`}
 									onClick={() => set({ options: options.filter((_, j) => j !== i) })}
 								>
 									✕

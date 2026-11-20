@@ -74,6 +74,7 @@ export function FormPreview({ form, draft }: { form: FormDefinition; draft: Form
 						key={v.key}
 						type='button'
 						className={cx(s.variantChip, v.key === variant && s.variantChipOn)}
+						aria-pressed={v.key === variant}
 						onClick={() => {
 							setVariant(v.key);
 							setErrors(null);

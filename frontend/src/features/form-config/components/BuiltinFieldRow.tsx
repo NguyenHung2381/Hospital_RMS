@@ -86,6 +86,7 @@ export function BuiltinFieldRow({
 								key={v.key}
 								type='button'
 								className={cx(s.variantChip, on && s.variantChipOn)}
+								aria-pressed={on}
 								disabled={locked}
 								title={
 									locked
@@ -108,6 +109,7 @@ export function BuiltinFieldRow({
 						className={s.reqSelect}
 						value={ov.required === undefined ? '' : ov.required ? '1' : '0'}
 						disabled={allHidden}
+						aria-label={`Bắt buộc nhập: ${ov.label || field.label}`}
 						onChange={(e) => set({ required: e.target.value === '' ? undefined : e.target.value === '1' })}
 						title='Bắt buộc nhập'
 					>
@@ -125,6 +127,7 @@ export function BuiltinFieldRow({
 							disabled={lockRequiredAll || allHidden}
 							onChange={() => set({ required: required === defaultRequired ? !required : undefined })}
 							title='Bắt buộc nhập'
+							label={`Bắt buộc nhập: ${ov.label || field.label}`}
 						/>
 						<span>Bắt buộc</span>
 					</label>
@@ -133,6 +136,7 @@ export function BuiltinFieldRow({
 					type='button'
 					className={cx(s.expandBtn, open && s.expandBtnOn)}
 					onClick={() => setOpen((o) => !o)}
+					aria-expanded={open}
 				>
 					{open ? 'Thu gọn' : 'Tùy chỉnh'}
 				</button>
