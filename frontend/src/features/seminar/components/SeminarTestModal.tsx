@@ -144,6 +144,7 @@ export function SeminarTestModal({
 				footer={
 					<>
 						<button
+							type='button'
 							className={styles.btnCancel}
 							onClick={onClose}
 							disabled={saving}
@@ -151,6 +152,7 @@ export function SeminarTestModal({
 							Hủy
 						</button>
 						<button
+							type='button'
 							className={styles.btnPrimary}
 							onClick={() => void save()}
 							disabled={saving}
@@ -318,6 +320,7 @@ export function SeminarTestModal({
 								rows={2}
 								value={q.q}
 								onChange={(e) => patch(i, { q: e.target.value })}
+								aria-label={`Nội dung câu hỏi ${i + 1}`}
 								placeholder='Nội dung câu hỏi'
 							/>
 							<div className={styles.testQSide}>
@@ -339,6 +342,7 @@ export function SeminarTestModal({
 									type='button'
 									className={`${styles.actionBtn} ${styles.danger}`}
 									title='Xóa câu hỏi'
+									aria-label={`Xóa câu hỏi ${i + 1}`}
 									onClick={() => setQuestions((qs) => qs.filter((_, k) => k !== i))}
 								>
 									<TrashSvg />
@@ -361,6 +365,7 @@ export function SeminarTestModal({
 										type='radio'
 										name={`answer-${i}`}
 										title='Đánh dấu là đáp án đúng'
+										aria-label={`Đáp án đúng của câu ${i + 1}: phương án ${String.fromCharCode(65 + j)}`}
 										checked={q.answer === j}
 										onChange={() => patch(i, { answer: j })}
 									/>
@@ -371,6 +376,7 @@ export function SeminarTestModal({
 										onChange={(e) =>
 											patch(i, { options: q.options.map((x, k) => (k === j ? e.target.value : x)) })
 										}
+										aria-label={`Phương án ${String.fromCharCode(65 + j)} của câu ${i + 1}`}
 										placeholder={`Phương án ${String.fromCharCode(65 + j)}`}
 									/>
 									{q.options.length > 2 && (
@@ -378,6 +384,7 @@ export function SeminarTestModal({
 											type='button'
 											className={styles.actionBtn}
 											title='Xóa phương án'
+											aria-label={`Xóa phương án ${String.fromCharCode(65 + j)} của câu ${i + 1}`}
 											onClick={() =>
 												patch(i, {
 													options: q.options.filter((_, k) => k !== j),

@@ -359,6 +359,11 @@
 	z-index: 20;
 }
 .acItem {
+	/* là <button> để bàn phím chọn được: reset để trông như mục danh sách */
+	display: block;
+	width: 100%;
+	text-align: left;
+	color: inherit;
 	padding: var(--space-2) var(--space-3);
 	font-size: var(--font-size-sm);
 	cursor: pointer;

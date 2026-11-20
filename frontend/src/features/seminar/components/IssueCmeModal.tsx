@@ -1,5 +1,5 @@
 import { Modal } from '@/shared/components';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { BadgeSvg, CheckSvg } from '@/assets/icons';
 import type { SeminarParticipant } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
@@ -25,6 +25,7 @@ export function IssueCmeModal({
 	const [year, setYear] = useState<string>(
 		defaultYear ? String(defaultYear) : String(new Date().getFullYear()),
 	);
+	const yearId = useId();
 	const pending = targets.filter((t) => t.cme_seq == null);
 	const from = (registerLastSeq ?? 0) + 1;
 	const to = from + pending.length - 1;
@@ -41,6 +42,7 @@ export function IssueCmeModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -48,6 +50,7 @@ export function IssueCmeModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => onConfirm(Number(year))}
 						disabled={loading || pending.length === 0 || !/^\d{4}$/.test(year)}
@@ -59,8 +62,9 @@ export function IssueCmeModal({
 			}
 		>
 			<div className={styles.formGroup} style={{ marginBottom: 12 }}>
-				<label className={styles.formLabel}>Năm chu trình CME</label>
+				<label className={styles.formLabel} htmlFor={yearId}>Năm chu trình CME</label>
 				<input
+					id={yearId}
 					className={styles.formInput}
 					value={year}
 					onChange={(e) => setYear(e.target.value)}

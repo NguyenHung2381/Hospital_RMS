@@ -58,12 +58,14 @@ export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
 						</div>
 						<div className={s.cardActions}>
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={actions.openRegQr}
 							>
 								<QrSvg /> Mã QR đăng ký
 							</button>
 							<button
+								type='button'
 								className={sem.btnPrimary}
 								onClick={actions.scanTickets}
 							>

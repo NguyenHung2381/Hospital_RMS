@@ -194,6 +194,7 @@ export default function SeminarDetail() {
 		return (
 			<AdminLayout pageTitle='Không tìm thấy'>
 				<button
+					type='button'
 					className={styles.backLink}
 					onClick={() => navigate(listPath)}
 				>
@@ -214,6 +215,7 @@ export default function SeminarDetail() {
 			pageSubtitle={sem ? (ht ? 'Tập huấn bệnh viện' : SCOPE_LABELS[sem.scope]) : ''}
 		>
 			<button
+				type='button'
 				className={styles.backLink}
 				onClick={() => navigate(listPath)}
 			>
@@ -250,6 +252,7 @@ export default function SeminarDetail() {
 						<div className={d$.heroActions}>
 							{hosted && perms.canUpdate && (
 								<button
+									type='button'
 									className={styles.btnGhost}
 									onClick={() => setRegQrOpen(true)}
 								>
@@ -258,6 +261,7 @@ export default function SeminarDetail() {
 							)}
 							{perms.canExport && (
 								<button
+									type='button'
 									className={styles.btnGhost}
 									onClick={() => void handleExport()}
 									disabled={exporting}

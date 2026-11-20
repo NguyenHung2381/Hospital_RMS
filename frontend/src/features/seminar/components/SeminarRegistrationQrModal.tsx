@@ -57,6 +57,7 @@ export function SeminarRegistrationQrModal({
 					<>
 						{onPresent && (
 							<button
+								type='button'
 								className={styles.btnGhost}
 								onClick={onPresent}
 								style={{ marginRight: 'auto' }}
@@ -65,6 +66,7 @@ export function SeminarRegistrationQrModal({
 							</button>
 						)}
 						<button
+							type='button'
 							className={styles.btnPrimary}
 							onClick={() => qrImage.save()}
 							disabled={!qrImage.ready}
@@ -94,6 +96,7 @@ export function SeminarRegistrationQrModal({
 							className={styles.actionBtn}
 							onClick={copy}
 							title='Sao chép link'
+							aria-label='Sao chép link đăng ký'
 						>
 							{copied ? <CheckSvg /> : <CopySvg />}
 						</button>

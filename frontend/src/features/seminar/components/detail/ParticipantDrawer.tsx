@@ -84,6 +84,7 @@ export function ParticipantDrawer({
 				perms.canUpdate ? (
 					<>
 						<button
+							type='button'
 							className={s.btnDangerGhost}
 							onClick={() => actions.deleteParticipant(p)}
 							disabled={busy}
@@ -91,6 +92,7 @@ export function ParticipantDrawer({
 							<TrashSvg /> Xóa khỏi danh sách
 						</button>
 						<button
+							type='button'
 							className={sem.btnPrimary}
 							onClick={() => actions.editParticipant(p)}
 						>
@@ -152,6 +154,7 @@ export function ParticipantDrawer({
 					actions={
 						p.ticket_code && (
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={() => actions.showTicket(p)}
 								title='Mở lại vé khi người tham dự mất vé'
@@ -247,6 +250,7 @@ export function ParticipantDrawer({
 						<div className={s.drawerActions}>
 							{p.cme_seq == null && (
 								<button
+									type='button'
 									className={sem.btnPrimary}
 									onClick={() => actions.issueCme([p], 0)}
 									disabled={!eligible || busy}
@@ -256,6 +260,7 @@ export function ParticipantDrawer({
 							)}
 							{p.cme_seq != null && p.cme_status !== 'signed' && (
 								<button
+									type='button'
 									className={sem.btnGhost}
 									onClick={() => actions.markSigned([p.id])}
 									disabled={busy}
@@ -265,6 +270,7 @@ export function ParticipantDrawer({
 							)}
 							{p.cme_certificate_no && (
 								<button
+									type='button'
 									className={sem.btnGhost}
 									onClick={() => actions.openCertificates([p], 1)}
 								>
@@ -273,6 +279,7 @@ export function ParticipantDrawer({
 							)}
 							{p.cme_seq != null && (
 								<button
+									type='button'
 									className={s.btnDangerGhost}
 									onClick={() => actions.revokeCme(p)}
 									disabled={busy}

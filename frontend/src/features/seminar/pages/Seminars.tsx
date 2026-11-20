@@ -140,12 +140,13 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 			{perms.canImport && !ht && (
-				<button className={styles.btnGhost} onClick={() => setImportOpen(true)}>
+				<button type='button' className={styles.btnGhost} onClick={() => setImportOpen(true)}>
 					<UploadSvg /> Nhập Excel
 				</button>
 			)}
 			{perms.canExport && (
 				<button
+					type='button'
 					className={styles.btnGhost}
 					onClick={handleExport}
 					disabled={exporting || s.total === 0}
@@ -154,7 +155,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 					{exporting ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
 				</button>
 			)}
-			<button className={styles.btnAddHeader} onClick={() => s.setModal('add')}>
+			<button type='button' className={styles.btnAddHeader} onClick={() => s.setModal('add')}>
 				<PlusSvg /> {ht ? 'Thêm buổi tập huấn' : 'Thêm hội thảo'}
 			</button>
 		</div>
@@ -189,6 +190,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 							<>
 								<select
 									className={styles.filterSelect}
+									aria-label='Lọc theo phạm vi'
 									value={s.scope}
 									onChange={(e) => {
 										s.setScope(e.target.value);
@@ -202,6 +204,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 
 								<select
 									className={styles.filterSelect}
+									aria-label='Lọc theo hình thức'
 									value={s.eventType}
 									onChange={(e) => {
 										s.setEventType(e.target.value);
@@ -221,6 +224,7 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 						<input
 							className={styles.filterSelect}
 							style={{ width: 90 }}
+							aria-label='Lọc theo năm'
 							placeholder='Năm'
 							inputMode='numeric'
 							value={s.year}

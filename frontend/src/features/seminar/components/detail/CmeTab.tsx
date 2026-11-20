@@ -74,6 +74,7 @@ export function CmeTab({ seminar: sm, participants, counts, perms, actions }: Ta
 						</div>
 						<div className={s.cardActions}>
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={() => actions.openCertificates(withCert, 0)}
 								disabled={!sm.grants_cme}
@@ -86,6 +87,7 @@ export function CmeTab({ seminar: sm, participants, counts, perms, actions }: Ta
 								<FilePdfSvg /> Giấy chứng nhận
 							</button>
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={() => actions.markSigned(signable.map((p) => p.id))}
 								disabled={!canAct || !signable.length}
@@ -93,6 +95,7 @@ export function CmeTab({ seminar: sm, participants, counts, perms, actions }: Ta
 								<CheckSvg /> Đánh dấu đã ký ({signable.length})
 							</button>
 							<button
+								type='button'
 								className={sem.btnPrimary}
 								onClick={() => actions.issueCme(ready, 0)}
 								disabled={!canAct || !ready.length}

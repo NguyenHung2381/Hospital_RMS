@@ -78,10 +78,11 @@ export function DepartmentStaffModal({
 			bodyClassName={styles.modalBody}
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={saving}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={saving}>
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnGhost}
 						onClick={() => void add(notInList)}
 						disabled={saving || !notInList.length}
@@ -89,6 +90,7 @@ export function DepartmentStaffModal({
 						<UsersSvg /> Thêm cả khoa ({notInList.length})
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => void add([...rowSel.selectedIds])}
 						disabled={saving || !rowSel.selectedCount}

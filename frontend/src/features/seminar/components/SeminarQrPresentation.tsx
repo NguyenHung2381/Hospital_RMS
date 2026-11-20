@@ -65,6 +65,7 @@ export function SeminarQrPresentation({ seminar, onClose }: { seminar: Seminar; 
 				<div className={styles.actions}>
 					{!isFull && document.fullscreenEnabled && (
 						<button
+							type='button'
 							className={styles.action}
 							onClick={enterFullscreen}
 						>
@@ -72,6 +73,7 @@ export function SeminarQrPresentation({ seminar, onClose }: { seminar: Seminar; 
 						</button>
 					)}
 					<button
+						type='button'
 						className={styles.action}
 						onClick={onClose}
 						title='Đóng (Esc)'

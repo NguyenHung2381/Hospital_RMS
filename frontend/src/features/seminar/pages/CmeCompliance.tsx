@@ -1,6 +1,6 @@
 import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AlertSvg, CheckSvg, DownloadSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { apiClient } from '../../../shared/api/axios';
@@ -11,6 +11,7 @@ import {
 	Pagination,
 	SearchableSelect,
 	SkeletonTable,
+	confirmDialog,
 } from '@/shared/components';
 import {
 	createCmeRequirement,
@@ -99,6 +100,8 @@ const complianceText = (r: CmeComplianceRow) => `${r.full_name} ${r.department_n
 const requirementText = (r: CmeRequirement) => `${r.department_name ?? 'Toàn viện'} ${r.note ?? ''}`;
 
 export default function CmeCompliance() {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [year, setYear] = useState(CURRENT_YEAR);
 	const [tab, setTab] = useState<TabKey>('compliance');
 	const [requirements, setRequirements] = useState<CmeRequirement[]>([]);
@@ -181,6 +184,7 @@ export default function CmeCompliance() {
 			value={year}
 			onChange={(e) => changeYear(Number(e.target.value))}
 			title='Năm'
+			aria-label='Năm'
 		>
 			{YEAR_OPTIONS.map((y) => (
 				<option
@@ -276,8 +280,13 @@ export default function CmeCompliance() {
 	};
 
 	const handleDelete = async (r: CmeRequirement) => {
-		if (!window.confirm(`Xóa ngưỡng CME của "${r.department_name ?? 'Toàn viện'}" năm ${year}?`))
-			return;
+		const ok = await confirmDialog({
+			title: 'Xóa ngưỡng CME?',
+			message: `Xóa ngưỡng CME của "${r.department_name ?? 'Toàn viện'}" năm ${year}?`,
+			confirmLabel: 'Xóa ngưỡng',
+			tone: 'danger',
+		});
+		if (!ok) return;
 		setSaving(true);
 		try {
 			await deleteCmeRequirement(r.id);
@@ -295,13 +304,16 @@ export default function CmeCompliance() {
 			<SearchSvg className={styles.searchIcon} />
 			<input
 				className={styles.searchInput}
+				aria-label={placeholder.replace(/\.{3}$/, '')}
 				placeholder={placeholder}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 			/>
 			{value && (
 				<button
+					type='button'
 					className={styles.searchClear}
+					aria-label='Xóa từ khóa tìm kiếm'
 					onClick={() => onChange('')}
 				>
 					<XSvg />
@@ -348,7 +360,7 @@ export default function CmeCompliance() {
 				</div>
 			)}
 
-			<div className={styles.tabs}>
+			<div className={styles.tabs} role='group' aria-label='Nội dung CME'>
 				{(
 					[
 						{ key: 'compliance', label: `Nhân sự chưa đạt (${compliance.length})` },
@@ -359,6 +371,7 @@ export default function CmeCompliance() {
 						key={t.key}
 						type='button'
 						className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+						aria-pressed={tab === t.key}
 						onClick={() => setTab(t.key)}
 					>
 						{t.label}
@@ -381,6 +394,7 @@ export default function CmeCompliance() {
 								value={compDept}
 								onChange={(e) => setCompDept(e.target.value)}
 								title='Khoa / Phòng'
+								aria-label='Lọc theo khoa/phòng'
 							>
 								<option value=''>Tất cả khoa/phòng</option>
 								{compDeptOptions.map((d) => (
@@ -442,8 +456,10 @@ export default function CmeCompliance() {
 											<td className={styles.tdRight}>
 												<div className={styles.actionBtns}>
 													<button
+														type='button'
 														className={styles.actionBtn}
 														title='Xuất phiếu CME cá nhân (Excel)'
+						aria-label={`Xuất phiếu CME cá nhân của ${row.full_name}`}
 														disabled={exportingId !== null}
 														onClick={() => exportPerson(row.id, row.full_name, year)}
 													>
@@ -480,6 +496,7 @@ export default function CmeCompliance() {
 								value={reqScope}
 								onChange={(e) => setReqScope(e.target.value as typeof reqScope)}
 								title='Phạm vi áp dụng'
+								aria-label='Lọc theo phạm vi áp dụng'
 							>
 								<option value=''>Mọi phạm vi</option>
 								<option value='hospital'>Toàn viện</option>
@@ -591,9 +608,10 @@ export default function CmeCompliance() {
 			>
 				<div className={styles.formGrid}>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>Khoa / Phòng</label>
+						<label className={styles.formLabel} htmlFor={fid('dept')}>Khoa / Phòng</label>
 						{editing === 'new' ? (
 							<SearchableSelect
+								id={fid('dept')}
 								options={[{ id: '', name: 'Toàn viện' }, ...departments]}
 								value={form.department_id}
 								onChange={(id) => setForm((f) => ({ ...f, department_id: id }))}
@@ -601,6 +619,7 @@ export default function CmeCompliance() {
 							/>
 						) : (
 							<input
+								id={fid('dept')}
 								className={styles.formInput}
 								value={editing?.department_name ?? 'Toàn viện'}
 								disabled
@@ -608,10 +627,14 @@ export default function CmeCompliance() {
 						)}
 					</div>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>
+						<label className={styles.formLabel} htmlFor={fid('credits')}>
 							Số tín chỉ yêu cầu <span className={styles.required}>*</span>
 						</label>
 						<input
+							id={fid('credits')}
+							aria-required='true'
+							aria-invalid={formError ? true : undefined}
+							aria-describedby={formError ? fid('form-err') : undefined}
 							type='number'
 							step='0.1'
 							min='0'
@@ -626,8 +649,9 @@ export default function CmeCompliance() {
 						/>
 					</div>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>Ghi chú</label>
+						<label className={styles.formLabel} htmlFor={fid('note')}>Ghi chú</label>
 						<textarea
+							id={fid('note')}
 							className={styles.formTextarea}
 							rows={2}
 							value={form.note}
@@ -638,6 +662,8 @@ export default function CmeCompliance() {
 				</div>
 				{formError && (
 					<div
+						id={fid('form-err')}
+						role='alert'
 						className={`${styles.noticeBox} ${styles.noticeWarn}`}
 						style={{ marginTop: 12 }}
 					>
@@ -674,10 +700,11 @@ export default function CmeCompliance() {
 			>
 				<div className={styles.formGrid}>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>
+						<label className={styles.formLabel} htmlFor={fid('person')}>
 							Nhân sự <span className={styles.required}>*</span>
 						</label>
 						<SearchableSelect
+							id={fid('person')}
 							options={users}
 							value={personForm.user_id}
 							onChange={(id) => setPersonForm((f) => ({ ...f, user_id: id }))}
@@ -685,8 +712,9 @@ export default function CmeCompliance() {
 						/>
 					</div>
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>Năm</label>
+						<label className={styles.formLabel} htmlFor={fid('person-year')}>Năm</label>
 						<select
+							id={fid('person-year')}
 							className={styles.formInput}
 							value={personForm.year}
 							onChange={(e) =>
