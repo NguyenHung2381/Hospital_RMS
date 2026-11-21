@@ -302,17 +302,34 @@ const confirm2FASetup = async (userId, code) => {
 	return { backup_codes: backupCodes };
 };
 
-// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu.
-const regenerateBackupCodes = async (userId, password, ip = null) => {
-	const pool = await getPool();
+// Mật khẩu + 1 mã xác thực hiện tại (OTP hoặc mã khôi phục chưa dùng) — dùng chung cho
+// tạo lại mã khôi phục và tắt 2FA. Sai mã tính vào bộ đếm khóa. Trả về user (đã có secret).
+const assertSecondFactor = async (pool, userId, password, code, ip) => {
 	await assertPassword(pool, userId, password, { ip });
-	const enabled = (
+	const user = (
 		await pool
 			.request()
 			.input('id', sql.VarChar(20), userId)
-			.query('SELECT totp_enabled FROM users WHERE id = @id')
-	).recordset[0]?.totp_enabled;
-	if (!enabled) throw httpError(400, 'Chưa bật xác thực 2 lớp');
+			.query(
+				'SELECT id, totp_secret, totp_enabled, failed_login_count, locked_until FROM users WHERE id = @id',
+			)
+	).recordset[0];
+	if (!user?.totp_enabled || !user.totp_secret) throw httpError(400, 'Chưa bật xác thực 2 lớp');
+	const input = String(code ?? '').trim();
+	if (!(await checkTotp(pool, user, input)) && !(await consumeBackupCode(pool, userId, input))) {
+		const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mã 2FA');
+		if (lockedUntil) throw lockedError(lockedUntil);
+		throw httpError(400, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
+	}
+	return user;
+};
+
+// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — yêu cầu mật khẩu VÀ 1 mã xác thực hiện tại:
+// chỉ mật khẩu thì ai chiếm được phiên + biết mật khẩu tự cấp được yếu tố thứ 2 mới
+// (rồi dùng nó để tắt 2FA / đăng nhập) mà không cần thiết bị xác thực.
+const regenerateBackupCodes = async (userId, password, code, ip = null) => {
+	const pool = await getPool();
+	await assertSecondFactor(pool, userId, password, code, ip);
 
 	const backupCodes = await replaceBackupCodes(pool, userId);
 	await securityEvents.log({
@@ -329,23 +346,7 @@ const regenerateBackupCodes = async (userId, password, ip = null) => {
 // lớp bảo vệ thứ 2 mà không cần thiết bị xác thực. Sai mã tính vào bộ đếm khóa.
 const disable2FA = async (userId, password, code, ip = null) => {
 	const pool = await getPool();
-	await assertPassword(pool, userId, password, { ip });
-
-	const user = (
-		await pool
-			.request()
-			.input('id', sql.VarChar(20), userId)
-			.query(
-				'SELECT id, totp_secret, totp_enabled, failed_login_count, locked_until FROM users WHERE id = @id',
-			)
-	).recordset[0];
-	if (!user?.totp_enabled || !user.totp_secret) throw httpError(400, 'Chưa bật xác thực 2 lớp');
-	const input = String(code ?? '').trim();
-	if (!(await checkTotp(pool, user, input)) && !(await consumeBackupCode(pool, userId, input))) {
-		const lockedUntil = await recordFailedLogin(pool, user, ip, 'sai mã 2FA');
-		if (lockedUntil) throw lockedError(lockedUntil);
-		throw httpError(400, 'Mã xác thực không đúng, đã hết hạn hoặc đã được sử dụng');
-	}
+	await assertSecondFactor(pool, userId, password, code, ip);
 
 	await queryBatch(pool.request().input('id', sql.VarChar(20), userId), [
 		`UPDATE users SET totp_secret = NULL, totp_enabled = 'false', totp_verified_at = NULL,

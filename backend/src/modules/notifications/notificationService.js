@@ -167,11 +167,15 @@ const pushWithEmail = async (
 	// ponytail: Gmail giới hạn ~500 thư/ngày/tài khoản, cần hàng đợi + SMTP riêng nếu vượt.
 	mailQueue.enqueue(`thông báo "${title}"`, async () => {
 		const pool = await getPool();
+		// Chỉ tài khoản đang hoạt động (giống insertNotifications) — xét lúc job chạy:
+		// tài khoản đã khóa / hết hạn không được nhận tiếp nội dung qua email.
 		const res = await pool
 			.request()
+			.input('active', sql.Bit, true)
 			.input('user_ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds)).query(`
 				SELECT id, email, full_name FROM users
 				WHERE id IN ${jsonValues('@user_ids')}
+				  AND is_active = @active
 				  AND email IS NOT NULL AND email <> ''
 			`);
 		for (const u of res.recordset) {
