@@ -465,6 +465,7 @@ df -h /data            # ~49G, mount tại /data
 ```bash
 sudo mkdir -p /data/code /data/docker /data/backup/db /data/backup/files
 sudo chown $USER:$USER /data/code /data/backup /data/backup/db /data/backup/files
+sudo chmod 700 /data/backup/files   # chứa gói JWT secret + khoá 2FA
 ls -la /data
 ```
 
@@ -1215,8 +1216,11 @@ Tiền tố `hospital_rms` là tên project đặt cố định trong `docker-co
 ```bash
 docker run --rm -v hospital_rms_server_uploads:/data:ro -v /data/backup/files:/backup alpine \
   tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
-docker run --rm -v hospital_rms_server_secrets:/data:ro -v /data/backup/files:/backup alpine \
-  tar czf /backup/secrets-$(date +%F).tar.gz -C /data .
+# Gói khoá bí mật: file do shell host tạo với umask 077 (0600), thư mục 0700 —
+# tar trong container ghi thẳng ra /backup sẽ ra quyền 0644 (ai cũng đọc được)
+chmod 700 /data/backup/files
+(umask 077; docker run --rm -v hospital_rms_server_secrets:/data:ro alpine \
+  tar czf - -C /data . > /data/backup/files/secrets-$(date +%F).tar.gz)
 ls -lh /data/backup/files
 ```
 

@@ -558,6 +558,7 @@ step_disk() {
 	sudo mkdir -p /data/code /data/docker /data/backup/db /data/backup/files "$IMPORT_DIR"
 	sudo chown "$USER:$USER" /data/code /data/backup /data/backup/db /data/backup/files "$IMPORT_DIR"
 	sudo chmod 700 "$IMPORT_DIR" # file backup chứa toàn bộ dữ liệu + khoá 2FA
+	sudo chmod 700 /data/backup/files # gói secrets-*.tar.gz chứa JWT secret + khoá 2FA
 	ok "Thư mục: /data/code /data/docker /data/backup/{db,files,import} — trống $(df -h --output=avail /data | tail -n 1 | tr -d ' ')"
 }
 
@@ -1360,10 +1361,17 @@ sudo -u postgres pg_dump -Fc -d rms_hospital -f "$FILE.tmp"
 mv "$FILE.tmp" "$FILE"
 sudo -u postgres pg_restore -l "$FILE" > /dev/null    # file đọc được
 find "$DIR" -name 'rms_hospital_20*.dump' -mtime +14 -delete
-# Khoá giải mã 2FA + JWT secret: phải sao lưu cùng lịch với DB
+# Khoá giải mã 2FA + JWT secret: phải sao lưu cùng lịch với DB. Chỉ root/người vận hành
+# đọc được: thư mục 0700; file do shell này tạo (umask 077 → 0600) — KHÔNG để tar trong
+# container ghi thẳng ra volume bind (tiến trình container dùng umask 0022 → 0644).
 if docker volume inspect hospital_rms_server_secrets > /dev/null 2>&1; then
-	docker run --rm -v hospital_rms_server_secrets:/data:ro -v /data/backup/files:/backup alpine \
-		tar czf "/backup/secrets-$(date +%F).tar.gz" -C /data .
+	install -d -m 700 /data/backup/files
+	chmod 700 /data/backup/files
+	S="/data/backup/files/secrets-$(date +%F).tar.gz"
+	docker run --rm -v hospital_rms_server_secrets:/data:ro alpine tar czf - -C /data . > "$S.tmp"
+	mv "$S.tmp" "$S"
+	# Sửa luôn quyền các gói đã tạo trước bản sửa này
+	find /data/backup/files -name 'secrets-*.tar.gz' -exec chmod 600 {} +
 	find /data/backup/files -name 'secrets-20*.tar.gz' -mtime +14 -delete
 fi
 echo "$(date '+%F %T') backup OK $(du -h "$FILE" | cut -f1)"
