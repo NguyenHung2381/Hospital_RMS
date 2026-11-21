@@ -73,7 +73,8 @@ const register = asyncHandler(async (req, res) => {
 			429,
 		);
 	}
-	const staffNumber = String(req.body.staff_number ?? '').trim();
+	// Mã NV đã chuẩn hóa: '0123' và '123' dùng chung 1 bộ đếm
+	const staffNumber = courseRegistration.staffAttemptKey(req.body.staff_number);
 	if (
 		req.body.source === 'internal' &&
 		!(await attempts.hit('course-registration-staff', staffNumber, REGISTER_PER_ID_MAX, DAY))

@@ -91,6 +91,16 @@ const pick = (obj, keys) => {
 // theo mã NV, họ tên phải khớp (bỏ dấu / hoa thường) — cần biết cả 2 mới ra hồ sơ.
 // Loại tài khoản khoa dùng chung (vai trò dept_head).
 const STAFF_NOT_FOUND = 'Không tìm thấy nhân viên khớp họ tên và mã nhân viên đã nhập.';
+
+// Khóa bộ đếm lần thử theo mã NV: đúng giá trị findStaff dùng để tra ('0123', '00123'... cùng
+// là nhân viên 123 ⇒ cùng 1 bộ đếm). Không phải số nguyên thì giữ chuỗi đã trim (validator
+// đã chặn từ trước, findStaff cũng trả 404).
+const staffAttemptKey = (staffNumber) => {
+	const raw = String(staffNumber ?? '').trim();
+	const sn = Number(raw);
+	return raw && Number.isSafeInteger(sn) ? String(sn) : raw;
+};
+
 const findStaff = async (fullName, staffNumber) => {
 	const sn = Number(String(staffNumber ?? '').trim());
 	if (!Number.isInteger(sn) || sn < 1 || sn > 999999999) throw httpError(404, STAFF_NOT_FOUND);
@@ -651,6 +661,7 @@ module.exports = {
 	loadOpenCourse,
 	uploadFile,
 	readDownloadToken,
+	staffAttemptKey,
 	EMAIL_NOT_VERIFIED,
 	NOT_FOUND,
 };

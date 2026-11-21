@@ -2,7 +2,8 @@
 // email, tra cứu / tải đơn / nộp hồ sơ theo mã đăng ký, đơn + tờ trình nháp của nội viện.
 // Gửi đăng ký: publicPortalController.register.
 // Ngoài rate-limit theo IP ở route, mỗi ĐỐI TƯỢNG (mã NV, email, mã đăng ký) bị giới hạn
-// riêng (attemptLimiter, khóa đã băm) — đổi IP liên tục vẫn không dò được.
+// riêng (attemptLimiter, khóa đã băm) — đổi IP liên tục vẫn không dò được. Khóa theo mã NV
+// đã chuẩn hóa (service.staffAttemptKey) — thêm số 0 đứng đầu không tạo bộ đếm mới.
 const service = require('./publicCourseRegistrationService');
 const { verifyCaptcha } = require('../../utils/captcha');
 const { success, error } = require('../../utils/response');
@@ -26,7 +27,14 @@ const getRules = asyncHandler(async (_req, res) => {
 // Cố ý giống tra nhân viên khi đăng ký hội nghị (seminars/:token/staff-lookup)
 const staffCheck = asyncHandler(async (req, res) => {
 	const sn = String(req.body.staff_number).trim();
-	if (!(await attempts.hit('course-reg-staff-check', sn, STAFF_CHECK_PER_STAFF_MAX, HOUR)))
+	if (
+		!(await attempts.hit(
+			'course-reg-staff-check',
+			service.staffAttemptKey(sn),
+			STAFF_CHECK_PER_STAFF_MAX,
+			HOUR,
+		))
+	)
 		return error(
 			res,
 			'Mã nhân viên này đã được tra quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
@@ -51,7 +59,7 @@ const requestEmailOtp = asyncHandler(async (req, res) => {
 		req.body.source === 'internal' &&
 		!(await attempts.hit(
 			'course-reg-otp-staff',
-			String(req.body.staff_number).trim(),
+			service.staffAttemptKey(req.body.staff_number),
 			OTP_PER_STAFF_MAX,
 			HOUR,
 		))
@@ -108,7 +116,7 @@ const downloadApplication = asyncHandler(async (req, res) => {
 // Đơn / tờ trình nháp của nội viện: không captcha (captcha chỉ dùng 1 lần, cần cho lúc gửi đăng
 // ký) nhưng phải khớp lại mã NV + họ tên (service) và bị giới hạn theo mã NV — dùng chung 1 bộ đếm.
 const hitDraftLimit = async (req, res) => {
-	const sn = String(req.body.staff_number).trim();
+	const sn = service.staffAttemptKey(req.body.staff_number);
 	if (await attempts.hit('course-reg-draft', sn, DRAFT_PER_STAFF_MAX, HOUR)) return true;
 	error(res, 'Mã nhân viên này đã tạo giấy tờ quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
 	return false;

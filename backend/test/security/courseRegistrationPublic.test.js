@@ -1279,3 +1279,52 @@ test('router thật: /draft/application không bị /:code/application bắt; /:
 		await new Promise((r) => srv.close(r));
 	}
 });
+
+// L-01: '0123', '000123'... cùng là nhân viên 123 (findStaff dùng Number) ⇒ phải chung 1 bộ đếm
+test('L-01: bộ đếm lần thử theo mã NV dùng mã đã chuẩn hóa — số 0 đứng đầu không tạo bộ đếm mới', async () => {
+	reset();
+	const keys = [];
+	const wrapped = attemptLimiter.hit;
+	attemptLimiter.hit = (name, key, ...rest) => {
+		keys.push([name, key]);
+		return wrapped(name, key, ...rest);
+	};
+	try {
+		await call(regController.staffCheck, { staff_number: ' 000123 ', full_name: 'x' });
+		await call(regController.requestEmailOtp, {
+			source: 'internal',
+			staff_number: '0123',
+			email: 'l01@example.com',
+		});
+		await call(regController.draftApplication, { ...DRAFT_BASE, staff_number: '00123' });
+		await call(controller.register, {
+			...INTERNAL,
+			national_id: 'L01-CCCD-RIENG',
+			staff_number: '000000123',
+		});
+	} finally {
+		attemptLimiter.hit = wrapped;
+	}
+	const staffKeys = Object.fromEntries(
+		keys.filter(([n]) => /staff|draft/.test(n)).map(([n, k]) => [n, k]),
+	);
+	assert.deepEqual(staffKeys, {
+		'course-reg-staff-check': '123',
+		'course-reg-otp-staff': '123',
+		'course-reg-draft': '123',
+		'course-registration-staff': '123',
+	});
+
+	// Hành vi: hết 10 lượt tra với '777' thì '0777', '000000777' cũng bị chặn (429)
+	for (let i = 0; i < 10; i++)
+		assert.equal(
+			(await call(regController.staffCheck, { staff_number: '777', full_name: 'x' })).status,
+			404,
+		);
+	for (const sn of ['0777', '000000777'])
+		assert.equal(
+			(await call(regController.staffCheck, { staff_number: sn, full_name: 'x' })).status,
+			429,
+			sn,
+		);
+});
