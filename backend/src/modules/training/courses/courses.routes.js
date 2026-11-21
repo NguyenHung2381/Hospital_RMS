@@ -25,9 +25,17 @@ router.use(authenticate);
 // trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khóa mình được
 // phân công (modules/training/courses/coursePolicy.js). Route mới dùng đúng tên tham số dưới
 // đây là tự được kiểm tra.
-const inScope = (check) => async (req, _res, next, value) => {
+// L-03: kiểm phạm vi theo đúng quyền của hành động ghi (courses:update/delete), không
+// dùng phạm vi của quyền đọc — vai trò xem 'all' nhưng sửa/xóa 'assigned' vẫn bị giới hạn.
+const writeAction = (req, isCourseId) =>
+	req.method === 'DELETE' && isCourseId
+		? 'delete'
+		: ['PUT', 'PATCH', 'DELETE'].includes(req.method)
+			? 'update'
+			: 'read';
+const inScope = (check, isCourseId = false) => async (req, _res, next, value) => {
 	try {
-		await check(value, req.user);
+		await check(value, req.user, writeAction(req, isCourseId));
 		next();
 	} catch (err) {
 		next(err);
@@ -35,12 +43,12 @@ const inScope = (check) => async (req, _res, next, value) => {
 };
 router.param(
 	'id',
-	inScope((id, user) => coursePolicy.assertCourseInScope(id, user)),
+	inScope((id, user, action) => coursePolicy.assertCourseInScope(id, user, action), true),
 );
 for (const name of Object.keys(coursePolicy.CHILD_COURSE_SQL)) {
 	router.param(
 		name,
-		inScope((id, user) => coursePolicy.assertCourseChildInScope(name, id, user)),
+		inScope((id, user, action) => coursePolicy.assertCourseChildInScope(name, id, user, action)),
 	);
 }
 

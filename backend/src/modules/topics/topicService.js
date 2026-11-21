@@ -291,7 +291,7 @@ const OWN_EDITABLE = ['title', 'description', 'category_id', 'department_id'];
 const update = async (id, data, actorId, actor = null) => {
 	// actor có thể là object (req.user), true (bỏ qua kiểm tra), hoặc null.
 	const bypass = actor === true;
-	const scope = bypass ? 'all' : topicScope(actor);
+	const scope = bypass ? 'all' : topicScope(actor, 'update');
 	if (!bypass && scope === 'own') {
 		data = Object.fromEntries(
 			OWN_EDITABLE.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]),

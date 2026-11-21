@@ -40,7 +40,10 @@ router.use(authenticate);
 // nộp / xóa đề tài của khoa khác.
 const topicScopeParam = async (req, _res, next, topicId) => {
 	try {
-		await topicPolicy.assertTopicInScope(topicId, req.user);
+		// Phạm vi theo đúng quyền của hành động: DELETE ⇒ topics:delete, PUT/PATCH ⇒ topics:update
+		const action =
+			req.method === 'DELETE' ? 'delete' : ['PUT', 'PATCH'].includes(req.method) ? 'update' : 'read';
+		await topicPolicy.assertTopicInScope(topicId, req.user, action);
 		next();
 	} catch (err) {
 		next(err);

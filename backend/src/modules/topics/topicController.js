@@ -9,6 +9,7 @@ const { createCrudController } = require('../../shared/crudController');
 const { httpError } = require('../../utils/httpError');
 const { assertTopicActionWindow, assertRegistrationOpen } = require('./deadlineGuard');
 const { isDeadlineBound, scopeOf, hasPermission } = require('../../permissions/authz');
+const { effectiveScope } = require('../../permissions/actionScope');
 const topicImportService = require('./topicImportService');
 const topicLegacyService = require('./topicLegacyService');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -231,7 +232,7 @@ const setAuthors = asyncHandler(async (req, res) => {
 
 // Nhập Excel tạo đề tài cho mọi khoa → chỉ phạm vi 'all'
 const assertImportScope = (user) => {
-	if (scopeOf(user, 'topics') !== 'all') {
+	if (effectiveScope(user, 'topics', 'create') !== 'all') {
 		throw httpError(403, 'Chỉ tài khoản quản lý toàn viện được nhập đề tài từ Excel.');
 	}
 };

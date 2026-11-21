@@ -1,5 +1,6 @@
 const { getPool, sql } = require('../../../config/db');
 const { scopeOf } = require('../../../permissions/authz');
+const { effectiveScope } = require('../../../permissions/actionScope');
 const { httpError } = require('../../../utils/httpError');
 
 // EXISTS: khóa có giảng viên = actor được phân công dạy hay không (điều kiện
@@ -17,8 +18,13 @@ const ASSIGNED_EXISTS_SQL = `EXISTS (
 // danh sách + chi tiết khóa học lọc theo phân công, còn học viên / buổi học /
 // điểm danh / tài liệu / điểm / chứng chỉ của khóa khác vẫn đọc-sửa được theo
 // mã. modules/training/courses/courses.routes.js gắn các hàm dưới qua router.param.
-const assertCourseInScope = async (courseId, actor) => {
-	if (scopeOf(actor, 'courses') !== 'assigned') return;
+// `action` ≠ 'read': dùng phạm vi hiệu lực của hành động (L-03) — vai trò xem 'all'
+// nhưng sửa/xóa chỉ 'assigned' vẫn bị giới hạn khi ghi.
+const courseScope = (actor, action = 'read') =>
+	action === 'read' ? scopeOf(actor, 'courses') : effectiveScope(actor, 'courses', action);
+
+const assertCourseInScope = async (courseId, actor, action = 'read') => {
+	if (courseScope(actor, action) !== 'assigned') return;
 	const pool = await getPool();
 	const ok = (
 		await pool
@@ -46,8 +52,8 @@ const CHILD_COURSE_SQL = {
 	         JOIN course_enrollments e ON e.id = c.enrollment_id WHERE c.id = @id`,
 };
 
-const assertCourseChildInScope = async (paramName, childId, actor) => {
-	if (scopeOf(actor, 'courses') !== 'assigned') return;
+const assertCourseChildInScope = async (paramName, childId, actor, action = 'read') => {
+	if (courseScope(actor, action) !== 'assigned') return;
 	const pool = await getPool();
 	const row = (
 		await pool
@@ -56,12 +62,13 @@ const assertCourseChildInScope = async (paramName, childId, actor) => {
 			.query(CHILD_COURSE_SQL[paramName])
 	).recordset[0];
 	if (!row) throw httpError(404, 'Không tìm thấy dữ liệu');
-	await assertCourseInScope(row.course_id, actor);
+	await assertCourseInScope(row.course_id, actor, action);
 };
 
 module.exports = {
 	ASSIGNED_EXISTS_SQL,
 	assertCourseInScope,
+	courseScope,
 	CHILD_COURSE_SQL,
 	assertCourseChildInScope,
 };
