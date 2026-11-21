@@ -83,6 +83,8 @@ const SOURCES = {
 		phone: 'phone_number',
 		staff: 'staff_number',
 		linkedUser: 'user_id',
+		// đăng ký đề tài công khai ghi created_by NULL: dữ liệu người ngoài tự khai ⇒ như học viên ẩn danh
+		anonymousWhenNoCreator: true,
 	},
 	seminar_participants: {
 		table: 'seminar_participants',
@@ -91,6 +93,8 @@ const SOURCES = {
 		gender: 'gender',
 		staff: 'staff_number',
 		linkedUser: 'user_id',
+		// đăng ký hội thảo công khai ghi created_by NULL: dữ liệu người ngoài tự khai ⇒ như học viên ẩn danh
+		anonymousWhenNoCreator: true,
 		// trigger audit của bảng này bump updated_at với MỌI lần UPDATE trừ khi SET updated_at.
 		// Ghi person_id kèm `updated_at = updated_at` để không làm bẩn cột audit.
 		keepUpdatedAt: true,
