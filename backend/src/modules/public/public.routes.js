@@ -15,7 +15,7 @@ const { publicUpload } = require('../../middlewares/uploadPublic');
 const {
 	registrationFormUpload,
 	registrationFileUpload,
-} = require('../../middlewares/uploadRegistration');
+} = require('../training/registration/registrationUpload');
 const { UPLOADABLE_KINDS } = require('../training/registration/registrationFileKinds');
 const uploadPolicy = require('../../utils/uploadPolicy');
 const { success } = require('../../utils/response');

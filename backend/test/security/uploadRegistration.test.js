@@ -19,7 +19,7 @@ require('../../src/modules/settings/systemSettingService').getValue = async (k) 
 const {
 	registrationFormUpload,
 	registrationFileUpload,
-} = require('../../src/middlewares/uploadRegistration');
+} = require('../../src/modules/training/registration/registrationUpload');
 const { moveUploadedFiles } = require('../../src/utils/uploadPaths');
 const {
 	UPLOADABLE_KINDS,

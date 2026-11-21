@@ -6,6 +6,11 @@
 // Dung lượng mỗi file = UPLOAD_MAX_MB. Vẫn qua secureUpload (magic bytes + ClamAV).
 // Ghi tạm vào uploads/_tmp/public — service chuyển sang thư mục chính thức, file còn lại
 // bị cleanupTmp xóa khi trả response (kể cả khi lỗi).
+//
+// File này chỉ giữ CƠ CHẾ. Đuôi file, câu báo lỗi và tên các phần multipart là hiểu biết
+// nghiệp vụ của module training (registrationFileKinds.js) nên được truyền vào
+// createRegistrationUpload — hạ tầng không require module nghiệp vụ (npm run check:deps).
+// Middleware dựng sẵn cho route: modules/training/registration/registrationUpload.js.
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -14,16 +19,8 @@ const { cleanupTmp, parseDataField } = require('./uploadPublic');
 const uploadPolicy = require('../utils/uploadPolicy');
 const { UPLOADS_ROOT, uniqueFilename } = require('../utils/uploadPaths');
 const { badRequest } = require('../utils/httpError');
-const {
-	REGISTRATION_FILE_EXTENSIONS,
-	ACCEPT_MESSAGE,
-	UPLOADABLE_KINDS,
-	FORM_FIELD,
-} = require('../modules/training/registration/registrationFileKinds');
 
 const TMP_DIR = path.join(UPLOADS_ROOT, '_tmp', 'public');
-// Tối đa 4 file / lần gửi đăng ký (ngoại viện: 4 loại; nội viện: 2)
-const FORM_MAX_FILES = 4;
 
 const ONE_PER_KIND = 'Mỗi loại hồ sơ chỉ nhận 1 file, đính kèm đúng ô đã quy định.';
 
@@ -44,54 +41,66 @@ const storage = multer.diskStorage({
 	filename: (_req, file, cb) => cb(null, uniqueFilename(file.originalname)),
 });
 
-const fileFilter = (_req, file, cb) => {
-	const ext = path.extname(file.originalname).toLowerCase();
-	if (!REGISTRATION_FILE_EXTENSIONS.includes(ext)) return cb(badRequest(ACCEPT_MESSAGE));
-	cb(null, true);
-};
-
-// Đối tượng "giống multer" (fields / single / array) để bọc bằng secureUpload. multer cố định
-// limits lúc khởi tạo ⇒ dựng instance mỗi request theo UPLOAD_MAX_MB hiện hành.
-const method =
-	(name, maxFiles) =>
-	(...args) =>
-	async (req, res, next) => {
-		if (!req.is('multipart/form-data')) return next();
-		let policy;
-		try {
-			policy = await uploadPolicy.getPolicy();
-		} catch (err) {
-			return next(err);
-		}
-		multer({
-			storage,
-			fileFilter,
-			limits: { fileSize: policy.maxSizeMB * 1024 * 1024, files: maxFiles, fields: 20 },
-		})[name](...args)(req, res, (err) => next(err && friendlyError(err, policy.maxSizeMB)));
+/**
+ * Dựng 2 chuỗi middleware upload hồ sơ đăng ký.
+ * @param {object} options
+ * @param {string[]} options.extensions đuôi file được nhận (chữ thường, có dấu chấm)
+ * @param {string} options.acceptMessage câu báo khi đuôi file không được nhận
+ * @param {string[]} options.formFields tên các phần multipart khi gửi đăng ký, mỗi phần 1 file
+ * @param {number} options.maxFiles số file tối đa của 1 lần gửi đăng ký
+ */
+const createRegistrationUpload = ({ extensions, acceptMessage, formFields, maxFiles }) => {
+	const fileFilter = (_req, file, cb) => {
+		const ext = path.extname(file.originalname).toLowerCase();
+		if (!extensions.includes(ext)) return cb(badRequest(acceptMessage));
+		cb(null, true);
 	};
 
-const instance = {
-	fields: method('fields', FORM_MAX_FILES),
-	single: method('single', 1),
-	array: method('array', FORM_MAX_FILES),
+	// Đối tượng "giống multer" (fields / single / array) để bọc bằng secureUpload. multer cố định
+	// limits lúc khởi tạo ⇒ dựng instance mỗi request theo UPLOAD_MAX_MB hiện hành.
+	const method =
+		(name, files) =>
+		(...args) =>
+		async (req, res, next) => {
+			if (!req.is('multipart/form-data')) return next();
+			let policy;
+			try {
+				policy = await uploadPolicy.getPolicy();
+			} catch (err) {
+				return next(err);
+			}
+			multer({
+				storage,
+				fileFilter,
+				limits: { fileSize: policy.maxSizeMB * 1024 * 1024, files, fields: 20 },
+			})[name](...args)(req, res, (err) => next(err && friendlyError(err, policy.maxSizeMB)));
+		};
+
+	const instance = {
+		fields: method('fields', maxFiles),
+		single: method('single', 1),
+		array: method('array', maxFiles),
+	};
+
+	// Gửi đăng ký (công khai): data = JSON của form + mỗi phần trong formFields 1 file; không có
+	// tài khoản ⇒ không áp hạn mức dung lượng / ngày (đã có rate-limit theo IP ở route).
+	const registrationFormUpload = [
+		cleanupTmp,
+		...secureUpload(instance, { quota: false }).fields(
+			formFields.map((name) => ({ name, maxCount: 1 })),
+		),
+		parseDataField,
+	];
+
+	// Nộp / thay 1 file: phần `file` (+ `data` = yếu tố thứ hai ở cổng công khai). Có tài khoản
+	// (cổng nhân viên) thì tính hạn mức tải lên / ngày.
+	const registrationFileUpload = [
+		cleanupTmp,
+		...secureUpload(instance).single('file'),
+		parseDataField,
+	];
+
+	return { registrationFormUpload, registrationFileUpload };
 };
 
-// Gửi đăng ký (công khai): data = JSON của form + files[<kind>]; không có tài khoản ⇒ không
-// áp hạn mức dung lượng / ngày (đã có rate-limit theo IP ở route).
-const registrationFormUpload = [
-	cleanupTmp,
-	...secureUpload(instance, { quota: false }).fields(
-		UPLOADABLE_KINDS.map((k) => ({ name: FORM_FIELD(k), maxCount: 1 })),
-	),
-	parseDataField,
-];
-
-// Nộp / thay 1 file: phần `file` (+ `data` = yếu tố thứ hai ở cổng công khai). Có tài khoản
-// (cổng nhân viên) thì tính hạn mức tải lên / ngày.
-const registrationFileUpload = [
-	cleanupTmp,
-	...secureUpload(instance).single('file'),
-	parseDataField,
-];
-
-module.exports = { registrationFormUpload, registrationFileUpload, FORM_MAX_FILES };
+module.exports = { createRegistrationUpload };

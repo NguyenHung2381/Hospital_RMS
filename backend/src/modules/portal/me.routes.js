@@ -104,9 +104,9 @@ router.post(
 // ─── Đơn đăng ký khóa đào tạo liên tục của tôi (form /dang-ky-khoa-hoc) ───────
 // registrationPortalService: bản khai của người khác / nhóm không được xem trả 404.
 const registrationPortalService = require('./registrationPortalService');
-// Nộp / thay từng file hồ sơ (PDF / JPG / PNG): uploadRegistration.js ghi tạm, service chuyển
+// Nộp / thay từng file hồ sơ (PDF / JPG / PNG): registrationUpload.js ghi tạm, service chuyển
 // sang uploads/training/course_registration/<enrollmentId>/ (nội viện) hoặc hồ sơ học viên (ngoại viện)
-const { registrationFileUpload } = require('../../middlewares/uploadRegistration');
+const { registrationFileUpload } = require('../training/registration/registrationUpload');
 const { UPLOADABLE_KINDS } = require('../training/registration/registrationFileKinds');
 
 // File .docx tải về (Đơn đăng ký, Tờ trình) — tên có dấu nên dùng filename*
