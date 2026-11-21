@@ -3,6 +3,7 @@
 // coursePolicy kiểm ở router (chống IDOR).
 const { asyncHandler } = require('../../../utils/asyncHandler');
 const { success } = require('../../../utils/response');
+const { hasPermission } = require('../../../permissions/authz');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const practiceRecordService = require('./practiceRecordService');
 const practiceResultService = require('./practiceResultService');
@@ -19,7 +20,12 @@ const listPracticeRecords = asyncHandler(async (req, res) =>
 );
 
 const getEnrollment = asyncHandler(async (req, res) =>
-	success(res, await courseEnrollmentService.getEnrollment(req.params.enrollmentId)),
+	success(
+		res,
+		await courseEnrollmentService.getEnrollment(req.params.enrollmentId, {
+			sensitive: hasPermission(req.user, 'trainees', 'read_sensitive'),
+		}),
+	),
 );
 
 // Nhập kết quả vòng hàng loạt — phạm vi khóa kiểm trong service (từng dòng).

@@ -84,7 +84,9 @@ const listEnrollments = asyncHandler(async (req, res) => {
 		res,
 		await formCustomValueService.attachResult(
 			'enrollment',
-			await courseEnrollmentService.listEnrollments(req.params.id),
+			await courseEnrollmentService.listEnrollments(req.params.id, {
+				sensitive: hasPermission(req.user, 'trainees', 'read_sensitive'),
+			}),
 		),
 	);
 });

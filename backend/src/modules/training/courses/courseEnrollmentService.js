@@ -43,17 +43,27 @@ const enrollmentSelect = (whereSql) => `
     ${approvalGate.ENROLLMENT_JOIN_SQL}
     WHERE ${whereSql}`;
 
-const listEnrollments = async (courseId) => {
+/**
+ * sensitive = người gọi có trainees:read_sensitive ⇒ trả mã đăng ký đầy đủ; mặc định che
+ * (annotateEnrollments) vì route chỉ cần courses:read.
+ * @param {string} courseId
+ * @param {{ sensitive?: boolean }} [opts]
+ */
+const listEnrollments = async (courseId, { sensitive = false } = {}) => {
 	const pool = await getPool();
 	const r = await pool
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.query(`${enrollmentSelect('e.course_id = @course_id')} ORDER BY e.registered_at DESC`);
-	return approvalGate.annotateEnrollments(r.recordset);
+	return approvalGate.annotateEnrollments(r.recordset, { sensitive });
 };
 
-// 1 hồ sơ ghi danh (trang chi tiết Hồ sơ thực hành GPHN).
-const getEnrollment = async (enrollmentId) => {
+/**
+ * 1 hồ sơ ghi danh (trang chi tiết Hồ sơ thực hành GPHN). sensitive: như listEnrollments.
+ * @param {string} enrollmentId
+ * @param {{ sensitive?: boolean }} [opts]
+ */
+const getEnrollment = async (enrollmentId, { sensitive = false } = {}) => {
 	const pool = await getPool();
 	const found = (
 		await pool
@@ -62,7 +72,7 @@ const getEnrollment = async (enrollmentId) => {
 			.query(enrollmentSelect('e.id = @id'))
 	).recordset[0];
 	if (!found) throw httpError(404, 'Không tìm thấy hồ sơ ghi danh.');
-	const [row] = await approvalGate.annotateEnrollments([found]);
+	const [row] = await approvalGate.annotateEnrollments([found], { sensitive });
 	// Trường tùy chỉnh người đăng ký điền ở cổng công khai (Cấu hình form 'course_registration')
 	row.registration_custom = await formCustomValueService.get('course_registration', enrollmentId);
 	// Trường tùy chỉnh của hồ sơ ghi danh / thực hành (Cấu hình form 'enrollment')
