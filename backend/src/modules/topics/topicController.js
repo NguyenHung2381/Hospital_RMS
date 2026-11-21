@@ -203,9 +203,14 @@ const exportData = asyncHandler(async (req, res) => {
 });
 
 const updateOne = asyncHandler(async (req, res) => {
+	// Body chỉ có trường tùy biến thì topicService.update không có gì để kiểm mốc
+	// (chỉ kiểm khi có title/description...) — phải kiểm chủ nhiệm/thư ký + mốc "Sửa
+	// thông tin" ở đây trước khi ghi giá trị tùy biến (L-09).
+	if (req.formCustom && Object.keys(req.formCustom).length && isDeadlineBound(req.user))
+		await assertTopicActionWindow(req.params.id, req.user.id, 'edit-info');
 	const item = await topicService.update(req.params.id, req.body, req.user.id, req.user);
 	if (!item) return notFound(res);
-	// Sau update(): service đã kiểm phạm vi + mốc thời gian của người sửa
+	// Sau update(): service + kiểm mốc ở đầu hàm đã kiểm phạm vi + mốc thời gian của người sửa
 	await formCustomValueService.save('topic', req.params.id, req.formCustom, req.user.id);
 	if (req.formCustom) item.custom = { ...item.custom, ...req.formCustom };
 	return success(res, maskTopicMembers(item, req.user), 'Cập nhật thành công');
