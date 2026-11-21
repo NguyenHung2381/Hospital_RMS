@@ -104,7 +104,7 @@ const log = install(async (text, inputs) => {
 		];
 	if (/INSERT INTO seminar_participants/.test(text)) {
 		lastInsert = inputs;
-		return [];
+		return [{}]; // rowsAffected = 1 (bulkAdd chỉ đếm dòng thực sự chèn)
 	}
 	// issueCme: CSDL giả tính "eligible" bằng chính đoạn SELF_CREATED_SQL trong câu gửi xuống
 	if (/AS eligible/.test(text)) {

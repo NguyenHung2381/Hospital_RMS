@@ -25,6 +25,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
+const { isUniqueViolation, constraintName } = require('../../utils/dbErrors');
 const { randomId } = require('../../utils/idGenerator');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 
@@ -83,9 +84,23 @@ const ensureSeminar = async (pool, seminarId) => {
 const normType = (t) => (PART_TYPES.includes(t) ? t : 'attendee');
 const normSource = (s) => (SOURCES.includes(s) ? s : 'internal');
 
+// Mỗi tài khoản tối đa 1 dòng / hội thảo (ux_sp_seminar_user — migration 2026-12-31, L-06
+// audit run-5): kiểm "đã có chưa" rồi mới INSERT ở 2 bước rời nhau không chặn được 2 yêu cầu
+// song song, nên ràng buộc nằm ở CSDL.
+const UX_SEMINAR_USER = 'ux_sp_seminar_user';
+const ON_CONFLICT_SKIP = 'ON CONFLICT (seminar_id, user_id) WHERE user_id IS NOT NULL DO NOTHING';
+// Lỗi trùng tài khoản trong hội thảo ⇒ 409 rõ nghĩa; lỗi khác ném lại nguyên trạng
+const rethrowDuplicateUser = (err) => {
+	if (isUniqueViolation(err) && constraintName(err) === UX_SEMINAR_USER) {
+		throw httpError(409, 'Tài khoản này đã có trong danh sách người tham dự hội thảo/hội nghị.');
+	}
+	throw err;
+};
+
 // Bind toàn bộ input cho 1 dòng participant vào `req`, trả về câu INSERT dùng
 // biến @id đã khai báo trước đó (@id0 cho single, @idN trong vòng lặp bulk).
-const bindInsert = (req, idVar, seminarId, data) => {
+// skipExisting: tài khoản đã có trong hội thảo thì bỏ qua (rowsAffected = 0) thay vì lỗi.
+const bindInsert = (req, idVar, seminarId, data, { skipExisting = false } = {}) => {
 	req
 		.input('seminar_id', sql.VarChar(20), seminarId)
 		.input('user_id', sql.VarChar(20), data.user_id || null)
@@ -120,7 +135,8 @@ const bindInsert = (req, idVar, seminarId, data) => {
       (${idVar}, @seminar_id, @user_id, @title_prefix, @full_name, @dob, @dob_text, @gender,
        @organization, @department_raw, @staff_number, @qualification_raw, @source,
        @is_foreign, @participation_type, @cme_year, @cme_seq, @cme_credits, @cme_status,
-       @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id);`;
+       @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id)
+    ${skipExisting ? ON_CONFLICT_SKIP : ''};`;
 };
 
 // Trường CME chỉ người có seminars:cme_manage được ghi trực tiếp (số quyết định, năm, trạng thái,
@@ -144,7 +160,7 @@ const add = async (seminarId, rawData, actorId, { canCme = false } = {}) => {
 	const req = actorRequest(actorId)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('id', sql.VarChar(24), id);
-	await req.query(bindInsert(req, '@id', seminarId, data));
+	await req.query(bindInsert(req, '@id', seminarId, data)).catch(rethrowDuplicateUser);
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(24), id)
@@ -155,6 +171,8 @@ const add = async (seminarId, rawData, actorId, { canCme = false } = {}) => {
 	return r.recordset[0];
 };
 
+// Thêm nhiều dòng trong 1 transaction. Tài khoản đã có trong hội thảo thì bỏ qua (kể cả khi
+// 2 yêu cầu chạy song song — ON CONFLICT trên ux_sp_seminar_user); trả về số dòng THỰC SỰ thêm.
 const bulkAdd = async (seminarId, rows, actorId) => {
 	const pool = await getPool();
 	await ensureSeminar(pool, seminarId);
@@ -168,14 +186,14 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 			const req = new sql.Request(tx)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('id', sql.VarChar(24), id);
-			await req.query(bindInsert(req, '@id', seminarId, row));
-			inserted.push(id);
+			const r = await req.query(bindInsert(req, '@id', seminarId, row, { skipExisting: true }));
+			if (r.rowsAffected[0]) inserted.push(id);
 		}
 		return inserted;
 	}, pool);
 	await personService.syncPersons('seminar_participants', ids, { actorId });
 	broadcast('update', { entity: 'seminar' });
-	return { inserted: valid.length, ids };
+	return { inserted: ids.length, ids };
 };
 
 // ─── Tập huấn bệnh viện: người tham dự theo khoa ─────────────────────────────
@@ -404,7 +422,7 @@ const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {})
 		`UPDATE seminar_participants SET ${sets.join(', ')}
     WHERE id = @pid AND seminar_id = @sid${guardIssued ? ' AND cme_seq IS NULL' : ''}`,
 		`SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
-	]);
+	]).catch(rethrowDuplicateUser);
 	if (guardIssued && !r.rowsAffected[0] && r.recordset[0]) {
 		throw httpError(
 			409,
