@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { install } = require('../auth/fakeDb');
 
-install(async (text, inputs) => {
+install(async (text) => {
 	if (/AS is_member/.test(text)) return [{ department_id: 'K1', is_member: 0 }];
 	if (/FROM courses c WHERE c\.id = @id AND EXISTS/.test(text)) return [];
 	return [];

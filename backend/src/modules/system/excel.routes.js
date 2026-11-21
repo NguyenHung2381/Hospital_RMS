@@ -65,7 +65,7 @@ router.post(
 		// Tên sheet Excel: ≤31 ký tự, không chứa : \ / ? * [ ]
 		const ws = wb.addWorksheet(
 			String(sheetName || 'Dữ liệu')
-				.replace(/[:\/?*[\]]/g, ' ')
+				.replace(/[:\\/?*[\]]/g, ' ')
 				.slice(0, 31),
 			{ views: [{ state: 'frozen', ySplit: 1 }] },
 		);
