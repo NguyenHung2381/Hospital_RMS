@@ -5,6 +5,7 @@ import type {
 	LecturerFromStaffResult,
 	LecturerListResponse,
 } from '../types/lecturer.type';
+import { seg } from '../../../shared/api/path';
 
 export interface LecturerListParams {
 	page?: number;
@@ -33,7 +34,7 @@ export const createLecturer = (form: LecturerFormData) =>
 	});
 
 export const updateLecturer = (id: string, form: LecturerFormData) =>
-	apiClient.put<Lecturer>(`/lecturers/${id}`, {
+	apiClient.put<Lecturer>(`/lecturers/${seg(id)}`, {
 		full_name: form.full_name,
 		specialty: form.specialty || null,
 		is_external: form.is_external,
@@ -46,4 +47,4 @@ export const updateLecturer = (id: string, form: LecturerFormData) =>
 export const createLecturersFromStaff = (userIds: string[]) =>
 	apiClient.post<LecturerFromStaffResult>('/lecturers/from-staff', { user_ids: userIds });
 
-export const deleteLecturer = (id: string) => apiClient.delete<null>(`/lecturers/${id}`);
+export const deleteLecturer = (id: string) => apiClient.delete<null>(`/lecturers/${seg(id)}`);

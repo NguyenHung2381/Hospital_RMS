@@ -7,6 +7,7 @@ import {
 	type StaffLicenseListResponse,
 	type StaffMentor,
 } from '../types/staffLicense.type';
+import { seg } from '../../../shared/api/path';
 
 export interface StaffLicenseListParams {
 	page: number;
@@ -31,9 +32,9 @@ export const createStaffLicense = (form: StaffLicenseFormData) =>
 	apiClient.post<StaffLicense>('/staff-licenses', { user_id: form.user_id, ...toPayload(form) });
 
 export const updateStaffLicense = (id: string, form: StaffLicenseFormData) =>
-	apiClient.put<StaffLicense>(`/staff-licenses/${id}`, toPayload(form));
+	apiClient.put<StaffLicense>(`/staff-licenses/${seg(id)}`, toPayload(form));
 
-export const deleteStaffLicense = (id: string) => apiClient.delete<null>(`/staff-licenses/${id}`);
+export const deleteStaffLicense = (id: string) => apiClient.delete<null>(`/staff-licenses/${seg(id)}`);
 
 export const importStaffLicensesExcel = (file: File, dryRun: boolean) => {
 	const form = new FormData();

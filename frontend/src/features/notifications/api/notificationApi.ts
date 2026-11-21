@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
+import { seg } from '../../../shared/api/path';
 
 export interface Notification {
 	id: string;
@@ -67,7 +68,7 @@ export const getNotifications = (params?: {
 };
 
 export const markNotificationRead = (id: string) =>
-	apiClient.put<null>(`/notifications/${id}/read`, {});
+	apiClient.put<null>(`/notifications/${seg(id)}/read`, {});
 
 export const markAllNotificationsRead = () =>
 	apiClient.put<null>('/notifications/read-all', {});
@@ -86,8 +87,8 @@ export const adminGetNotifications = (params?: {
 
 export const getBatchRecipients = (batchKey: string) =>
 	apiClient.get<NotificationRecipient[]>(
-		`/notifications/admin/${batchKey}/recipients`,
+		`/notifications/admin/${seg(batchKey)}/recipients`,
 	);
 
 export const deleteNotificationBatch = (batchKey: string) =>
-	apiClient.delete<null>(`/notifications/admin/batch/${batchKey}`);
+	apiClient.delete<null>(`/notifications/admin/batch/${seg(batchKey)}`);

@@ -1,5 +1,6 @@
 import { apiClient } from '@/shared/api/axios';
 import type { LeaveRequest, LeaveStatus } from '@/features/portal/api/meApi';
+import { seg } from '../../../shared/api/path';
 
 // Đơn xin nghỉ / xin đi muộn của học viên — phía quản trị (staff_attendance:approve)
 
@@ -20,4 +21,4 @@ export const listLeaveRequests = (f: { status?: LeaveStatus | ''; from?: string;
 };
 
 export const reviewLeaveRequest = (id: number, body: { decision: 'approved' | 'rejected'; note: string | null }) =>
-	apiClient.put<AdminLeaveRequest>(`/staff-attendance/leave-requests/${id}/review`, body);
+	apiClient.put<AdminLeaveRequest>(`/staff-attendance/leave-requests/${seg(id)}/review`, body);

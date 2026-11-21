@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { CmeStatus } from '../../seminar/types/seminar.type';
+import { seg } from '../../../shared/api/path';
 
 // Nhân viên tự đăng ký Tập huấn bệnh viện — backend modules/portal/hospitalTrainingSelf.routes.js.
 // Chỉ thêm / bớt chính tài khoản đang đăng nhập.
@@ -33,6 +34,6 @@ export interface MyHospitalTraining {
 
 export const hospitalTrainingSelfApi = {
 	list: () => apiClient.get<MyHospitalTraining[]>('/me/hospital-trainings'),
-	register: (id: string) => apiClient.post<MyHospitalTraining>(`/me/hospital-trainings/${id}/register`, {}),
-	cancel: (id: string) => apiClient.delete<MyHospitalTraining>(`/me/hospital-trainings/${id}/register`),
+	register: (id: string) => apiClient.post<MyHospitalTraining>(`/me/hospital-trainings/${seg(id)}/register`, {}),
+	cancel: (id: string) => apiClient.delete<MyHospitalTraining>(`/me/hospital-trainings/${seg(id)}/register`),
 };

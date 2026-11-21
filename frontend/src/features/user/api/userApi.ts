@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { User } from '../types/user.type';
+import { seg } from '../../../shared/api/path';
 
 export interface SimpleItem {
 	id: string;
@@ -81,14 +82,14 @@ export const createUser = (payload: CreateUserPayload) =>
 	apiClient.post<User>('/users', payload);
 
 export const updateUser = (id: string, data: UpdateUserPayload) =>
-	apiClient.put<User>(`/users/${id}`, data);
+	apiClient.put<User>(`/users/${seg(id)}`, data);
 
 export const deleteUser = (id: string) =>
-	apiClient.delete<null>(`/users/${id}`);
+	apiClient.delete<null>(`/users/${seg(id)}`);
 
 // Không truyền newPassword ⇒ server sinh mật khẩu tạm ngẫu nhiên,
 // trả về trong temporary_password. Cả hai cách, người dùng đều phải đổi ở lần đăng nhập tới.
 export const resetUserPassword = (id: string, newPassword?: string) =>
-	apiClient.post<{ temporary_password: string } | null>(`/users/${id}/reset-password`, {
+	apiClient.post<{ temporary_password: string } | null>(`/users/${seg(id)}/reset-password`, {
 		...(newPassword ? { new_password: newPassword } : {}),
 	});

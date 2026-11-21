@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { PracticeResultRow, RotationResult } from '../../course/types/course.type';
+import { seg } from '../../../shared/api/path';
 
 // Cổng người hướng dẫn thực hành GPHN — backend modules/portal/mentoring.routes.js.
 // Quyền theo enrollment_rotations.mentor_user_id = chính mình.
@@ -15,5 +16,5 @@ export const mentoringApi = {
 	list: () => apiClient.get<MentorRotation[]>('/me/mentoring'),
 	count: () => apiClient.get<{ total: number; awaiting: number }>('/me/mentoring/count'),
 	evaluate: (rotationId: string, result: RotationResult, comment: string | null) =>
-		apiClient.put(`/me/mentoring/rotations/${rotationId}/result`, { result, comment }),
+		apiClient.put(`/me/mentoring/rotations/${seg(rotationId)}/result`, { result, comment }),
 };

@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { WorkflowDefinition } from '../types/workflow.type';
+import { seg } from '../../../shared/api/path';
 
 export interface SimpleRole {
 	id: string;
@@ -25,12 +26,12 @@ export const workflowApi = {
 	list: (resource?: string) =>
 		apiClient.get<WorkflowDefinition[]>(`/workflows/definitions${resource ? `?resource=${resource}` : ''}`),
 
-	getById: (id: string) => apiClient.get<WorkflowDefinition>(`/workflows/definitions/${id}`),
+	getById: (id: string) => apiClient.get<WorkflowDefinition>(`/workflows/definitions/${seg(id)}`),
 
 	create: (payload: DefinitionPayload) => apiClient.post<WorkflowDefinition>('/workflows/definitions', payload),
 
 	update: (id: string, payload: Partial<DefinitionPayload>) =>
-		apiClient.put<WorkflowDefinition>(`/workflows/definitions/${id}`, payload),
+		apiClient.put<WorkflowDefinition>(`/workflows/definitions/${seg(id)}`, payload),
 
-	remove: (id: string) => apiClient.delete<null>(`/workflows/definitions/${id}`),
+	remove: (id: string) => apiClient.delete<null>(`/workflows/definitions/${seg(id)}`),
 };

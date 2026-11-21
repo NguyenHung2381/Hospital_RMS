@@ -13,6 +13,7 @@ import type {
 	CodeMode,
 	QuestionPool,
 } from '../types/exam.type';
+import { seg } from '../../../shared/api/path';
 
 export interface QuestionPayload {
 	subject_id?: string | null;
@@ -78,29 +79,29 @@ export const examApi = {
 		return apiClient.postForm<{ url: string }>('/exams/questions/image', form);
 	},
 	updateQuestion: (id: string, payload: Partial<QuestionPayload>) =>
-		apiClient.put<ExamQuestion>(`/exams/questions/${id}`, payload),
-	removeQuestion: (id: string) => apiClient.delete<null>(`/exams/questions/${id}`),
+		apiClient.put<ExamQuestion>(`/exams/questions/${seg(id)}`, payload),
+	removeQuestion: (id: string) => apiClient.delete<null>(`/exams/questions/${seg(id)}`),
 
 	// Đề thi
 	listPapers: (courseId: string) => apiClient.get<ExamPaper[]>(`/exams/papers?course_id=${courseId}`),
-	getPaper: (id: string) => apiClient.get<ExamPaper>(`/exams/papers/${id}`),
+	getPaper: (id: string) => apiClient.get<ExamPaper>(`/exams/papers/${seg(id)}`),
 	createPaper: (payload: PaperPayload) => apiClient.post<ExamPaper>('/exams/papers', payload),
 	updatePaper: (id: string, payload: Partial<PaperPayload>) =>
-		apiClient.put<ExamPaper>(`/exams/papers/${id}`, payload),
-	removePaper: (id: string) => apiClient.delete<null>(`/exams/papers/${id}`),
+		apiClient.put<ExamPaper>(`/exams/papers/${seg(id)}`, payload),
+	removePaper: (id: string) => apiClient.delete<null>(`/exams/papers/${seg(id)}`),
 
 	// Chấm bài
-	listAttempts: (paperId: string) => apiClient.get<ExamAttemptSummary[]>(`/exams/papers/${paperId}/attempts`),
-	getAttempt: (attemptId: string) => apiClient.get<ExamAttemptDetail>(`/exams/attempts/${attemptId}`),
+	listAttempts: (paperId: string) => apiClient.get<ExamAttemptSummary[]>(`/exams/papers/${seg(paperId)}/attempts`),
+	getAttempt: (attemptId: string) => apiClient.get<ExamAttemptDetail>(`/exams/attempts/${seg(attemptId)}`),
 	gradeAnswer: (attemptId: string, questionId: string, score: number) =>
-		apiClient.post<ExamAttemptDetail>(`/exams/attempts/${attemptId}/grade`, { question_id: questionId, score }),
+		apiClient.post<ExamAttemptDetail>(`/exams/attempts/${seg(attemptId)}/grade`, { question_id: questionId, score }),
 
 	// Học viên
 	listAvailable: () => apiClient.get<AvailablePaper[]>('/exams/available'),
-	startAttempt: (paperId: string) => apiClient.post<StartAttemptResult>(`/exams/papers/${paperId}/start`, {}),
+	startAttempt: (paperId: string) => apiClient.post<StartAttemptResult>(`/exams/papers/${seg(paperId)}/start`, {}),
 	submitAttempt: (paperId: string, answers: AnswerPayload[]) =>
 		apiClient.post<{ attempt_id: string; auto_score: number; has_essay: boolean; late?: boolean }>(
-			`/exams/papers/${paperId}/submit`,
+			`/exams/papers/${seg(paperId)}/submit`,
 			{ answers },
 		),
 };

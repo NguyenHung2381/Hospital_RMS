@@ -9,6 +9,7 @@ import type {
 	EligibleUser,
 	SeatRole,
 } from '../types/council.type';
+import { seg } from '../../../shared/api/path';
 
 export interface CouncilListParams {
 	page?: number;
@@ -63,21 +64,21 @@ export const getCouncils = (params?: CouncilListParams) => {
 };
 
 export const getCouncilById = (id: string) =>
-	apiClient.get<Council>(`/councils/${id}`);
+	apiClient.get<Council>(`/councils/${seg(id)}`);
 
 export const createCouncil = (payload: CreateCouncilPayload) =>
 	apiClient.post<Council>('/councils', payload);
 
 export const updateCouncil = (id: string, payload: UpdateCouncilPayload) =>
-	apiClient.put<Council>(`/councils/${id}`, payload);
+	apiClient.put<Council>(`/councils/${seg(id)}`, payload);
 
 export const deleteCouncil = (id: string) =>
-	apiClient.delete<null>(`/councils/${id}`);
+	apiClient.delete<null>(`/councils/${seg(id)}`);
 
 export const addCouncilMember = (
 	councilId: string,
 	payload: { user_id?: string | null; external_reviewer_id?: string | null; role: SeatRole },
-) => apiClient.post<CouncilMember>(`/councils/${councilId}/members`, payload);
+) => apiClient.post<CouncilMember>(`/councils/${seg(councilId)}/members`, payload);
 
 export const updateCouncilMember = (
 	councilId: string,
@@ -85,12 +86,12 @@ export const updateCouncilMember = (
 	payload: { user_id?: string | null; external_reviewer_id?: string | null; role?: SeatRole },
 ) =>
 	apiClient.put<CouncilMember>(
-		`/councils/${councilId}/members/${memberId}`,
+		`/councils/${seg(councilId)}/members/${seg(memberId)}`,
 		payload,
 	);
 
 export const removeCouncilMember = (councilId: string, memberId: string) =>
-	apiClient.delete<null>(`/councils/${councilId}/members/${memberId}`);
+	apiClient.delete<null>(`/councils/${seg(councilId)}/members/${seg(memberId)}`);
 
 export const getEligibleUsers = (
 	councilId: string,
@@ -100,7 +101,7 @@ export const getEligibleUsers = (
 	const qs = new URLSearchParams({ type });
 	if (search) qs.set('search', search);
 	return apiClient.get<EligibleUser[]>(
-		`/councils/${councilId}/eligible-users?${qs.toString()}`,
+		`/councils/${seg(councilId)}/eligible-users?${qs.toString()}`,
 	);
 };
 
@@ -111,19 +112,19 @@ export const getUnassignedTopics = (roundId: string) =>
 	);
 
 export const assignCouncilTopics = (councilId: string, topicIds: string[]) =>
-	apiClient.post<{ assigned: number }>(`/councils/${councilId}/topics`, {
+	apiClient.post<{ assigned: number }>(`/councils/${seg(councilId)}/topics`, {
 		topic_ids: topicIds,
 	});
 
 export const unassignCouncilTopic = (councilId: string, topicId: string) =>
-	apiClient.delete<null>(`/councils/${councilId}/topics/${topicId}`);
+	apiClient.delete<null>(`/councils/${seg(councilId)}/topics/${seg(topicId)}`);
 
 export const setCouncilTopicSession = (
 	councilId: string,
 	topicId: string,
 	session: CouncilSession | null,
 ) =>
-	apiClient.patch<null>(`/councils/${councilId}/topics/${topicId}`, {
+	apiClient.patch<null>(`/councils/${seg(councilId)}/topics/${seg(topicId)}`, {
 		session,
 	});
 
@@ -134,7 +135,7 @@ export const setCouncilSeatSubstitute = (
 	role: SeatRole,
 	userId: string,
 ) =>
-	apiClient.put<null>(`/councils/${councilId}/topics/${topicId}/substitute`, {
+	apiClient.put<null>(`/councils/${seg(councilId)}/topics/${seg(topicId)}/substitute`, {
 		role,
 		user_id: userId,
 	});
@@ -145,7 +146,7 @@ export const removeCouncilSeatSubstitute = (
 	role: SeatRole,
 ) =>
 	apiClient.delete<null>(
-		`/councils/${councilId}/topics/${topicId}/substitute/${role}`,
+		`/councils/${seg(councilId)}/topics/${seg(topicId)}/substitute/${seg(role)}`,
 	);
 
 // ─── Cổng đánh giá tiến độ của thành viên hội đồng ──────────────────────────
@@ -230,42 +231,42 @@ export const saveProgressReview = (
 		rating: ProgressRating | null;
 		comment: string;
 	},
-) => apiClient.put<null>(`/councils/progress/${topicId}/review`, payload);
+) => apiClient.put<null>(`/councils/progress/${seg(topicId)}/review`, payload);
 
 export const saveTopicResult = (
 	topicId: string,
 	payload: { conclusion: Conclusion | null; general_comment: string },
-) => apiClient.put<null>(`/councils/progress/${topicId}/result`, payload);
+) => apiClient.put<null>(`/councils/progress/${seg(topicId)}/result`, payload);
 
 export const uploadEvaluationFiles = (topicId: string, files: File[]) => {
 	const form = new FormData();
 	files.forEach((f) => form.append('files', f));
 	return apiClient.postForm<{ batch_id: string; files_uploaded: number }>(
-		`/councils/progress/${topicId}/files`,
+		`/councils/progress/${seg(topicId)}/files`,
 		form,
 	);
 };
 
 export const deleteEvaluationFile = (topicId: string, fileId: string) =>
-	apiClient.delete<null>(`/councils/progress/${topicId}/files/${fileId}`);
+	apiClient.delete<null>(`/councils/progress/${seg(topicId)}/files/${seg(fileId)}`);
 
 export const uploadMinutesFiles = (topicId: string, files: File[]) => {
 	const form = new FormData();
 	files.forEach((f) => form.append('files', f));
 	return apiClient.postForm<{ batch_id: string; files_uploaded: number }>(
-		`/councils/progress/${topicId}/minutes`,
+		`/councils/progress/${seg(topicId)}/minutes`,
 		form,
 	);
 };
 
 export const deleteMinutesFile = (topicId: string, fileId: string) =>
-	apiClient.delete<null>(`/councils/progress/${topicId}/minutes/${fileId}`);
+	apiClient.delete<null>(`/councils/progress/${seg(topicId)}/minutes/${seg(fileId)}`);
 
 export const uploadCommentImage = (topicId: string, file: File) => {
 	const form = new FormData();
 	form.append('image', file);
 	return apiClient.postForm<{ url: string }>(
-		`/councils/progress/${topicId}/comment-image`,
+		`/councils/progress/${seg(topicId)}/comment-image`,
 		form,
 	);
 };

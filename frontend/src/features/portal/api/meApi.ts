@@ -12,6 +12,7 @@ import type { CmeSourceType } from '../../seminar/types/cmeRecord.type';
 import type { CmeCycleBasis, CmeCycleStatus } from '../../seminar/api/cmeRequirementApi';
 import type { CustomValues } from '../../../shared/formConfig/types';
 import { getBlob } from '../../course/api/registrationApi';
+import { seg } from '../../../shared/api/path';
 
 interface MyCourseBase {
 	id: string;
@@ -276,12 +277,12 @@ export interface MyCourseDetail {
 	rotations: MyRotation[];
 }
 
-export const getMyCourse = (id: string) => apiClient.get<MyCourseDetail>(`/me/courses/${id}`);
+export const getMyCourse = (id: string) => apiClient.get<MyCourseDetail>(`/me/courses/${seg(id)}`);
 export const markDocumentOpened = (docId: string, kind: 'course' | 'lesson' = 'course') =>
-	apiClient.patch(`/me/${kind === 'lesson' ? 'lesson-documents' : 'documents'}/${docId}/download`, {});
+	apiClient.patch(`/me/${kind === 'lesson' ? 'lesson-documents' : 'documents'}/${seg(docId)}/download`, {});
 export const getMyTraining = () => apiClient.get<MyTraining>('/me/training');
 export const registerMyCourse = (courseId: string, programId?: string) =>
-	apiClient.post(`/me/courses/${courseId}/register`, { program_id: programId || null });
+	apiClient.post(`/me/courses/${seg(courseId)}/register`, { program_id: programId || null });
 export const getMyCme = (year: number | 'all') => apiClient.get<MyCme>(`/me/cme?year=${year}`);
 
 // ─── Đơn đăng ký khóa đào tạo liên tục của tôi (form /dang-ky-khoa-hoc) ─────
@@ -334,14 +335,14 @@ export interface MyDepartmentProposal {
 
 export const getMyCourseRegistrations = () => apiClient.get<MyCourseRegistration[]>('/me/course-registrations');
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
-export const myApplicationUrl = (enrollmentId: string) => `/api/v1/me/course-registrations/${enrollmentId}/application`;
-export const downloadMyApplication = (enrollmentId: string) => getBlob(`/me/course-registrations/${enrollmentId}/application`);
+export const myApplicationUrl = (enrollmentId: string) => `/api/v1/me/course-registrations/${seg(enrollmentId)}/application`;
+export const downloadMyApplication = (enrollmentId: string) => getBlob(`/me/course-registrations/${seg(enrollmentId)}/application`);
 /** Nộp / thay 1 loại hồ sơ của đơn mình (chỉ khi đơn còn chờ duyệt) */
 export const uploadMyRegistrationFile = (enrollmentId: string, kind: RegistrationFileKind, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
 	return apiClient.postForm<RegistrationFileUploadResult>(
-		`/me/course-registrations/${enrollmentId}/files/${kind}`,
+		`/me/course-registrations/${seg(enrollmentId)}/files/${seg(kind)}`,
 		form,
 	);
 };
@@ -389,20 +390,20 @@ const toPayload = (f: MyCmeRecordForm) => ({
 export const getMyCmeCategories = () => apiClient.get<MyCmeCategory[]>('/me/cme-categories');
 export const createMyCmeRecord = (f: MyCmeRecordForm) => apiClient.post<{ id: string }>('/me/cme-records', toPayload(f));
 export const updateMyCmeRecord = (id: string, f: MyCmeRecordForm) =>
-	apiClient.put<{ id: string }>(`/me/cme-records/${id}`, toPayload(f));
-export const deleteMyCmeRecord = (id: string) => apiClient.delete<null>(`/me/cme-records/${id}`);
+	apiClient.put<{ id: string }>(`/me/cme-records/${seg(id)}`, toPayload(f));
+export const deleteMyCmeRecord = (id: string) => apiClient.delete<null>(`/me/cme-records/${seg(id)}`);
 export const addMyCmeEvidence = (id: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postForm<{ id: string }>(`/me/cme-records/${id}/evidence`, form);
+	return apiClient.postForm<{ id: string }>(`/me/cme-records/${seg(id)}/evidence`, form);
 };
 export const addMyCmeResultFile = (id: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postForm<MyCmeRecord>(`/me/cme-records/${id}/result-files`, form);
+	return apiClient.postForm<MyCmeRecord>(`/me/cme-records/${seg(id)}/result-files`, form);
 };
 export const deleteMyCmeResultFile = (id: string, fileId: string) =>
-	apiClient.delete<null>(`/me/cme-records/${id}/result-files/${fileId}`);
+	apiClient.delete<null>(`/me/cme-records/${seg(id)}/result-files/${seg(fileId)}`);
 
 // ─── Điểm danh học viên theo ca, trong thời gian khóa học (IP bệnh viện + GPS) ──
 export interface AttendanceRow {
@@ -538,4 +539,4 @@ export const getMyLeaveRequests = () => apiClient.get<LeaveRequest[]>('/me/atten
 export const createLeaveRequest = (data: LeaveRequestForm) =>
 	apiClient.post<LeaveRequest>('/me/attendance/leave-requests', data);
 export const cancelLeaveRequest = (id: number) =>
-	apiClient.patch<null>(`/me/attendance/leave-requests/${id}/cancel`, {});
+	apiClient.patch<null>(`/me/attendance/leave-requests/${seg(id)}/cancel`, {});

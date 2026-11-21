@@ -6,6 +6,7 @@ import type {
 	RoleFormData,
 	RoleListResponse,
 } from '../types/role.type';
+import { seg } from '../../../shared/api/path';
 
 export interface RoleListParams {
 	page?: number;
@@ -27,20 +28,20 @@ export const createRole = (payload: RoleFormData) =>
 	apiClient.post<Role>('/roles', payload);
 
 export const updateRole = (id: string, payload: RoleFormData) =>
-	apiClient.put<Role>(`/roles/${id}`, payload);
+	apiClient.put<Role>(`/roles/${seg(id)}`, payload);
 
 export const deleteRole = (id: string) =>
-	apiClient.delete<null>(`/roles/${id}`);
+	apiClient.delete<null>(`/roles/${seg(id)}`);
 
 // Permission endpoints
 export const getPermissionCatalog = () =>
 	apiClient.get<PermissionCatalog>('/permissions/catalog');
 
 export const getRolePermissions = (roleId: string) =>
-	apiClient.get<RoleGrant[]>(`/roles/${roleId}/permissions`);
+	apiClient.get<RoleGrant[]>(`/roles/${seg(roleId)}/permissions`);
 
 export const cloneRole = (roleId: string, data: RoleFormData) =>
-	apiClient.post<Role>(`/roles/${roleId}/clone`, data);
+	apiClient.post<Role>(`/roles/${seg(roleId)}/clone`, data);
 
 export const setRolePermissions = (roleId: string, grants: RoleGrant[]) =>
-	apiClient.put<RoleGrant[]>(`/roles/${roleId}/permissions`, { grants });
+	apiClient.put<RoleGrant[]>(`/roles/${seg(roleId)}/permissions`, { grants });

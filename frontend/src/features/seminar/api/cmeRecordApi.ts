@@ -8,6 +8,7 @@ import type {
 	CmeRecordImportRow,
 	CmeRecordListResponse,
 } from '../types/cmeRecord.type';
+import { seg } from '../../../shared/api/path';
 
 export const getCmeRecords = (params: { year?: number; user_id?: string; category_id?: string } = {}) => {
 	const qs = new URLSearchParams({ limit: '0' });
@@ -34,15 +35,15 @@ export const createCmeRecord = (form: CmeRecordFormData) =>
 	apiClient.post<CmeRecord>('/cme-records', toPayload(form));
 
 export const updateCmeRecord = (id: string, form: CmeRecordFormData) =>
-	apiClient.put<CmeRecord>(`/cme-records/${id}`, toPayload(form));
+	apiClient.put<CmeRecord>(`/cme-records/${seg(id)}`, toPayload(form));
 
 /** credits: số tín chỉ người quản lý nhập khi duyệt; bỏ trống = giữ tín chỉ hiện có. */
 export const approveCmeRecord = (id: string, credits?: number) =>
-	apiClient.post<CmeRecord>(`/cme-records/${id}/approve`, credits === undefined ? {} : { credits });
+	apiClient.post<CmeRecord>(`/cme-records/${seg(id)}/approve`, credits === undefined ? {} : { credits });
 export const rejectCmeRecord = (id: string, reason: string) =>
-	apiClient.post<CmeRecord>(`/cme-records/${id}/reject`, { reason });
+	apiClient.post<CmeRecord>(`/cme-records/${seg(id)}/reject`, { reason });
 
-export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-records/${id}`);
+export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-records/${seg(id)}`);
 export const deleteCmeRecords = (ids: string[]) =>
 	apiClient.post<{ deleted: number }>('/cme-records/bulk-delete', { ids });
 
@@ -64,7 +65,7 @@ export const bulkUpdateCmeRecords = (ids: string[], patch: CmeRecordBulkPatch) =
 export const addCmeRecordEvidence =(id: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postForm<CmeRecord>(`/cme-records/${id}/evidence`, form);
+	return apiClient.postForm<CmeRecord>(`/cme-records/${seg(id)}/evidence`, form);
 };
 
 // Giá trị mặc định chọn ở hộp thoại — áp cho dòng để trống ô tương ứng trong file

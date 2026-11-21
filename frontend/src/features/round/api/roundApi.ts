@@ -9,6 +9,7 @@ import type {
 	RoundType,
 	SupplementField,
 } from '../types/round.type';
+import { seg } from '../../../shared/api/path';
 
 export interface RoundListParams {
 	page?: number;
@@ -105,10 +106,10 @@ export const createRound = (payload: CreateRoundPayload) =>
 	apiClient.post<ResearchRound>('/research-rounds', payload);
 
 export const updateRound = (id: string, payload: UpdateRoundPayload) =>
-	apiClient.put<ResearchRound>(`/research-rounds/${id}`, payload);
+	apiClient.put<ResearchRound>(`/research-rounds/${seg(id)}`, payload);
 
 export const deleteRound = (id: string) =>
-	apiClient.delete<null>(`/research-rounds/${id}`);
+	apiClient.delete<null>(`/research-rounds/${seg(id)}`);
 
 export const getRoundTypes = () =>
 	apiClient
@@ -123,11 +124,11 @@ export const getAllLevels = () =>
 
 /** Cấp độ mặc định của loại đợt — gợi ý sẵn khi tạo đợt. */
 export const getRoundTypeLevelIds = (roundTypeId: string) =>
-	apiClient.get<string[]>(`/round-types/${roundTypeId}/levels`);
+	apiClient.get<string[]>(`/round-types/${seg(roundTypeId)}/levels`);
 
 // ─── Deadline API ──────────────────────────────────────────────────────────────
 export const getDeadlines = (roundId: string) =>
-	apiClient.get<RoundDeadline[]>(`/research-rounds/${roundId}/deadlines`);
+	apiClient.get<RoundDeadline[]>(`/research-rounds/${seg(roundId)}/deadlines`);
 
 export const upsertDeadline = (
 	roundId: string,
@@ -135,9 +136,9 @@ export const upsertDeadline = (
 	payload: DeadlinePayload,
 ) =>
 	apiClient.post<RoundDeadline>(
-		`/research-rounds/${roundId}/deadlines/${phase}`,
+		`/research-rounds/${seg(roundId)}/deadlines/${seg(phase)}`,
 		payload,
 	);
 
 export const deleteDeadline = (roundId: string, phase: number) =>
-	apiClient.delete<null>(`/research-rounds/${roundId}/deadlines/${phase}`);
+	apiClient.delete<null>(`/research-rounds/${seg(roundId)}/deadlines/${seg(phase)}`);

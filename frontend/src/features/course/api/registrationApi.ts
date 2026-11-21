@@ -6,6 +6,7 @@ import { getToken } from '@/shared/utils/storage';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import type { RegistrationFileItem, RegistrationFileKind } from '../../public/api/publicApi';
 import type { EnrollmentStatus } from '../types/course.type';
+import { seg } from '../../../shared/api/path';
 
 // ─── Bản khai đăng ký (form /dang-ky-khoa-hoc) — phòng Đào tạo xem trước khi duyệt ──
 
@@ -93,7 +94,7 @@ export interface ProposalGroup {
 	}[];
 }
 
-const reg = (enrollmentId: string) => `/courses/enrollments/${enrollmentId}/registration`;
+const reg = (enrollmentId: string) => `/courses/enrollments/${seg(enrollmentId)}/registration`;
 
 export const getEnrollmentRegistration = (enrollmentId: string) =>
 	apiClient.get<RegistrationReview | null>(reg(enrollmentId));
@@ -103,10 +104,10 @@ export const getRegistrationDossier = (enrollmentId: string) =>
 export const registrationApplicationUrl = (enrollmentId: string) => `/api/v1${reg(enrollmentId)}/application`;
 export const downloadRegistrationApplication = (enrollmentId: string) => getBlob(`${reg(enrollmentId)}/application`);
 
-export const getCourseProposals = (courseId: string) => apiClient.get<ProposalGroup[]>(`/courses/${courseId}/proposals`);
+export const getCourseProposals = (courseId: string) => apiClient.get<ProposalGroup[]>(`/courses/${seg(courseId)}/proposals`);
 export const downloadCourseProposal = (courseId: string, departmentId: string, programId: string | null) =>
 	getBlob(
-		`/courses/${courseId}/proposals/document?${new URLSearchParams({
+		`/courses/${seg(courseId)}/proposals/document?${new URLSearchParams({
 			department_id: departmentId,
 			...(programId ? { program_id: programId } : {}),
 		})}`,
