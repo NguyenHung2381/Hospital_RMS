@@ -131,10 +131,10 @@ const getMentors = async ({
 	if (licensed_only === '1' || licensed_only === true) where.push('sl.license_no IS NOT NULL');
 
 	const result = await req.query(`
-    SELECT u.id AS user_id, u.staff_number, u.full_name, u.date_of_birth, u.gender,
+    SELECT u.id AS user_id, u.staff_number, u.full_name,
            COALESCE(sl.qualification, q.name) AS qualification,
            sl.license_no, sl.issued_date, sl.issuing_authority, sl.practice_scope, sl.scope_code,
-           u.phone_number AS phone, u.department_id, d.name AS department_name
+           u.department_id, d.name AS department_name
     FROM users u
     LEFT JOIN staff_practice_licenses sl ON sl.user_id = u.id
     LEFT JOIN departments d ON d.id = u.department_id
