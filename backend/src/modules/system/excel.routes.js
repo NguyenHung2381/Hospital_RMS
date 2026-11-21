@@ -20,18 +20,21 @@ const MAX_CELLS = 200_000;
 
 const { fnt, sf, al, bAll, TABLE } = require('../../utils/excelStyle');
 // Style dựng sẵn ở module scope — không cấp phát object style mới cho từng ô
-const STYLE_HEADER = {
+/** @typedef {Partial<import('exceljs').Style>} CellStyle */
+const STYLE_HEADER = /** @type {CellStyle} */ ({
 	font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
 	fill: sf(TABLE.hdrBlue),
 	alignment: al('center', true),
 	border: bAll,
-};
-const dataStyle = (bg, h) => ({
-	font: fnt({ size: 10 }),
-	fill: sf(bg),
-	alignment: al(h, true),
-	border: bAll,
 });
+/** @returns {CellStyle} */
+const dataStyle = (bg, h) =>
+	/** @type {CellStyle} */ ({
+		font: fnt({ size: 10 }),
+		fill: sf(bg),
+		alignment: al(h, true),
+		border: bAll,
+	});
 const STYLES = {
 	A: { left: dataStyle(TABLE.rowA, 'left'), center: dataStyle(TABLE.rowA, 'center') },
 	B: { left: dataStyle(TABLE.rowB, 'left'), center: dataStyle(TABLE.rowB, 'center') },
