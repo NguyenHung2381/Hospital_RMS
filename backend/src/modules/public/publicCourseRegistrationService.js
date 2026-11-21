@@ -495,9 +495,17 @@ const factorMatches = (reg, factor) => {
 /**
  * Bản khai theo mã + yếu tố thứ hai. Sai mã / sai yếu tố / thiếu yếu tố ⇒ cùng 1 lỗi 404,
  * cùng số truy vấn (yếu tố được đọc trước khi hỏi CSDL, so trong bộ nhớ).
+ * allowEmail = false: không nhận email làm yếu tố thứ hai — cho tải đơn (có CCCD đầy đủ) và
+ * nộp / thay hồ sơ. Mã đăng ký + email là thứ cán bộ chỉ có courses:read cũng xem được ở
+ * danh sách ghi danh, nên chỉ đủ để xem trạng thái; tải đơn / nộp hồ sơ cần CCCD hoặc
+ * download_token (chỉ người đăng ký có).
+ * @param {string} code
+ * @param {Record<string, any>} body
+ * @param {{ allowEmail?: boolean }} [opts]
  */
-const resolveAccess = async (code, body) => {
-	const factor = parseFactor(body);
+const resolveAccess = async (code, body, { allowEmail = true } = {}) => {
+	let factor = parseFactor(body);
+	if (factor.kind === 'email' && !allowEmail) factor = { kind: 'none' };
 	const reg = await courseRegistrationService.getByCode(code);
 	if (!reg || !factorMatches(reg, factor)) throw httpError(404, NOT_FOUND);
 	return reg;

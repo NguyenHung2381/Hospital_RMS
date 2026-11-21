@@ -69,14 +69,15 @@ const verifyEmailOtp = asyncHandler(async (req, res) => {
 });
 
 // Giới hạn theo mã đăng ký rồi mới tra — áp cho mọi mã (có hay không) như nhau.
-const withRegistration = async (req, res) => {
+// opts.allowEmail = false: tải đơn / nộp hồ sơ không nhận email làm yếu tố thứ hai (service.resolveAccess).
+const withRegistration = async (req, res, opts) => {
 	const code = String(req.params.code);
 	const key = normalizeCode(code) || code.slice(0, 32);
 	if (!(await attempts.hit('course-reg-code', key, CODE_PER_CODE_MAX, HOUR))) {
 		error(res, 'Mã đăng ký này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
 		return null;
 	}
-	return service.resolveAccess(code, req.body);
+	return service.resolveAccess(code, req.body, opts);
 };
 
 const getStatus = asyncHandler(async (req, res) => {
@@ -97,8 +98,9 @@ const sendDocx = (res, out) => {
 	res.end(out.buffer);
 };
 
+// Đơn có CCCD đầy đủ ⇒ chỉ nhận CCCD hoặc download_token, không nhận email
 const downloadApplication = asyncHandler(async (req, res) => {
-	const reg = await withRegistration(req, res);
+	const reg = await withRegistration(req, res, { allowEmail: false });
 	if (!reg) return;
 	sendDocx(res, await service.renderApplication(reg));
 });
@@ -122,9 +124,10 @@ const draftProposal = asyncHandler(async (req, res) => {
 	sendDocx(res, await service.renderDraftProposal(req.body));
 });
 
-// Nộp / thay 1 file hồ sơ theo mã đăng ký (+ yếu tố thứ hai trong field data)
+// Nộp / thay 1 file hồ sơ theo mã đăng ký (+ yếu tố thứ hai trong field data: CCCD hoặc
+// download_token, không nhận email)
 const uploadFile = asyncHandler(async (req, res) => {
-	const reg = await withRegistration(req, res);
+	const reg = await withRegistration(req, res, { allowEmail: false });
 	if (!reg) return;
 	success(res, await service.uploadFile(reg, req.params.kind, req.file), 'Đã nộp hồ sơ.');
 });

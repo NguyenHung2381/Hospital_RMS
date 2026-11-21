@@ -713,6 +713,64 @@ test('tra cứu theo mã: cần yếu tố thứ hai; sai mã ≡ sai yếu tố
 	}
 });
 
+// M-10: mã đăng ký + email là thứ cán bộ chỉ có courses:read xem được ở danh sách ghi danh ⇒
+// email chỉ đủ để xem trạng thái; tải đơn (có CCCD đầy đủ) / nộp hồ sơ cần CCCD hoặc download_token.
+test('M-10: tải đơn / nộp hồ sơ theo mã không nhận email làm yếu tố thứ hai (404 như sai yếu tố)', async () => {
+	reset();
+	putReg();
+	const email = { email: REG.snapshot.email };
+	// Service: allowEmail = false ⇒ email đúng vẫn 404, cùng số truy vấn như sai yếu tố
+	const before = log.length;
+	await assert.rejects(reg.resolveAccess(REG.registration_code, email, { allowEmail: false }), {
+		statusCode: 404,
+		message: 'Không tìm thấy đăng ký khớp với mã và thông tin đã nhập.',
+	});
+	const emailQueries = log.length - before;
+	const mid = log.length;
+	await reg.resolveAccess(REG.registration_code, {}).catch(() => {});
+	assert.equal(emailQueries, log.length - mid, 'cùng số truy vấn như thiếu yếu tố');
+	// Xem trạng thái vẫn nhận email
+	assert.equal(
+		(await reg.resolveAccess(REG.registration_code, email)).enrollment_id,
+		REG.enrollment_id,
+	);
+
+	// Controller: /:code/application và /:code/files/:kind chặn email, nhận CCCD
+	const run = (handler, body, params) =>
+		new Promise((resolve) => {
+			const out = { status: 200 };
+			const res = {
+				status(c) {
+					out.status = c;
+					return res;
+				},
+				setHeader() {},
+				json(b) {
+					out.body = b;
+					resolve(out);
+					return res;
+				},
+				end(buf) {
+					out.buffer = buf;
+					resolve(out);
+				},
+			};
+			handler({ body, params, ip: '127.0.0.1' }, res, (err) =>
+				resolve({ status: err.statusCode || 500, body: { message: err.message } }),
+			);
+		});
+	const params = { code: REG.registration_code, kind: 'application_signed' };
+	assert.equal((await run(regController.downloadApplication, email, params)).status, 404);
+	assert.equal((await run(regController.uploadFile, email, params)).status, 404);
+	assert.equal((await run(regController.getStatus, email, params)).status, 200, 'trạng thái');
+	const byId = await run(
+		regController.downloadApplication,
+		{ national_id: REG.snapshot.national_id },
+		params,
+	);
+	assert.equal(byId.status, 200, 'CCCD vẫn tải được đơn');
+});
+
 test('tra cứu theo mã: trạng thái không lộ dữ liệu ngoài hợp đồng; đơn gom đủ tên khóa / chương trình / khoa', async () => {
 	reset();
 	const r = putReg({ snapshot: { ...REG.snapshot, trainee_type_id: 'TT1' } });

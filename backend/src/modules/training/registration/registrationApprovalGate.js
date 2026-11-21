@@ -19,13 +19,28 @@ const ENROLLMENT_JOIN_SQL = 'LEFT JOIN course_registrations cr ON cr.enrollment_
 const FLAT_KEYS = ['reg_code', 'reg_source', 'reg_file_kinds'];
 
 /**
+ * Che mã đăng ký: 'DKABCDEFGHJK' → 'DK••••••GHJK'. Mã đăng ký + email (hoặc CCCD) là thứ
+ * cổng công khai nhận để tra cứu / tải đơn / nộp hồ sơ, nên người thiếu quyền
+ * trainees:read_sensitive chỉ thấy bản che (vẫn đủ để nhận ra khi đối chiếu).
+ * @param {string|null|undefined} code
+ */
+const maskRegistrationCode = (code) => {
+	if (!code) return code;
+	const s = String(code);
+	return s.length > 6 ? `${s.slice(0, 2)}••••••${s.slice(-4)}` : '••••••';
+};
+
+/**
  * Gom cột reg_* của danh sách ghi danh thành `registration`
  * (null = không có bản khai; còn lại { code, source, has_dossier, files_missing }).
  * has_dossier = đã nộp đủ hồ sơ bắt buộc của đối tượng (cả nội viện lẫn ngoại viện).
+ * Mã đăng ký mặc định bị che (maskRegistrationCode) — các route này chỉ cần courses:read;
+ * nơi gọi đã kiểm trainees:read_sensitive thì truyền { sensitive: true } để trả mã đầy đủ.
  * @param {Array<Record<string, any>>} rows
+ * @param {{ sensitive?: boolean }} [opts]
  * @returns {Promise<Array<Record<string, any>>>}
  */
-const annotateEnrollments = async (rows) =>
+const annotateEnrollments = async (rows, { sensitive = false } = {}) =>
 	rows.map((row) => {
 		const out = { ...row };
 		for (const k of FLAT_KEYS) delete out[k];
@@ -35,7 +50,7 @@ const annotateEnrollments = async (rows) =>
 		return {
 			...out,
 			registration: {
-				code: row.reg_code,
+				code: sensitive ? row.reg_code : maskRegistrationCode(row.reg_code),
 				source: row.reg_source,
 				has_dossier: missing.length === 0,
 				files_missing: missing,
@@ -47,4 +62,5 @@ module.exports = {
 	ENROLLMENT_COLUMNS_SQL,
 	ENROLLMENT_JOIN_SQL,
 	annotateEnrollments,
+	maskRegistrationCode,
 };

@@ -265,6 +265,8 @@
  *     description: >
  *       Trả file Word thay vì JSON (Content-Disposition attachment, Cache-Control no-store).
  *       Đơn in đúng dữ liệu người đó đã khai khi đăng ký (bản khai), không lấy từ hồ sơ hiện tại.
+ *       Đơn có CCCD đầy đủ nên chỉ nhận national_id hoặc download_token; gửi email (dù đúng) trả 404
+ *       như sai yếu tố — mã đăng ký + email cán bộ chỉ có quyền xem khóa học cũng đọc được.
  *     parameters:
  *       - { in: path, name: code, required: true, schema: { type: string, minLength: 1, maxLength: 32 }, description: Mã đăng ký }
  *     requestBody:
@@ -299,7 +301,8 @@
  *     tags: [Public]
  *     security: []
  *     description: >
- *       Multipart: field `data` là chuỗi JSON chứa yếu tố thứ hai (national_id, email hoặc download_token),
+ *       Multipart: field `data` là chuỗi JSON chứa yếu tố thứ hai (national_id hoặc download_token; email
+ *       không được nhận ở đây — trả 404 như sai yếu tố),
  *       field `file` là đúng một file PDF, JPG hoặc PNG. Yếu tố thứ hai đọc từ field `data`, không đọc từ
  *       body ngoài multipart. Chỉ nhận khi đơn còn chờ duyệt hoặc trong danh sách chờ; đơn đã được xử lý thì
  *       không cho thay qua cổng công khai (409). Nội viện: file cũ cùng loại bị xóa; ngoại viện: file vào
@@ -321,7 +324,7 @@
  *             properties:
  *               data:
  *                 type: string
- *                 description: 'Chuỗi JSON, ví dụ {"email":"..."} hoặc {"download_token":"..."}'
+ *                 description: 'Chuỗi JSON, ví dụ {"national_id":"..."} hoặc {"download_token":"..."}'
  *               file: { type: string, format: binary, description: Đúng một file PDF / JPG / PNG }
  *     responses:
  *       200:

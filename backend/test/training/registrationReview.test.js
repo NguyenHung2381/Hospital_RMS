@@ -206,24 +206,27 @@ test('duyệt hàng loạt: không đăng ký nào bị bỏ qua vì thiếu m�
 
 // ─── Danh sách ghi danh: tóm tắt bản khai ───────────────────────────────────
 test('annotateEnrollments: gom cột bản khai thành registration { code, source, has_dossier, files_missing }', async () => {
-	const [plain, ext, extFull, int, intOld, intHalf] = await gate.annotateEnrollments([
-		{ id: 'A', reg_code: null },
-		{ id: 'B', reg_code: 'DKAAAA', reg_source: 'external', reg_file_kinds: null },
-		{
-			id: 'B2',
-			reg_code: 'DKAAAB',
-			reg_source: 'external',
-			reg_file_kinds: 'national_id,degree,license,decision',
-		},
-		{ id: 'C', reg_code: 'DKBBBB', reg_source: 'internal', reg_file_kinds: 'application_signed' },
-		{ id: 'D', reg_code: 'DKCCCC', reg_source: 'internal', reg_file_kinds: 'dossier' },
-		{
-			id: 'E',
-			reg_code: 'DKDDDD',
-			reg_source: 'internal',
-			reg_file_kinds: 'application_signed,proposal_approved',
-		},
-	]);
+	const [plain, ext, extFull, int, intOld, intHalf] = await gate.annotateEnrollments(
+		[
+			{ id: 'A', reg_code: null },
+			{ id: 'B', reg_code: 'DKAAAA', reg_source: 'external', reg_file_kinds: null },
+			{
+				id: 'B2',
+				reg_code: 'DKAAAB',
+				reg_source: 'external',
+				reg_file_kinds: 'national_id,degree,license,decision',
+			},
+			{ id: 'C', reg_code: 'DKBBBB', reg_source: 'internal', reg_file_kinds: 'application_signed' },
+			{ id: 'D', reg_code: 'DKCCCC', reg_source: 'internal', reg_file_kinds: 'dossier' },
+			{
+				id: 'E',
+				reg_code: 'DKDDDD',
+				reg_source: 'internal',
+				reg_file_kinds: 'application_signed,proposal_approved',
+			},
+		],
+		{ sensitive: true },
+	);
 	assert.equal(plain.registration, null);
 	assert.equal('reg_code' in plain, false);
 	// Ngoại viện chưa nộp gì ⇒ thiếu đủ 4 loại (theo thứ tự khai báo)
@@ -265,6 +268,21 @@ test('cột reg_file_kinds loại file đã xóa mềm và file ngoại viện b
 	assert.match(sqlText, /COALESCE\(rd\.status, 'pending'\) <> 'rejected'/);
 });
 
+test('M-10: annotateEnrollments mặc định che mã đăng ký (route chỉ cần courses:read)', async () => {
+	const [masked, plain] = await gate.annotateEnrollments([
+		{ id: 'A', reg_code: 'DKQWERTYUP23', reg_source: 'internal', reg_file_kinds: null },
+		{ id: 'B', reg_code: null },
+	]);
+	assert.equal(masked.registration.code, 'DK••••••UP23');
+	assert.ok(!JSON.stringify(masked).includes('DKQWERTYUP23'));
+	assert.equal(plain.registration, null);
+	const [full] = await gate.annotateEnrollments(
+		[{ id: 'A', reg_code: 'DKQWERTYUP23', reg_source: 'internal', reg_file_kinds: null }],
+		{ sensitive: true },
+	);
+	assert.equal(full.registration.code, 'DKQWERTYUP23');
+});
+
 // ─── Xem bản khai: file hồ sơ ───────────────────────────────────────────────
 test('getForReview: files đủ các loại + files_missing; file_url chỉ có khi có quyền trainees:read_sensitive; không còn dossier', async () => {
 	reset();
@@ -293,6 +311,10 @@ test('getForReview: files đủ các loại + files_missing; file_url chỉ có 
 		],
 	);
 	const without = await reviewService.getForReview('E_INT', { permissions: new Set() });
+	// M-10: mã đăng ký + email là yếu tố tra cứu ở cổng công khai ⇒ chỉ read_sensitive thấy đủ mã
+	assert.equal(withPerm.registration_code, 'DKE_INT');
+	assert.equal(without.registration_code, 'DK••••••_INT');
+	assert.ok(!JSON.stringify(without).includes('DKE_INT'));
 	assert.equal(without.files[0].file_name, 'don.pdf');
 	assert.equal(without.files[0].file_url, null, 'thiếu quyền ⇒ không có link xem file');
 	assert.deepEqual(without.files_missing, ['proposal_approved']);
