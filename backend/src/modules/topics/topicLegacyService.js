@@ -58,10 +58,10 @@ const loadContext = async (roundId, actorId) => {
 	};
 };
 
-// Thành viên là chính người nhập: chọn từ gợi ý (user_id) hoặc trùng mã nhân viên.
-const isActorMember = (m, actorId, actorStaffNumber) =>
-	m.user_id === actorId ||
-	(actorStaffNumber != null && toStaffNumber(m.staff_number) === actorStaffNumber);
+// Thành viên là chính người nhập: chỉ nhận theo mã nhân viên THẬT của tài khoản
+// trong DB — không tin user_id do client gửi (tự nhận dòng của mình để gắn tài khoản).
+const isActorMember = (m, _actorId, actorStaffNumber) =>
+	actorStaffNumber != null && toStaffNumber(m.staff_number) === actorStaffNumber;
 
 const create = async (data, actor) => {
 	const members = Array.isArray(data.members) ? data.members : [];
