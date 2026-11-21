@@ -180,7 +180,10 @@ const registerPublic = async (token, data, custom = null) => {
 	if (participant?.id)
 		await formCustomValueService.save('seminar_participant', participant.id, custom);
 	// Không chờ SMTP — đăng ký đã ghi xong, email chậm/lỗi không chặn phản hồi.
-	if (person.email) {
+	// Chỉ gửi tới email của TÀI KHOẢN nhân viên (lấy từ hồ sơ, không phải form). Ngoại viện
+	// tự gõ email mà không chứng minh sở hữu ⇒ không gửi (tránh lạm dụng SMTP bệnh viện gửi
+	// thư kèm họ tên/đơn vị tùy ý tới người khác); họ xem vé ngay trên màn hình.
+	if (data.source === 'internal' && person.email) {
 		mailQueue.enqueue('thẻ đại biểu', () => sendBadgeMail(seminar, person, ticketCode));
 	}
 	// Trả vé ngay cho cả nội viện (quyết định nghiệp vụ: đăng ký xong hiện QR luôn).
