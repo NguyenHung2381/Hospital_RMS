@@ -101,7 +101,11 @@ const registerTrainee = asyncHandler(async (req, res) => {
 		? await courseEnrollmentService.registerStaff(req.params.id, user_id, req.user.id, opts)
 		: await courseEnrollmentService.registerTrainee(req.params.id, trainee_id, req.user.id, opts);
 	// Phòng Đào tạo ghi danh hộ ⇒ duyệt luôn (đủ sĩ số thì vào danh sách chờ). Khóa GPHN: xếp lịch vòng là bước sau.
-	const decided = await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id);
+	// Chỉ người có courses:approve mới duyệt được — chỉ có courses:create thì đăng ký ở lại
+	// 'pending' chờ người duyệt (L-10).
+	const decided = hasPermission(req.user, 'courses', 'approve')
+		? await courseEnrollmentService.decideEnrollment(item.id, 'approved', req.user.id)
+		: { status: item.status ?? 'pending', waitlist_position: null };
 	await formCustomValueService.save('enrollment', item.id, req.formCustom, req.user.id);
 	return created(res, {
 		...item,
