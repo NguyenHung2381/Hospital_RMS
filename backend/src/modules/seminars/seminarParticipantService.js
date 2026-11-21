@@ -33,6 +33,15 @@ const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/dept
 const CHECKIN_QR_TTL = '75s'; // xem giải thích ở training/courses/courseAttendanceService.js (ATTENDANCE_QR_TTL)
 const CHECKIN_QR_PURPOSE = 'seminar_checkin_qr';
 
+// Dòng do chính người tham dự tạo (p = seminar_participants): tự đăng ký qua QR (có vé), hoặc
+// tự đăng ký tập huấn trên cổng (/me/hospital-trainings — không vé, created_by = user_id).
+// Những dòng này phải điểm danh mới được cấp CME / mới tính là đã tham dự (M-08 audit
+// run-5); dòng ban tổ chức thêm / nhập Excel thì không. Ban tổ chức tự thêm chính mình
+// cũng bị coi là tự đăng ký (phải điểm danh) — chấp nhận được. Biểu thức không bao giờ ra
+// NULL (dòng cũ created_by NULL vẫn là "BTC thêm"), để NOT ... trong CME_ELIGIBLE_SQL đúng.
+const SELF_CREATED_SQL = `(p.ticket_code IS NOT NULL OR (p.user_id IS NOT NULL
+  AND p.created_by IS NOT NULL AND p.created_by = p.user_id))`;
+
 const PART_TYPES = ['attendee', 'speaker', 'chair', 'organizer', 'trainee'];
 const SOURCES = ['internal', 'external'];
 // Sinh id trong SQL: 'SPT' + 21 hex = 24 ký tự
@@ -247,7 +256,7 @@ const addRequiredStaff = async (seminarId, actorId) => {
 };
 
 // Nhân sự thuộc khoa bắt buộc mà chưa tham dự: chưa có trong danh sách, hoặc
-// tự đăng ký qua QR (có vé) nhưng chưa điểm danh.
+// tự đăng ký (QR có vé / cổng tập huấn) nhưng chưa điểm danh.
 const requiredAbsentees = async (seminarId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('sid', sql.VarChar(20), seminarId).query(`
@@ -258,13 +267,13 @@ const requiredAbsentees = async (seminarId) => {
       LEFT JOIN departments d ON d.id = u.department_id
       ${deptAccountJoinSql('u')}
       ${outerApply(
-				`SELECT p.id, p.ticket_code, p.checked_in_at FROM seminar_participants p
+				`SELECT p.id, p.ticket_code, p.checked_in_at, p.user_id, p.created_by FROM seminar_participants p
                    WHERE p.seminar_id = r.seminar_id AND p.user_id = u.id
                    ORDER BY p.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
 				'p',
 			)}
       WHERE r.seminar_id = @sid AND ${staffWhere}
-        AND (p.id IS NULL OR (p.ticket_code IS NOT NULL AND p.checked_in_at IS NULL))
+        AND (p.id IS NULL OR (${SELF_CREATED_SQL} AND p.checked_in_at IS NULL))
       ORDER BY d.name, u.full_name;
     `);
 	return r.recordset;
@@ -308,7 +317,8 @@ const ISSUED_LOCKED_FIELDS = [...IDENTITY_FIELDS, 'cme_credits', 'user_id'];
 
 const blankToNull = (v) => (v === '' || v === undefined ? null : v);
 const asDateKey = (v) => {
-	if (v instanceof Date) return Number.isNaN(v.getTime()) ? String(v) : v.toISOString().slice(0, 10);
+	if (v instanceof Date)
+		return Number.isNaN(v.getTime()) ? String(v) : v.toISOString().slice(0, 10);
 	return String(v).slice(0, 10);
 };
 // So giá trị form gửi lên với giá trị đang lưu (form luôn gửi lại cả bộ ⇒ chỉ coi là đổi khi khác)
@@ -440,7 +450,8 @@ const remove = async (seminarId, pid, actorId, { canCme = false } = {}) => {
 // seminar_participants đã có sẵn user_id (khác course_enrollments phải qua
 // trainees) — tự điểm danh chỉ cần so đúng tài khoản đang đăng nhập, KHÔNG tự
 // tạo participant mới nếu chưa có trong danh sách (tránh lộ khả năng "tự đăng
-// ký tham dự" qua đường quét QR).
+// ký tham dự" qua đường quét QR). Tự đăng ký tập huấn trên cổng thì có tạo dòng
+// (hospitalTrainingSelfService.register) — dòng đó vẫn phải điểm danh (SELF_CREATED_SQL).
 const generateCheckInQrToken = (seminarId) =>
 	signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
 
@@ -503,4 +514,5 @@ module.exports = {
 	addUsers,
 	addRequiredStaff,
 	requiredAbsentees,
+	SELF_CREATED_SQL,
 };

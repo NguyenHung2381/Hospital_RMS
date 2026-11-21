@@ -24,15 +24,24 @@ export const testMax = (s: Seminar, p: SeminarParticipant) =>
 export const testPassed = (s: Seminar, p: SeminarParticipant) =>
 	s.test_pass_score == null || (testScore(s, p) ?? -1) >= s.test_pass_score;
 
-// Người tự đăng ký qua QR (có vé) phải điểm danh + nộp bài kiểm tra (nếu có, và đạt
-// điểm đạt nếu đặt) mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarParticipantService.
+/**
+ * Dòng do chính người tham dự tạo: tự đăng ký qua QR (có vé) hoặc tự đăng ký tập huấn trên
+ * cổng (created_by = user_id). Khớp SELF_CREATED_SQL ở backend seminarParticipantService.
+ * Dòng ban tổ chức thêm / nhập Excel thì không (BTC chịu trách nhiệm, không cần điểm danh).
+ */
+export const selfCreated = (p: SeminarParticipant) =>
+	!!p.ticket_code || (!!p.user_id && !!p.created_by && p.created_by === p.user_id);
+
+// Người tự đăng ký phải điểm danh + nộp bài kiểm tra (nếu có, và đạt điểm đạt nếu đặt)
+// mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarCmeService.
 export const cmeEligible = (p: SeminarParticipant, s: Seminar) =>
-	!p.ticket_code || (!!p.checked_in_at && (!s.test_questions || (!!p.test_submitted_at && testPassed(s, p))));
+	!selfCreated(p) || (!!p.checked_in_at && (!s.test_questions || (!!p.test_submitted_at && testPassed(s, p))));
 
 /** Lý do chưa đủ điều kiện cấp CME (null = đủ / không áp dụng) — hiện trong drawer người tham dự. */
 export const cmeBlockReason = (p: SeminarParticipant, s: Seminar): string | null => {
-	if (!p.ticket_code || cmeEligible(p, s)) return null;
-	if (!p.checked_in_at) return 'Tự đăng ký qua QR nhưng chưa điểm danh';
+	if (!selfCreated(p) || cmeEligible(p, s)) return null;
+	if (!p.checked_in_at)
+		return p.ticket_code ? 'Tự đăng ký qua QR nhưng chưa điểm danh' : 'Tự đăng ký trên cổng nhưng chưa điểm danh';
 	if (!p.test_submitted_at) return 'Chưa nộp bài kiểm tra';
 	return 'Bài kiểm tra chưa đạt điểm đạt';
 };
