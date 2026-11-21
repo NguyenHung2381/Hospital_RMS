@@ -199,6 +199,9 @@ const getAttemptForGrader = async (attemptId, userId) => {
 	if (attempt && blind_grading) {
 		attempt.trainee_name = null;
 		attempt.enrollment_id = null;
+		// created_by/updated_by giữ mã tài khoản người làm bài (SELECT a.*) — che để giữ ẩn danh
+		attempt.created_by = null;
+		attempt.updated_by = null;
 	}
 	return attempt;
 };
