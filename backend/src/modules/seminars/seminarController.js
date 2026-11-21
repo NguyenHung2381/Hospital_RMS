@@ -67,7 +67,9 @@ const updateParticipant = asyncHandler(async (req, res) => {
 });
 
 const removeParticipant = asyncHandler(async (req, res) => {
-	await seminarParticipantService.remove(req.params.id, req.params.pid, req.user.id);
+	await seminarParticipantService.remove(req.params.id, req.params.pid, req.user.id, {
+		canCme: hasPermission(req.user, 'seminars', 'cme_manage'),
+	});
 	return success(res, null, 'Đã xóa');
 });
 

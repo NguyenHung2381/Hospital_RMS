@@ -291,12 +291,44 @@ const sameCredits = (a, b) => {
 	return Number(x) === Number(y);
 };
 
+// Trường xác định "số CME này cấp cho ai" (M-07, audit run-5): dòng đã có số CME chỉ người có
+// seminars:cme_manage được đổi — nếu không, đổi họ tên / ngày sinh của người ngoài viện là
+// chuyển được số quyết định sang người khác. Ghi chú, học hàm... vẫn sửa được.
+const IDENTITY_FIELDS = [
+	'title_prefix',
+	'full_name',
+	'dob',
+	'dob_text',
+	'organization',
+	'department_raw',
+	'staff_number',
+];
+// Trường bị khóa trên dòng đã cấp số với người không có cme_manage
+const ISSUED_LOCKED_FIELDS = [...IDENTITY_FIELDS, 'cme_credits', 'user_id'];
+
+const blankToNull = (v) => (v === '' || v === undefined ? null : v);
+const asDateKey = (v) => {
+	if (v instanceof Date) return Number.isNaN(v.getTime()) ? String(v) : v.toISOString().slice(0, 10);
+	return String(v).slice(0, 10);
+};
+// So giá trị form gửi lên với giá trị đang lưu (form luôn gửi lại cả bộ ⇒ chỉ coi là đổi khi khác)
+const sameValue = (field, a, b) => {
+	if (field === 'cme_credits') return sameCredits(a, b);
+	const x = blankToNull(a);
+	const y = blankToNull(b);
+	if (x === null || y === null) return x === y;
+	if (field === 'dob') return asDateKey(x) === asDateKey(y);
+	return String(x) === String(y);
+};
+
 const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {}) => {
 	let data = rawData;
+	// Câu UPDATE chỉ ghi được dòng CHƯA có số CME khi người gọi không có cme_manage mà vẫn
+	// ghi trường bị khóa (số có thể vừa được cấp giữa lúc đọc và lúc ghi)
+	let guardIssued = false;
 	if (!canCme) {
 		data = withoutCmeFields(rawData);
-		// Dòng đã có số CME: không đổi số tín chỉ hay chuyển sang người khác (form gửi lại cả
-		// giá trị cũ ⇒ chỉ chặn khi giá trị thật sự thay đổi)
+		// Dòng đã có số CME: không đổi số tín chỉ, người nhận hay thông tin định danh
 		const cur = (
 			await (
 				await getPool()
@@ -305,22 +337,25 @@ const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {})
 				.input('sid', sql.VarChar(20), seminarId)
 				.input('pid', sql.VarChar(24), pid)
 				.query(
-					'SELECT cme_seq, cme_credits, user_id FROM seminar_participants WHERE id = @pid AND seminar_id = @sid',
+					`SELECT cme_seq, cme_credits, user_id, ${IDENTITY_FIELDS.join(', ')}
+           FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
 				)
 		).recordset[0];
 		if (cur && cur.cme_seq != null) {
-			const { cme_credits, user_id, ...rest } = data;
-			if (
-				(cme_credits !== undefined && !sameCredits(cme_credits, cur.cme_credits)) ||
-				(user_id !== undefined && (user_id || null) !== (cur.user_id || null))
-			) {
+			const changed = ISSUED_LOCKED_FIELDS.filter(
+				(k) => data[k] !== undefined && !sameValue(k, data[k], cur[k]),
+			);
+			if (changed.length) {
 				throw httpError(
 					403,
-					'Người tham dự đã có số CME: cần quyền cấp CME để đổi số tín chỉ hoặc người nhận.',
+					'Người tham dự đã có số CME: cần quyền cấp CME để đổi số tín chỉ, người nhận hoặc thông tin định danh (họ tên, ngày sinh, đơn vị...).',
 				);
 			}
+			const rest = { ...data };
+			for (const k of ISSUED_LOCKED_FIELDS) delete rest[k];
 			data = rest;
 		}
+		guardIssued = ISSUED_LOCKED_FIELDS.some((k) => data[k] !== undefined);
 	}
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
@@ -357,24 +392,47 @@ const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {})
 
 	const r = await queryBatch(req, [
 		`UPDATE seminar_participants SET ${sets.join(', ')}
-    WHERE id = @pid AND seminar_id = @sid`,
+    WHERE id = @pid AND seminar_id = @sid${guardIssued ? ' AND cme_seq IS NULL' : ''}`,
 		`SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
 	]);
+	if (guardIssued && !r.rowsAffected[0] && r.recordset[0]) {
+		throw httpError(
+			409,
+			'Người tham dự vừa được cấp số CME: tải lại danh sách — cần quyền cấp CME để sửa thông tin định danh / tín chỉ.',
+		);
+	}
 	await personService.syncPerson('seminar_participants', pid, { actorId });
 	broadcast('update', { entity: 'seminar' });
 	return r.recordset[0] || null;
 };
 
-const remove = async (seminarId, pid, actorId) => {
-	await withActorTransaction(actorId, (tx) =>
-		tx
+// Xóa người tham dự. Dòng đã có số CME là một quyết định đã cấp: chỉ người có
+// seminars:cme_manage được xóa (M-07, audit run-5) — người khác phải thu hồi số trước
+// (revoke-cme). Điều kiện cme_seq nằm ngay trong câu DELETE để kiểm và ghi là một.
+const remove = async (seminarId, pid, actorId, { canCme = false } = {}) => {
+	const blocked = await withActorTransaction(actorId, async (tx) => {
+		const r = await tx
 			.request()
 			.input('sid', sql.VarChar(20), seminarId)
 			.input('pid', sql.VarChar(24), pid)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-      DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
-    `),
-	);
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(
+				`DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid${canCme ? '' : ' AND cme_seq IS NULL'};`,
+			);
+		if (canCme || r.rowsAffected[0]) return false;
+		const still = await tx
+			.request()
+			.input('sid', sql.VarChar(20), seminarId)
+			.input('pid', sql.VarChar(24), pid)
+			.query('SELECT 1 AS x FROM seminar_participants WHERE id = @pid AND seminar_id = @sid');
+		return still.recordset.length > 0;
+	});
+	if (blocked) {
+		throw httpError(
+			403,
+			'Người tham dự đã có số CME: cần quyền cấp CME (thu hồi số trước) mới xóa được.',
+		);
+	}
 	await formCustomValueService.remove('seminar_participant', pid);
 	broadcast('update', { entity: 'seminar' });
 };
