@@ -133,6 +133,10 @@ const updateEnrollment = async (enrollmentId, data, actorId) => {
 		data.program_id !== undefined && (data.program_id || null) !== cur.program_id;
 	if (programChanged && data.program_id)
 		await assertProgramInCourse(cur.course_id, data.program_id);
+	// Chương trình quyết định phần thi / số tiết ⇒ đầu vào kết quả; đã khóa điểm thì phải mở
+	// khóa trước (L-11, audit run-5). require muộn: gradebookService kéo theo nhiều module.
+	if (programChanged)
+		await require('./gradebookService').assertNotLocked([enrollmentId], 'chương trình');
 
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = pool

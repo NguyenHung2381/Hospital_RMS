@@ -1,4 +1,5 @@
 const { getPool, sql, withTransaction, jsonRows, queryAll, nowSql } = require('../../../config/db');
+const { jsonValues } = require('../../../config/db');
 const { genGradeId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -390,10 +391,31 @@ const setPartFromExam = async (enrollmentId, part, score10, actorId) => {
 };
 
 // ─── Khóa điểm / mở khóa ───────────────────────────────────────────────────
+// Khóa điểm đóng băng cả KẾT QUẢ (L-11, audit run-5): sửa điểm danh / đổi chương trình của
+// lượt đã khóa bị từ chối (assertNotLocked) — phải mở khóa (grades:unlock, ghi grade_history);
+// khóa lại không tính lại dòng đã khóa; cấp giấy dùng kết quả đã lưu lúc khóa.
+const lockedEnrollmentIds = async (enrollmentIds) => {
+	const ids = [...new Set((enrollmentIds || []).filter(Boolean))];
+	if (!ids.length) return new Set();
+	const req = (await getPool()).request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids));
+	const r = await req.query(`SELECT enrollment_id FROM grades
+    WHERE subject_id IS NULL AND locked_at IS NOT NULL AND enrollment_id IN ${jsonValues('@ids')}`);
+	return new Set(r.recordset.map((x) => x.enrollment_id));
+};
+
+const assertNotLocked = async (enrollmentIds, what = 'điểm danh / chương trình') => {
+	if ((await lockedEnrollmentIds(enrollmentIds)).size)
+		throw httpError(
+			409,
+			`Điểm của học viên đã khóa — cần mở khóa điểm (grades:unlock) trước khi sửa ${what}.`,
+		);
+};
+
 // canApproveCme: người khóa có cme_records:manage ⇒ CME giảng viên tự duyệt; không thì 'pending'
 const lock = async (courseId, actorId, { canApproveCme = false } = {}) => {
 	const rows = await loadRows(courseId);
 	if (!rows.length) throw httpError(400, 'Khóa học chưa có học viên được duyệt.');
+	const newlyLocked = [];
 	await withTransaction(async (tx) => {
 		for (const row of rows) {
 			const grade = await ensureGradeRow(tx, row.enrollment_id, row.program_id, actorId);
@@ -402,9 +424,11 @@ const lock = async (courseId, actorId, { canApproveCme = false } = {}) => {
 				.input('id', sql.VarChar(20), grade.id)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.query(`UPDATE grades SET locked_at = ${nowSql}, locked_by = @actor_id WHERE id = @id`);
+			newlyLocked.push(row.enrollment_id);
 		}
 	});
-	await recompute(courseId);
+	// Chỉ tính lại dòng vừa khóa: dòng đã khóa từ trước giữ nguyên kết quả đã lưu
+	if (newlyLocked.length) await recompute(courseId, newlyLocked);
 	broadcast('update', { entity: 'grade' });
 	// Khóa điểm ⇒ tự cộng CME giảng viên (công tắc CME_AUTO_LECTURER); lỗi chỉ ghi log
 	await courseCmeService
@@ -505,19 +529,26 @@ const history = async (enrollmentId) => {
 
 // Kết quả hoàn thành của 1 lượt ghi danh đã duyệt — certificateService kiểm điều kiện cấp
 // giấy. { locked, result: 'pass'|'fail'|null, reasons }; null nếu lượt không thuộc khóa
-// hoặc chưa được duyệt. Dùng đúng evaluateRow như bảng điểm.
+// hoặc chưa được duyệt. Chưa khóa: tính bằng evaluateRow như bảng điểm. Đã khóa: kết quả
+// ĐÃ LƯU lúc khóa (L-11) — đầu vào đổi sau khi khóa không lật được Trượt thành Đạt.
+const lockedResult = (row, computed) =>
+	row.locked_at && row.result != null ? row.result : computed.result;
 const enrollmentOutcome = async (courseId, enrollmentId) => {
 	const [rules, [row]] = await Promise.all([loadRules(), loadRows(courseId, [enrollmentId])]);
 	if (!row) return null;
 	const c = evaluateRow(row, rules);
-	return { locked: !!row.locked_at, result: c.result, reasons: c.reasons };
+	const result = lockedResult(row, c);
+	return { locked: !!row.locked_at, result, reasons: result === c.result ? c.reasons : [] };
 };
 
 // ─── Cấp giấy chứng nhận hàng loạt cho người Đạt (bảng điểm đã khóa) ─────────
 const issueCertificatesForPassed = async (courseId, actorId, expiryDate) => {
 	const book = await getGradebook(courseId);
 	if (!book.locked) throw httpError(409, 'Cần khóa điểm trước khi cấp giấy chứng nhận hàng loạt.');
-	const targets = book.rows.filter((r) => r.computed.result === 'pass' && !r.certificate_id);
+	// Bảng đã khóa hết ⇒ xét theo kết quả đã lưu lúc khóa (L-11)
+	const targets = book.rows.filter(
+		(r) => lockedResult(r, r.computed) === 'pass' && !r.certificate_id,
+	);
 	const issued = [];
 	// verified: vừa kiểm bảng điểm đã khóa + kết quả Đạt ở trên, khỏi tính lại từng người
 	for (const r of targets)
@@ -544,4 +575,6 @@ module.exports = {
 	issueCertificatesForPassed,
 	enrollmentOutcome,
 	recompute,
+	lockedEnrollmentIds,
+	assertNotLocked,
 };
