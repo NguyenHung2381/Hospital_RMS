@@ -158,8 +158,18 @@
  * @swagger
  * /auth/2fa/backup-codes:
  *   post:
- *     summary: Tạo lại bộ mã khôi phục 2FA (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu
+ *     summary: Tạo lại bộ mã khôi phục 2FA (bộ cũ mất hiệu lực) — yêu cầu nhập lại mật khẩu và 1 mã xác thực
  *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [password, code]
+ *             properties:
+ *               password: { type: string }
+ *               code: { type: string, description: 'Mã 6 số từ ứng dụng xác thực hoặc 1 mã khôi phục còn hiệu lực' }
  *     responses:
  *       200:
  *         description: "{ backup_codes: string[] } — chỉ hiển thị 1 lần"

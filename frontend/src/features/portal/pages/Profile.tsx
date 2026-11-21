@@ -556,6 +556,18 @@ export default function Profile() {
 												onChange={d.setRegenPwd}
 											/>
 										</div>
+										<div className={styles.formGroup}>
+											<label className={styles.formLabel}>Mã xác thực</label>
+											<input
+												type='text'
+												className={styles.formInput}
+												placeholder='Mã 6 số từ ứng dụng, hoặc 1 mã khôi phục'
+												autoComplete='one-time-code'
+												maxLength={20}
+												value={d.regenCode}
+												onChange={(e) => d.setRegenCode(e.target.value)}
+											/>
+										</div>
 										{d.twoFaError && (
 											<div className={styles.errorMsg}>
 												<AlertSvg /> {d.twoFaError}
@@ -566,7 +578,7 @@ export default function Profile() {
 												type='button'
 												className={styles.btnPrimary}
 												onClick={() => void d.handleRegenerateBackupCodes()}
-												disabled={d.twoFaSaving || !d.regenPwd}
+												disabled={d.twoFaSaving || !d.regenPwd || !d.regenCode.trim()}
 											>
 												Tạo mã mới
 											</button>
@@ -576,6 +588,7 @@ export default function Profile() {
 												onClick={() => {
 													d.setShowRegenBackup(false);
 													d.setRegenPwd('');
+													d.setRegenCode('');
 												}}
 												disabled={d.twoFaSaving}
 											>

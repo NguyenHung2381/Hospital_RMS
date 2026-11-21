@@ -141,10 +141,12 @@ export async function get2FAStatusApi(accessToken: string): Promise<TwoFaStatus>
 	return json.data as TwoFaStatus;
 }
 
-// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — cần nhập lại mật khẩu.
+// Tạo lại bộ mã khôi phục (bộ cũ mất hiệu lực) — cần nhập lại mật khẩu VÀ
+// code: mã 6 số từ ứng dụng xác thực hoặc 1 mã khôi phục còn hiệu lực.
 export async function regenerateBackupCodesApi(
 	accessToken: string,
 	password: string,
+	code: string,
 ): Promise<string[]> {
 	const res = await safeFetch(`${BASE_URL}/api/v1/auth/2fa/backup-codes`, {
 		method: 'POST',
@@ -152,7 +154,7 @@ export async function regenerateBackupCodesApi(
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${accessToken}`,
 		},
-		body: JSON.stringify({ password }),
+		body: JSON.stringify({ password, code }),
 	});
 	const json = await readJson(res);
 	if (!res.ok || !json?.success) throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');

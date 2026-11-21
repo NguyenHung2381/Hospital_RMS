@@ -190,6 +190,62 @@ test('tắt 2FA: đúng mật khẩu nhưng thiếu / sai mã xác thực thì k
 	user.totp_enabled = 1; // test sau giả định 2FA đang bật
 });
 
+// M-01 (run-5): chỉ mật khẩu không được tự cấp bộ mã khôi phục mới (rồi dùng nó tắt 2FA).
+test('tạo lại mã khôi phục: đúng mật khẩu nhưng thiếu / sai mã thì 400, bộ mã đã lưu giữ nguyên', async () => {
+	const secret = await otplib.generateSecret();
+	await setSecret(secretBox.encrypt(secret));
+	user.totp_enabled = 0;
+	const codes = (
+		await twoFactorService.confirm2FASetup('U1', await otplib.generate({ secret, type: 'totp' }))
+	).backup_codes;
+	const snapshot = JSON.stringify(backup);
+	for (const code of [undefined, '', '000000', 'zzzz-zzzz']) {
+		await assert.rejects(
+			twoFactorService.regenerateBackupCodes('U1', 'Dung#matkhau2026', code),
+			(e) => e.statusCode === 400,
+		);
+		assert.equal(JSON.stringify(backup), snapshot);
+	}
+	// Mã TOTP đã dùng (chống replay) cũng không được
+	await assert.rejects(
+		twoFactorService.regenerateBackupCodes(
+			'U1',
+			'Dung#matkhau2026',
+			await otplib.generate({ secret, type: 'totp' }),
+		),
+		(e) => e.statusCode === 400,
+	);
+	assert.equal(JSON.stringify(backup), snapshot);
+
+	// Một mã khôi phục còn hiệu lực → tạo bộ mới, bộ cũ mất hiệu lực
+	const r = await twoFactorService.regenerateBackupCodes('U1', 'Dung#matkhau2026', codes[0]);
+	assert.equal(r.backup_codes.length, 10);
+	assert.notEqual(JSON.stringify(backup), snapshot);
+	await assert.rejects(
+		twoFactorService.verify2FALogin(preAuth(), codes[1]),
+		(e) => e.statusCode === 401,
+	);
+	// Mã OTP mới (bước kế tiếp chưa dùng) cũng được chấp nhận
+	user.totp_last_step = null;
+	const r2 = await twoFactorService.regenerateBackupCodes(
+		'U1',
+		'Dung#matkhau2026',
+		await otplib.generate({ secret, type: 'totp' }),
+	);
+	assert.equal(r2.backup_codes.length, 10);
+});
+
+test('route tạo lại mã khôi phục bắt buộc trường code', () => {
+	const router = require('../../src/modules/auth/auth.routes');
+	const layer = router.stack.find(
+		(l) => l.route?.path === '/2fa/backup-codes' && l.route.methods.post,
+	);
+	assert.ok(layer);
+	const fields = layer.route.stack.map((s) => s.handle?.builder?.fields ?? []).flat();
+	assert.ok(fields.includes('code'));
+	assert.ok(fields.includes('password'));
+});
+
 test('khóa mã hóa đã đổi: báo lỗi rõ ràng (409), không phải 500', async () => {
 	const secret = await otplib.generateSecret();
 	await setSecret(secretBox.encrypt(secret));

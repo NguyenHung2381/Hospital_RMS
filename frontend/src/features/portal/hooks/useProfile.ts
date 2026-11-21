@@ -167,6 +167,7 @@ export function useProfile() {
 	const [backupRemaining, setBackupRemaining] = useState(0);
 	const [showRegenBackup, setShowRegenBackup] = useState(false);
 	const [regenPwd, setRegenPwd] = useState('');
+	const [regenCode, setRegenCode] = useState('');
 
 	useEffect(() => {
 		const token = getToken();
@@ -246,15 +247,16 @@ export function useProfile() {
 
 	async function handleRegenerateBackupCodes() {
 		const token = getToken();
-		if (!token || !regenPwd) return;
+		if (!token || !regenPwd || !regenCode.trim()) return;
 		setTwoFaError('');
 		setTwoFaSaving(true);
 		try {
-			const codes = await regenerateBackupCodesApi(token, regenPwd);
+			const codes = await regenerateBackupCodesApi(token, regenPwd, regenCode.trim());
 			setBackupCodes(codes);
 			setBackupRemaining(codes.length);
 			setShowRegenBackup(false);
 			setRegenPwd('');
+			setRegenCode('');
 			showToast('success', 'Đã tạo bộ mã khôi phục mới — bộ cũ đã mất hiệu lực');
 		} catch (e: unknown) {
 			setTwoFaError(e instanceof Error ? e.message : 'Mật khẩu không đúng');
@@ -319,8 +321,10 @@ export function useProfile() {
 		backupRemaining,
 		showRegenBackup,
 		regenPwd,
+		regenCode,
 		setShowRegenBackup,
 		setRegenPwd,
+		setRegenCode,
 		dismissBackupCodes: () => setBackupCodes(null),
 		handleRegenerateBackupCodes,
 		nameDraft,

@@ -157,7 +157,12 @@ const verifySetup2FA = asyncHandler(async (req, res) => {
 });
 
 const regenerateBackupCodes = asyncHandler(async (req, res) => {
-	const data = await twoFactorService.regenerateBackupCodes(req.user.id, req.body.password, req.ip);
+	const data = await twoFactorService.regenerateBackupCodes(
+		req.user.id,
+		req.body.password,
+		req.body.code,
+		req.ip,
+	);
 	return success(res, data, 'Đã tạo bộ mã khôi phục mới');
 });
 
