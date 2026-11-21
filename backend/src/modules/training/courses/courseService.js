@@ -37,7 +37,8 @@ const parseJsonList = (v) => {
 	if (!v) return [];
 	try {
 		const parsed = JSON.parse(v);
-		return Array.isArray(parsed) ? parsed : [];
+		// Chỉ nhận chuỗi — dữ liệu cũ lưu object lồng (url/image...) bị bỏ khi đọc.
+		return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
 	} catch {
 		return [];
 	}

@@ -13,6 +13,16 @@ const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 const coursePolicy = require('./coursePolicy');
 
+// Mục tiêu / yêu cầu đầu vào: mảng CHUỖI ngắn (L-07) — không nhận object lồng.
+const stringList = (field) =>
+	body(field)
+		.optional({ nullable: true })
+		.isArray({ max: 100 })
+		.withMessage(`${field} phải là mảng`)
+		.bail()
+		.custom((arr) => arr.every((x) => typeof x === 'string' && x.length <= 1000))
+		.withMessage(`${field} chỉ gồm các chuỗi (tối đa 1000 ký tự)`);
+
 const uploadCourseDoc = createTrainingUpload('course_document', {
 	maxSizeMB: Number(process.env.TRAINING_MEDIA_MAX_MB || 300),
 	allowMedia: true,
@@ -117,8 +127,8 @@ router.post(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('prerequisites').optional({ nullable: true }).isArray(),
-		body('objectives').optional({ nullable: true }).isArray(),
+		stringList('prerequisites'),
+		stringList('objectives'),
 		body('program_ids').optional().isArray(),
 	],
 	validate,
@@ -136,8 +146,8 @@ router.put(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('prerequisites').optional({ nullable: true }).isArray(),
-		body('objectives').optional({ nullable: true }).isArray(),
+		stringList('prerequisites'),
+		stringList('objectives'),
 		body('program_ids').optional().isArray(),
 	],
 	validate,
