@@ -25,6 +25,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
+const { isUniqueViolation, constraintName } = require('../../utils/dbErrors');
 const { randomId } = require('../../utils/idGenerator');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
 
@@ -32,6 +33,15 @@ const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/dept
 // courseService.generateAttendanceQrToken / utils/captcha.js).
 const CHECKIN_QR_TTL = '75s'; // xem giải thích ở training/courses/courseAttendanceService.js (ATTENDANCE_QR_TTL)
 const CHECKIN_QR_PURPOSE = 'seminar_checkin_qr';
+
+// Dòng do chính người tham dự tạo (p = seminar_participants): tự đăng ký qua QR (có vé), hoặc
+// tự đăng ký tập huấn trên cổng (/me/hospital-trainings — không vé, created_by = user_id).
+// Những dòng này phải điểm danh mới được cấp CME / mới tính là đã tham dự (M-08 audit
+// run-5); dòng ban tổ chức thêm / nhập Excel thì không. Ban tổ chức tự thêm chính mình
+// cũng bị coi là tự đăng ký (phải điểm danh) — chấp nhận được. Biểu thức không bao giờ ra
+// NULL (dòng cũ created_by NULL vẫn là "BTC thêm"), để NOT ... trong CME_ELIGIBLE_SQL đúng.
+const SELF_CREATED_SQL = `(p.ticket_code IS NOT NULL OR (p.user_id IS NOT NULL
+  AND p.created_by IS NOT NULL AND p.created_by = p.user_id))`;
 
 const PART_TYPES = ['attendee', 'speaker', 'chair', 'organizer', 'trainee'];
 const SOURCES = ['internal', 'external'];
@@ -74,9 +84,23 @@ const ensureSeminar = async (pool, seminarId) => {
 const normType = (t) => (PART_TYPES.includes(t) ? t : 'attendee');
 const normSource = (s) => (SOURCES.includes(s) ? s : 'internal');
 
+// Mỗi tài khoản tối đa 1 dòng / hội thảo (ux_sp_seminar_user — migration 2026-12-31, L-06
+// audit run-5): kiểm "đã có chưa" rồi mới INSERT ở 2 bước rời nhau không chặn được 2 yêu cầu
+// song song, nên ràng buộc nằm ở CSDL.
+const UX_SEMINAR_USER = 'ux_sp_seminar_user';
+const ON_CONFLICT_SKIP = 'ON CONFLICT (seminar_id, user_id) WHERE user_id IS NOT NULL DO NOTHING';
+// Lỗi trùng tài khoản trong hội thảo ⇒ 409 rõ nghĩa; lỗi khác ném lại nguyên trạng
+const rethrowDuplicateUser = (err) => {
+	if (isUniqueViolation(err) && constraintName(err) === UX_SEMINAR_USER) {
+		throw httpError(409, 'Tài khoản này đã có trong danh sách người tham dự hội thảo/hội nghị.');
+	}
+	throw err;
+};
+
 // Bind toàn bộ input cho 1 dòng participant vào `req`, trả về câu INSERT dùng
 // biến @id đã khai báo trước đó (@id0 cho single, @idN trong vòng lặp bulk).
-const bindInsert = (req, idVar, seminarId, data) => {
+// skipExisting: tài khoản đã có trong hội thảo thì bỏ qua (rowsAffected = 0) thay vì lỗi.
+const bindInsert = (req, idVar, seminarId, data, { skipExisting = false } = {}) => {
 	req
 		.input('seminar_id', sql.VarChar(20), seminarId)
 		.input('user_id', sql.VarChar(20), data.user_id || null)
@@ -111,7 +135,8 @@ const bindInsert = (req, idVar, seminarId, data) => {
       (${idVar}, @seminar_id, @user_id, @title_prefix, @full_name, @dob, @dob_text, @gender,
        @organization, @department_raw, @staff_number, @qualification_raw, @source,
        @is_foreign, @participation_type, @cme_year, @cme_seq, @cme_credits, @cme_status,
-       @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id);`;
+       @cme_issued_date, @notes, @phone, @email, @ticket_code, @actor_id)
+    ${skipExisting ? ON_CONFLICT_SKIP : ''};`;
 };
 
 // Trường CME chỉ người có seminars:cme_manage được ghi trực tiếp (số quyết định, năm, trạng thái,
@@ -135,7 +160,7 @@ const add = async (seminarId, rawData, actorId, { canCme = false } = {}) => {
 	const req = actorRequest(actorId)
 		.input('actor_id', sql.VarChar(20), actorId)
 		.input('id', sql.VarChar(24), id);
-	await req.query(bindInsert(req, '@id', seminarId, data));
+	await req.query(bindInsert(req, '@id', seminarId, data)).catch(rethrowDuplicateUser);
 	const r = await pool
 		.request()
 		.input('id', sql.VarChar(24), id)
@@ -146,6 +171,8 @@ const add = async (seminarId, rawData, actorId, { canCme = false } = {}) => {
 	return r.recordset[0];
 };
 
+// Thêm nhiều dòng trong 1 transaction. Tài khoản đã có trong hội thảo thì bỏ qua (kể cả khi
+// 2 yêu cầu chạy song song — ON CONFLICT trên ux_sp_seminar_user); trả về số dòng THỰC SỰ thêm.
 const bulkAdd = async (seminarId, rows, actorId) => {
 	const pool = await getPool();
 	await ensureSeminar(pool, seminarId);
@@ -159,14 +186,14 @@ const bulkAdd = async (seminarId, rows, actorId) => {
 			const req = new sql.Request(tx)
 				.input('actor_id', sql.VarChar(20), actorId)
 				.input('id', sql.VarChar(24), id);
-			await req.query(bindInsert(req, '@id', seminarId, row));
-			inserted.push(id);
+			const r = await req.query(bindInsert(req, '@id', seminarId, row, { skipExisting: true }));
+			if (r.rowsAffected[0]) inserted.push(id);
 		}
 		return inserted;
 	}, pool);
 	await personService.syncPersons('seminar_participants', ids, { actorId });
 	broadcast('update', { entity: 'seminar' });
-	return { inserted: valid.length, ids };
+	return { inserted: ids.length, ids };
 };
 
 // ─── Tập huấn bệnh viện: người tham dự theo khoa ─────────────────────────────
@@ -247,7 +274,7 @@ const addRequiredStaff = async (seminarId, actorId) => {
 };
 
 // Nhân sự thuộc khoa bắt buộc mà chưa tham dự: chưa có trong danh sách, hoặc
-// tự đăng ký qua QR (có vé) nhưng chưa điểm danh.
+// tự đăng ký (QR có vé / cổng tập huấn) nhưng chưa điểm danh.
 const requiredAbsentees = async (seminarId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('sid', sql.VarChar(20), seminarId).query(`
@@ -258,13 +285,13 @@ const requiredAbsentees = async (seminarId) => {
       LEFT JOIN departments d ON d.id = u.department_id
       ${deptAccountJoinSql('u')}
       ${outerApply(
-				`SELECT p.id, p.ticket_code, p.checked_in_at FROM seminar_participants p
+				`SELECT p.id, p.ticket_code, p.checked_in_at, p.user_id, p.created_by FROM seminar_participants p
                    WHERE p.seminar_id = r.seminar_id AND p.user_id = u.id
                    ORDER BY p.id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`,
 				'p',
 			)}
       WHERE r.seminar_id = @sid AND ${staffWhere}
-        AND (p.id IS NULL OR (p.ticket_code IS NOT NULL AND p.checked_in_at IS NULL))
+        AND (p.id IS NULL OR (${SELF_CREATED_SQL} AND p.checked_in_at IS NULL))
       ORDER BY d.name, u.full_name;
     `);
 	return r.recordset;
@@ -291,12 +318,45 @@ const sameCredits = (a, b) => {
 	return Number(x) === Number(y);
 };
 
+// Trường xác định "số CME này cấp cho ai" (M-07, audit run-5): dòng đã có số CME chỉ người có
+// seminars:cme_manage được đổi — nếu không, đổi họ tên / ngày sinh của người ngoài viện là
+// chuyển được số quyết định sang người khác. Ghi chú, học hàm... vẫn sửa được.
+const IDENTITY_FIELDS = [
+	'title_prefix',
+	'full_name',
+	'dob',
+	'dob_text',
+	'organization',
+	'department_raw',
+	'staff_number',
+];
+// Trường bị khóa trên dòng đã cấp số với người không có cme_manage
+const ISSUED_LOCKED_FIELDS = [...IDENTITY_FIELDS, 'cme_credits', 'user_id'];
+
+const blankToNull = (v) => (v === '' || v === undefined ? null : v);
+const asDateKey = (v) => {
+	if (v instanceof Date)
+		return Number.isNaN(v.getTime()) ? String(v) : v.toISOString().slice(0, 10);
+	return String(v).slice(0, 10);
+};
+// So giá trị form gửi lên với giá trị đang lưu (form luôn gửi lại cả bộ ⇒ chỉ coi là đổi khi khác)
+const sameValue = (field, a, b) => {
+	if (field === 'cme_credits') return sameCredits(a, b);
+	const x = blankToNull(a);
+	const y = blankToNull(b);
+	if (x === null || y === null) return x === y;
+	if (field === 'dob') return asDateKey(x) === asDateKey(y);
+	return String(x) === String(y);
+};
+
 const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {}) => {
 	let data = rawData;
+	// Câu UPDATE chỉ ghi được dòng CHƯA có số CME khi người gọi không có cme_manage mà vẫn
+	// ghi trường bị khóa (số có thể vừa được cấp giữa lúc đọc và lúc ghi)
+	let guardIssued = false;
 	if (!canCme) {
 		data = withoutCmeFields(rawData);
-		// Dòng đã có số CME: không đổi số tín chỉ hay chuyển sang người khác (form gửi lại cả
-		// giá trị cũ ⇒ chỉ chặn khi giá trị thật sự thay đổi)
+		// Dòng đã có số CME: không đổi số tín chỉ, người nhận hay thông tin định danh
 		const cur = (
 			await (
 				await getPool()
@@ -305,22 +365,25 @@ const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {})
 				.input('sid', sql.VarChar(20), seminarId)
 				.input('pid', sql.VarChar(24), pid)
 				.query(
-					'SELECT cme_seq, cme_credits, user_id FROM seminar_participants WHERE id = @pid AND seminar_id = @sid',
+					`SELECT cme_seq, cme_credits, user_id, ${IDENTITY_FIELDS.join(', ')}
+           FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
 				)
 		).recordset[0];
 		if (cur && cur.cme_seq != null) {
-			const { cme_credits, user_id, ...rest } = data;
-			if (
-				(cme_credits !== undefined && !sameCredits(cme_credits, cur.cme_credits)) ||
-				(user_id !== undefined && (user_id || null) !== (cur.user_id || null))
-			) {
+			const changed = ISSUED_LOCKED_FIELDS.filter(
+				(k) => data[k] !== undefined && !sameValue(k, data[k], cur[k]),
+			);
+			if (changed.length) {
 				throw httpError(
 					403,
-					'Người tham dự đã có số CME: cần quyền cấp CME để đổi số tín chỉ hoặc người nhận.',
+					'Người tham dự đã có số CME: cần quyền cấp CME để đổi số tín chỉ, người nhận hoặc thông tin định danh (họ tên, ngày sinh, đơn vị...).',
 				);
 			}
+			const rest = { ...data };
+			for (const k of ISSUED_LOCKED_FIELDS) delete rest[k];
 			data = rest;
 		}
+		guardIssued = ISSUED_LOCKED_FIELDS.some((k) => data[k] !== undefined);
 	}
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
@@ -357,24 +420,47 @@ const update = async (seminarId, pid, rawData, actorId, { canCme = false } = {})
 
 	const r = await queryBatch(req, [
 		`UPDATE seminar_participants SET ${sets.join(', ')}
-    WHERE id = @pid AND seminar_id = @sid`,
+    WHERE id = @pid AND seminar_id = @sid${guardIssued ? ' AND cme_seq IS NULL' : ''}`,
 		`SELECT * FROM seminar_participants WHERE id = @pid AND seminar_id = @sid`,
-	]);
+	]).catch(rethrowDuplicateUser);
+	if (guardIssued && !r.rowsAffected[0] && r.recordset[0]) {
+		throw httpError(
+			409,
+			'Người tham dự vừa được cấp số CME: tải lại danh sách — cần quyền cấp CME để sửa thông tin định danh / tín chỉ.',
+		);
+	}
 	await personService.syncPerson('seminar_participants', pid, { actorId });
 	broadcast('update', { entity: 'seminar' });
 	return r.recordset[0] || null;
 };
 
-const remove = async (seminarId, pid, actorId) => {
-	await withActorTransaction(actorId, (tx) =>
-		tx
+// Xóa người tham dự. Dòng đã có số CME là một quyết định đã cấp: chỉ người có
+// seminars:cme_manage được xóa (M-07, audit run-5) — người khác phải thu hồi số trước
+// (revoke-cme). Điều kiện cme_seq nằm ngay trong câu DELETE để kiểm và ghi là một.
+const remove = async (seminarId, pid, actorId, { canCme = false } = {}) => {
+	const blocked = await withActorTransaction(actorId, async (tx) => {
+		const r = await tx
 			.request()
 			.input('sid', sql.VarChar(20), seminarId)
 			.input('pid', sql.VarChar(24), pid)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
-      DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid;
-    `),
-	);
+			.input('actor_id', sql.VarChar(20), actorId)
+			.query(
+				`DELETE FROM seminar_participants WHERE id = @pid AND seminar_id = @sid${canCme ? '' : ' AND cme_seq IS NULL'};`,
+			);
+		if (canCme || r.rowsAffected[0]) return false;
+		const still = await tx
+			.request()
+			.input('sid', sql.VarChar(20), seminarId)
+			.input('pid', sql.VarChar(24), pid)
+			.query('SELECT 1 AS x FROM seminar_participants WHERE id = @pid AND seminar_id = @sid');
+		return still.recordset.length > 0;
+	});
+	if (blocked) {
+		throw httpError(
+			403,
+			'Người tham dự đã có số CME: cần quyền cấp CME (thu hồi số trước) mới xóa được.',
+		);
+	}
 	await formCustomValueService.remove('seminar_participant', pid);
 	broadcast('update', { entity: 'seminar' });
 };
@@ -382,7 +468,8 @@ const remove = async (seminarId, pid, actorId) => {
 // seminar_participants đã có sẵn user_id (khác course_enrollments phải qua
 // trainees) — tự điểm danh chỉ cần so đúng tài khoản đang đăng nhập, KHÔNG tự
 // tạo participant mới nếu chưa có trong danh sách (tránh lộ khả năng "tự đăng
-// ký tham dự" qua đường quét QR).
+// ký tham dự" qua đường quét QR). Tự đăng ký tập huấn trên cổng thì có tạo dòng
+// (hospitalTrainingSelfService.register) — dòng đó vẫn phải điểm danh (SELF_CREATED_SQL).
 const generateCheckInQrToken = (seminarId) =>
 	signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
 
@@ -445,4 +532,5 @@ module.exports = {
 	addUsers,
 	addRequiredStaff,
 	requiredAbsentees,
+	SELF_CREATED_SQL,
 };

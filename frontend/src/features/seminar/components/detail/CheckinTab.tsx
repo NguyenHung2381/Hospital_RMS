@@ -5,11 +5,13 @@ import sem from '../../pages/Seminar.module.css';
 import s from './Detail.module.css';
 import { Kpi } from './OverviewTab';
 import { PersonList } from './PersonList';
+import { selfCreated } from './detailUtils';
 import type { TabProps } from './types';
 
 /** Tab "Đăng ký & điểm danh" (hội nghị BV tổ chức): QR đăng ký, quét vé, ai chưa điểm danh. */
 export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
-	const waiting = useMemo(() => participants.filter((p) => p.ticket_code && !p.checked_in_at), [participants]);
+	// Tự đăng ký (QR có vé / cổng tập huấn) mà chưa điểm danh — chưa đủ điều kiện CME
+	const waiting = useMemo(() => participants.filter((p) => selfCreated(p) && !p.checked_in_at), [participants]);
 	const recent = useMemo(
 		() =>
 			participants
@@ -41,7 +43,7 @@ export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
 				/>
 				<Kpi
 					icon={<UserCheckSvg />}
-					label='Có vé, chưa điểm danh'
+					label='Tự đăng ký, chưa điểm danh'
 					value={waiting.length}
 				/>
 			</div>

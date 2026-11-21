@@ -1,7 +1,8 @@
-// Hồi quy M-04 (audit run-4): người có seminars:update nhưng không có seminars:cme_manage không
+// Hồi quy M-04 (audit run-4) + M-07 (audit run-5): người có seminars:update nhưng không có seminars:cme_manage không
 // được ghi trực tiếp số quyết định / năm / trạng thái / ngày cấp CME, đổi số tín chỉ hay chuyển
 // người nhận trên dòng đã có số CME, hoặc đổi trạng thái CME hàng loạt (bulk-cme).
-// Chạy router + authorizePermission + controller + service thật trên CSDL giả.
+// M-07: cũng không được xóa dòng đã có số CME hay đổi thông tin định danh (họ tên, ngày sinh...)
+// của dòng đó. Chạy router + authorizePermission + controller + service thật trên CSDL giả.
 process.env.JWT_SECRET = 'test-secret';
 require('../../scripts/lib/static-check-env');
 const test = require('node:test');
@@ -24,7 +25,19 @@ const ROLES = {
 const USERS = { UORG: 'RORG', UCME: 'RCME' };
 // SPT_ISSUED đã có số CME, SPT_FREE chưa cấp
 const PARTICIPANTS = {
-	SPT_ISSUED: { id: 'SPT_ISSUED', cme_seq: 12, cme_credits: 6, user_id: 'U_OWNER' },
+	SPT_ISSUED: {
+		id: 'SPT_ISSUED',
+		cme_seq: 12,
+		cme_credits: 6,
+		user_id: 'U_OWNER',
+		full_name: 'Nguyen Van Chu',
+		dob: new Date('1990-02-03T00:00:00Z'),
+		title_prefix: 'BS',
+		dob_text: null,
+		organization: 'BV A',
+		department_raw: 'Khoa Noi',
+		staff_number: 101,
+	},
 	SPT_FREE: { id: 'SPT_FREE', cme_seq: null, cme_credits: null, user_id: null },
 };
 
@@ -51,8 +64,16 @@ const log = install(async (text, inputs) => {
 	if (/SELECT id, code FROM roles/.test(text)) return [{ id: 'VT10', code: 'trainee' }];
 	if (/SELECT id, event_year, cme_default_credits FROM seminars/.test(text))
 		return [{ id: 'SEM1', event_year: 2026, cme_default_credits: 6 }];
-	if (/SELECT cme_seq, cme_credits, user_id FROM seminar_participants/.test(text))
+	if (/SELECT cme_seq, cme_credits, user_id,[^;]*FROM seminar_participants/.test(text))
 		return PARTICIPANTS[inputs.pid] ? [PARTICIPANTS[inputs.pid]] : [];
+	// DELETE: CSDL giả xóa được khi không có điều kiện cme_seq, hoặc dòng chưa cấp số
+	if (/DELETE FROM seminar_participants/.test(text)) {
+		const p = PARTICIPANTS[inputs.pid];
+		if (!p) return [];
+		return /cme_seq IS NULL/.test(text) && p.cme_seq != null ? [] : [{}];
+	}
+	if (/SELECT 1 AS x FROM seminar_participants/.test(text))
+		return PARTICIPANTS[inputs.pid] ? [{ x: 1 }] : [];
 	if (/SELECT \* FROM seminar_participants/.test(text))
 		return [PARTICIPANTS[inputs.pid || inputs.id] || { id: inputs.id }];
 	return [];
@@ -179,4 +200,84 @@ test('M-04: bulk-cme cần seminars:cme_manage (không còn chỉ seminars:updat
 	r = await call('UCME', 'POST', '/seminars/SEM1/participants/bulk-cme', body);
 	assert.equal(r.status, 200);
 	assert.ok(updateOf(r.entries));
+});
+
+const deleteOf = (entries) => entries.find((e) => /DELETE FROM seminar_participants/.test(e.text));
+
+test('M-07: DELETE dòng đã có số CME khi không có cme_manage → 403, câu DELETE có điều kiện cme_seq IS NULL', async () => {
+	const r = await call('UORG', 'DELETE', '/seminars/SEM1/participants/SPT_ISSUED');
+	assert.equal(r.status, 403);
+	const del = deleteOf(r.entries);
+	assert.ok(del, 'phải chạy câu DELETE có điều kiện (kiểm và ghi là một)');
+	assert.match(del.text, /AND cme_seq IS NULL/);
+	// không có câu DELETE nào chạy thiếu điều kiện cme_seq
+	assert.ok(
+		r.entries
+			.filter((e) => /DELETE FROM seminar_participants/.test(e.text))
+			.every((e) => /cme_seq IS NULL/.test(e.text)),
+	);
+	assert.ok(!r.entries.some((e) => /DELETE FROM form_custom_values/.test(e.text)));
+});
+
+test('M-07: DELETE dòng chưa cấp CME khi không có cme_manage → vẫn xóa được', async () => {
+	const r = await call('UORG', 'DELETE', '/seminars/SEM1/participants/SPT_FREE');
+	assert.equal(r.status, 200);
+	assert.match(deleteOf(r.entries).text, /AND cme_seq IS NULL/);
+});
+
+test('M-07 đối chứng: DELETE dòng đã cấp khi có cme_manage → xóa được, không thêm điều kiện', async () => {
+	const r = await call('UCME', 'DELETE', '/seminars/SEM1/participants/SPT_ISSUED');
+	assert.equal(r.status, 200);
+	assert.doesNotMatch(deleteOf(r.entries).text, /cme_seq/);
+});
+
+test('M-07: PUT đổi họ tên / ngày sinh / đơn vị của dòng đã cấp khi không có cme_manage → 403, không ghi', async () => {
+	for (const body of [
+		{ full_name: 'Nguoi Khac' },
+		{ dob: '1991-02-03' },
+		{ organization: 'BV B' },
+		{ staff_number: 999 },
+		{ title_prefix: 'TS' },
+	]) {
+		const r = await call('UORG', 'PUT', '/seminars/SEM1/participants/SPT_ISSUED', body);
+		assert.equal(r.status, 403, JSON.stringify(body));
+		assert.equal(updateOf(r.entries), undefined);
+	}
+});
+
+test('M-07: PUT dòng đã cấp gửi lại nguyên thông tin định danh (form gửi cả bộ) → chỉ ghi trường được sửa', async () => {
+	const r = await call('UORG', 'PUT', '/seminars/SEM1/participants/SPT_ISSUED', {
+		full_name: 'Nguyen Van Chu',
+		dob: '1990-02-03T00:00:00.000Z',
+		title_prefix: 'BS',
+		dob_text: '',
+		organization: 'BV A',
+		department_raw: 'Khoa Noi',
+		staff_number: '101',
+		cme_credits: 6,
+		user_id: 'U_OWNER',
+		notes: 'ghi chú',
+	});
+	assert.equal(r.status, 200);
+	const up = updateOf(r.entries);
+	assert.match(up.text, /notes = @notes/);
+	assert.doesNotMatch(up.text, /full_name|dob|organization|staff_number|title_prefix/);
+});
+
+test('M-07: PUT dòng chưa cấp đổi định danh khi không có cme_manage → câu UPDATE chỉ ghi dòng chưa có số', async () => {
+	const r = await call('UORG', 'PUT', '/seminars/SEM1/participants/SPT_FREE', {
+		full_name: 'Ten Moi',
+	});
+	assert.equal(r.status, 200);
+	assert.match(updateOf(r.entries).text, /full_name = @full_name[\s\S]*AND cme_seq IS NULL/);
+});
+
+test('M-07 đối chứng: PUT có cme_manage đổi được họ tên dòng đã cấp, không thêm điều kiện', async () => {
+	const r = await call('UCME', 'PUT', '/seminars/SEM1/participants/SPT_ISSUED', {
+		full_name: 'Ten Dung',
+	});
+	assert.equal(r.status, 200);
+	const up = updateOf(r.entries);
+	assert.equal(up.inputs.full_name, 'Ten Dung');
+	assert.doesNotMatch(up.text, /cme_seq IS NULL/);
 });

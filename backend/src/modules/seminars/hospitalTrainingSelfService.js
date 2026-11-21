@@ -71,6 +71,9 @@ const register = async (seminarId, userId) => {
 	const t = await getForMe(seminarId, userId);
 	if (t.registered) throw httpError(409, 'Bạn đã có trong danh sách buổi tập huấn này.');
 	if (!t.open) throw httpError(409, 'Buổi tập huấn đã diễn ra, không đăng ký được nữa.');
+	// Kiểm tra ở trên chỉ để báo lỗi sớm: 2 yêu cầu song song đều qua được, nên chống trùng
+	// thật nằm ở CSDL (ux_sp_seminar_user, L-06 audit run-5) — addUsers / bulkAdd chèn kèm
+	// ON CONFLICT DO NOTHING, yêu cầu đến sau được inserted = 0 ⇒ 409 bên dưới.
 	const { inserted } = await participantService.addUsers(seminarId, [userId], userId);
 	if (!inserted) throw httpError(409, 'Bạn đã có trong danh sách buổi tập huấn này.');
 	return getForMe(seminarId, userId);

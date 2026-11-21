@@ -82,6 +82,11 @@ export interface SeminarParticipant {
 	email: string | null;
 	/** Có = tự đăng ký qua QR (phải điểm danh + làm bài kiểm tra mới được cấp CME) */
 	ticket_code: string | null;
+	/**
+	 * Tài khoản tạo dòng. Trùng user_id = tự đăng ký tập huấn trên cổng (/me/hospital-trainings):
+	 * như vé QR, phải điểm danh mới được cấp CME (xem detailUtils.selfCreated)
+	 */
+	created_by?: string | null;
 	checked_in_at: string | null;
 	test_correct: number | null;
 	test_total: number | null;

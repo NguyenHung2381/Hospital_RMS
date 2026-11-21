@@ -1,11 +1,37 @@
 const { signToken, verifyToken } = require('../../../utils/keys');
-const { getPool, sql, withTransaction, utcNowSql } = require('../../../config/db');
+const { getPool, sql, withTransaction, jsonValues, utcNowSql } = require('../../../config/db');
 const { genAttendanceId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
 const lessonProgressService = require('./lessonProgressService');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
+
+// require muộn — gradebookService kéo theo certificateService / courseCmeService
+const gradebook = () => require('./gradebookService');
+
+// Điểm tổng đã khóa ⇒ không đổi trạng thái điểm danh (chuyên cần là đầu vào kết quả — L-11,
+// audit run-5); lưu lại đúng trạng thái cũ (chỉ sửa ghi chú) vẫn được.
+const assertAttendanceEditable = async (sessionId, records) => {
+	const locked = await gradebook().lockedEnrollmentIds(records.map((r) => r.enrollment_id));
+	if (!locked.size) return;
+	const r = await (
+		await getPool()
+	)
+		.request()
+		.input('session_id', sql.VarChar(20), sessionId)
+		.input('ids', sql.NVarChar(sql.MAX), JSON.stringify([...locked]))
+		.query(
+			`SELECT enrollment_id, status FROM attendance
+       WHERE session_id = @session_id AND enrollment_id IN ${jsonValues('@ids')}`,
+		);
+	const cur = new Map(r.recordset.map((x) => [x.enrollment_id, x.status]));
+	if (records.some((x) => locked.has(x.enrollment_id) && cur.get(x.enrollment_id) !== x.status))
+		throw httpError(
+			409,
+			'Điểm của học viên đã khóa — cần mở khóa điểm (grades:unlock) trước khi sửa điểm danh.',
+		);
+};
 
 // Mã QR điểm danh: JWT ngắn hạn ký chính session_id (mirror utils/captcha.js)
 // — không trạng thái, không cần lưu DB, hết hạn nhanh. FE làm mới QR mỗi 28s;
@@ -60,8 +86,10 @@ const setAttendance = async (
 	status,
 	note,
 	actorId,
-	{ recompute = true } = {},
+	{ recompute = true, lockChecked = false } = {},
 ) => {
+	if (!lockChecked)
+		await assertAttendanceEditable(sessionId, [{ enrollment_id: enrollmentId, status }]);
 	await withTransaction(async (tx) => {
 		const req = () =>
 			tx
@@ -99,9 +127,12 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 	if (records.some((rec) => !roster.has(rec.enrollment_id))) {
 		throw httpError(400, 'Có học viên không thuộc lớp (chương trình) của buổi học này.');
 	}
+	// Kiểm cả lô trước khi ghi dòng nào
+	await assertAttendanceEditable(sessionId, records);
 	for (const rec of records) {
 		await setAttendance(sessionId, rec.enrollment_id, rec.status, rec.note, actorId, {
 			recompute: false,
+			lockChecked: true,
 		});
 	}
 	await lessonProgressService.recompute({ sessionId });
@@ -141,9 +172,16 @@ const checkInSelf = async (token, deviceId, actor) => {
       SELECT e.id AS enrollment_id, e.trainee_id ${ROSTER_FROM}
       WHERE ${ROSTER_WHERE} AND ${TRAINEE_OF_USER_SQL('t', '@user_id')}
     `);
-	const enrollments = enrollRes.recordset;
-	if (!enrollments.length) {
+	if (!enrollRes.recordset.length) {
 		throw httpError(403, 'Bạn không có trong danh sách học viên của buổi học này.');
+	}
+	// Lượt ghi danh đã khóa điểm: không tự điểm danh thêm (L-11)
+	const locked = await gradebook().lockedEnrollmentIds(
+		enrollRes.recordset.map((e) => e.enrollment_id),
+	);
+	const enrollments = enrollRes.recordset.filter((e) => !locked.has(e.enrollment_id));
+	if (!enrollments.length) {
+		throw httpError(409, 'Điểm khóa học của bạn đã khóa, không điểm danh thêm được.');
 	}
 
 	// 1 thiết bị chỉ điểm danh cho 1 học viên mỗi buổi — chặn cầm máy đăng nhập

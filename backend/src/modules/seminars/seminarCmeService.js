@@ -17,18 +17,22 @@ const {
 } = require('../../config/db');
 const { genCmeNo } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
-const { ensureSeminar } = require('./seminarParticipantService');
+const { ensureSeminar, SELF_CREATED_SQL } = require('./seminarParticipantService');
 const { httpError } = require('../../utils/httpError');
 const { SCALED_SCORE_SQL } = require('../../utils/seminarTest');
 
 // ─── CME ─────────────────────────────────────────────────────────────────────
 
 // Điều kiện cấp CME (p = seminar_participants, s = seminars). Người do ban tổ
-// chức thêm/nhập Excel (không có vé) giữ nghiệp vụ cũ: BTC tự chịu trách nhiệm.
+// chức thêm/nhập Excel (không vé, created_by là người khác) giữ nghiệp vụ cũ: BTC tự
+// chịu trách nhiệm, không cần điểm danh. Dòng do CHÍNH người tham dự tạo — tự đăng ký
+// qua QR (có vé) hoặc tự đăng ký tập huấn trên cổng (created_by = user_id, M-08 audit
+// run-5) — phải điểm danh (SELF_CREATED_SQL, khớp requiredAbsentees và selfCreated /
+// cmeEligible ở frontend features/seminar/components/detail/detailUtils.ts).
 // Có bài test thì phải nộp bài và đạt điểm đạt (nếu đặt) — so điểm ĐÃ quy về thang
 // điểm của hội nghị (test_score_scale, xem utils/seminarTest.SCALED_SCORE_SQL); bài nộp
 // trước khi có điểm theo trọng số (test_score NULL) tính mỗi câu đúng 1 điểm.
-const CME_ELIGIBLE_SQL = `${boolExpr(`p.ticket_code IS NULL OR (p.checked_in_at IS NOT NULL
+const CME_ELIGIBLE_SQL = `${boolExpr(`NOT ${SELF_CREATED_SQL} OR (p.checked_in_at IS NOT NULL
   AND (s.test_questions IS NULL OR (p.test_submitted_at IS NOT NULL
     AND (s.test_pass_score IS NULL OR ${SCALED_SCORE_SQL} >= s.test_pass_score))))`)}`;
 
@@ -55,9 +59,9 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 	const result = await withTransaction(async (tx) => {
 		await withActor(tx, actorId);
 
-		// chỉ người chưa có số, giữ đúng thứ tự gửi lên. Người tự đăng ký qua QR
-		// (có ticket_code) phải điểm danh + nộp bài test (nếu hội nghị có bài
-		// test) mới đủ điều kiện — còn lại bỏ qua, báo về `skipped`.
+		// chỉ người chưa có số, giữ đúng thứ tự gửi lên. Người tự đăng ký (QR có
+		// ticket_code, hoặc tự đăng ký tập huấn trên cổng) phải điểm danh + nộp bài
+		// test (nếu hội nghị có bài test) mới đủ điều kiện — còn lại bỏ qua, báo về `skipped`.
 		const listReq = new sql.Request(tx).input('sid', sql.VarChar(20), seminarId);
 		const inParams = ids
 			.map((id, i) => {
