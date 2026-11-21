@@ -9,6 +9,7 @@ const courseRegistrationService = require('./courseRegistrationService');
 const registrationDocumentService = require('./registrationDocumentService');
 const registrationFileService = require('./registrationFileService');
 const { TRAINEE_FIELDS, INVOICE_FIELDS } = require('./registrationConstants');
+const { maskRegistrationCode } = require('./registrationApprovalGate');
 
 // ─── So sánh bản khai ↔ hồ sơ học viên ──────────────────────────────────────
 const DATE_FIELDS = new Set(['dob', 'national_id_issued_date']);
@@ -124,7 +125,8 @@ const loadProfile = async (enrollmentId) => {
 
 /**
  * Bản khai + chỗ lệch với hồ sơ. Không có bản khai ⇒ null.
- * Người thiếu quyền trainees:read_sensitive: CCCD bị che, file hồ sơ không có link xem (file_url null).
+ * Người thiếu quyền trainees:read_sensitive: CCCD và mã đăng ký bị che (mã + email là yếu tố
+ * tra cứu ở cổng công khai), file hồ sơ không có link xem (file_url null).
  * @param {string} enrollmentId
  * @param {any} actor req.user
  */
@@ -166,7 +168,9 @@ const getForReview = async (enrollmentId, actor) => {
 	}
 	return {
 		enrollment_id: enrollmentId,
-		registration_code: reg.registration_code,
+		registration_code: sensitive
+			? reg.registration_code
+			: maskRegistrationCode(reg.registration_code),
 		source: reg.source,
 		channel: reg.channel ?? null,
 		staff_number: reg.staff_number ?? null,

@@ -713,6 +713,64 @@ test('tra cứu theo mã: cần yếu tố thứ hai; sai mã ≡ sai yếu tố
 	}
 });
 
+// M-10: mã đăng ký + email là thứ cán bộ chỉ có courses:read xem được ở danh sách ghi danh ⇒
+// email chỉ đủ để xem trạng thái; tải đơn (có CCCD đầy đủ) / nộp hồ sơ cần CCCD hoặc download_token.
+test('M-10: tải đơn / nộp hồ sơ theo mã không nhận email làm yếu tố thứ hai (404 như sai yếu tố)', async () => {
+	reset();
+	putReg();
+	const email = { email: REG.snapshot.email };
+	// Service: allowEmail = false ⇒ email đúng vẫn 404, cùng số truy vấn như sai yếu tố
+	const before = log.length;
+	await assert.rejects(reg.resolveAccess(REG.registration_code, email, { allowEmail: false }), {
+		statusCode: 404,
+		message: 'Không tìm thấy đăng ký khớp với mã và thông tin đã nhập.',
+	});
+	const emailQueries = log.length - before;
+	const mid = log.length;
+	await reg.resolveAccess(REG.registration_code, {}).catch(() => {});
+	assert.equal(emailQueries, log.length - mid, 'cùng số truy vấn như thiếu yếu tố');
+	// Xem trạng thái vẫn nhận email
+	assert.equal(
+		(await reg.resolveAccess(REG.registration_code, email)).enrollment_id,
+		REG.enrollment_id,
+	);
+
+	// Controller: /:code/application và /:code/files/:kind chặn email, nhận CCCD
+	const run = (handler, body, params) =>
+		new Promise((resolve) => {
+			const out = { status: 200 };
+			const res = {
+				status(c) {
+					out.status = c;
+					return res;
+				},
+				setHeader() {},
+				json(b) {
+					out.body = b;
+					resolve(out);
+					return res;
+				},
+				end(buf) {
+					out.buffer = buf;
+					resolve(out);
+				},
+			};
+			handler({ body, params, ip: '127.0.0.1' }, res, (err) =>
+				resolve({ status: err.statusCode || 500, body: { message: err.message } }),
+			);
+		});
+	const params = { code: REG.registration_code, kind: 'application_signed' };
+	assert.equal((await run(regController.downloadApplication, email, params)).status, 404);
+	assert.equal((await run(regController.uploadFile, email, params)).status, 404);
+	assert.equal((await run(regController.getStatus, email, params)).status, 200, 'trạng thái');
+	const byId = await run(
+		regController.downloadApplication,
+		{ national_id: REG.snapshot.national_id },
+		params,
+	);
+	assert.equal(byId.status, 200, 'CCCD vẫn tải được đơn');
+});
+
 test('tra cứu theo mã: trạng thái không lộ dữ liệu ngoài hợp đồng; đơn gom đủ tên khóa / chương trình / khoa', async () => {
 	reset();
 	const r = putReg({ snapshot: { ...REG.snapshot, trainee_type_id: 'TT1' } });
@@ -1220,4 +1278,53 @@ test('router thật: /draft/application không bị /:code/application bắt; /:
 	} finally {
 		await new Promise((r) => srv.close(r));
 	}
+});
+
+// L-01: '0123', '000123'... cùng là nhân viên 123 (findStaff dùng Number) ⇒ phải chung 1 bộ đếm
+test('L-01: bộ đếm lần thử theo mã NV dùng mã đã chuẩn hóa — số 0 đứng đầu không tạo bộ đếm mới', async () => {
+	reset();
+	const keys = [];
+	const wrapped = attemptLimiter.hit;
+	attemptLimiter.hit = (name, key, ...rest) => {
+		keys.push([name, key]);
+		return wrapped(name, key, ...rest);
+	};
+	try {
+		await call(regController.staffCheck, { staff_number: ' 000123 ', full_name: 'x' });
+		await call(regController.requestEmailOtp, {
+			source: 'internal',
+			staff_number: '0123',
+			email: 'l01@example.com',
+		});
+		await call(regController.draftApplication, { ...DRAFT_BASE, staff_number: '00123' });
+		await call(controller.register, {
+			...INTERNAL,
+			national_id: 'L01-CCCD-RIENG',
+			staff_number: '000000123',
+		});
+	} finally {
+		attemptLimiter.hit = wrapped;
+	}
+	const staffKeys = Object.fromEntries(
+		keys.filter(([n]) => /staff|draft/.test(n)).map(([n, k]) => [n, k]),
+	);
+	assert.deepEqual(staffKeys, {
+		'course-reg-staff-check': '123',
+		'course-reg-otp-staff': '123',
+		'course-reg-draft': '123',
+		'course-registration-staff': '123',
+	});
+
+	// Hành vi: hết 10 lượt tra với '777' thì '0777', '000000777' cũng bị chặn (429)
+	for (let i = 0; i < 10; i++)
+		assert.equal(
+			(await call(regController.staffCheck, { staff_number: '777', full_name: 'x' })).status,
+			404,
+		);
+	for (const sn of ['0777', '000000777'])
+		assert.equal(
+			(await call(regController.staffCheck, { staff_number: sn, full_name: 'x' })).status,
+			429,
+			sn,
+		);
 });
