@@ -13,6 +13,16 @@ const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 const coursePolicy = require('./coursePolicy');
 
+// Mục tiêu / yêu cầu đầu vào: mảng CHUỖI ngắn (L-07) — không nhận object lồng.
+const stringList = (field) =>
+	body(field)
+		.optional({ nullable: true })
+		.isArray({ max: 100 })
+		.withMessage(`${field} phải là mảng`)
+		.bail()
+		.custom((arr) => arr.every((x) => typeof x === 'string' && x.length <= 1000))
+		.withMessage(`${field} chỉ gồm các chuỗi (tối đa 1000 ký tự)`);
+
 const uploadCourseDoc = createTrainingUpload('course_document', {
 	maxSizeMB: Number(process.env.TRAINING_MEDIA_MAX_MB || 300),
 	allowMedia: true,
@@ -25,9 +35,17 @@ router.use(authenticate);
 // trong phạm vi người gọi — giảng viên phạm vi 'assigned' chỉ khóa mình được
 // phân công (modules/training/courses/coursePolicy.js). Route mới dùng đúng tên tham số dưới
 // đây là tự được kiểm tra.
-const inScope = (check) => async (req, _res, next, value) => {
+// L-03: kiểm phạm vi theo đúng quyền của hành động ghi (courses:update/delete), không
+// dùng phạm vi của quyền đọc — vai trò xem 'all' nhưng sửa/xóa 'assigned' vẫn bị giới hạn.
+const writeAction = (req, isCourseId) =>
+	req.method === 'DELETE' && isCourseId
+		? 'delete'
+		: ['PUT', 'PATCH', 'DELETE'].includes(req.method)
+			? 'update'
+			: 'read';
+const inScope = (check, isCourseId = false) => async (req, _res, next, value) => {
 	try {
-		await check(value, req.user);
+		await check(value, req.user, writeAction(req, isCourseId));
 		next();
 	} catch (err) {
 		next(err);
@@ -35,12 +53,12 @@ const inScope = (check) => async (req, _res, next, value) => {
 };
 router.param(
 	'id',
-	inScope((id, user) => coursePolicy.assertCourseInScope(id, user)),
+	inScope((id, user, action) => coursePolicy.assertCourseInScope(id, user, action), true),
 );
 for (const name of Object.keys(coursePolicy.CHILD_COURSE_SQL)) {
 	router.param(
 		name,
-		inScope((id, user) => coursePolicy.assertCourseChildInScope(name, id, user)),
+		inScope((id, user, action) => coursePolicy.assertCourseChildInScope(name, id, user, action)),
 	);
 }
 
@@ -109,8 +127,8 @@ router.post(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('prerequisites').optional({ nullable: true }).isArray(),
-		body('objectives').optional({ nullable: true }).isArray(),
+		stringList('prerequisites'),
+		stringList('objectives'),
 		body('program_ids').optional().isArray(),
 	],
 	validate,
@@ -128,8 +146,8 @@ router.put(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
-		body('prerequisites').optional({ nullable: true }).isArray(),
-		body('objectives').optional({ nullable: true }).isArray(),
+		stringList('prerequisites'),
+		stringList('objectives'),
 		body('program_ids').optional().isArray(),
 	],
 	validate,

@@ -1,9 +1,13 @@
 const { getPool, sql } = require('../../config/db');
 const { scopeOf, hasPermission } = require('../../permissions/authz');
+const { effectiveScope } = require('../../permissions/actionScope');
 const { httpError } = require('../../utils/httpError');
 
 // Phạm vi xem đề tài: không có quyền topics nào ⇒ chỉ đề tài mình tham gia.
-const topicScope = (actor) => scopeOf(actor, 'topics') ?? 'own';
+// `action` ≠ 'read' (update/delete/create): lấy phạm vi HIỆU LỰC của hành động
+// (hẹp hơn giữa lượt cấp của hành động và phạm vi xem) — L-03.
+const topicScope = (actor, action = 'read') =>
+	(action === 'read' ? scopeOf(actor, 'topics') : effectiveScope(actor, 'topics', action)) ?? 'own';
 
 // Phạm vi 'department': cùng khoa VÀ cả hai bên đều có khoa. NULL === NULL không
 // phải "cùng khoa" (tài khoản chưa gán khoa / đề tài mồ côi khoa sau khi xóa khoa)
@@ -19,8 +23,8 @@ const inDepartmentScope = (topicDepartmentId, actor) =>
 // đề tài cụ thể có nằm trong phạm vi của họ không: 'department' = cùng khoa,
 // 'own' = là thành viên, 'all' = mọi đề tài. Mọi API thao tác theo mã đề tài
 // phải qua 1 trong 2 hàm dưới (modules/topics/topics.routes.js gắn qua router.param).
-const assertTopicInScope = async (topicId, actor) => {
-	const scope = topicScope(actor);
+const assertTopicInScope = async (topicId, actor, action = 'read') => {
+	const scope = topicScope(actor, action);
 	if (scope === 'all') return;
 	const pool = await getPool();
 	const row = (

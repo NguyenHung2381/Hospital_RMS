@@ -8,7 +8,8 @@ const { maskEmail } = require('../../utils/maskEmail');
 // THẬT từ mã NV (memberAccountEmail) rồi trả lại — người có topics:update nhưng
 // không có users:read (vd. topic_leader) dò được email của bất kỳ nhân viên nào.
 // Nên mọi chỗ trả danh sách thành viên đều qua đây: người không có users:read chỉ
-// thấy email đã che, trừ dòng của chính mình. Ghi vào DB vẫn lưu email đầy đủ
+// thấy email đã che — KHÔNG có ngoại lệ "dòng của chính mình": email của dòng do
+// client chọn mã NV nên dòng có user_id = mình vẫn có thể chứa email người khác. Ghi vào DB vẫn lưu email đầy đủ
 // (gửi thư dùng bản đầy đủ).
 const canSeeMemberEmails = (actor) => hasPermission(actor, 'users', 'read');
 
@@ -20,7 +21,6 @@ const isMaskedEmail = (email) => typeof email === 'string' && MASKED.test(email.
 
 const maskMember = (m, actor) => {
 	if (!m || !m.email || canSeeMemberEmails(actor)) return m;
-	if (m.user_id != null && m.user_id === actor?.id) return m;
 	return { ...m, email: maskEmail(m.email) };
 };
 

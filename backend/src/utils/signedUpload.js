@@ -46,6 +46,11 @@ const EMBED_KEYS = new Set(['comment', 'general_comment', 'test_questions']);
 const EMBED_PATH =
 	/^\/uploads\/(topics\/[A-Za-z0-9_-]+\/comments|seminars\/[A-Za-z0-9_-]+\/test)\/[^/]+$/;
 
+// JSON do NGƯỜI DÙNG nhập (mục tiêu / yêu cầu đầu vào của khóa học): không bao giờ ký,
+// kể cả khi có object lồng mang khóa url/image — nếu không, gõ {"url":"/uploads/..."}
+// rồi đọc lại là nhận link hợp lệ tới file bất kỳ (L-07). Thêm cột JSON tự do ⇒ thêm vào đây.
+const USER_JSON_KEYS = new Set(['prerequisites', 'objectives']);
+
 const signString = (s, key) => {
 	if (FILE_KEYS.has(key)) {
 		const m = WHOLE.exec(s);
@@ -59,6 +64,7 @@ const signString = (s, key) => {
 
 // Phần tử mảng mang tên trường của mảng cha (vd images: ['/uploads/...']).
 const signDeep = (value, key) => {
+	if (USER_JSON_KEYS.has(key)) return value;
 	if (typeof value === 'string') return signString(value, key);
 	if (Array.isArray(value)) return value.map((v) => signDeep(v, key));
 	if (value && typeof value === 'object' && !(value instanceof Date) && !Buffer.isBuffer(value)) {
@@ -120,6 +126,7 @@ const stripUploadSignatures = (html) =>
 	html && html.replace(IN_HTML, (_all, q, p) => `${q}${p}${q}`);
 
 module.exports = {
+	signDeep,
 	signPath,
 	signUploadUrlsInJson,
 	verifyUploadSignature,
