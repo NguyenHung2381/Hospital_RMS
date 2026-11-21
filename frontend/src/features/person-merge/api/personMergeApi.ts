@@ -9,6 +9,7 @@ import type {
 	MergeStatus,
 	Side,
 } from '../types/personMerge.type';
+import { seg } from '../../../shared/api/path';
 
 export interface MergeListParams {
 	status: MergeStatus;
@@ -31,13 +32,13 @@ export const getMergeCandidates = (p: MergeListParams) =>
 export const getMergeStats = () => apiClient.get<MergeStats>('/persons/merge-candidates/stats');
 
 export const getMergeCandidate = (id: number) =>
-	apiClient.get<MergeCandidateDetail>(`/persons/merge-candidates/${id}`);
+	apiClient.get<MergeCandidateDetail>(`/persons/merge-candidates/${seg(id)}`);
 
 export const mergeCandidate = (id: number, body: { keep: Side; fields: FieldChoice; note?: string }) =>
-	apiClient.post<MergeResult>(`/persons/merge-candidates/${id}/merge`, body);
+	apiClient.post<MergeResult>(`/persons/merge-candidates/${seg(id)}/merge`, body);
 
 export const rejectCandidate = (id: number, note?: string) =>
-	apiClient.post<{ id: number; status: MergeStatus }>(`/persons/merge-candidates/${id}/reject`, { note });
+	apiClient.post<{ id: number; status: MergeStatus }>(`/persons/merge-candidates/${seg(id)}/reject`, { note });
 
 export const reopenCandidate = (id: number) =>
-	apiClient.post<{ id: number; status: MergeStatus }>(`/persons/merge-candidates/${id}/reopen`, {});
+	apiClient.post<{ id: number; status: MergeStatus }>(`/persons/merge-candidates/${seg(id)}/reopen`, {});

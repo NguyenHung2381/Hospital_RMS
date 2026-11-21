@@ -7,19 +7,20 @@ import type {
 	TraineeListResponse,
 	TraineeProgress,
 } from '../types/trainee.type';
+import { seg } from '../../../shared/api/path';
 
 export const getTrainees = (trainingTypeId?: string) =>
 	apiClient.get<TraineeListResponse>(
 		`/trainees?limit=0${trainingTypeId ? `&training_type_id=${encodeURIComponent(trainingTypeId)}` : ''}`,
 	);
 
-export const getTrainee = (traineeId: string) => apiClient.get<Trainee>(`/trainees/${traineeId}`);
+export const getTrainee = (traineeId: string) => apiClient.get<Trainee>(`/trainees/${seg(traineeId)}`);
 
 export const getTraineeEnrollments = (traineeId: string) =>
-	apiClient.get<TraineeEnrollment[]>(`/trainees/${traineeId}/enrollments`);
+	apiClient.get<TraineeEnrollment[]>(`/trainees/${seg(traineeId)}/enrollments`);
 
 export const getTraineeProgress = (traineeId: string) =>
-	apiClient.get<TraineeProgress[]>(`/trainees/${traineeId}/progress`);
+	apiClient.get<TraineeProgress[]>(`/trainees/${seg(traineeId)}/progress`);
 
 const toPayload = (form: TraineeFormData) => ({
 	full_name: form.full_name,
@@ -53,9 +54,9 @@ export const createTrainee = (form: TraineeFormData) =>
 	apiClient.post<Trainee>('/trainees', toPayload(form));
 
 export const updateTrainee = (id: string, form: TraineeFormData) =>
-	apiClient.put<Trainee>(`/trainees/${id}`, toPayload(form));
+	apiClient.put<Trainee>(`/trainees/${seg(id)}`, toPayload(form));
 
-export const deleteTrainee = (id: string) => apiClient.delete<null>(`/trainees/${id}`);
+export const deleteTrainee = (id: string) => apiClient.delete<null>(`/trainees/${seg(id)}`);
 
 export interface GrantedTraineeAccount {
 	trainee_id: string;
@@ -81,12 +82,12 @@ export const grantTraineeAccounts = (traineeIds: string[]) =>
 // Đặt lại mật khẩu tạm ngẫu nhiên mới, bắt đổi ở lần đăng nhập tới.
 export const resetTraineeAccountPassword = (traineeId: string) =>
 	apiClient.post<{ temporary_password: string } | null>(
-		`/trainees/${traineeId}/account/reset-password`,
+		`/trainees/${seg(traineeId)}/account/reset-password`,
 		{},
 	);
 
 export const setTraineeAccountActive = (traineeId: string, isActive: boolean) =>
-	apiClient.patch<null>(`/trainees/${traineeId}/account`, { is_active: isActive });
+	apiClient.patch<null>(`/trainees/${seg(traineeId)}/account`, { is_active: isActive });
 
 export const importTraineesExcel = (file: File, dryRun: boolean) => {
 	const form = new FormData();

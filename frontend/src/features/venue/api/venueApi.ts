@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { Venue, VenueFormData, VenueListResponse } from '../types/venue.type';
+import { seg } from '../../../shared/api/path';
 
 const toPayload = (form: VenueFormData) => ({
 	name: form.name.trim(),
@@ -16,7 +17,7 @@ export const venueApi = {
 	create: (form: VenueFormData) => apiClient.post<Venue>('/venues', toPayload(form)),
 
 	update: (id: string, form: VenueFormData) =>
-		apiClient.put<Venue>(`/venues/${id}`, toPayload(form)),
+		apiClient.put<Venue>(`/venues/${seg(id)}`, toPayload(form)),
 
-	remove: (id: string) => apiClient.delete<null>(`/venues/${id}`),
+	remove: (id: string) => apiClient.delete<null>(`/venues/${seg(id)}`),
 };

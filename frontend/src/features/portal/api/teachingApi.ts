@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { Gradebook, GradeBulkRow } from '../../course/types/course.type';
 import type { ExamAttemptDetail, ExamPart } from '../../exam/types/exam.type';
+import { seg } from '../../../shared/api/path';
 
 // Cổng giảng viên — backend modules/portal/teaching.routes.js. Chỉ phần mình được phân:
 // điểm LT khi là người chấm đề lý thuyết, điểm TH khi dạy bài có tiết thực hành.
@@ -21,13 +22,13 @@ export interface PendingGrading {
 }
 
 export const teachingApi = {
-	getGradebook: (courseId: string) => apiClient.get<Gradebook>(`/me/teaching/courses/${courseId}/gradebook`),
+	getGradebook: (courseId: string) => apiClient.get<Gradebook>(`/me/teaching/courses/${seg(courseId)}/gradebook`),
 	saveGrades: (courseId: string, rows: GradeBulkRow[]) =>
-		apiClient.put<{ saved: number }>(`/me/teaching/courses/${courseId}/grades/bulk`, { rows }),
+		apiClient.put<{ saved: number }>(`/me/teaching/courses/${seg(courseId)}/grades/bulk`, { rows }),
 	listPendingGrading: () => apiClient.get<PendingGrading[]>('/me/teaching/grading'),
-	getAttempt: (attemptId: string) => apiClient.get<ExamAttemptDetail>(`/me/teaching/attempts/${attemptId}`),
+	getAttempt: (attemptId: string) => apiClient.get<ExamAttemptDetail>(`/me/teaching/attempts/${seg(attemptId)}`),
 	gradeAnswer: (attemptId: string, questionId: string, score: number) =>
-		apiClient.post<ExamAttemptDetail>(`/me/teaching/attempts/${attemptId}/grade`, {
+		apiClient.post<ExamAttemptDetail>(`/me/teaching/attempts/${seg(attemptId)}/grade`, {
 			question_id: questionId,
 			score,
 		}),

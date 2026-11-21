@@ -6,10 +6,11 @@ import type {
 	CatalogTab,
 	LevelOption,
 } from '../types/catalog.type';
+import { seg } from '../../../shared/api/path';
 
 export const catalogApi = {
 	list: (tab: CatalogTab) =>
-		apiClient.get<CatalogListResponse>(`/${tab}?limit=0`),
+		apiClient.get<CatalogListResponse>(`/${seg(tab)}?limit=0`),
 
 	/** Tất cả cấp độ (để tick trong modal "Loại đợt"). */
 	allLevels: () =>
@@ -19,26 +20,26 @@ export const catalogApi = {
 
 	/** Danh sách id cấp độ đang gán cho một loại đợt. */
 	roundTypeLevels: (roundTypeId: string) =>
-		apiClient.get<string[]>(`/round-types/${roundTypeId}/levels`),
+		apiClient.get<string[]>(`/round-types/${seg(roundTypeId)}/levels`),
 
 	/** Ghi đè danh sách cấp độ cho một loại đợt. */
 	setRoundTypeLevels: (roundTypeId: string, levelIds: string[]) =>
-		apiClient.put<string[]>(`/round-types/${roundTypeId}/levels`, {
+		apiClient.put<string[]>(`/round-types/${seg(roundTypeId)}/levels`, {
 			level_ids: levelIds,
 		}),
 
 	create: (tab: CatalogTab, form: CatalogFormData) =>
-		apiClient.post<CatalogItem>(`/${tab}`, {
+		apiClient.post<CatalogItem>(`/${seg(tab)}`, {
 			name: form.name,
 			description: form.description || null,
 		}),
 
 	update: (tab: CatalogTab, id: string, form: CatalogFormData) =>
-		apiClient.put<CatalogItem>(`/${tab}/${id}`, {
+		apiClient.put<CatalogItem>(`/${seg(tab)}/${seg(id)}`, {
 			name: form.name,
 			description: form.description || null,
 		}),
 
 	remove: (tab: CatalogTab, id: string) =>
-		apiClient.delete<null>(`/${tab}/${id}`),
+		apiClient.delete<null>(`/${seg(tab)}/${seg(id)}`),
 };

@@ -11,6 +11,7 @@ import type {
 	TrainingProgramFormData,
 	TrainingProgramListResponse,
 } from '../types/trainingProgram.type';
+import { seg } from '../../../shared/api/path';
 
 export type LessonDocumentSource = { type: 'file'; file: File } | { type: 'link'; external_url: string };
 
@@ -49,7 +50,7 @@ export const createTrainingProgram = (form: TrainingProgramFormData) =>
 	apiClient.post<TrainingProgram>('/training-programs', toPayload(form));
 
 export const updateTrainingProgram = (id: string, form: TrainingProgramFormData) =>
-	apiClient.put<TrainingProgram>(`/training-programs/${id}`, toPayload(form));
+	apiClient.put<TrainingProgram>(`/training-programs/${seg(id)}`, toPayload(form));
 
 // Đồng bộ vòng thực hành nhập ở form chương trình: gỡ vòng bị xóa (bài học vẫn
 // giữ cho hồ sơ cũ), sửa vòng có sẵn, tạo + gắn vòng mới.
@@ -70,7 +71,7 @@ export const syncProgramRotations = async (
 	});
 	const newIds: string[] = [];
 	for (const [i, r] of after.entries()) {
-		if (r.lesson_id) await apiClient.put<null>(`/training-programs/lessons/${r.lesson_id}`, fields(r));
+		if (r.lesson_id) await apiClient.put<null>(`/training-programs/lessons/${seg(r.lesson_id)}`, fields(r));
 		else {
 			const { id } = await apiClient.post<{ id: string }>('/training-programs/lessons', {
 				...fields(r),
@@ -98,14 +99,14 @@ export const syncProgramRotations = async (
 };
 
 export const deleteTrainingProgram = (id: string) =>
-	apiClient.delete<null>(`/training-programs/${id}`);
+	apiClient.delete<null>(`/training-programs/${seg(id)}`);
 
 // ─── Bài học — 1 bài học (nội dung dùng chung) có thể gắn vào NHIỀU chương
 // trình đào tạo (N:N). getLessons trả về các LƯỢT GẮN của 1 chương trình cụ
 // thể; getAllLessons trả về toàn bộ nội dung bài học đang có, dùng cho picker
 // "đính kèm bài học có sẵn" thay vì tạo trùng nội dung. ──────────────────────
 export const getLessons = (programId: string) =>
-	apiClient.get<ProgramLessonLink[]>(`/training-programs/${programId}/lessons`);
+	apiClient.get<ProgramLessonLink[]>(`/training-programs/${seg(programId)}/lessons`);
 
 export const getAllLessons = () => apiClient.get<Lesson[]>('/training-programs/lessons/all');
 
@@ -133,40 +134,40 @@ export const createLesson = (data: LessonFormData) =>
 // Sửa nội dung DÙNG CHUNG (không gồm program_ids) — ảnh hưởng mọi chương
 // trình đang gắn bài học này.
 export const updateLesson = (lessonId: string, data: LessonFormData) =>
-	apiClient.put<null>(`/training-programs/lessons/${lessonId}`, lessonPayload(data));
+	apiClient.put<null>(`/training-programs/lessons/${seg(lessonId)}`, lessonPayload(data));
 
 // Chương trình đào tạo đang gắn với 1 bài học — khởi tạo multi-select khi sửa
 export const getLessonPrograms = (lessonId: string) =>
-	apiClient.get<string[]>(`/training-programs/lessons/${lessonId}/programs`);
+	apiClient.get<string[]>(`/training-programs/lessons/${seg(lessonId)}/programs`);
 
 // Gán LẠI TOÀN BỘ danh sách chương trình cho 1 bài học (multi-select ở form)
 export const setLessonPrograms = (lessonId: string, programIds: string[]) =>
-	apiClient.put<string[]>(`/training-programs/lessons/${lessonId}/programs`, { program_ids: programIds });
+	apiClient.put<string[]>(`/training-programs/lessons/${seg(lessonId)}/programs`, { program_ids: programIds });
 
 // Đính kèm NHIỀU bài học có sẵn cùng lúc (checkbox multi-select)
 export const linkLessons = (programId: string, lessonIds: string[]) =>
-	apiClient.post<{ linked: number }>(`/training-programs/${programId}/lessons/link-many`, {
+	apiClient.post<{ linked: number }>(`/training-programs/${seg(programId)}/lessons/link-many`, {
 		lesson_ids: lessonIds,
 	});
 
 // Sắp xếp lại toàn bộ thứ tự bài học của 1 chương trình (sau khi kéo-thả)
 export const reorderLessons = (programId: string, linkIds: string[]) =>
-	apiClient.put<ProgramLessonLink[]>(`/training-programs/${programId}/lessons/reorder`, {
+	apiClient.put<ProgramLessonLink[]>(`/training-programs/${seg(programId)}/lessons/reorder`, {
 		link_ids: linkIds,
 	});
 
 // Gỡ bài học khỏi 1 chương trình (không xóa nội dung nếu còn chương trình
 // khác đang dùng chung — server tự dọn khi đây là lượt gắn cuối cùng)
 export const unlinkLesson = (linkId: string) =>
-	apiClient.delete<null>(`/training-programs/lesson-links/${linkId}`);
+	apiClient.delete<null>(`/training-programs/lesson-links/${seg(linkId)}`);
 
 // Xóa hẳn bài học (mọi chương trình đang dùng sẽ mất luôn — dùng cẩn thận)
 export const deleteLesson = (lessonId: string) =>
-	apiClient.delete<null>(`/training-programs/lessons/${lessonId}`);
+	apiClient.delete<null>(`/training-programs/lessons/${seg(lessonId)}`);
 
 // ─── Tài liệu bài học ────────────────────────────────────────────────────
 export const getLessonDocuments = (lessonId: string) =>
-	apiClient.get<LessonDocument[]>(`/training-programs/lessons/${lessonId}/documents`);
+	apiClient.get<LessonDocument[]>(`/training-programs/lessons/${seg(lessonId)}/documents`);
 
 export const addLessonDocument = (
 	lessonId: string,
@@ -179,14 +180,14 @@ export const addLessonDocument = (
 	else form.append('external_url', source.external_url);
 	form.append('title', data.title);
 	form.append('is_public', String(data.is_public));
-	return apiClient.postForm<{ id: string }>(`/training-programs/lessons/${lessonId}/documents`, form);
+	return apiClient.postForm<{ id: string }>(`/training-programs/lessons/${seg(lessonId)}/documents`, form);
 };
 
 export const removeLessonDocument = (docId: string) =>
-	apiClient.delete<null>(`/training-programs/lesson-documents/${docId}`);
+	apiClient.delete<null>(`/training-programs/lesson-documents/${seg(docId)}`);
 
 export const incrementLessonDocumentDownload = (docId: string) =>
-	apiClient.patch<{ download_count: number }>(`/training-programs/lesson-documents/${docId}/download`, {});
+	apiClient.patch<{ download_count: number }>(`/training-programs/lesson-documents/${seg(docId)}/download`, {});
 
 // ─── Nhập danh mục chương trình + vòng thực hành từ Excel (mẫu 1.xlsx) ─────
 export interface CatalogImportProgramRow {
@@ -272,15 +273,15 @@ export const importLessonLecturers = (programId: string, file: File, dryRun: boo
 	form.append('file', file);
 	form.append('dry_run', dryRun ? '1' : '0');
 	return apiClient.postForm<LessonLecturerImportResult>(
-		`/training-programs/${programId}/lessons/lecturers/import`,
+		`/training-programs/${seg(programId)}/lessons/lecturers/import`,
 		form,
 	);
 };
 
 /** File mẫu .xlsx điền sẵn các bài của chương trình và giảng viên đang gán. */
 export const downloadLessonLecturerTemplate = (programId: string) =>
-	apiClient.postBlob(`/training-programs/${programId}/lessons/lecturers/template`, {});
+	apiClient.postBlob(`/training-programs/${seg(programId)}/lessons/lecturers/template`, {});
 
 // ─── Kết quả học tập theo chương trình (view chỉ-đọc) ──────────────────────
 export const getProgramResults = (programId: string) =>
-	apiClient.get<ProgramResultRow[]>(`/training-programs/${programId}/results`);
+	apiClient.get<ProgramResultRow[]>(`/training-programs/${seg(programId)}/results`);

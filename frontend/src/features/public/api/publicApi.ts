@@ -1,5 +1,6 @@
 import type { CustomValues } from '@/shared/formConfig/types';
 import { BASE_URL } from '../../../shared/api/axios';
+import { seg } from '../../../shared/api/path';
 
 // Client riêng cho cổng công khai — KHÔNG dùng shared/api/axios.apiClient vì
 // nó tự gắn Authorization/refresh-token cho phiên đăng nhập, không phù hợp
@@ -303,7 +304,7 @@ export interface RegistrationStatus {
 	files_missing: RegistrationFileKind[];
 }
 const registrationPath = (code: string, action: 'status' | 'application') =>
-	`/course-registration/${encodeURIComponent(code)}/${action}`;
+	`/course-registration/${encodeURIComponent(code)}/${seg(action)}`;
 
 export const getRegistrationStatus = (code: string, proof: RegistrationProof) =>
 	request<RegistrationStatus>(registrationPath(code, 'status'), {
@@ -326,7 +327,7 @@ export const uploadRegistrationFile = (
 	const form = new FormData();
 	form.append('data', JSON.stringify(proof));
 	form.append('file', file);
-	return request<RegistrationFileUploadResult>(`/course-registration/${encodeURIComponent(code)}/files/${kind}`, {
+	return request<RegistrationFileUploadResult>(`/course-registration/${encodeURIComponent(code)}/files/${seg(kind)}`, {
 		method: 'POST',
 		body: form,
 	});

@@ -16,6 +16,7 @@ import type {
 	SeminarParticipant,
 	SeminarTestQuestion,
 } from '../types/seminar.type';
+import { seg } from '../../../shared/api/path';
 
 export interface SeminarListParams {
 	page?: number;
@@ -95,16 +96,16 @@ export const getSeminars = (params?: SeminarListParams) =>
 	apiClient.get<SeminarListResponse>(`/seminars${qs(params as Record<string, unknown>)}`);
 
 export const getSeminar = (id: string) =>
-	apiClient.get<Seminar>(`/seminars/${id}`);
+	apiClient.get<Seminar>(`/seminars/${seg(id)}`);
 
 export const createSeminar = (form: SeminarForm) =>
 	apiClient.post<Seminar>('/seminars', formToPayload(form));
 
 export const updateSeminar = (id: string, form: SeminarForm) =>
-	apiClient.put<Seminar>(`/seminars/${id}`, formToPayload(form));
+	apiClient.put<Seminar>(`/seminars/${seg(id)}`, formToPayload(form));
 
 export const deleteSeminar = (id: string) =>
-	apiClient.delete<null>(`/seminars/${id}`);
+	apiClient.delete<null>(`/seminars/${seg(id)}`);
 
 export const checkInSeminar = (token: string) =>
 	apiClient.post<{ seminar_id: string }>('/seminars/checkin', {
@@ -122,7 +123,7 @@ export interface TicketCheckIn {
 }
 
 export const checkInTicket = (seminarId: string, code: string) =>
-	apiClient.post<TicketCheckIn>(`/seminars/${seminarId}/checkin-ticket`, { code });
+	apiClient.post<TicketCheckIn>(`/seminars/${seg(seminarId)}/checkin-ticket`, { code });
 
 export const updateSeminarTest = (
 	id: string,
@@ -140,24 +141,24 @@ export const updateSeminarTest = (
 		test_shuffle_questions?: boolean;
 		test_shuffle_options?: boolean;
 	},
-) => apiClient.put<Seminar>(`/seminars/${id}`, data);
+) => apiClient.put<Seminar>(`/seminars/${seg(id)}`, data);
 
 export const updateSeminarAgenda = (id: string, agenda: SeminarAgendaItem[] | null) =>
-	apiClient.put<Seminar>(`/seminars/${id}`, { agenda });
+	apiClient.put<Seminar>(`/seminars/${seg(id)}`, { agenda });
 
 /** Xuất Excel 1 hội nghị — parts trống = cả người tham dự lẫn bài học */
 export const exportSeminarDetailExcel = (id: string, parts?: ('participants' | 'agenda')[]) =>
-	apiClient.postBlob(`/seminars/${id}/export-excel`, { parts });
+	apiClient.postBlob(`/seminars/${seg(id)}/export-excel`, { parts });
 
 export const uploadSeminarTestImage = (id: string, file: File) => {
 	const form = new FormData();
 	form.append('image', file);
-	return apiClient.postForm<{ url: string }>(`/seminars/${id}/test-image`, form);
+	return apiClient.postForm<{ url: string }>(`/seminars/${seg(id)}/test-image`, form);
 };
 
 export const addParticipant = (seminarId: string, form: ParticipantForm) =>
 	apiClient.post<SeminarParticipant>(
-		`/seminars/${seminarId}/participants`,
+		`/seminars/${seg(seminarId)}/participants`,
 		participantPayload(form),
 	);
 
@@ -167,31 +168,31 @@ export const updateParticipant = (
 	form: Partial<ParticipantForm>,
 ) =>
 	apiClient.put<SeminarParticipant>(
-		`/seminars/${seminarId}/participants/${pid}`,
+		`/seminars/${seg(seminarId)}/participants/${seg(pid)}`,
 		participantPayload({ ...(form as ParticipantForm) }),
 	);
 
 export const deleteParticipant = (seminarId: string, pid: string) =>
-	apiClient.delete<null>(`/seminars/${seminarId}/participants/${pid}`);
+	apiClient.delete<null>(`/seminars/${seg(seminarId)}/participants/${seg(pid)}`);
 
 // ─── Tập huấn bệnh viện ──────────────────────────────────────────────────────
 export const getDepartmentStaff = (seminarId: string, departmentId: string) =>
 	apiClient.get<DepartmentStaff[]>(
-		`/seminars/${seminarId}/department-staff?department_id=${encodeURIComponent(departmentId)}`,
+		`/seminars/${seg(seminarId)}/department-staff?department_id=${encodeURIComponent(departmentId)}`,
 	);
 
 export const addSeminarUsers = (seminarId: string, userIds: string[]) =>
 	apiClient.post<{ inserted: number; skipped: number }>(
-		`/seminars/${seminarId}/participants/add-users`,
+		`/seminars/${seg(seminarId)}/participants/add-users`,
 		{ user_ids: userIds },
 	);
 
 /** Thêm cả khoa bắt buộc: mọi nhân sự các khoa bắt buộc chưa có trong danh sách */
 export const addRequiredStaff = (seminarId: string) =>
-	apiClient.post<{ inserted: number; skipped: number }>(`/seminars/${seminarId}/participants/add-required`, {});
+	apiClient.post<{ inserted: number; skipped: number }>(`/seminars/${seg(seminarId)}/participants/add-required`, {});
 
 export const getRequiredAbsentees = (seminarId: string) =>
-	apiClient.get<RequiredAbsentee[]>(`/seminars/${seminarId}/required-absentees`);
+	apiClient.get<RequiredAbsentee[]>(`/seminars/${seg(seminarId)}/required-absentees`);
 
 export const importParticipantsExcel = (
 	seminarId: string,
@@ -207,7 +208,7 @@ export const importParticipantsExcel = (
 	if (creditsByRole) form.append('credits_by_role', JSON.stringify(creditsByRole));
 	form.append('file', file);
 	return apiClient.postForm<ParticipantImportResult>(
-		`/seminars/${seminarId}/participants/import-excel`,
+		`/seminars/${seg(seminarId)}/participants/import-excel`,
 		form,
 	);
 };
@@ -231,7 +232,7 @@ export const issueCme = (
 	year?: number,
 ) =>
 	apiClient.post<IssueCmeResult>(
-		`/seminars/${seminarId}/participants/issue-cme`,
+		`/seminars/${seg(seminarId)}/participants/issue-cme`,
 		{ participant_ids: participantIds, year },
 	);
 
@@ -248,16 +249,16 @@ export interface CertificateTemplateInfo {
 }
 
 export const getCertificateTemplate = (seminarId: string) =>
-	apiClient.get<CertificateTemplateInfo | null>(`/seminars/${seminarId}/certificate-template`);
+	apiClient.get<CertificateTemplateInfo | null>(`/seminars/${seg(seminarId)}/certificate-template`);
 
 export const uploadCertificateTemplate = (seminarId: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postForm<CertificateTemplateInfo>(`/seminars/${seminarId}/certificate-template`, form);
+	return apiClient.postForm<CertificateTemplateInfo>(`/seminars/${seg(seminarId)}/certificate-template`, form);
 };
 
 export const deleteCertificateTemplate = (seminarId: string) =>
-	apiClient.delete<null>(`/seminars/${seminarId}/certificate-template`);
+	apiClient.delete<null>(`/seminars/${seg(seminarId)}/certificate-template`);
 
 // Vị trí 1 ô trên mẫu — điểm PDF, gốc trên-trái trang
 export interface CertificateSlot {
@@ -316,17 +317,17 @@ export type CertificateSlotEdit = Pick<CertificateSlot, 'x0' | 'x1' | 'baseline'
 export type CertificateTextEdit = Pick<CertificateText, 'text' | 'x0' | 'x1' | 'baseline' | 'size' | 'align'>;
 
 export const getCertificateLayout = (seminarId: string) =>
-	apiClient.get<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout`);
+	apiClient.get<CertificateLayout>(`/seminars/${seg(seminarId)}/certificate-template/layout`);
 
 /** texts: TOÀN BỘ các dòng đang sửa — dòng không gửi lên trở về chữ gốc */
 export const saveCertificateLayout = (
 	seminarId: string,
 	slots: Record<string, CertificateSlotEdit>,
 	texts: Record<string, CertificateTextEdit>,
-) => apiClient.put<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout`, { slots, texts });
+) => apiClient.put<CertificateLayout>(`/seminars/${seg(seminarId)}/certificate-template/layout`, { slots, texts });
 
 export const resetCertificateLayout = (seminarId: string) =>
-	apiClient.post<CertificateLayout>(`/seminars/${seminarId}/certificate-template/layout/reset`, {});
+	apiClient.post<CertificateLayout>(`/seminars/${seg(seminarId)}/certificate-template/layout/reset`, {});
 
 // Thông tin hội nghị in sẵn trên giấy — sửa nhanh không cần mở màn chỉnh mẫu
 export type CertificateInfoKey = 'content' | 'organizer' | 'time' | 'sign_date';
@@ -344,27 +345,27 @@ export interface CertificateInfoField {
 }
 
 export const getCertificateInfo = (seminarId: string) =>
-	apiClient.get<CertificateInfoField[]>(`/seminars/${seminarId}/certificate-template/info`);
+	apiClient.get<CertificateInfoField[]>(`/seminars/${seg(seminarId)}/certificate-template/info`);
 
 export const saveCertificateInfo = (seminarId: string, values: Partial<Record<CertificateInfoKey, string>>) =>
-	apiClient.put<CertificateInfoField[]>(`/seminars/${seminarId}/certificate-template/info`, { values });
+	apiClient.put<CertificateInfoField[]>(`/seminars/${seg(seminarId)}/certificate-template/info`, { values });
 
 export const previewCertificate = (seminarId: string) =>
-	apiClient.postBlob(`/seminars/${seminarId}/certificate-template/preview`, {});
+	apiClient.postBlob(`/seminars/${seg(seminarId)}/certificate-template/preview`, {});
 
 /** participantIds rỗng = mọi người đã có số CME */
 export const exportCertificates = (seminarId: string, participantIds?: string[]) =>
-	apiClient.postBlob(`/seminars/${seminarId}/certificates`, { participant_ids: participantIds });
+	apiClient.postBlob(`/seminars/${seg(seminarId)}/certificates`, { participant_ids: participantIds });
 
 export const exportCertificatesFromExcel = (seminarId: string, file: File) => {
 	const form = new FormData();
 	form.append('file', file);
-	return apiClient.postBlob(`/seminars/${seminarId}/certificates/from-excel`, form);
+	return apiClient.postBlob(`/seminars/${seg(seminarId)}/certificates/from-excel`, form);
 };
 
 export const revokeCme = (seminarId: string, pid: string) =>
 	apiClient.post<null>(
-		`/seminars/${seminarId}/participants/${pid}/revoke-cme`,
+		`/seminars/${seg(seminarId)}/participants/${seg(pid)}/revoke-cme`,
 		{},
 	);
 
@@ -374,7 +375,7 @@ export const bulkCmeStatus = (
 	status: 'issued' | 'signed',
 ) =>
 	apiClient.post<{ updated: number }>(
-		`/seminars/${seminarId}/participants/bulk-cme`,
+		`/seminars/${seg(seminarId)}/participants/bulk-cme`,
 		{ participant_ids: participantIds, status },
 	);
 
@@ -398,7 +399,7 @@ export const getCmeStats = (year: number) =>
 
 export const updateCmeRegisterSeq = (year: number, lastSeq: number) =>
 	apiClient.put<{ year: number; last_seq: number }>(
-		`/seminars/cme/register/${year}`,
+		`/seminars/cme/register/${seg(year)}`,
 		{ last_seq: lastSeq },
 	);
 

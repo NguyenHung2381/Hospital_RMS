@@ -32,6 +32,7 @@ import type {
 	CourseLesson,
 } from '../types/course.type';
 import { CLASS_TYPES } from '../types/course.type';
+import { seg } from '../../../shared/api/path';
 
 export type DocumentSource = { type: 'file'; file: File } | { type: 'link'; external_url: string };
 
@@ -77,29 +78,29 @@ export const getCourses = (params?: CourseListParams) => {
 		.map(([k, v]) => [k, String(v)] as [string, string]);
 	return apiClient.get<CourseListResponse>(`/courses?${new URLSearchParams(entries).toString()}`);
 };
-export const getCourse = (id: string) => apiClient.get<Course>(`/courses/${id}`);
+export const getCourse = (id: string) => apiClient.get<Course>(`/courses/${seg(id)}`);
 export const createCourse = (form: CourseFormData) => apiClient.post<Course>('/courses', toPayload(form));
 export const updateCourse = (id: string, form: CourseFormData) =>
-	apiClient.put<Course>(`/courses/${id}`, toPayload(form));
-export const deleteCourse = (id: string) => apiClient.delete<null>(`/courses/${id}`);
+	apiClient.put<Course>(`/courses/${seg(id)}`, toPayload(form));
+export const deleteCourse = (id: string) => apiClient.delete<null>(`/courses/${seg(id)}`);
 
 // ─── Chương trình đào tạo áp dụng (N:N, gán qua program_ids của form khóa học) ──
 export const getProgramLinks = (courseId: string) =>
-	apiClient.get<CourseProgramLink[]>(`/courses/${courseId}/programs`);
+	apiClient.get<CourseProgramLink[]>(`/courses/${seg(courseId)}/programs`);
 type ClassDates = { start_date: string | null; end_date: string | null };
 /** Lớp (chương trình trong khóa ĐTLT / CTCV) đủ sĩ số tối thiểu ⇒ cán bộ mở lớp, kèm ngày học. */
 export const openClass = (courseId: string, programId: string, dates: ClassDates) =>
-	apiClient.post<{ opened: boolean; trainees: number }>(`/courses/${courseId}/programs/open`, {
+	apiClient.post<{ opened: boolean; trainees: number }>(`/courses/${seg(courseId)}/programs/open`, {
 		program_id: programId,
 		...dates,
 	});
 /** Hủy mở lớp: lớp về trạng thái chờ mở, học viên giữ nguyên (lớp đã có buổi học thì bị chặn). */
 export const cancelOpenClass = (courseId: string, programId: string) =>
-	apiClient.post<{ cancelled: boolean; trainees: number }>(`/courses/${courseId}/programs/cancel-open`, {
+	apiClient.post<{ cancelled: boolean; trainees: number }>(`/courses/${seg(courseId)}/programs/cancel-open`, {
 		program_id: programId,
 	});
 export const setClassDates =(courseId: string, programId: string, dates: ClassDates) =>
-	apiClient.put<ClassDates>(`/courses/${courseId}/programs/dates`, { program_id: programId, ...dates });
+	apiClient.put<ClassDates>(`/courses/${seg(courseId)}/programs/dates`, { program_id: programId, ...dates });
 /** Gợi ý ngày học (backend utils/classDates.js). */
 export interface ClassDateSuggestion {
 	start_date: string;
@@ -110,14 +111,14 @@ export interface ClassDateSuggestion {
 }
 export const suggestClassDates = (courseId: string, programId: string) =>
 	apiClient.get<ClassDateSuggestion>(
-		`/courses/${courseId}/programs/suggest-dates?program_id=${encodeURIComponent(programId)}`,
+		`/courses/${seg(courseId)}/programs/suggest-dates?program_id=${encodeURIComponent(programId)}`,
 	);
 
 // ─── Enrollments ──────────────────────────────────────────────────────────
 export const getEnrollments = (courseId: string) =>
-	apiClient.get<Enrollment[]>(`/courses/${courseId}/enrollments`);
+	apiClient.get<Enrollment[]>(`/courses/${seg(courseId)}/enrollments`);
 export const getEnrollment = (enrollmentId: string) =>
-	apiClient.get<Enrollment>(`/courses/enrollments/${enrollmentId}`);
+	apiClient.get<Enrollment>(`/courses/enrollments/${seg(enrollmentId)}`);
 /** Hồ sơ thực hành GPHN trên mọi khóa (màn "Hồ sơ thực hành GPHN"). */
 export const getPracticeRecords = () => apiClient.get<PracticeRecordRow[]>('/courses/practice-records');
 /** Vòng đã kết thúc chưa có kết quả — màn "Nhập kết quả vòng" (Phòng Đào tạo nhập hộ từ phiếu giấy). */
@@ -135,27 +136,27 @@ export type RegisterResult = {
 /** Gửi từ form "Thêm hồ sơ thực hành" (Cấu hình form 'enrollment') — server kiểm + lưu trường tùy chỉnh */
 export type EnrollFormExtra = { custom?: CustomValues; form_variant?: 'practice' };
 export const registerTrainee = (courseId: string, traineeId: string, programId?: string, extra?: EnrollFormExtra) =>
-	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
+	apiClient.post<RegisterResult>(`/courses/${seg(courseId)}/enrollments`, {
 		trainee_id: traineeId,
 		program_id: programId || null,
 		...extra,
 	});
 /** Ghi danh nhân viên nội viện (users) — backend tự tạo/gắn hồ sơ học viên. */
 export const registerStaff = (courseId: string, userId: string, programId?: string, extra?: EnrollFormExtra) =>
-	apiClient.post<RegisterResult>(`/courses/${courseId}/enrollments`, {
+	apiClient.post<RegisterResult>(`/courses/${seg(courseId)}/enrollments`, {
 		user_id: userId,
 		program_id: programId || null,
 		...extra,
 	});
 export const updateEnrollment = (enrollmentId: string, data: EnrollmentUpdate) =>
-	apiClient.put<null>(`/courses/enrollments/${enrollmentId}`, data);
+	apiClient.put<null>(`/courses/enrollments/${seg(enrollmentId)}`, data);
 export const getEnrollmentLessons = (enrollmentId: string) =>
-	apiClient.get<EnrollmentLesson[]>(`/courses/enrollments/${enrollmentId}/lessons`);
+	apiClient.get<EnrollmentLesson[]>(`/courses/enrollments/${seg(enrollmentId)}/lessons`);
 export const syncEnrollmentLessons = (enrollmentId: string) =>
-	apiClient.post<{ added: number }>(`/courses/enrollments/${enrollmentId}/lessons/sync`, {});
+	apiClient.post<{ added: number }>(`/courses/enrollments/${seg(enrollmentId)}/lessons/sync`, {});
 // ─── Vòng thực hành GPHN ──────────────────────────────────────────────────
 export const getRotations = (enrollmentId: string) =>
-	apiClient.get<RotationList>(`/courses/enrollments/${enrollmentId}/rotations`);
+	apiClient.get<RotationList>(`/courses/enrollments/${seg(enrollmentId)}/rotations`);
 /**
  * Tự động: sinh vòng, xếp lịch so le, chọn khoa / người hướng dẫn ít người nhất, điền hồ sơ.
  * Vòng đã có kết quả giữ nguyên; firstLessonId ép vòng vào trước; carryOver công nhận vòng Đạt ở hồ sơ trước.
@@ -165,7 +166,7 @@ export const autoArrangeRotations = (
 	startDate: string | null,
 	opts: { replace?: boolean; firstLessonId?: string | null; carryOver?: boolean } = {},
 ) =>
-	apiClient.post<RotationList>(`/courses/enrollments/${enrollmentId}/rotations/auto`, {
+	apiClient.post<RotationList>(`/courses/enrollments/${seg(enrollmentId)}/rotations/auto`, {
 		start_date: startDate || null,
 		replace: !!opts.replace,
 		first_lesson_id: opts.firstLessonId || null,
@@ -173,22 +174,22 @@ export const autoArrangeRotations = (
 	});
 /** Tự xếp mọi hồ sơ GPHN của khóa chưa có vòng. */
 export const autoArrangeCourse = (courseId: string) =>
-	apiClient.post<{ arranged: number; failed: string[] }>(`/courses/${courseId}/practice/auto-arrange`, {});
+	apiClient.post<{ arranged: number; failed: string[] }>(`/courses/${seg(courseId)}/practice/auto-arrange`, {});
 export const scheduleRotations = (enrollmentId: string, startDate: string) =>
-	apiClient.post<{ scheduled: number; skipped: number }>(`/courses/enrollments/${enrollmentId}/rotations/schedule`, {
+	apiClient.post<{ scheduled: number; skipped: number }>(`/courses/enrollments/${seg(enrollmentId)}/rotations/schedule`, {
 		start_date: startDate,
 	});
 export const addRotationSegment = (enrollmentId: string, lessonId: string) =>
-	apiClient.post<null>(`/courses/enrollments/${enrollmentId}/rotations/segment`, { lesson_id: lessonId });
+	apiClient.post<null>(`/courses/enrollments/${seg(enrollmentId)}/rotations/segment`, { lesson_id: lessonId });
 export const updateRotation = (rotationId: string, data: RotationUpdate) =>
-	apiClient.put<null>(`/courses/rotations/${rotationId}`, data);
+	apiClient.put<null>(`/courses/rotations/${seg(rotationId)}`, data);
 export const refreshRotationMentor = (rotationId: string) =>
-	apiClient.post<null>(`/courses/rotations/${rotationId}/refresh-mentor`, {});
+	apiClient.post<null>(`/courses/rotations/${seg(rotationId)}/refresh-mentor`, {});
 export const retakeRotation = (rotationId: string) =>
-	apiClient.post<null>(`/courses/rotations/${rotationId}/retake`, {});
+	apiClient.post<null>(`/courses/rotations/${seg(rotationId)}/retake`, {});
 export const moveRotation = (rotationId: string, direction: 'up' | 'down') =>
-	apiClient.post<null>(`/courses/rotations/${rotationId}/move`, { direction });
-export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${rotationId}`);
+	apiClient.post<null>(`/courses/rotations/${seg(rotationId)}/move`, { direction });
+export const removeRotation = (rotationId: string) => apiClient.delete<null>(`/courses/rotations/${seg(rotationId)}`);
 // ─── Sổ thực hành GPHN (Excel mẫu 3.xlsx) ─────────────────────────────────
 /** Thực hành GPHN đang diễn ra vào 1 ngày — theo khoa / người hướng dẫn. */
 export const getPracticeBoard = (date: string) =>
@@ -234,10 +235,10 @@ export const importPracticeBook = (courseId: string, file: File, dryRun: boolean
 	const form = new FormData();
 	form.append('file', file);
 	form.append('dry_run', dryRun ? '1' : '0');
-	return apiClient.postForm<PracticeBookImportResult>(`/courses/${courseId}/practice-book/import`, form);
+	return apiClient.postForm<PracticeBookImportResult>(`/courses/${seg(courseId)}/practice-book/import`, form);
 };
 export const exportPracticeBook = (courseId: string) =>
-	apiClient.postBlob(`/courses/${courseId}/practice-book/export`, {});
+	apiClient.postBlob(`/courses/${seg(courseId)}/practice-book/export`, {});
 
 // ─── Giấy tờ thực hành (Đơn đề nghị, Hợp đồng, Phiếu nhận xét) ────────────
 export type PracticeDocumentType = 'don-de-nghi' | 'hop-dong' | 'phieu-nhan-xet';
@@ -246,10 +247,10 @@ export interface PracticeDocumentInfo {
 	rotations: { id: string; label: string; missing: string[] }[];
 }
 export const getPracticeDocuments = (enrollmentId: string) =>
-	apiClient.get<PracticeDocumentInfo>(`/courses/enrollments/${enrollmentId}/documents`);
+	apiClient.get<PracticeDocumentInfo>(`/courses/enrollments/${seg(enrollmentId)}/documents`);
 /** .docx; phiếu nhận xét không chọn vòng ⇒ .zip gồm phiếu mọi vòng. */
 export const downloadPracticeDocument = (enrollmentId: string, type: PracticeDocumentType, rotationId?: string) =>
-	apiClient.postBlob(`/courses/enrollments/${enrollmentId}/documents`, { type, rotation_id: rotationId ?? null });
+	apiClient.postBlob(`/courses/enrollments/${seg(enrollmentId)}/documents`, { type, rotation_id: rotationId ?? null });
 
 export const searchMentors = (search: string, departmentId?: string) => {
 	const qs = new URLSearchParams({ search, limit: '15' });
@@ -258,26 +259,26 @@ export const searchMentors = (search: string, departmentId?: string) => {
 };
 
 export const decideEnrollment = (enrollmentId: string, status: EnrollmentStatus, note?: string) =>
-	apiClient.put<RegisterResult>(`/courses/enrollments/${enrollmentId}/decide`, { status, note });
+	apiClient.put<RegisterResult>(`/courses/enrollments/${seg(enrollmentId)}/decide`, { status, note });
 export const removeEnrollment = (enrollmentId: string) =>
-	apiClient.delete<null>(`/courses/enrollments/${enrollmentId}`);
+	apiClient.delete<null>(`/courses/enrollments/${seg(enrollmentId)}`);
 
 // ─── Lecturer assignments ─────────────────────────────────────────────────
 export const getAssignments = (courseId: string) =>
-	apiClient.get<LecturerAssignment[]>(`/courses/${courseId}/lecturer-assignments`);
+	apiClient.get<LecturerAssignment[]>(`/courses/${seg(courseId)}/lecturer-assignments`);
 export const assignLecturer = (
 	courseId: string,
 	data: { lecturer_id: string; subject_id?: string; note?: string },
-) => apiClient.post<{ id: string }>(`/courses/${courseId}/lecturer-assignments`, data);
+) => apiClient.post<{ id: string }>(`/courses/${seg(courseId)}/lecturer-assignments`, data);
 export const removeAssignment = (assignmentId: string) =>
-	apiClient.delete<null>(`/courses/lecturer-assignments/${assignmentId}`);
+	apiClient.delete<null>(`/courses/lecturer-assignments/${seg(assignmentId)}`);
 /** Bài học thuộc các chương trình của khóa (dòng của bảng Bài học × Giảng viên) */
 export const getCourseLessons = (courseId: string) =>
-	apiClient.get<CourseLesson[]>(`/courses/${courseId}/lessons`);
+	apiClient.get<CourseLesson[]>(`/courses/${seg(courseId)}/lessons`);
 
 // ─── Class sessions ───────────────────────────────────────────────────────
 export const getSessions = (courseId: string) =>
-	apiClient.get<ClassSession[]>(`/courses/${courseId}/sessions`);
+	apiClient.get<ClassSession[]>(`/courses/${seg(courseId)}/sessions`);
 /** Gửi từ hộp thoại buổi học (Cấu hình form 'course_session') — server kiểm + lưu trường tùy chỉnh */
 export type SessionFormExtra = { custom?: CustomValues; form_variant?: 'admin' };
 export const createSession = (
@@ -291,7 +292,7 @@ export const createSession = (
 		room?: string;
 		session_kind?: SessionKind;
 	},
-) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${courseId}/sessions`, data);
+) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${seg(courseId)}/sessions`, data);
 export const updateSession = (
 	sessionId: string,
 	data: SessionFormExtra & {
@@ -303,8 +304,8 @@ export const updateSession = (
 		room?: string;
 		session_kind?: SessionKind | '';
 	},
-) => apiClient.put<{ warnings: string[] }>(`/courses/sessions/${sessionId}`, data);
-export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${sessionId}`);
+) => apiClient.put<{ warnings: string[] }>(`/courses/sessions/${seg(sessionId)}`, data);
+export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${seg(sessionId)}`);
 export const createSessionsBulk = (
 	courseId: string,
 	data: SessionFormExtra & {
@@ -318,18 +319,18 @@ export const createSessionsBulk = (
 		subject_id?: string;
 		session_kind?: SessionKind;
 	},
-) => apiClient.post<{ created: number; skipped: number; warnings: string[] }>(`/courses/${courseId}/sessions/bulk`, data);
+) => apiClient.post<{ created: number; skipped: number; warnings: string[] }>(`/courses/${seg(courseId)}/sessions/bulk`, data);
 
 // ─── Attendance ───────────────────────────────────────────────────────────
 export const getAttendance = (sessionId: string) =>
-	apiClient.get<AttendanceRow[]>(`/courses/sessions/${sessionId}/attendance`);
+	apiClient.get<AttendanceRow[]>(`/courses/sessions/${seg(sessionId)}/attendance`);
 export const saveAttendance = (
 	sessionId: string,
 	records: { enrollment_id: string; status: string; note?: string }[],
-) => apiClient.put<null>(`/courses/sessions/${sessionId}/attendance`, { records });
+) => apiClient.put<null>(`/courses/sessions/${seg(sessionId)}/attendance`, { records });
 
 export const getAttendanceQrToken = (sessionId: string) =>
-	apiClient.get<{ token: string }>(`/courses/sessions/${sessionId}/attendance-qr`);
+	apiClient.get<{ token: string }>(`/courses/sessions/${seg(sessionId)}/attendance-qr`);
 
 export const checkInAttendance = (token: string) =>
 	apiClient.post<{ session_id: string }>('/courses/attendance/check-in', {
@@ -339,7 +340,7 @@ export const checkInAttendance = (token: string) =>
 
 // ─── Documents (tài liệu & bài kiểm tra) ────────────────────────────────────
 export const getDocuments = (courseId: string) =>
-	apiClient.get<CourseDocument[]>(`/courses/${courseId}/documents`);
+	apiClient.get<CourseDocument[]>(`/courses/${seg(courseId)}/documents`);
 
 export const addDocument = (
 	courseId: string,
@@ -353,29 +354,29 @@ export const addDocument = (
 	form.append('doc_type', data.doc_type);
 	form.append('title', data.title);
 	form.append('is_public', String(data.is_public));
-	return apiClient.postForm<{ id: string }>(`/courses/${courseId}/documents`, form);
+	return apiClient.postForm<{ id: string }>(`/courses/${seg(courseId)}/documents`, form);
 };
 
-export const removeDocument = (docId: string) => apiClient.delete<null>(`/courses/documents/${docId}`);
+export const removeDocument = (docId: string) => apiClient.delete<null>(`/courses/documents/${seg(docId)}`);
 export const incrementDocumentDownload = (docId: string) =>
-	apiClient.patch<{ download_count: number }>(`/courses/documents/${docId}/download`, {});
+	apiClient.patch<{ download_count: number }>(`/courses/documents/${seg(docId)}/download`, {});
 
 // ─── Grades ───────────────────────────────────────────────────────────────
-export const getGrades = (courseId: string) => apiClient.get<Grade[]>(`/courses/${courseId}/grades`);
+export const getGrades = (courseId: string) => apiClient.get<Grade[]>(`/courses/${seg(courseId)}/grades`);
 
 // Bảng điểm Lý thuyết + Thực hành (giai đoạn 4)
-export const getGradebook = (courseId: string) => apiClient.get<Gradebook>(`/courses/${courseId}/gradebook`);
+export const getGradebook = (courseId: string) => apiClient.get<Gradebook>(`/courses/${seg(courseId)}/gradebook`);
 export const saveGradesBulk = (courseId: string, rows: GradeBulkRow[], source?: 'import') =>
-	apiClient.put<{ saved: number }>(`/courses/${courseId}/grades/bulk`, { rows, source });
-export const lockGrades = (courseId: string) => apiClient.post<Gradebook>(`/courses/${courseId}/grades/lock`, {});
+	apiClient.put<{ saved: number }>(`/courses/${seg(courseId)}/grades/bulk`, { rows, source });
+export const lockGrades = (courseId: string) => apiClient.post<Gradebook>(`/courses/${seg(courseId)}/grades/lock`, {});
 export const unlockGrades = (courseId: string, reason?: string) =>
-	apiClient.post<Gradebook>(`/courses/${courseId}/grades/unlock`, { reason: reason || null });
+	apiClient.post<Gradebook>(`/courses/${seg(courseId)}/grades/unlock`, { reason: reason || null });
 export const retakeGrade = (enrollmentId: string, part: GradePart) =>
-	apiClient.post<null>(`/courses/enrollments/${enrollmentId}/grades/retake`, { part });
+	apiClient.post<null>(`/courses/enrollments/${seg(enrollmentId)}/grades/retake`, { part });
 export const getGradeHistory = (enrollmentId: string) =>
-	apiClient.get<GradeHistoryItem[]>(`/courses/enrollments/${enrollmentId}/grades/history`);
+	apiClient.get<GradeHistoryItem[]>(`/courses/enrollments/${seg(enrollmentId)}/grades/history`);
 export const issueCertificatesBulk = (courseId: string, expiryDate?: string) =>
-	apiClient.post<{ issued: number; cme_failed: number }>(`/courses/${courseId}/certificates/bulk`, {
+	apiClient.post<{ issued: number; cme_failed: number }>(`/courses/${seg(courseId)}/certificates/bulk`, {
 		expiry_date: expiryDate || null,
 	});
 
@@ -390,11 +391,11 @@ export interface CourseCmeSyncResult {
 	grades_locked: boolean;
 }
 export const syncCourseCme = (courseId: string) =>
-	apiClient.post<CourseCmeSyncResult>(`/courses/${courseId}/cme-sync`, {});
+	apiClient.post<CourseCmeSyncResult>(`/courses/${seg(courseId)}/cme-sync`, {});
 
 // ─── Certificates ───────────────────────────────────────────────────────────
 export const getCertificates = (courseId: string) =>
-	apiClient.get<Certificate[]>(`/courses/${courseId}/certificates`);
+	apiClient.get<Certificate[]>(`/courses/${seg(courseId)}/certificates`);
 
 export const issueCertificate = (enrollmentId: string, expiryDate?: string) =>
 	apiClient.post<{ id: string; cert_no: string; cme_error: string | null }>('/courses/certificates', {
@@ -403,9 +404,9 @@ export const issueCertificate = (enrollmentId: string, expiryDate?: string) =>
 	});
 
 export const removeCertificate = (certId: string) =>
-	apiClient.delete<{ cme_error: string | null }>(`/courses/certificates/${certId}`);
+	apiClient.delete<{ cme_error: string | null }>(`/courses/certificates/${seg(certId)}`);
 export const revokeCertificate = (certId: string, reason?: string) =>
-	apiClient.patch<{ cme_error: string | null }>(`/courses/certificates/${certId}/revoke`, {
+	apiClient.patch<{ cme_error: string | null }>(`/courses/certificates/${seg(certId)}/revoke`, {
 		reason: reason || null,
 	});
 
@@ -431,8 +432,8 @@ export interface WaitlistClass {
 	candidates: WaitlistCandidate[];
 }
 export const getWaitlistCandidates = (courseId: string) =>
-	apiClient.get<WaitlistClass[]>(`/courses/${courseId}/waitlist-candidates`);
+	apiClient.get<WaitlistClass[]>(`/courses/${seg(courseId)}/waitlist-candidates`);
 export const transferWaitlisted = (courseId: string, enrollmentIds: string[]) =>
-	apiClient.post<{ moved: number; skipped: number; full: number }>(`/courses/${courseId}/waitlist-transfer`, {
+	apiClient.post<{ moved: number; skipped: number; full: number }>(`/courses/${seg(courseId)}/waitlist-transfer`, {
 		enrollment_ids: enrollmentIds,
 	});

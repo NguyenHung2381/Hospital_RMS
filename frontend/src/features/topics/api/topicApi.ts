@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/api/axios';
 import type { CustomValues } from '../../../shared/formConfig/types';
 import type { AcceptanceRating, ArticleType, Topic, TopicAuthor, TopicFile, TopicMember } from '../types/topic.type';
+import { seg } from '../../../shared/api/path';
 
 export interface SimpleItem {
 	id: string;
@@ -123,7 +124,7 @@ export const getTopics = (params?: TopicListParams) => {
 	return apiClient.get<TopicListResponse>(`/topics${qs}`);
 };
 
-export const getTopic = (id: string) => apiClient.get<Topic>(`/topics/${id}`);
+export const getTopic = (id: string) => apiClient.get<Topic>(`/topics/${seg(id)}`);
 
 export const createTopic = (payload: CreateTopicPayload) =>
 	apiClient.post<Topic>('/topics', payload);
@@ -152,13 +153,13 @@ export const createLegacyTopic = (payload: CreateLegacyTopicPayload) =>
 	apiClient.post<Topic>('/topics/legacy', payload);
 
 export const updateTopic = (id: string, data: UpdateTopicPayload) =>
-	apiClient.put<Topic>(`/topics/${id}`, data);
+	apiClient.put<Topic>(`/topics/${seg(id)}`, data);
 
 export const deleteTopic = (id: string) =>
-	apiClient.delete<null>(`/topics/${id}`);
+	apiClient.delete<null>(`/topics/${seg(id)}`);
 
 export const getTopicMembers = (topicId: string) =>
-	apiClient.get<TopicMember[]>(`/topics/${topicId}/members`);
+	apiClient.get<TopicMember[]>(`/topics/${seg(topicId)}/members`);
 
 export interface TopicAuthorPayload {
 	author_name: string;
@@ -167,23 +168,23 @@ export interface TopicAuthorPayload {
 }
 
 export const getTopicAuthors = (topicId: string) =>
-	apiClient.get<TopicAuthor[]>(`/topics/${topicId}/authors`);
+	apiClient.get<TopicAuthor[]>(`/topics/${seg(topicId)}/authors`);
 
 export const setTopicAuthors = (topicId: string, authors: TopicAuthorPayload[]) =>
-	apiClient.put<TopicAuthor[]>(`/topics/${topicId}/authors`, { authors });
+	apiClient.put<TopicAuthor[]>(`/topics/${seg(topicId)}/authors`, { authors });
 
 export const addTopicMember = (topicId: string, payload: TopicMemberPayload) =>
-	apiClient.post<{ id: string }>(`/topics/${topicId}/members`, payload);
+	apiClient.post<{ id: string }>(`/topics/${seg(topicId)}/members`, payload);
 
 export const updateTopicMember = (
 	topicId: string,
 	memberId: string,
 	payload: TopicMemberPayload,
 ) =>
-	apiClient.put<TopicMember>(`/topics/${topicId}/members/${memberId}`, payload);
+	apiClient.put<TopicMember>(`/topics/${seg(topicId)}/members/${seg(memberId)}`, payload);
 
 export const deleteTopicMember = (topicId: string, memberId: string) =>
-	apiClient.delete<null>(`/topics/${topicId}/members/${memberId}`);
+	apiClient.delete<null>(`/topics/${seg(topicId)}/members/${seg(memberId)}`);
 
 export interface GrantedAccount {
 	member_id: string | null;
@@ -206,7 +207,7 @@ export const grantTopicMemberAccounts = (
 	memberIds?: string[],
 ) =>
 	apiClient.post<GrantAccountsResult>(
-		`/topics/${topicId}/members/grant-accounts`,
+		`/topics/${seg(topicId)}/members/grant-accounts`,
 		memberIds ? { member_ids: memberIds } : {},
 	);
 
@@ -216,10 +217,10 @@ interface FileListResponse {
 }
 
 export const getTopicFiles = (topicId: string) =>
-	apiClient.get<FileListResponse>(`/topics/${topicId}/files`);
+	apiClient.get<FileListResponse>(`/topics/${seg(topicId)}/files`);
 
 export const deleteTopicFile = (fileId: string) =>
-	apiClient.delete<null>(`/files/${fileId}`);
+	apiClient.delete<null>(`/files/${seg(fileId)}`);
 
 export const uploadTopicFiles = (
 	topicId: string,
@@ -230,7 +231,7 @@ export const uploadTopicFiles = (
 	files.forEach((f) => form.append('files', f));
 	if (batchNote) form.append('batch_note', batchNote);
 	return apiClient.postForm<{ batch_id: string; files_uploaded: number }>(
-		`/topics/${topicId}/files`,
+		`/topics/${seg(topicId)}/files`,
 		form,
 	);
 };

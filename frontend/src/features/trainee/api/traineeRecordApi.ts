@@ -2,6 +2,7 @@ import { apiClient } from '../../../shared/api/axios';
 import type { MyCme } from '../../portal/api/meApi';
 import type { ClassCalendarResponse } from '../../class-schedule/types/classSchedule.type';
 import type { CertificateStatus, GradeFlag, GradePart, GradebookRow } from '../../course/types/course.type';
+import { seg } from '../../../shared/api/path';
 
 // Hồ sơ học viên đầy đủ (giai đoạn 3) — backend training/trainees/traineeRecordService.js
 
@@ -124,19 +125,19 @@ export interface TraineeCourseResult {
 }
 
 export const traineeRecordApi = {
-	checklist: (traineeId: string) => apiClient.get<DocumentChecklist>(`/trainees/${traineeId}/document-checklist`),
+	checklist: (traineeId: string) => apiClient.get<DocumentChecklist>(`/trainees/${seg(traineeId)}/document-checklist`),
 	reviewDocument: (docId: string, status: 'approved' | 'rejected', note?: string) =>
-		apiClient.put<null>(`/trainees/documents/${docId}/review`, { status, note: note || null }),
-	attendance: (traineeId: string) => apiClient.get<TraineeAttendanceCourse[]>(`/trainees/${traineeId}/attendance`),
-	grades: (traineeId: string) => apiClient.get<TraineeCourseResult[]>(`/trainees/${traineeId}/grades`),
+		apiClient.put<null>(`/trainees/documents/${seg(docId)}/review`, { status, note: note || null }),
+	attendance: (traineeId: string) => apiClient.get<TraineeAttendanceCourse[]>(`/trainees/${seg(traineeId)}/attendance`),
+	grades: (traineeId: string) => apiClient.get<TraineeCourseResult[]>(`/trainees/${seg(traineeId)}/grades`),
 	/** null = học viên chưa có tài khoản */
-	cme: (traineeId: string) => apiClient.get<MyCme | null>(`/trainees/${traineeId}/cme`),
+	cme: (traineeId: string) => apiClient.get<MyCme | null>(`/trainees/${seg(traineeId)}/cme`),
 	/** Phiếu CME (Excel) của học viên: 1 năm, hoặc 'all' = tất cả các năm. */
 	exportCme: (traineeId: string, year: number | 'all') =>
-		apiClient.postBlob(`/trainees/${traineeId}/cme/export-excel`, { year }),
+		apiClient.postBlob(`/trainees/${seg(traineeId)}/cme/export-excel`, { year }),
 	/** Lịch học riêng (cùng dạng lịch toàn hệ thống) — buổi kèm điểm danh. */
 	schedule: (traineeId: string, from: string, to: string) =>
-		apiClient.get<ClassCalendarResponse>(`/trainees/${traineeId}/schedule?${new URLSearchParams({ from, to })}`),
+		apiClient.get<ClassCalendarResponse>(`/trainees/${seg(traineeId)}/schedule?${new URLSearchParams({ from, to })}`),
 	// Học viên tự xem ở cổng /me (theo tài khoản đăng nhập)
 	myAttendance: () => apiClient.get<TraineeAttendanceCourse[]>('/me/training/attendance'),
 	myGrades: () => apiClient.get<TraineeCourseResult[]>('/me/training/grades'),
@@ -152,7 +153,7 @@ export const myTraineeDocumentsApi = {
 		form.append('file', file);
 		return apiClient.postForm<DocumentChecklist>('/me/trainee-documents', form);
 	},
-	remove: (docId: string) => apiClient.delete<DocumentChecklist>(`/me/trainee-documents/${docId}`),
+	remove: (docId: string) => apiClient.delete<DocumentChecklist>(`/me/trainee-documents/${seg(docId)}`),
 };
 
 /** "Mã — Tên chương trình" của lượt ghi danh (rỗng nếu chưa gán) */

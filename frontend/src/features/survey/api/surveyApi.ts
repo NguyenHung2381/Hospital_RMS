@@ -7,6 +7,7 @@ import type {
 	SurveyResults,
 	SurveyToRespond,
 } from '../types/survey.type';
+import { seg } from '../../../shared/api/path';
 
 export interface SimpleRole {
 	id: string;
@@ -32,22 +33,22 @@ export const surveyApi = {
 
 	list: () => apiClient.get<SurveyListResponse>('/surveys?limit=0'),
 
-	getById: (id: string) => apiClient.get<Survey>(`/surveys/${id}`),
+	getById: (id: string) => apiClient.get<Survey>(`/surveys/${seg(id)}`),
 
-	getResults: (id: string) => apiClient.get<SurveyResults>(`/surveys/${id}/results`),
+	getResults: (id: string) => apiClient.get<SurveyResults>(`/surveys/${seg(id)}/results`),
 
 	create: (payload: SurveyPayload) => apiClient.post<Survey>('/surveys', payload),
 
 	update: (id: string, payload: Partial<SurveyPayload>) =>
-		apiClient.put<Survey>(`/surveys/${id}`, payload),
+		apiClient.put<Survey>(`/surveys/${seg(id)}`, payload),
 
-	remove: (id: string) => apiClient.delete<null>(`/surveys/${id}`),
+	remove: (id: string) => apiClient.delete<null>(`/surveys/${seg(id)}`),
 
 	// ─── Người dùng ───────────────────────────────────────────────────────
 	listActive: () => apiClient.get<ActiveSurvey[]>('/surveys/active'),
 
-	getForRespond: (id: string) => apiClient.get<SurveyToRespond>(`/surveys/${id}/respond`),
+	getForRespond: (id: string) => apiClient.get<SurveyToRespond>(`/surveys/${seg(id)}/respond`),
 
 	submit: (id: string, answers: AnswerPayload[]) =>
-		apiClient.post<{ response_id: string }>(`/surveys/${id}/respond`, { answers }),
+		apiClient.post<{ response_id: string }>(`/surveys/${seg(id)}/respond`, { answers }),
 };

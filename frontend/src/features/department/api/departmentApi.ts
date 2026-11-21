@@ -4,6 +4,7 @@ import type {
 	DeptFormData,
 	DeptListResponse,
 } from '../types/department.type';
+import { seg } from '../../../shared/api/path';
 
 export interface DeptListParams {
 	page?: number;
@@ -30,7 +31,7 @@ export const createDepartment = (form: DeptFormData) =>
 	});
 
 export const updateDepartment = (id: string, form: DeptFormData) =>
-	apiClient.put<Department>(`/departments/${id}`, {
+	apiClient.put<Department>(`/departments/${seg(id)}`, {
 		name: form.name,
 		code: form.code,
 		abbreviation: form.abbreviation,
@@ -39,4 +40,4 @@ export const updateDepartment = (id: string, form: DeptFormData) =>
 	});
 
 export const deleteDepartment = (id: string) =>
-	apiClient.delete<null>(`/departments/${id}`);
+	apiClient.delete<null>(`/departments/${seg(id)}`);

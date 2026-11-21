@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/axios';
+import { seg } from '../../../shared/api/path';
 
 export interface CmeRequirement {
 	id: string;
@@ -29,10 +30,10 @@ export const createCmeRequirement = (data: {
 }) => apiClient.post<{ id: string }>('/seminars/cme-requirements', data);
 
 export const updateCmeRequirement = (id: string, data: { required_credits?: number; note?: string }) =>
-	apiClient.put<null>(`/seminars/cme-requirements/${id}`, data);
+	apiClient.put<null>(`/seminars/cme-requirements/${seg(id)}`, data);
 
 export const deleteCmeRequirement = (id: string) =>
-	apiClient.delete<null>(`/seminars/cme-requirements/${id}`);
+	apiClient.delete<null>(`/seminars/cme-requirements/${seg(id)}`);
 
 export const getCmeCompliance = (year: number) =>
 	apiClient.get<CmeComplianceRow[]>(`/seminars/cme-compliance?year=${year}`);

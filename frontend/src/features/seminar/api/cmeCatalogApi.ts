@@ -5,6 +5,7 @@ import type {
 	CmeCreditGroup,
 	CmeGroupFormData,
 } from '../types/cmeCatalog.type';
+import { seg } from '../../../shared/api/path';
 
 type ListResponse<T> = { data: T[] };
 
@@ -32,8 +33,8 @@ export const cmeCatalogApi = {
 	createGroup: (f: CmeGroupFormData) =>
 		apiClient.post<CmeCreditGroup>('/cme-credit-groups', withCode(f.id, groupPayload(f))),
 	updateGroup: (id: string, f: CmeGroupFormData) =>
-		apiClient.put<CmeCreditGroup>(`/cme-credit-groups/${id}`, groupPayload(f)),
-	removeGroup: (id: string) => apiClient.delete<null>(`/cme-credit-groups/${id}`),
+		apiClient.put<CmeCreditGroup>(`/cme-credit-groups/${seg(id)}`, groupPayload(f)),
+	removeGroup: (id: string) => apiClient.delete<null>(`/cme-credit-groups/${seg(id)}`),
 
 	listCategories: () =>
 		apiClient.get<ListResponse<CmeCreditCategoryItem>>('/cme-credit-categories?limit=0'),
@@ -43,6 +44,6 @@ export const cmeCatalogApi = {
 			withCode(f.id, categoryPayload(f)),
 		),
 	updateCategory: (id: string, f: CmeCategoryFormData) =>
-		apiClient.put<CmeCreditCategoryItem>(`/cme-credit-categories/${id}`, categoryPayload(f)),
-	removeCategory: (id: string) => apiClient.delete<null>(`/cme-credit-categories/${id}`),
+		apiClient.put<CmeCreditCategoryItem>(`/cme-credit-categories/${seg(id)}`, categoryPayload(f)),
+	removeCategory: (id: string) => apiClient.delete<null>(`/cme-credit-categories/${seg(id)}`),
 };
