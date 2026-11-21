@@ -8,13 +8,34 @@ const { lazyRequire } = require('../../utils/lazyRequire');
 const ExcelJS = lazyRequire('exceljs');
 const { authenticate } = require('../../middlewares/auth');
 const uploadExcel = require('../../middlewares/uploadExcel');
-const { sendWorkbook, success } = require('../../utils/response');
-const { headerRow, dataRow } = require('../../utils/excelStyle');
+const { success } = require('../../utils/response');
 const { badRequest, cellText, loadWorkbook, parseDateCell } = require('../../utils/excelImport');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
 const MAX_COLS = 60;
 const MAX_ROWS = 50000;
+// Ngân sách tổng số ô cho /build: dựng bằng WorkbookWriter (stream) + style dùng chung
+// nên bộ nhớ gần như không đổi theo số ô; 200k ô ≈ 2 MB JSON khớp giới hạn body ở app.js.
+const MAX_CELLS = 200_000;
+
+const { fnt, sf, al, bAll, TABLE } = require('../../utils/excelStyle');
+// Style dựng sẵn ở module scope — không cấp phát object style mới cho từng ô
+const STYLE_HEADER = {
+	font: fnt({ bold: true, size: 10, color: 'FFFFFF' }),
+	fill: sf(TABLE.hdrBlue),
+	alignment: al('center', true),
+	border: bAll,
+};
+const dataStyle = (bg, h) => ({
+	font: fnt({ size: 10 }),
+	fill: sf(bg),
+	alignment: al(h, true),
+	border: bAll,
+});
+const STYLES = {
+	A: { left: dataStyle(TABLE.rowA, 'left'), center: dataStyle(TABLE.rowA, 'center') },
+	B: { left: dataStyle(TABLE.rowB, 'left'), center: dataStyle(TABLE.rowB, 'center') },
+};
 
 router.use(authenticate);
 
@@ -25,34 +46,56 @@ router.post(
 		if (!Array.isArray(headers) || !headers.length || headers.length > MAX_COLS)
 			throw badRequest('Danh sách cột không hợp lệ');
 		if (!Array.isArray(rows) || rows.length > MAX_ROWS) throw badRequest(`Tối đa ${MAX_ROWS} dòng`);
-
-		const wb = new ExcelJS.Workbook();
-		// Tên sheet Excel: ≤31 ký tự, không chứa : \ / ? * [ ]
-		const ws = wb.addWorksheet(
-			String(sheetName || 'Dữ liệu')
-				.replace(/[:\\/?*[\]]/g, ' ')
-				.slice(0, 31),
-		);
-		headerRow(ws, 1, headers.map(String));
-		rows.forEach((r, i) => {
-			const vals = (Array.isArray(r) ? r : [])
-				.slice(0, headers.length)
-				.map((v) => (typeof v === 'number' ? v : v == null ? '' : String(v)));
-			dataRow(ws, i + 2, vals);
-		});
-		headers.forEach((h, i) => {
-			const longest = Math.max(
-				String(h).length,
-				...rows.slice(0, 500).map((r) => String(r?.[i] ?? '').length),
-			);
-			ws.getColumn(i + 1).width = Math.min(Math.max(longest + 2, 10), 60);
-		});
-		ws.views = [{ state: 'frozen', ySplit: 1 }];
+		if ((rows.length + 1) * headers.length > MAX_CELLS)
+			throw badRequest(`Tối đa ${MAX_CELLS} ô mỗi lần xuất`);
 
 		const safeName = String(fileName || 'du-lieu')
 			.replace(/[^\p{L}\p{N}_.-]+/gu, '-')
 			.slice(0, 80);
-		await sendWorkbook(res, wb, `${safeName}.xlsx`);
+		res.setHeader(
+			'Content-Type',
+			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		);
+		res.setHeader(
+			'Content-Disposition',
+			`attachment; filename*=UTF-8''${encodeURIComponent(`${safeName}.xlsx`)}`,
+		);
+
+		const wb = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: res, useStyles: true });
+		// Tên sheet Excel: ≤31 ký tự, không chứa : \ / ? * [ ]
+		const ws = wb.addWorksheet(
+			String(sheetName || 'Dữ liệu')
+				.replace(/[:\/?*[\]]/g, ' ')
+				.slice(0, 31),
+			{ views: [{ state: 'frozen', ySplit: 1 }] },
+		);
+		// Độ rộng cột phải khai trước khi ghi dòng đầu (stream không sửa lại được)
+		ws.columns = headers.map((h, i) => {
+			const longest = Math.max(
+				String(h).length,
+				...rows.slice(0, 500).map((r) => String(r?.[i] ?? '').length),
+			);
+			return { width: Math.min(Math.max(longest + 2, 10), 60) };
+		});
+		const hdr = ws.addRow(headers.map(String));
+		hdr.height = 22;
+		hdr.eachCell((c) => {
+			c.style = STYLE_HEADER;
+		});
+		hdr.commit();
+		rows.forEach((r, i) => {
+			const vals = (Array.isArray(r) ? r : [])
+				.slice(0, headers.length)
+				.map((v) => (typeof v === 'number' ? v : v == null ? '' : String(v)));
+			const row = ws.addRow(vals);
+			const set = i % 2 === 0 ? STYLES.A : STYLES.B; // dòng 2 (i=0) là rowA như dataRow cũ
+			row.eachCell((c) => {
+				c.style = typeof c.value === 'number' ? set.center : set.left;
+			});
+			row.commit();
+		});
+		ws.commit();
+		await wb.commit();
 	}),
 );
 

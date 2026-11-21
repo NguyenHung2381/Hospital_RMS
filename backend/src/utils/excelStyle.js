@@ -57,4 +57,4 @@ function dataRow(ws, row, values, { bg = undefined, boldFirst = false } = {}) {
 	});
 }
 
-module.exports = { fnt, al, sf, border, bAll, bNoBot, bNoTop, bSides, headerRow, dataRow };
+module.exports = { fnt, al, sf, border, bAll, bNoBot, bNoTop, bSides, headerRow, dataRow, TABLE };

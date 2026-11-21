@@ -46,6 +46,9 @@ app.use(helmet({ contentSecurityPolicy: false }));
 // Set CORS_ORIGIN (phân cách bởi dấu phẩy) để giới hạn origin được phép gọi API.
 const corsOrigins = config.CORS_ORIGIN ?? true;
 app.use(cors({ origin: corsOrigins }));
+// Parser nhỏ cho /excel đặt TRƯỚC parser toàn cục: body-parser bỏ qua body đã parse nên
+// giới hạn 2 MB này thắng 10 MB (chặn dựng workbook cỡ lớn làm hết heap worker).
+app.use('/api/v1/excel', express.json({ limit: '2mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 // Express 5 để req.body = undefined khi request không có body (Express 4 luôn là
