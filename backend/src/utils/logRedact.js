@@ -23,13 +23,36 @@ const isSensitiveKey = (key) => SENSITIVE_PART.test(key) || SENSITIVE_EXACT.test
 
 const MAX_DEPTH = 6;
 
-const redact = (value, depth = 0) => {
+// Chuỗi là JSON object/array (vd field `data` của multipart đăng ký công khai —
+// khi upload bị từ chối, parseDataField không chạy nên req.body vẫn là
+// { data: '<chuỗi JSON có CCCD, ngày sinh, SĐT>' }) ⇒ trả object đã parse.
+const parseJsonString = (v) => {
+	if (typeof v !== 'string' || !/^\s*[{[]/.test(v)) return undefined;
+	try {
+		const o = JSON.parse(v);
+		return o && typeof o === 'object' ? o : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+const redact = (value, depth = 0, isHidden = isSensitiveKey) => {
+	if (typeof value === 'string') {
+		// Che cả trường nhạy cảm nằm trong chuỗi JSON lồng; giữ nguyên kiểu chuỗi.
+		// Không có gì phải che ⇒ trả đúng chuỗi gốc (log cũ không bị ghi lại vô cớ).
+		const parsed = parseJsonString(value);
+		if (parsed === undefined) return value;
+		if (depth >= MAX_DEPTH) return '[…]';
+		const clean = redact(parsed, depth + 1, isHidden);
+		const json = JSON.stringify(clean);
+		return json === JSON.stringify(parsed) ? value : json;
+	}
 	if (value == null || typeof value !== 'object') return value;
 	if (depth >= MAX_DEPTH) return '[…]';
-	if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
+	if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1, isHidden));
 	const clean = {};
 	for (const [key, v] of Object.entries(value)) {
-		clean[key] = isSensitiveKey(key) ? HIDDEN : redact(v, depth + 1);
+		clean[key] = isHidden(key) ? HIDDEN : redact(v, depth + 1, isHidden);
 	}
 	return clean;
 };
@@ -137,9 +160,14 @@ const redactActivityRecord = (record) => {
 			out.body = JSON.stringify(redactBody(JSON.parse(out.body), record.path));
 		} catch {
 			// body bị cắt ngắn (…) nên không parse được — che theo mẫu "khóa":"giá trị"
-			out.body = out.body.replace(/"([^"\\]{1,100})":("(?:[^"\\]|\\.)*"|-?[\d.]+)/g, (all, k) =>
-				isSensitiveKey(k) || (secretSetting && k === 'value') ? `"${k}":"${HIDDEN}"` : all,
-			);
+			out.body = out.body
+				.replace(/"([^"\\]{1,100})":("(?:[^"\\]|\\.)*"|-?[\d.]+)/g, (all, k) =>
+					isSensitiveKey(k) || (secretSetting && k === 'value') ? `"${k}":"${HIDDEN}"` : all,
+				)
+				// Khóa nằm trong chuỗi JSON lồng (vd {"data":"{\"national_id\":\"0010...\"}"})
+				.replace(/\\"([^"\\]{1,100})\\":(\\"(?:[^"\\]|\\\\.)*?\\"|-?[\d.]+)/g, (all, k) =>
+					isSensitiveKey(k) ? `\\"${k}\\":\\"${HIDDEN}\\"` : all,
+				);
 		}
 	}
 	return out;
