@@ -97,8 +97,7 @@ const run = async (source, id) => {
 	const pid = await personService.syncPerson(source, id, { actorId: undefined });
 	return {
 		pid,
-		linked: log.find((q) => new RegExp(`UPDATE ${source} SET person_id`).test(q.text))?.inputs
-			.pid,
+		linked: log.find((q) => new RegExp(`UPDATE ${source} SET person_id`).test(q.text))?.inputs.pid,
 		createdPerson: log.some((q) => /INSERT INTO persons/.test(q.text)),
 		candidate: log.find((q) => /INSERT INTO person_merge_candidates/.test(q.text))?.inputs,
 		touched: log.filter((q) => /UPDATE persons SET/.test(q.text)).map((q) => q.inputs.pid),
@@ -115,7 +114,10 @@ for (const [source, id, rule] of [
 		const r = await run(source, id);
 		assert.equal(r.linked, 'PS00000100', 'phải gắn vào person MỚI của chính dòng ẩn danh');
 		assert.ok(r.createdPerson);
-		assert.ok(!r.touched.includes(STAFF_PID), 'không điền dữ liệu người ngoài vào person nhân viên');
+		assert.ok(
+			!r.touched.includes(STAFF_PID),
+			'không điền dữ liệu người ngoài vào person nhân viên',
+		);
 		assert.ok(r.candidate, 'phải xếp hàng chờ duyệt gộp');
 		assert.deepEqual([r.candidate.a, r.candidate.b], ['PS00000100', STAFF_PID].sort());
 	});

@@ -30,7 +30,9 @@ const scopeByRecord = (kind, param) => async (req, _res, next) => {
 	try {
 		if (coursePolicy.courseScope(req.user, 'update') !== 'assigned') return next();
 		const row = (
-			await (await getPool())
+			await (
+				await getPool()
+			)
 				.request()
 				.input('id', sql.VarChar(40), String(req.params[param]))
 				.query(COURSE_OF[kind])
@@ -42,20 +44,22 @@ const scopeByRecord = (kind, param) => async (req, _res, next) => {
 		next(err);
 	}
 };
-const scopeByCourseId = (source, { required = false } = {}) => async (req, _res, next) => {
-	try {
-		if (coursePolicy.courseScope(req.user, 'update') !== 'assigned') return next();
-		const courseId = req[source]?.course_id;
-		if (!courseId) {
-			if (required) throw httpError(400, 'Vui lòng chọn khóa học');
-			return next();
+const scopeByCourseId =
+	(source, { required = false } = {}) =>
+	async (req, _res, next) => {
+		try {
+			if (coursePolicy.courseScope(req.user, 'update') !== 'assigned') return next();
+			const courseId = req[source]?.course_id;
+			if (!courseId) {
+				if (required) throw httpError(400, 'Vui lòng chọn khóa học');
+				return next();
+			}
+			await coursePolicy.assertCourseInScope(courseId, req.user, 'update');
+			next();
+		} catch (err) {
+			next(err);
 		}
-		await coursePolicy.assertCourseInScope(courseId, req.user, 'update');
-		next();
-	} catch (err) {
-		next(err);
-	}
-};
+	};
 const paperScope = scopeByRecord('paper', 'id');
 const attemptScope = scopeByRecord('attempt', 'attemptId');
 

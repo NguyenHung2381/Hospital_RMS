@@ -11,7 +11,11 @@ install(async (text, inputs) => {
 	if (/FROM courses c WHERE c\.id = @id AND EXISTS/.test(text))
 		return inputs.id === 'KH1' ? [{ ok: 1 }] : [];
 	if (/FROM exam_papers WHERE id = @id/.test(text))
-		return inputs.id === 'P1' ? [{ course_id: 'KH1' }] : inputs.id === 'P2' ? [{ course_id: 'KH2' }] : [];
+		return inputs.id === 'P1'
+			? [{ course_id: 'KH1' }]
+			: inputs.id === 'P2'
+				? [{ course_id: 'KH2' }]
+				: [];
 	if (/FROM exam_attempts a\s+JOIN exam_papers/.test(text))
 		return inputs.id === 'A2' ? [{ course_id: 'KH2' }] : [];
 	return [];
@@ -25,7 +29,16 @@ auth.authenticate = (req, _res, next) => {
 };
 auth.authorizePermission = () => (_req, _res, next) => next();
 const ctrl = require('../../src/modules/training/exams/examController');
-for (const k of ['listPapers', 'getPaper', 'createPaper', 'updatePaper', 'removePaper', 'listAttempts', 'getAttempt', 'gradeAnswer'])
+for (const k of [
+	'listPapers',
+	'getPaper',
+	'createPaper',
+	'updatePaper',
+	'removePaper',
+	'listAttempts',
+	'getAttempt',
+	'gradeAnswer',
+])
 	ctrl[k] = (_req, res) => res.json({ ok: true });
 const router = require('../../src/modules/training/exams/exams.routes');
 const { errorHandler } = require('../../src/middlewares/errorHandler');
@@ -35,7 +48,11 @@ const mk = (grants) => ({
 	permissions: new Set(Object.keys(grants)),
 	permissionScopes: new Map(Object.entries(grants)),
 });
-const LECTURER = mk({ 'courses:read': 'assigned', 'courses:update': 'assigned', 'exams:manage': 'all' });
+const LECTURER = mk({
+	'courses:read': 'assigned',
+	'courses:update': 'assigned',
+	'exams:manage': 'all',
+});
 const MANAGER = mk({ 'courses:read': 'all', 'courses:update': 'all', 'exams:manage': 'all' });
 
 const call = async (user, method, path, body) => {
@@ -63,7 +80,10 @@ test('phạm vi assigned: đề/bài thi của khóa khác bị chặn 403', asy
 	assert.equal(await call(LECTURER, 'DELETE', '/papers/P2'), 403);
 	assert.equal(await call(LECTURER, 'GET', '/papers/P2/attempts'), 403);
 	assert.equal(await call(LECTURER, 'GET', '/attempts/A2'), 403);
-	assert.equal(await call(LECTURER, 'POST', '/attempts/A2/grade', { question_id: 'Q', score: 1 }), 403);
+	assert.equal(
+		await call(LECTURER, 'POST', '/attempts/A2/grade', { question_id: 'Q', score: 1 }),
+		403,
+	);
 	assert.equal(await call(LECTURER, 'GET', '/papers?course_id=KH2'), 403);
 	assert.equal(await call(LECTURER, 'POST', '/papers', { course_id: 'KH2', title: 'x' }), 403);
 });

@@ -14,7 +14,12 @@ test('dòng có user_id = người gọi vẫn bị che email', () => {
 });
 
 test('maskTopicMembers che mọi dòng cho người không có users:read', () => {
-	const t = { members: [{ user_id: 'U1', email: 'a.b@x.vn' }, { user_id: 'U9', email: 'c.d@x.vn' }] };
+	const t = {
+		members: [
+			{ user_id: 'U1', email: 'a.b@x.vn' },
+			{ user_id: 'U9', email: 'c.d@x.vn' },
+		],
+	};
 	for (const m of maskTopicMembers(t, leader).members) assert.match(m.email, /\*\*\*@/);
 });
 
