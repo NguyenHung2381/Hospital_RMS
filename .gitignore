@@ -76,3 +76,6 @@ desktop.ini
 staff_license_import_unmatched.csv
 legacy_users_created_CHUA_MAT_KHAU.csv
 *_CHUA_MAT_KHAU.csv
+# Danh sách tài khoản mới cấp cho nhân viên (họ tên thật + tên đăng nhập, mật khẩu ban đầu
+# = tên đăng nhập) — không bao giờ được commit.
+tai-khoan-moi*.xlsx
