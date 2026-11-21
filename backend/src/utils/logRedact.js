@@ -74,9 +74,22 @@ const isSecretSettingPath = (pathname) => {
 	return isSensitiveKey(key);
 };
 
-// Body của 1 request: redact() theo tên trường + che `value` của cấu hình bí mật.
+// Cổng công khai: mọi tham số tra cứu đều là dữ liệu người dân tự nhập (CCCD,
+// họ tên, ngày sinh, SĐT/email...) ⇒ che hết, chỉ giữ tên tham số.
+const isPublicPortal = (pathname) =>
+	typeof pathname === 'string' && /\/api\/v1\/public\//.test(pathname);
+
+// Body ở cổng công khai: email là yếu tố thứ hai để tra cứu / tải đơn / nộp hồ sơ
+// theo mã đăng ký ĐTLT (cùng mã đăng ký là đủ quyền) ⇒ che thêm mọi trường email.
+const PUBLIC_SENSITIVE_PART = /email/i;
+const isPublicSensitiveKey = (key) => isSensitiveKey(key) || PUBLIC_SENSITIVE_PART.test(key);
+const keyTesterFor = (pathname) =>
+	isPublicPortal(pathname) ? isPublicSensitiveKey : isSensitiveKey;
+
+// Body của 1 request: redact() theo tên trường (cổng công khai che thêm email)
+// + che `value` của cấu hình bí mật.
 const redactBody = (body, pathname) => {
-	const clean = redact(body);
+	const clean = redact(body, 0, keyTesterFor(pathname));
 	if (clean && typeof clean === 'object' && !Array.isArray(clean) && 'value' in clean) {
 		if (isSecretSettingPath(pathname)) clean.value = HIDDEN;
 	}
@@ -84,22 +97,37 @@ const redactBody = (body, pathname) => {
 };
 
 // Đoạn đường dẫn là mã bí mật: mã vé / token QR hội nghị (32 hex), link đăng
-// ký theo đợt (/topic-rounds/by-token/<token>). Biết mã là xem / làm bài thay
-// được, nên không để lại trong log.
+// ký theo đợt (/topic-rounds/by-token/<token>), mã đăng ký ĐTLT
+// (/public/course-registration/<mã>/status|application|files). Biết mã là xem /
+// làm bài / tải đơn thay được, nên không để lại trong log.
 const SECRET_SEGMENT = /^[a-f0-9]{32,}$/i;
-const SECRET_AFTER = new Set(['by-token']);
+// Mã đăng ký ĐTLT: DK + 10 ký tự (người dùng có thể gõ thường / có gạch — normalizeCode)
+const REG_CODE = /^dk[a-z0-9-]{10,}$/i;
+const SECRET_AFTER = new Set(['by-token', 'course-registration']);
+// Route con cố định dưới /course-registration/ — không phải mã
+const NOT_SECRET_AFTER = new Set(['draft', 'staff-check', 'email-otp', 'rules']);
+
+const isSecretSegment = (seg, prev) =>
+	SECRET_SEGMENT.test(seg) ||
+	REG_CODE.test(seg) ||
+	Boolean(seg && SECRET_AFTER.has(prev) && !NOT_SECRET_AFTER.has(seg));
 
 const redactPathname = (pathname) =>
 	pathname
 		.split('/')
-		.map((seg, i, all) =>
-			SECRET_SEGMENT.test(seg) || (i > 0 && SECRET_AFTER.has(all[i - 1]) && seg) ? HIDDEN : seg,
-		)
+		.map((seg, i, all) => (isSecretSegment(seg, i > 0 ? all[i - 1] : undefined) ? HIDDEN : seg))
 		.join('/');
 
-// Cổng công khai: mọi tham số tra cứu đều là dữ liệu người dân tự nhập (CCCD,
-// họ tên, ngày sinh, SĐT/email...) ⇒ che hết, chỉ giữ tên tham số.
-const isPublicPortal = (pathname) => /\/api\/v1\/public\//.test(pathname);
+// Giá trị tham số là mã đăng ký ĐTLT (vd referer /tra-cuu-don-dang-ky?ma=DK...)
+const isRegCodeValue = (raw) => {
+	let v = raw;
+	try {
+		v = decodeURIComponent(raw.replace(/\+/g, ' '));
+	} catch {
+		// giữ nguyên giá trị hỏng mã hóa
+	}
+	return REG_CODE.test(v.replace(/\s/g, ''));
+};
 
 const redactQuery = (query, hideAll) => {
 	if (!query) return '';
@@ -114,7 +142,9 @@ const redactQuery = (query, hideAll) => {
 			// giữ nguyên tên trường hỏng mã hóa
 		}
 		if (eq < 0) return pair;
-		return hideAll || isSensitiveKey(key) ? `${rawKey}=${HIDDEN}` : pair;
+		return hideAll || isSensitiveKey(key) || isRegCodeValue(pair.slice(eq + 1))
+			? `${rawKey}=${HIDDEN}`
+			: pair;
 	});
 	return `?${parts.join('&')}`;
 };
@@ -156,17 +186,18 @@ const redactActivityRecord = (record) => {
 	if (typeof out.body === 'string' && out.body) {
 		// Dùng path GỐC (trước khi che) để nhận ra khóa cấu hình bí mật
 		const secretSetting = isSecretSettingPath(record.path);
+		const isHidden = keyTesterFor(record.path);
 		try {
 			out.body = JSON.stringify(redactBody(JSON.parse(out.body), record.path));
 		} catch {
 			// body bị cắt ngắn (…) nên không parse được — che theo mẫu "khóa":"giá trị"
 			out.body = out.body
 				.replace(/"([^"\\]{1,100})":("(?:[^"\\]|\\.)*"|-?[\d.]+)/g, (all, k) =>
-					isSensitiveKey(k) || (secretSetting && k === 'value') ? `"${k}":"${HIDDEN}"` : all,
+					isHidden(k) || (secretSetting && k === 'value') ? `"${k}":"${HIDDEN}"` : all,
 				)
 				// Khóa nằm trong chuỗi JSON lồng (vd {"data":"{\"national_id\":\"0010...\"}"})
 				.replace(/\\"([^"\\]{1,100})\\":(\\"(?:[^"\\]|\\\\.)*?\\"|-?[\d.]+)/g, (all, k) =>
-					isSensitiveKey(k) ? `\\"${k}\\":\\"${HIDDEN}\\"` : all,
+					isHidden(k) ? `\\"${k}\\":\\"${HIDDEN}\\"` : all,
 				);
 		}
 	}

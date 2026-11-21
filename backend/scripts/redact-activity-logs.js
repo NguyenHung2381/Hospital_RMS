@@ -2,7 +2,12 @@
 // Che lại dữ liệu nhạy cảm trong các file nhật ký hoạt động ĐÃ GHI (logs/audit*.log)
 // trước khi bản vá utils/logRedact.js có hiệu lực: mã OTP / mã 2FA / mã khôi phục
 // (trường "code"), số CCCD, ngày sinh, SĐT ở body và query string, mã vé / token QR
-// trên đường dẫn... Dùng đúng hàm che của activityLogger (redactActivityRecord).
+// trên đường dẫn... Dùng đúng hàm che của activityLogger (redactActivityRecord), nên
+// chạy lại sau mỗi lần thêm quy tắc che là làm sạch được log cũ theo quy tắc mới, gồm:
+//   - field `data` (chuỗi JSON) của multipart đăng ký ĐTLT công khai khi upload bị từ
+//     chối — CCCD / ngày sinh / SĐT nằm trong chuỗi, kể cả body đã bị cắt ngắn;
+//   - mã đăng ký ĐTLT trên đường dẫn /public/course-registration/<mã>/... và trong
+//     referer (?ma=<mã>), email yếu tố thứ hai trong body của /api/v1/public/*.
 //
 // - Mặc định CHỈ XEM (đếm số dòng sẽ đổi); --apply để ghi đè file.
 // - Giữ nguyên mtime của file: trang /activity-logs sắp xếp và lọc ngày theo mtime.
