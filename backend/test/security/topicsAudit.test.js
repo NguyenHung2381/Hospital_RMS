@@ -159,6 +159,15 @@ const log = install(async (text, inputs) => {
 		return [state.workflowTask];
 	return [];
 });
+// loadContext của legacy gom 3 câu vào 1 lô; fakeDb chỉ trả tập đầu ⇒ tự dựng tập thứ 3
+// (mã nhân viên thật của người nhập, M-09: không tin user_id client gửi).
+const fakeQueryAll = require('../../src/config/db').queryAll;
+require('../../src/config/db').queryAll = async (req, statements) => {
+	const out = await fakeQueryAll(req, statements);
+	if (/SELECT staff_number FROM users WHERE id = @uid/.test(statements[2] ?? ''))
+		out[2] = [{ staff_number: 5000 }];
+	return out;
+};
 // Mốc 'edit' đang mở cho đề tài nào: deadlineGuard truy theo round_id nên dùng biến theo dõi
 // đề tài của request gần nhất.
 let lastWindowTopic = null;
@@ -290,11 +299,11 @@ test('M-05: PUT thành viên tự điền email từ mã NV nhưng chỉ trả e
 	assert.equal(upd.inputs.email, 'alice.dummy@hospital.example');
 });
 
-test('M-05: GET thành viên + chi tiết đề tài che email người khác, giữ nguyên dòng của chính mình', async () => {
+test('M-05/M-09: GET thành viên + chi tiết đề tài che email, kể cả dòng của chính mình', async () => {
 	const lead = mkUser('ULEAD', TOPIC_PERMS, OWN);
 	MEMBER_ROWS.TLEG[1].email = 'alice.dummy@hospital.example';
 	const members = (await call(lead, 'GET', '/TLEG/members')).body.data;
-	assert.equal(members.find((m) => m.id === 'M1').email, 'lead@hospital.example'); // của mình
+	assert.equal(members.find((m) => m.id === 'M1').email, 'le***@hospital.example'); // M-09: dòng của mình cũng che
 	assert.equal(members.find((m) => m.id === 'M2').email, 'al***@hospital.example');
 	const detail = (await call(lead, 'GET', '/TLEG')).body.data;
 	assert.doesNotMatch(JSON.stringify(detail.members), /alice\.dummy|bob\.dummy/);
@@ -442,7 +451,7 @@ const legacyData = {
 	round_id: 'R1',
 	category_id: 'C1',
 	department_id: 'K1',
-	members: [{ ho_ten: 'Chủ nhiệm', role: 'leader', user_id: 'ULEAD' }],
+	members: [{ ho_ten: 'Chủ nhiệm', role: 'leader', user_id: 'ULEAD', staff_number: 5000 }],
 };
 const stubLegacyDeps = () => {
 	const memberService = require('../../src/modules/topics/topicMemberService');
