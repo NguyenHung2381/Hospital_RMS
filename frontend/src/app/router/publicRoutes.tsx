@@ -26,8 +26,11 @@ const CourseRegisterPublic = lazy(
 const TopicRegisterPublic = lazy(
 	() => import('../../features/public/pages/TopicRegisterPublic'),
 );
-const PublicLookup = lazy(
-	() => import('../../features/public/pages/PublicLookup'),
+const LearningResultLookup = lazy(
+	() => import('../../features/public/pages/LearningResultLookup'),
+);
+const RegistrationLookupPage = lazy(
+	() => import('../../features/public/pages/RegistrationLookupPage'),
 );
 const TopicStatusLookup = lazy(
 	() => import('../../features/public/pages/TopicStatusLookup'),
@@ -117,17 +120,17 @@ export const publicRoutes: RouteObject[] = [
 	{
 		path: '/tra-cuu-ket-qua',
 		element: (
-			<LazyRoute title='Tra cứu kết quả'>
-				<PublicLookup />
+			<LazyRoute title='Kết quả học tập, chứng chỉ'>
+				<LearningResultLookup />
 			</LazyRoute>
 		),
 	},
 	{
-		// Cùng trang tra cứu, mở sẵn tab đơn đăng ký (link trong thư xác nhận / màn đăng ký thành công)
+		// Trang riêng tra cứu đơn đăng ký (link trong thư xác nhận / màn đăng ký thành công)
 		path: '/tra-cuu-don-dang-ky',
 		element: (
 			<LazyRoute title='Tra cứu đơn đăng ký'>
-				<PublicLookup />
+				<RegistrationLookupPage />
 			</LazyRoute>
 		),
 	},

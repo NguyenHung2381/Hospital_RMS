@@ -5,6 +5,7 @@ import { Button, Card, SearchInput } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
 import { cx } from '../../../shared/utils/cx';
 import {
+	BadgeSvg,
 	BookOpenSvg,
 	ClockSvg,
 	EyeOffSvg,
@@ -28,6 +29,7 @@ import { getMyAttendance } from '../../portal/api/meApi';
 import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
 import RadiusMap from '../components/RadiusMap';
+import DocCheckPanel from '../components/DocCheckPanel';
 
 type Field = {
 	key: string;
@@ -57,22 +59,28 @@ type Field = {
 type Group = {
 	title?: string;
 	desc?: string;
+	/** Giải thích dài của nhóm — ẩn sau "Xem thêm". */
+	more?: string;
 	/** 'tiles' = lưới thẻ công tắc; 'grid' = lưới ô số gọn. Mặc định: mỗi cấu hình một dòng. */
 	layout?: 'tiles' | 'grid';
 	/** Công tắc tổng — khi tắt thì cảnh báo nhóm này chưa có tác dụng. */
 	dependsOn?: { key: string; text: string };
 	/** Công cụ hỗ trợ hiện cuối nhóm. */
-	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test';
+	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test' | 'doc-check';
 	fields: Field[];
 };
 
 type Section = {
 	id: string;
+	/** Nhóm trên menu trái. */
+	cat: string;
 	title: string;
 	sub: string;
 	icon: typeof ShieldSvg;
 	/** Ghi chú chung đầu tab. */
 	note?: string;
+	/** Hiện từng nhóm một qua thanh chọn (thay vì xếp chồng cả trang). */
+	subtabs?: boolean;
 	groups: Group[];
 };
 
@@ -91,6 +99,7 @@ const ATTENDANCE_TOGGLE: Field = {
 const SECTIONS: Section[] = [
 	{
 		id: 'security',
+		cat: 'Hệ thống',
 		title: 'Bảo mật & tài khoản',
 		sub: '2FA, quên mật khẩu, chống bot',
 		icon: ShieldSvg,
@@ -133,7 +142,8 @@ const SECTIONS: Section[] = [
 					{
 						key: 'TEMP_PASSWORD_TTL_DAYS',
 						label: 'Hạn dùng mật khẩu tạm',
-						hint: 'Mật khẩu tạm do quản trị cấp mà quá hạn chưa đổi thì không đăng nhập được nữa, phải "Quên mật khẩu" hoặc nhờ quản trị đặt lại. 0 = không giới hạn.',
+						hint: 'Quá hạn chưa đổi thì không đăng nhập được nữa. 0 = không giới hạn.',
+						more: 'Áp dụng cho mật khẩu tạm do quản trị cấp. Hết hạn thì người dùng phải bấm "Quên mật khẩu" hoặc nhờ quản trị đặt lại.',
 						type: 'number',
 						placeholder: '7',
 						unit: 'ngày',
@@ -150,7 +160,8 @@ const SECTIONS: Section[] = [
 			},
 			{
 				title: 'Chống bot form đăng ký công khai',
-				desc: 'Google reCAPTCHA v2. Đặt đủ Site key + Secret key thì form đăng ký khóa học / đề tài hiện ô tích của Google; để trống cả hai = dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ.',
+				desc: 'Google reCAPTCHA v2 cho form đăng ký khóa học / đề tài. Để trống cả hai khóa = dùng kiểm tra chạy ngầm.',
+				more: 'Đặt đủ Site key + Secret key thì form hiện ô tích "Tôi không phải người máy" của Google. Để trống cả hai thì dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ không ra Internet.',
 				fields: [
 					{
 						key: 'RECAPTCHA_SITE_KEY',
@@ -178,6 +189,7 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'mail',
+		cat: 'Hệ thống',
 		title: 'Email (SMTP)',
 		sub: 'Máy chủ gửi thư, gửi thử',
 		icon: MailSvg,
@@ -237,7 +249,7 @@ const SECTIONS: Section[] = [
 						['TOPIC_SUBMITTED', 'Có đề tài mới cần duyệt', 'Gửi người có quyền duyệt khi đề tài được nộp.', false],
 						['ACCOUNT_GRANTED', 'Cấp tài khoản thành viên đề tài', 'Báo thành viên mới, khoa và chủ nhiệm (không kèm mật khẩu).', false],
 						['DEADLINE_REMINDER', 'Nhắc hạn nộp đợt NCKH', 'Trước hạn và khi quá hạn các mốc của đợt.', true],
-						['COURSE_ENROLLMENT', 'Kết quả đăng ký khóa học', 'Gửi học viên khi đăng ký được duyệt / chờ / từ chối.', true],
+						['COURSE_ENROLLMENT', 'Đăng ký khóa học', 'Gửi học viên: xác nhận nhận đơn, báo sửa bản khai, kết quả duyệt. Mã OTP xác minh email luôn gửi.', true],
 						['SEMINAR_BADGE', 'Thẻ đại biểu hội nghị', 'Gửi kèm QR điểm danh sau khi đăng ký hội nghị công khai.', true],
 						['PASSWORD_EXPIRY', 'Nhắc đổi mật khẩu', 'Khi mật khẩu lâu chưa đổi.', true],
 						['SECURITY_ALERT', 'Cảnh báo bảo mật', 'Gửi tới "Email nhận cảnh báo bảo mật" (tab Bảo mật).', true],
@@ -257,6 +269,7 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'modules',
+		cat: 'Phân hệ & giao diện',
 		title: 'Phân hệ chức năng',
 		sub: 'Bật/tắt từng phân hệ',
 		icon: LayersSvg,
@@ -276,9 +289,11 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'menus',
+		cat: 'Phân hệ & giao diện',
 		title: 'Menu hiển thị',
 		sub: 'Bật/tắt từng mục menu',
 		icon: MenuSvg,
+		subtabs: true,
 		note: 'Mục tắt sẽ biến mất khỏi menu và vào thẳng URL thì báo "đã tắt". Đây chỉ là ẩn giao diện — quyền dữ liệu vẫn theo Vai trò & quyền.',
 		groups: (
 			[
@@ -294,27 +309,44 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'upload',
+		cat: 'Hệ thống',
 		title: 'Tải lên',
 		sub: 'Định dạng, dung lượng, quét virus',
 		icon: UploadSvg,
-		note: 'Định dạng & dung lượng áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai (video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng). Hạn mức và quét virus áp dụng cho MỌI lượt tải lên. Ngoài ra mọi file luôn được kiểm tra nội dung thật khớp với đuôi file (chặn file .exe đổi tên thành .pdf).',
+		note: 'Mọi file luôn được kiểm tra nội dung thật khớp với đuôi file (chặn file .exe đổi tên thành .pdf).',
 		groups: [
 			{
+				title: 'Dung lượng',
+				desc: 'Hạn mức theo ngày áp dụng cho MỌI lượt tải lên.',
+				layout: 'grid',
 				fields: [
 					{
 						key: 'UPLOAD_MAX_MB',
-						label: 'Dung lượng tối đa mỗi file',
+						label: 'Tối đa mỗi file',
+						hint: 'Hồ sơ, minh chứng, tài liệu khóa học.',
 						type: 'number',
 						placeholder: '50',
 						unit: 'MB',
 						min: 1,
 						max: 1024,
 					},
+					{
+						key: 'UPLOAD_DAILY_QUOTA_MB',
+						label: 'Tổng mỗi tài khoản / ngày',
+						hint: 'Làm mới lúc 0h. 0 = không giới hạn.',
+						more: 'Chặn 1 tài khoản (bị chiếm hoặc script lỗi) tải lên liên tục làm đầy ổ đĩa máy chủ.',
+						type: 'number',
+						placeholder: '2048',
+						unit: 'MB',
+						min: 0,
+						max: 1048576,
+					},
 				],
 			},
 			{
 				title: 'Định dạng được nhận',
 				desc: 'Bấm để chọn / bỏ chọn. Chỉ chọn được trong danh sách định dạng an toàn.',
+				more: 'Áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai. Video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng.',
 				fields: [
 					{
 						key: 'UPLOAD_ALLOWED_EXTENSIONS',
@@ -335,23 +367,8 @@ const SECTIONS: Section[] = [
 				],
 			},
 			{
-				title: 'Hạn mức tải lên',
-				fields: [
-					{
-						key: 'UPLOAD_DAILY_QUOTA_MB',
-						label: 'Tổng dung lượng mỗi tài khoản / ngày',
-						hint: 'Chặn 1 tài khoản (bị chiếm hoặc script lỗi) tải lên liên tục làm đầy ổ đĩa máy chủ. Làm mới lúc 0h. 0 = không giới hạn.',
-						type: 'number',
-						placeholder: '2048',
-						unit: 'MB',
-						min: 0,
-						max: 1048576,
-					},
-				],
-			},
-			{
 				title: 'Quét virus (ClamAV)',
-				desc: 'Quét mọi file tải lên bằng ClamAV trước khi lưu; file nhiễm bị xóa ngay và ghi vào nhật ký bảo mật. Để trống máy chủ = không quét.',
+				desc: 'Quét mọi file tải lên trước khi lưu; file nhiễm bị xóa ngay và ghi nhật ký bảo mật. Để trống máy chủ = không quét.',
 				tool: 'clamav-test',
 				fields: [
 					{
@@ -388,6 +405,7 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'attendance',
+		cat: 'Nghiệp vụ',
 		title: 'Điểm danh',
 		sub: 'Mạng, vị trí, đơn xin phép',
 		icon: ClockSvg,
@@ -481,9 +499,10 @@ const SECTIONS: Section[] = [
 	},
 	{
 		id: 'cme',
-		title: 'Đào tạo & CME',
-		sub: 'Ngưỡng tín chỉ, chấm điểm',
-		icon: BookOpenSvg,
+		cat: 'Nghiệp vụ',
+		title: 'Tín chỉ CME',
+		sub: 'Ngưỡng, tự cộng, duyệt tín chỉ',
+		icon: BadgeSvg,
 		groups: [
 			{
 				title: 'Ngưỡng tín chỉ CME',
@@ -491,6 +510,94 @@ const SECTIONS: Section[] = [
 				fields: [
 					{ key: 'CME_CYCLE_YEARS', label: 'Chu kỳ tính ngưỡng', hint: 'Số năm của một chu kỳ CME.', type: 'number', placeholder: '5', unit: 'năm', min: 1 },
 					{ key: 'CME_MIN_HOURS', label: 'Giờ tín chỉ tối thiểu / chu kỳ', hint: 'Dùng cho cảnh báo thiếu tín chỉ.', type: 'number', placeholder: '120', unit: 'giờ', min: 0 },
+				],
+			},
+			{
+				title: 'Tự cộng tín chỉ CME (khóa ĐTLT / CTCV)',
+				desc: 'Mặc định 1 tiết = 1 giờ tín chỉ. Chỉ cộng cho người có tài khoản trong hệ thống.',
+				more: 'Theo TT 32/2023 Phụ lục I mục 1.1: học viên và giảng viên khóa ngắn hạn đều ghi danh mục "Khóa đào tạo, bồi dưỡng ngắn hạn" (DT_KHOAHOC). Sửa hệ số ở Tín chỉ CME → Danh mục quy đổi tín chỉ.',
+				layout: 'tiles',
+				// Khớp backend courseCmeService (syncTrainees / lecturerHours)
+				fields: [
+					{
+						key: 'CME_AUTO_TRAINEE',
+						label: 'Cộng CME cho học viên',
+						hint: 'Khi học viên nội viện có tài khoản được cấp giấy chứng nhận — mỗi giấy 1 dòng CME.',
+						more: [
+							'• Tín chỉ = số giờ tín chỉ khai ở chương trình; chưa khai thì (tiết LT + TH) × hệ số DT_KHOAHOC.',
+							'• Ngày ghi nhận = ngày kết thúc lớp của chương trình (hoặc của khóa).',
+							'• Thu hồi giấy ⇒ dòng CME bị từ chối; xóa giấy cấp nhầm ⇒ xóa dòng CME (kể cả khi đang tắt công tắc).',
+						].join('\n'),
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Tự cộng',
+						offText: 'Không cộng',
+					},
+					{
+						key: 'CME_AUTO_LECTURER',
+						label: 'Cộng CME cho giảng viên',
+						hint: 'Khi khóa điểm khóa học (hoặc bấm "Ghi lại CME" ở tab Kết quả): tín chỉ = số tiết giảng × hệ số DT_KHOAHOC.',
+						more: [
+							'Số tiết giảng tính theo từng bài, lần lượt:',
+							'1. Có nhập số tiết ở phân công giảng viên ⇒ lấy số đó.',
+							'2. Chưa nhập ⇒ chia số tiết của bài theo số buổi đã dạy (VD bài 6 tiết, 3 buổi: dạy 2 buổi được 4 tiết).',
+							'3. Bài chưa có buổi nào gán giảng viên ⇒ GV chính nhận đủ số tiết bài, GV phụ 0.',
+							'Phân công cả khóa (không gắn bài) chỉ tính khi có nhập số tiết.',
+						].join('\n'),
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Tự cộng',
+						offText: 'Không cộng',
+					},
+				],
+			},
+			{
+				title: 'Duyệt tín chỉ tự cộng',
+				desc: 'Dòng CME tự cộng được tính ngay (cộng thẳng) hay chờ người quản lý CME duyệt ở Tín chỉ CME → Ghi nhận độc lập.',
+				more: 'TT 32/2023 Điều 9: cơ sở tổ chức xác nhận, tính giờ tín chỉ và quản lý việc xác nhận. Dòng đã bị từ chối luôn giữ nguyên khi ghi lại.',
+				// Khớp backend courseCmeService.APPROVAL_MODES / systemSettingService.ENUM_KEYS
+				fields: [
+					{
+						key: 'CME_TRAINEE_APPROVAL',
+						label: 'Dòng CME của học viên',
+						hint: 'Giấy chứng nhận do thủ trưởng đơn vị ký đã là xác nhận hoàn thành khóa (Điều 4 khoản 1 điểm i), nên mặc định cộng thẳng.',
+						more: 'Chọn "Chờ duyệt" nếu phòng quản lý CME muốn soát lại trước khi tính. Cấp lại giấy sau khi thu hồi thì dòng CME về chờ duyệt (hoặc đã duyệt nếu đang cộng thẳng).',
+						type: 'select',
+						options: [
+							['', 'Cộng thẳng — đã duyệt (mặc định)'],
+							['pending', 'Chờ người quản lý CME duyệt'],
+						],
+					},
+					{
+						key: 'CME_LECTURER_APPROVAL',
+						label: 'Dòng CME của giảng viên',
+						hint: 'Thủ trưởng đơn vị tổ chức giảng dạy tính giờ tín chỉ dựa trên minh chứng đã tham gia giảng dạy (Điều 6 khoản 2 điểm c).',
+						more: [
+							'• Theo quyền người khóa điểm: người khóa điểm / bấm "Ghi lại CME" có quyền quản lý CME ⇒ đã duyệt; không có ⇒ chờ duyệt.',
+							'• Cộng thẳng: đã duyệt ngay, trừ dòng của chính người khóa điểm khi người đó không có quyền quản lý CME (không ai tự duyệt CME cho mình).',
+							'• Chờ duyệt: mọi dòng chờ người quản lý CME đối chiếu buổi dạy / phân công rồi duyệt.',
+						].join('\n'),
+						type: 'select',
+						options: [
+							['', 'Theo quyền người khóa điểm (mặc định)'],
+							['approved', 'Cộng thẳng — đã duyệt'],
+							['pending', 'Luôn chờ người quản lý CME duyệt'],
+						],
+					},
+				],
+			},
+		],
+	},
+	{
+		id: 'training',
+		cat: 'Nghiệp vụ',
+		title: 'Đào tạo',
+		sub: 'Lớp học, đăng ký, điểm đạt',
+		icon: BookOpenSvg,
+		groups: [
+			{
+				title: 'Lớp học ĐTLT / CTCV',
+				fields: [
 					{
 						key: 'PRACTICE_MENTOR_MAX_TRAINEES',
 						label: 'Học viên tối đa / người hướng dẫn',
@@ -500,37 +607,6 @@ const SECTIONS: Section[] = [
 						unit: 'người',
 						min: 1,
 					},
-				],
-			},
-			{
-				title: 'Tự cộng tín chỉ CME (khóa ĐTLT / CTCV)',
-				layout: 'tiles',
-				fields: [
-					{
-						key: 'CME_AUTO_TRAINEE',
-						label: 'Cộng CME cho học viên',
-						hint: 'Khi học viên nội viện có tài khoản được cấp giấy chứng nhận.',
-						more: 'Ghi 1 dòng CME đã duyệt (tín chỉ = số giờ tín chỉ của chương trình, chưa khai thì theo số tiết). Thu hồi giấy chứng nhận thì thu hồi dòng CME.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Tự cộng',
-						offText: 'Không cộng',
-					},
-					{
-						key: 'CME_AUTO_LECTURER',
-						label: 'Cộng CME cho giảng viên',
-						hint: 'Khi khóa điểm, theo số tiết đảm nhận.',
-						more: 'Giảng viên có tài khoản được ghi CME theo số tiết đảm nhận × hệ số danh mục "Giảng dạy về y khoa" (GIANGDAY).',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Tự cộng',
-						offText: 'Không cộng',
-					},
-				],
-			},
-			{
-				title: 'Lớp học ĐTLT / CTCV',
-				fields: [
 					{
 						key: 'TRAINING_ALLOW_MULTI_PROGRAM',
 						label: 'Cho học nhiều chương trình cùng lúc',
@@ -561,15 +637,30 @@ const SECTIONS: Section[] = [
 			},
 			{
 				title: 'Đăng ký khóa ĐTLT từ cổng công khai',
+				desc: 'Form /dang-ky-khoa-hoc. Phòng Đào tạo cũng bật/tắt được 2 công tắc này ở hộp "Link đăng ký" của trang Đào tạo liên tục.',
+				more: 'Người đăng ký ký xác nhận điện tử, tự sửa bản khai khi đơn còn chờ duyệt (trang Tra cứu đơn đăng ký), hồ sơ đính kèm được tự kiểm tra loại file.',
+				layout: 'tiles',
+				tool: 'doc-check',
 				fields: [
 					{
 						key: 'TRAINING_REGISTRATION_EMAIL_OTP',
 						label: 'Xác minh email bằng mã OTP',
-						hint: 'Tắt thì người đăng ký gửi đơn mà không cần nhập mã xác minh; email xác nhận chỉ gửi tới địa chỉ đã xác minh nên cũng sẽ không còn được gửi.',
+						hint: 'Tắt thì gửi đơn không cần mã xác minh — và cũng không còn email xác nhận.',
+						more: 'Email xác nhận chỉ gửi tới địa chỉ đã xác minh, nên khi tắt OTP người đăng ký sẽ không nhận được email xác nhận đơn.',
 						type: 'bool',
 						defaultOn: true,
 						onText: 'Bắt buộc',
 						offText: 'Không bắt buộc',
+					},
+					{
+						key: 'TRAINING_REGISTRATION_DOC_CHECK',
+						label: 'Tự kiểm tra file hồ sơ (OCR / mã QR)',
+						hint: 'Cảnh báo người duyệt khi file có vẻ nộp nhầm loại — chỉ cảnh báo, không tự từ chối.',
+						more: 'Phát hiện nộp nhầm loại, thiếu mặt CCCD, trang trắng hoặc trùng file. Tắt thì ẩn mọi cảnh báo; file nộp trong lúc tắt được kiểm khi bật lại.',
+						type: 'bool',
+						defaultOn: true,
+						onText: 'Bật',
+						offText: 'Tắt',
 					},
 				],
 			},
@@ -616,6 +707,7 @@ const SECTIONS: Section[] = [
 	},
 ];
 
+const CATS = [...new Set(SECTIONS.map((s) => s.cat))];
 const FIELDS = [...new Map(SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.fields)).map((f) => [f.key, f])).values()];
 const sectionFields = (s: Section) => [...new Set(s.groups.flatMap((g) => g.fields))];
 type Values = Record<string, string>;
@@ -648,9 +740,15 @@ export default function SystemSettings() {
 
 	// Tab nằm trên URL (?tab=mail) để F5 / gửi link vẫn mở đúng chỗ
 	const tab = SECTIONS.some((s) => s.id === params.get('tab')) ? params.get('tab')! : SECTIONS[0].id;
+	const [sub, setSub] = useState(0); // nhóm đang xem ở tab có thanh chọn (Menu hiển thị)
+	const [activeGroup, setActiveGroup] = useState(0); // nhóm đang trong tầm nhìn — tô sáng mục lục
+	const jumpLock = useRef(0); // id hẹn giờ khi vừa bấm mục lục — khác 0 thì tạm không tô theo cuộn
 	const setTab = (id: string) => {
 		setQuery('');
+		setSub(0);
+		setActiveGroup(0);
 		setParams({ tab: id }, { replace: true });
+		window.scrollTo({ top: 0 });
 	};
 
 	const load = () =>
@@ -735,7 +833,10 @@ export default function SystemSettings() {
 		if (!dirty.length || saving) return;
 		if (invalid.length) {
 			const s = SECTIONS.find((x) => sectionFields(x).includes(invalid[0]));
-			if (s && !query) setTab(s.id);
+			if (s && !query) {
+				setTab(s.id);
+				if (s.subtabs) setSub(Math.max(0, s.groups.findIndex((g) => g.fields.includes(invalid[0]))));
+			}
 			return notify.error(`${invalid[0].label}: ${errorOf(invalid[0])}`);
 		}
 		setSaving(true);
@@ -1122,6 +1223,7 @@ export default function SystemSettings() {
 				</div>
 			);
 		}
+		if (tool === 'doc-check') return <DocCheckPanel />;
 		if (tool === 'attendance-helper') {
 			// Bản đồ xem trước tọa độ + bán kính đang nhập (chưa lưu cũng hiện)
 			const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(form.ATTENDANCE_LOCATION ?? '');
@@ -1168,17 +1270,27 @@ export default function SystemSettings() {
 		return null;
 	};
 
-	const renderGroup = (g: Group, key: string | number, fields = g.fields) => {
+	const renderGroup = (g: Group, key: string | number, fields = g.fields, anchor?: string) => {
 		const offBy = g.dependsOn && form[g.dependsOn.key] === 'false';
 		const isMenu = fields[0]?.type === 'menu';
 		const menuHidden = isMenu ? splitList(form[fields[0].key]).length : 0;
+		const nDirty = fields.filter(isDirty).length;
 		return (
-			<Card key={key} className={styles.groupCard}>
+			<Card key={key} className={styles.groupCard} id={anchor}>
 				{g.title && (
 					<div className={styles.groupHead}>
-						<div>
-							<div className={styles.groupTitle}>{g.title}</div>
+						<div className={styles.groupHeadText}>
+							<div className={styles.groupTitle}>
+								{g.title}
+								{nDirty > 0 && <span className={styles.dirtyPill}>{nDirty} chưa lưu</span>}
+							</div>
 							{g.desc && <p className={styles.groupDesc}>{g.desc}</p>}
+							{g.more && (
+								<details className={styles.more}>
+									<summary>Xem thêm</summary>
+									<p>{g.more}</p>
+								</details>
+							)}
 						</div>
 						{isMenu && (
 							<div className={styles.groupActions}>
@@ -1230,6 +1342,36 @@ export default function SystemSettings() {
 
 	const section = SECTIONS.find((s) => s.id === tab)!;
 	const SectionIcon = section.icon;
+	const anchorOf = (i: number) => `grp-${tab}-${i}`;
+	// Mục lục nhảy nhanh — chỉ cho tab dài (≥ 3 nhóm có tiêu đề)
+	const toc = section.subtabs ? [] : section.groups.map((g, i) => ({ title: g.title, i })).filter((x) => x.title);
+	const showToc = !query && !loading && toc.length >= 3;
+
+	// Tô sáng mục lục theo nhóm đang cuộn tới (nhóm cuối cùng đã lên tới 1/3 trên màn hình)
+	useEffect(() => {
+		if (!showToc) return;
+		const onScroll = () => {
+			if (jumpLock.current) return; // đang cuộn mượt tới nhóm vừa bấm
+			let cur = 0;
+			const line = Math.max(180, window.innerHeight / 3);
+			section.groups.forEach((_, i) => {
+				const el = document.getElementById(anchorOf(i));
+				if (el && el.getBoundingClientRect().top <= line) cur = i;
+			});
+			if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = section.groups.length - 1;
+			setActiveGroup(cur);
+		};
+		onScroll();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => window.removeEventListener('scroll', onScroll);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [tab, showToc]);
+	const jumpTo = (i: number) => {
+		window.clearTimeout(jumpLock.current);
+		jumpLock.current = window.setTimeout(() => (jumpLock.current = 0), 1000);
+		setActiveGroup(i);
+		document.getElementById(anchorOf(i))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	};
 
 	return (
 		<AdminLayout pageTitle='Cấu hình hệ thống' pageSubtitle='Bật/tắt chức năng bảo mật, email SMTP, ngưỡng CME — áp dụng ngay, không cần khởi động lại'>
@@ -1249,31 +1391,37 @@ export default function SystemSettings() {
 				<aside className={styles.side}>
 					<SearchInput value={query} onChange={setQuery} placeholder='Tìm cấu hình…' />
 					<nav className={styles.tabs}>
-						{SECTIONS.map((s) => {
-							const Icon = s.icon;
-							const n = sectionFields(s).filter(isDirty).length;
-							return (
-								<button
-									key={s.id}
-									type='button'
-									className={cx(styles.tab, s.id === tab && !query && styles.tabActive)}
-									onClick={() => setTab(s.id)}
-								>
-									<span className={styles.tabIcon}>
-										<Icon />
-									</span>
-									<span className={styles.tabText}>
-										<span className={styles.tabTitle}>{s.title}</span>
-										<span className={styles.tabSub}>{s.sub}</span>
-									</span>
-									{n > 0 && (
-										<span className={styles.tabBadge} title={`${n} thay đổi chưa lưu`}>
-											{n}
-										</span>
-									)}
-								</button>
-							);
-						})}
+						{CATS.map((cat) => (
+							<div key={cat} className={styles.tabGroup}>
+								<div className={styles.tabCat}>{cat}</div>
+								{SECTIONS.filter((s) => s.cat === cat).map((s) => {
+									const Icon = s.icon;
+									const n = sectionFields(s).filter(isDirty).length;
+									return (
+										<button
+											key={s.id}
+											type='button'
+											className={cx(styles.tab, s.id === tab && !query && styles.tabActive)}
+											aria-current={s.id === tab && !query ? 'page' : undefined}
+											onClick={() => setTab(s.id)}
+										>
+											<span className={styles.tabIcon}>
+												<Icon />
+											</span>
+											<span className={styles.tabText}>
+												<span className={styles.tabTitle}>{s.title}</span>
+												<span className={styles.tabSub}>{s.sub}</span>
+											</span>
+											{n > 0 && (
+												<span className={styles.tabBadge} title={`${n} thay đổi chưa lưu`}>
+													{n}
+												</span>
+											)}
+										</button>
+									);
+								})}
+							</div>
+						))}
 					</nav>
 				</aside>
 
@@ -1315,37 +1463,78 @@ export default function SystemSettings() {
 									<InfoSvg /> {section.note}
 								</div>
 							)}
-							{loading ? <div className={styles.loading}>Đang tải cấu hình…</div> : section.groups.map((g, i) => renderGroup(g, i))}
+							{showToc && (
+								<nav className={styles.toc} aria-label='Các nhóm trong mục này'>
+									{toc.map(({ title, i }) => {
+										const n = section.groups[i].fields.filter(isDirty).length;
+										return (
+											<button
+												key={i}
+												type='button'
+												className={cx(styles.tocItem, activeGroup === i && styles.tocActive)}
+												onClick={() => jumpTo(i)}
+											>
+												{title}
+												{n > 0 && <span className={styles.tocDot} title={`${n} thay đổi chưa lưu`} />}
+											</button>
+										);
+									})}
+								</nav>
+							)}
+							{section.subtabs && !loading && (
+								<div className={styles.segment} role='tablist'>
+									{section.groups.map((g, i) => {
+										const f = g.fields[0];
+										const hidden = f?.type === 'menu' ? splitList(form[f.key]).length : 0;
+										const n = g.fields.filter(isDirty).length;
+										return (
+											<button
+												key={i}
+												type='button'
+												role='tab'
+												aria-selected={i === sub}
+												className={cx(styles.segBtn, i === sub && styles.segOn)}
+												onClick={() => setSub(i)}
+											>
+												{g.title}
+												{hidden > 0 && <span className={styles.segCount}>ẩn {hidden}</span>}
+												{n > 0 && <span className={styles.tocDot} title='Có thay đổi chưa lưu' />}
+											</button>
+										);
+									})}
+								</div>
+							)}
+							{loading ? (
+								<div className={styles.loading}>Đang tải cấu hình…</div>
+							) : section.subtabs ? (
+								renderGroup(section.groups[sub] ?? section.groups[0], sub)
+							) : (
+								section.groups.map((g, i) => renderGroup(g, i, g.fields, anchorOf(i)))
+							)}
 						</>
 					)}
 
-					<div className={cx(styles.saveBar, hasDirty && styles.saveBarDirty)}>
-						<div className={styles.saveText}>
-							{hasDirty ? (
-								<>
-									<b>{dirty.length} thay đổi chưa lưu</b>
-									<span className={styles.saveList}>
-										{dirty
-											.slice(0, 3)
-											.map((f) => f.label)
-											.join(', ')}
-										{dirty.length > 3 && ` và ${dirty.length - 3} mục khác`}
-									</span>
-								</>
-							) : (
-								<span>Mọi thay đổi đã được lưu</span>
-							)}
-						</div>
-						{invalid.length > 0 && <span className={styles.error}>{invalid.length} giá trị chưa hợp lệ</span>}
-						{hasDirty && (
+					{hasDirty && (
+						<div className={styles.saveBar} role='status'>
+							<div className={styles.saveText}>
+								<b>{dirty.length} thay đổi chưa lưu</b>
+								<span className={styles.saveList}>
+									{dirty
+										.slice(0, 3)
+										.map((f) => f.label)
+										.join(', ')}
+									{dirty.length > 3 && ` và ${dirty.length - 3} mục khác`}
+								</span>
+							</div>
+							{invalid.length > 0 && <span className={styles.error}>{invalid.length} giá trị chưa hợp lệ</span>}
 							<Button variant='ghost' onClick={() => setForm(saved)}>
 								Hoàn tác tất cả
 							</Button>
-						)}
-						<Button loading={saving} disabled={!hasDirty} onClick={save} title='Ctrl + S'>
-							Lưu thay đổi
-						</Button>
-					</div>
+							<Button loading={saving} onClick={save} title='Ctrl + S'>
+								Lưu thay đổi
+							</Button>
+						</div>
+					)}
 				</div>
 			</div>
 		</AdminLayout>

@@ -169,13 +169,13 @@ test('file đã chuyển sang thư mục chính thức thì còn nguyên; file c
 	const dest = path.join(root, 'training', 'course_registration', 'E1');
 	const server = await startApp(async (req, res) => {
 		const byKind = collectByKind(req.files);
-		await moveUploadedFiles([byKind.application_signed], dest); // chỉ chuyển 1 trong 2
+		await moveUploadedFiles([byKind.national_id], dest); // chỉ chuyển 1 trong 2
 		res.json({ ok: true });
 	});
 	const form = new FormData();
 	form.append('data', '{}');
-	form.append('files[application_signed]', blob(PDF), 'don.pdf');
-	form.append('files[proposal_approved]', blob(JPG), 'tt.jpg');
+	form.append('files[national_id]', blob(PDF), 'cccd.pdf');
+	form.append('files[degree]', blob(JPG), 'bang.jpg');
 	const res = await send(server, '/form', form);
 	server.close();
 	assert.equal(res.status, 200);

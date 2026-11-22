@@ -2,6 +2,7 @@
 export { useFormConfig, resetFormConfig } from './useFormConfig';
 export type { FormConfig } from './useFormConfig';
 export { CfgField, CfgVisible } from './CfgField';
+export { withChoices } from './withChoices';
 export { CustomFields } from './CustomFields';
 export { formatCustomValue, hasCustomValues } from './format';
 export { CustomFieldsView, CustomValuesInline } from './CustomFieldsView';

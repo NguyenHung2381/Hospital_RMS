@@ -1,7 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
-import { AlertSvg, DownloadSvg, EyeSvg } from '@/assets/icons';
+import { useRef, useState } from 'react';
+import { AlertSvg, DownloadSvg } from '@/assets/icons';
 import { downloadRegistrationApplication, type RegistrationProof } from '../api/publicApi';
-import { ApplicationPreview } from './ApplicationPreview';
 import s from '../pages/CourseRegisterPublic.module.css';
 
 interface Props {
@@ -10,31 +9,19 @@ interface Props {
 	proof: RegistrationProof;
 }
 
-// Tải đơn đăng ký (.docx) và xem trước / in. Dùng ở màn "đăng ký thành công" và màn tra cứu.
+// Tải đơn đăng ký (.docx). Dùng ở màn "đăng ký thành công" và màn tra cứu.
 export function ApplicationActions({ code, proof }: Props) {
-	const [busy, setBusy] = useState<'download' | 'preview' | null>(null);
+	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
-	const [preview, setPreview] = useState<Blob | null>(null);
-	// Đơn là dữ liệu của chính người này; lấy 1 lần dùng cho cả tải và xem trước
+	// Đơn là dữ liệu của chính người này; lấy 1 lần, bấm tải lại không gọi API nữa
 	const cache = useRef<Blob | null>(null);
-	const closePreview = useCallback(() => setPreview(null), []);
 
-	const load = async () => {
-		if (cache.current) return cache.current;
-		const blob = await downloadRegistrationApplication(code, proof);
-		cache.current = blob;
-		return blob;
-	};
-
-	const run = async (kind: 'download' | 'preview') => {
-		setBusy(kind);
+	const download = async () => {
+		setBusy(true);
 		setError('');
 		try {
-			const blob = await load();
-			if (kind === 'preview') {
-				setPreview(blob);
-				return;
-			}
+			const blob = cache.current ?? (await downloadRegistrationApplication(code, proof));
+			cache.current = blob;
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement('a');
 			a.href = url;
@@ -46,7 +33,7 @@ export function ApplicationActions({ code, proof }: Props) {
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Không lấy được đơn, vui lòng thử lại');
 		} finally {
-			setBusy(null);
+			setBusy(false);
 		}
 	};
 
@@ -56,20 +43,11 @@ export function ApplicationActions({ code, proof }: Props) {
 				<button
 					type='button'
 					className={s.submitBtn}
-					onClick={() => run('download')}
-					disabled={busy !== null}
+					onClick={download}
+					disabled={busy}
 				>
 					<DownloadSvg />
-					{busy === 'download' ? 'Đang tải...' : 'Tải đơn đăng ký (.docx)'}
-				</button>
-				<button
-					type='button'
-					className={s.ghostBtn}
-					onClick={() => run('preview')}
-					disabled={busy !== null}
-				>
-					<EyeSvg />
-					{busy === 'preview' ? 'Đang mở...' : 'Xem trước / In'}
+					{busy ? 'Đang tải...' : 'Tải đơn đăng ký (.docx)'}
 				</button>
 			</div>
 			{error && (
@@ -79,13 +57,6 @@ export function ApplicationActions({ code, proof }: Props) {
 				>
 					<AlertSvg /> {error}
 				</div>
-			)}
-			{preview && (
-				<ApplicationPreview
-					blob={preview}
-					title={`Đơn đăng ký ${code}`}
-					onClose={closePreview}
-				/>
 			)}
 		</div>
 	);

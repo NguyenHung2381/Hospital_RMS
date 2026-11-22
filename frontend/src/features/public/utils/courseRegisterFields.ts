@@ -54,6 +54,9 @@ export interface RegForm extends Record<FormKey, string> {
 	source: '' | RegistrationSource;
 	rules_accepted: boolean;
 	declared_true: boolean;
+	data_consent: boolean;
+	/** Họ tên gõ lại để ký xác nhận */
+	signature_name: string;
 	website: string; // honeypot
 }
 
@@ -63,8 +66,15 @@ export const EMPTY_FORM: RegForm = {
 	source: '',
 	rules_accepted: false,
 	declared_true: false,
+	data_consent: false,
+	signature_name: '',
 	website: '',
 };
+
+/** Chuẩn hóa họ tên để so chữ ký — cùng quy tắc với máy chủ (registrationConsent.normName) */
+export const normName = (v: string) => v.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi');
+export const signatureMatches = (signature: string, fullName: string) =>
+	!!normName(signature) && normName(signature) === normName(fullName);
 
 interface FieldDef {
 	label: string;
@@ -235,6 +245,8 @@ export function buildPayload(
 		source,
 		rules_accepted: form.rules_accepted,
 		declared_true: form.declared_true,
+		data_consent: form.data_consent,
+		signature_name: form.signature_name.trim(),
 		website: form.website,
 		...extra,
 	} as RegisterPayload;
@@ -269,11 +281,32 @@ export function buildDraftPayload(
 
 const DRAFT_KEY = 'dtlt-register-draft-v1';
 
+// ─── Sửa bản khai sau khi gửi (trang Tra cứu) ──────────────────────────────
+
+/** Form điền sẵn từ bản khai đã lưu (máy chủ trả ngày dạng YYYY-MM-DD, năm tốt nghiệp là số) */
+export function formFromSnapshot(
+	source: RegistrationSource,
+	snapshot: Record<string, string | number | null | undefined>,
+	invoice: Record<string, string | null> | null,
+): RegForm {
+	const out: RegForm = { ...EMPTY_FORM, source };
+	for (const k of [...INFO_KEYS, 'staff_number'] as FormKey[]) {
+		const v = snapshot[k];
+		if (v !== null && v !== undefined) out[k] = String(v);
+	}
+	for (const k of INVOICE_KEYS) out[k] = invoice?.[k] ?? '';
+	return out;
+}
+
+/** Các trường form đã đổi so với bản gốc (so sau khi bỏ khoảng trắng đầu / cuối) */
+export const changedKeys = (before: RegForm, after: RegForm): (InfoKey | InvoiceKey)[] =>
+	[...infoKeysFor(after.source), ...(after.source === 'internal' ? [] : INVOICE_KEYS)].filter(
+		(k) => (before[k] ?? '').trim() !== (after[k] ?? '').trim(),
+	);
+
 export interface RegisterDraft {
 	courseId: string;
 	programId: string;
-	step: number;
-	reached: number;
 	form: RegForm;
 	custom: CustomValues;
 	staff: StaffMatch | null;
@@ -287,12 +320,10 @@ export function loadDraft(): RegisterDraft | null {
 		if (!d || typeof d !== 'object' || !d.form) return null;
 		return {
 			...d,
-			// Cam kết "thông tin đúng sự thật" luôn xác nhận lại ở bước cuối
-			form: { ...EMPTY_FORM, ...d.form, declared_true: false, website: '' },
+			// Cam kết "thông tin đúng sự thật", đồng ý xử lý dữ liệu và chữ ký luôn làm lại trước khi gửi
+			form: { ...EMPTY_FORM, ...d.form, declared_true: false, data_consent: false, signature_name: '', website: '' },
 			custom: d.custom ?? {},
 			staff: d.staff ?? null,
-			step: Number.isInteger(d.step) ? d.step : 0,
-			reached: Number.isInteger(d.reached) ? d.reached : 0,
 		};
 	} catch {
 		return null;
@@ -317,4 +348,4 @@ export function clearDraft() {
 
 /** Draft có đáng khôi phục không (đã nhập gì đó ngoài việc chọn khóa) */
 export const draftHasInput = (d: RegisterDraft) =>
-	d.step > 0 || Object.entries(d.form).some(([k, v]) => k !== 'website' && typeof v === 'string' && v.trim() !== '');
+	d.form.rules_accepted || Object.entries(d.form).some(([k, v]) => k !== 'website' && typeof v === 'string' && v.trim() !== '');

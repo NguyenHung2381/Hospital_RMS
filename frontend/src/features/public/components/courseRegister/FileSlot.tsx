@@ -1,6 +1,7 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
-import { FileSvg, UploadSvg } from '@/assets/icons';
-import { checkRegistrationFile, formatFileSize } from '../../utils/registrationFiles';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { EyeSvg, FileSvg, UploadSvg } from '@/assets/icons';
+import { checkRegistrationFile, formatFileSize, isImageFile } from '../../utils/registrationFiles';
+import { LocalFilePreview } from './LocalFilePreview';
 import styles from '../../pages/PublicPortal.module.css';
 import s from '../../pages/CourseRegisterPublic.module.css';
 
@@ -9,6 +10,8 @@ interface Props {
 	label: string;
 	hint?: string;
 	required: boolean;
+	/** Không bắt buộc lúc gửi — hiện nhãn "Có thể nộp sau" */
+	later?: boolean;
 	file: File | null;
 	onChange: (f: File | null) => void;
 	/** Lỗi từ bước (thiếu file…) — hiện dưới ô, đọc to cho trình đọc màn hình */
@@ -29,6 +32,7 @@ export function FileSlot({
 	label,
 	hint,
 	required,
+	later,
 	file,
 	onChange,
 	error,
@@ -46,6 +50,22 @@ export function FileSlot({
 	const hintId = `${uid}-hint`;
 	const errId = `${uid}-err`;
 	const shownError = pickError || error;
+	const [previewing, setPreviewing] = useState(false);
+	const closePreview = useCallback(() => setPreviewing(false), []);
+
+	// URL blob: cho file đang chọn — dùng cho ảnh thu nhỏ và hộp xem lại; thu hồi khi đổi/bỏ file.
+	// Ghép kèm file để không dùng nhầm URL của file trước trong lúc effect chưa chạy lại.
+	const [blob, setBlob] = useState<{ file: File; url: string } | null>(null);
+	useEffect(() => {
+		if (!file) return;
+		const url = URL.createObjectURL(file);
+		// Đồng bộ với tài nguyên ngoài React (URL blob phải thu hồi khi đổi file / gỡ ô)
+		// eslint-disable-next-line react-hooks/set-state-in-effect
+		setBlob({ file, url });
+		return () => URL.revokeObjectURL(url);
+	}, [file]);
+	const fileUrl = blob && blob.file === file ? blob.url : null;
+	const isImage = !!file && isImageFile(file);
 
 	const take = (list: FileList | null | undefined) => {
 		const picked = list?.[0];
@@ -80,6 +100,7 @@ export function FileSlot({
 					)}
 				</span>
 				{required && <span className={s.srOnly}>(bắt buộc)</span>}
+				{!required && later && <span className={s.optionalTag}>Có thể nộp sau</span>}
 			</div>
 			{hint && (
 				<p
@@ -93,12 +114,26 @@ export function FileSlot({
 
 			{file ? (
 				<div className={s.slotFile}>
-					<span
-						className={s.slotFileIcon}
-						aria-hidden='true'
-					>
-						<FileSvg />
-					</span>
+					{isImage && fileUrl ? (
+						<button
+							type='button'
+							className={s.slotThumb}
+							onClick={() => setPreviewing(true)}
+							aria-label={`Xem ảnh ${file.name}`}
+						>
+							<img
+								src={fileUrl}
+								alt=''
+							/>
+						</button>
+					) : (
+						<span
+							className={s.slotFileIcon}
+							aria-hidden='true'
+						>
+							<FileSvg />
+						</span>
+					)}
 					<div className={s.slotFileInfo}>
 						<div
 							className={s.slotFileName}
@@ -108,27 +143,38 @@ export function FileSlot({
 						</div>
 						<div className={s.slotFileSize}>{formatFileSize(file.size)}</div>
 					</div>
-					<button
-						type='button'
-						className={s.linkBtn}
-						onClick={() => inputRef.current?.click()}
-						disabled={disabled}
-						aria-describedby={describedBy}
-					>
-						Đổi file
-					</button>
-					<button
-						type='button'
-						className={s.linkBtn}
-						onClick={() => {
-							setPickError('');
-							onChange(null);
-						}}
-						disabled={disabled}
-						aria-label={`Bỏ file ${file.name}`}
-					>
-						Bỏ
-					</button>
+					<div className={s.slotFileActions}>
+						<button
+							type='button'
+							className={s.linkBtn}
+							onClick={() => setPreviewing(true)}
+							disabled={!fileUrl}
+							aria-label={`Xem file ${file.name}`}
+						>
+							<EyeSvg aria-hidden='true' /> Xem
+						</button>
+						<button
+							type='button'
+							className={s.linkBtn}
+							onClick={() => inputRef.current?.click()}
+							disabled={disabled}
+							aria-describedby={describedBy}
+						>
+							Đổi file
+						</button>
+						<button
+							type='button'
+							className={`${s.linkBtn} ${s.slotRemove}`}
+							onClick={() => {
+								setPickError('');
+								onChange(null);
+							}}
+							disabled={disabled}
+							aria-label={`Bỏ file ${file.name}`}
+						>
+							Bỏ
+						</button>
+					</div>
 				</div>
 			) : (
 				<div
@@ -186,6 +232,13 @@ export function FileSlot({
 				</div>
 			)}
 			{actions && <div className={s.slotActions}>{actions}</div>}
+			{previewing && file && fileUrl && (
+				<LocalFilePreview
+					file={file}
+					url={fileUrl}
+					onClose={closePreview}
+				/>
+			)}
 		</div>
 	);
 }

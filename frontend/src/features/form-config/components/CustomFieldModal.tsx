@@ -1,9 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button, Modal } from '../../../shared/components';
 import { FormField } from '../../../shared/components/Input/FormField';
 import { Toggle } from '../../../shared/components/Input/Toggle';
 import m from '../../../shared/components/Modal/Modal.module.css';
-import type { CustomFieldDef, CustomFieldType, FieldOption, FormDefinition } from '../../../shared/formConfig/types';
+import { CustomFields } from '../../../shared/formConfig/CustomFields';
+import { resolveForm } from '../../../shared/formConfig/fieldRules';
+import type {
+	CustomFieldDef,
+	CustomFieldType,
+	CustomValues,
+	FieldOption,
+	FormDefinition,
+} from '../../../shared/formConfig/types';
+import { configFromResolved } from '../../../shared/formConfig/useFormConfig';
 import { cx } from '../../../shared/utils/cx';
 import { removeDiacritics } from '../../../shared/utils/helper';
 import s from '../pages/FormConfigs.module.css';
@@ -21,6 +30,19 @@ const TYPES: CustomFieldType[] = [
 	'email',
 	'phone',
 ];
+
+// Biểu tượng + ví dụ cho từng loại — để chọn bằng mắt thay vì đoán tên
+const TYPE_INFO: Record<CustomFieldType, { icon: string; ex: string }> = {
+	text: { icon: 'Aa', ex: 'Mã ORCID, số quyết định' },
+	textarea: { icon: '¶', ex: 'Ghi chú, mô tả dài' },
+	number: { icon: '123', ex: 'Số năm kinh nghiệm' },
+	date: { icon: '📅', ex: 'Ngày cấp chứng chỉ' },
+	select: { icon: '◉', ex: 'Học hàm: GS / PGS' },
+	multiselect: { icon: '☑', ex: 'Lĩnh vực quan tâm' },
+	checkbox: { icon: '✓', ex: 'Cam kết, đồng ý' },
+	email: { icon: '@', ex: 'Email liên hệ phụ' },
+	phone: { icon: '☎', ex: 'SĐT người thân' },
+};
 
 const slug = (v: string) =>
 	removeDiacritics(v)
@@ -60,6 +82,23 @@ export function CustomFieldModal({
 }) {
 	const [f, setF] = useState<CustomFieldDef>(initial ?? { key: '', label: '', type: 'text', required: false });
 	const [error, setError] = useState('');
+	const [sample, setSample] = useState<CustomValues>({});
+	// Dựng form ảo chỉ có trường này để xem trước đúng như người dùng thấy
+	const preview = useMemo(() => {
+		const def: CustomFieldDef = {
+			...f,
+			key: 'preview',
+			label: f.label.trim() || '',
+			variants: undefined,
+			options: f.options?.filter((o) => o.label.trim()),
+		};
+		const resolved = resolveForm(
+			{ key: form.key, variants: form.variants, fields: [] },
+			{ custom: def.label ? [def] : [] },
+			form.variants[0].key,
+		);
+		return configFromResolved(resolved);
+	}, [f, form]);
 	const set = (patch: Partial<CustomFieldDef>) => setF((x) => ({ ...x, ...patch }));
 	const hasOptions = f.type === 'select' || f.type === 'multiselect';
 	const options: FieldOption[] = f.options ?? [];
@@ -131,76 +170,76 @@ export function CustomFieldModal({
 				</>
 			}
 		>
-			<div className={m.formRow}>
-				<FormField
-					htmlFor='cf-label'
-					label='Tên trường'
-					required
+			<FormField
+				htmlFor='cf-label'
+				label='Tên trường'
+				required
+			>
+				<input
+					id='cf-label'
+					className={m.formInput}
+					value={f.label}
+					maxLength={200}
+					placeholder='vd: Mã ORCID chủ nhiệm'
+					onChange={(e) => set({ label: e.target.value })}
+					autoFocus
+				/>
+			</FormField>
+			<FormField label='Loại dữ liệu — người dùng sẽ nhập kiểu gì?'>
+				<div
+					className={s.typeGrid}
+					role='radiogroup'
 				>
-					<input
-						id='cf-label'
-						className={m.formInput}
-						value={f.label}
-						maxLength={200}
-						placeholder='vd: Mã ORCID chủ nhiệm'
-						onChange={(e) => set({ label: e.target.value })}
-						autoFocus
-					/>
-				</FormField>
-				<FormField
-					htmlFor='cf-type'
-					label='Loại dữ liệu'
-				>
-					<select
-						id='cf-type'
-						className={m.formInput}
-						value={f.type}
-						onChange={(e) => {
-							const type = e.target.value as CustomFieldType;
-							set({
-								type,
-								rules: undefined,
-								options: type === 'select' || type === 'multiselect' ? (f.options?.length ? f.options : []) : undefined,
-							});
-						}}
-					>
-						{TYPES.map((t) => (
-							<option
-								key={t}
-								value={t}
-							>
-								{TYPE_LABEL[t]}
-							</option>
-						))}
-					</select>
-				</FormField>
-			</div>
+					{TYPES.map((t) => (
+						<button
+							key={t}
+							type='button'
+							role='radio'
+							aria-checked={f.type === t}
+							className={cx(s.typeCard, f.type === t && s.typeCardOn)}
+							onClick={() =>
+								set({
+									type: t,
+									rules: undefined,
+									options: t === 'select' || t === 'multiselect' ? (f.options?.length ? f.options : []) : undefined,
+								})
+							}
+						>
+							<span className={s.typeIcon}>{TYPE_INFO[t].icon}</span>
+							<span className={s.typeName}>{TYPE_LABEL[t]}</span>
+							<span className={s.typeEx}>{TYPE_INFO[t].ex}</span>
+						</button>
+					))}
+				</div>
+			</FormField>
 			{initial && initial.type !== f.type && (
 				<div className={m.formHint}>
 					Đổi loại dữ liệu: giá trị đã nhập trước đây có thể không còn hợp lệ khi sửa bản ghi.
 				</div>
 			)}
 
-			<FormField label='Hiện ở form'>
-				<div className={s.variantChips}>
-					{form.variants.map((v) => {
-						const on = variants.includes(v.key);
-						return (
-							<button
-								key={v.key}
-								type='button'
-								className={cx(s.variantChip, on && s.variantChipOn)}
-								onClick={() => {
-									const next = on ? variants.filter((x) => x !== v.key) : [...variants, v.key];
-									if (next.length) set({ variants: next });
-								}}
-							>
-								{v.label}
-							</button>
-						);
-					})}
-				</div>
-			</FormField>
+			{form.variants.length > 1 && (
+				<FormField label='Hiện ở form nào (xanh = có, gạch ngang = không)'>
+					<div className={s.variantChips}>
+						{form.variants.map((v) => {
+							const on = variants.includes(v.key);
+							return (
+								<button
+									key={v.key}
+									type='button'
+									className={cx(s.variantChip, on && s.variantChipOn)}
+									onClick={() => {
+										const next = on ? variants.filter((x) => x !== v.key) : [...variants, v.key];
+										if (next.length) set({ variants: next });
+									}}
+								>
+									{v.label}
+								</button>
+							);
+						})}
+					</div>
+				</FormField>
+			)}
 
 			<label className={s.reqBox}>
 				<Toggle
@@ -227,6 +266,8 @@ export function CustomFieldModal({
 									value={o.label}
 									maxLength={200}
 									placeholder={`Lựa chọn ${i + 1}`}
+									// Ô vừa bấm "+ Thêm lựa chọn" nhận con trỏ ngay
+									autoFocus={i === options.length - 1 && !o.label}
 									onChange={(e) => setOption(i, e.target.value)}
 								/>
 								<button
@@ -296,6 +337,23 @@ export function CustomFieldModal({
 					/>
 				</FormField>
 			)}
+
+			<FormField label='Xem trước'>
+				<div className={s.fieldStage}>
+					<div>
+						{preview.custom.length ? (
+							<CustomFields
+								cfg={preview}
+								value={sample}
+								onChange={setSample}
+								title={null}
+							/>
+						) : (
+							<span className={s.muted}>Nhập tên trường để xem trước.</span>
+						)}
+					</div>
+				</div>
+			</FormField>
 		</Modal>
 	);
 }

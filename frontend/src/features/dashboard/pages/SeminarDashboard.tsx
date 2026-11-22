@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BadgeSvg, CalendarSvg, ClipboardCheckSvg, UsersSvg } from '@/assets/icons';
 import { EVENT_TYPE_LABELS } from '@/features/seminar/types/seminar.type';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -6,12 +7,12 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getSeminarStats } from '../api/seminarDashboardApi';
 import { DashboardTabs } from '../components/DashboardTabs';
 import {
-	ActivityRows,
+	ActivityChart,
 	AttentionStrip,
 	KpiBand,
 	Panel,
 	RankBars,
-	ShareBar,
+	ShareDonut,
 	ShortList,
 } from '../components/DashKit';
 import { dk, fmt, panelState } from '../components/dashKitHelpers';
@@ -98,23 +99,27 @@ export default function SeminarDashboard() {
 				loading={loading}
 				items={[
 					{
+						icon: BadgeSvg,
 						label: `Hội thảo, hội nghị ${year}`,
 						value: fmt(kpi?.seminars_this_year),
 						context: `${fmt(kpi?.hosted_this_year)} BV tổ chức · ${fmt(kpi?.external_this_year)} cử người dự`,
 						to: '/admin/seminars',
 					},
 					{
+						icon: UsersSvg,
 						label: `Lượt tham dự ${year}`,
 						value: fmt(kpi?.participants_this_year),
 						context: `${fmt(kpi?.internal_participants_this_year)} lượt nhân sự nội viện`,
 					},
 					{
+						icon: ClipboardCheckSvg,
 						label: `Chứng nhận CME đã cấp ${year}`,
 						value: fmt(kpi?.cme_issued_this_year),
 						context: `${(kpi?.cme_credits_this_year ?? 0).toLocaleString('vi-VN')} tiết/tín chỉ`,
 						to: '/admin/cme-register',
 					},
 					{
+						icon: CalendarSvg,
 						label: `Sự kiện có cấp CME ${year}`,
 						value: fmt(kpi?.cme_seminars_this_year),
 						to: '/admin/seminars',
@@ -133,6 +138,7 @@ export default function SeminarDashboard() {
 								id: s.id,
 								title: s.title,
 								meta: `${s.location ?? 'Chưa có địa điểm'} · ${fmt(s.participant_count)} người tham dự`,
+								date: s.start_date,
 								side:
 									formatDate(s.start_date) +
 									(s.end_date && s.end_date !== s.start_date ? ` – ${formatDate(s.end_date)}` : ''),
@@ -161,10 +167,10 @@ export default function SeminarDashboard() {
 			<div className={dk.grid2}>
 				<Panel
 					title={`Hoạt động theo tháng năm ${year}`}
-					subtitle='Mỗi dòng một thang đo riêng; cột đậm là tháng hiện tại'
+					subtitle='Chọn chỉ số để xem; cột đậm là tháng hiện tại'
 				>
 					{panelState(loading, error, !hasMonthly, 'Chưa có sự kiện nào trong năm', 160) ?? (
-						<ActivityRows
+						<ActivityChart
 							labels={monthNums.map((m) => `T${m}`)}
 							highlightIndex={year === now.getFullYear() ? now.getMonth() : null}
 							totalLabel='Cả năm'
@@ -189,7 +195,7 @@ export default function SeminarDashboard() {
 					subtitle={`Năm ${year}`}
 				>
 					{panelState(loading, error, typeShare.length === 0, undefined, 160) ?? (
-						<ShareBar
+						<ShareDonut
 							data={typeShare}
 							unit='sự kiện'
 						/>

@@ -203,13 +203,7 @@ const filesUnder = (dir) =>
 				)
 		: [];
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
-const upload = (
-	uid,
-	enrollmentId,
-	kind = 'application_signed',
-	name = 'ho-so.pdf',
-	bytes = PDF,
-) => {
+const upload = (uid, enrollmentId, kind = 'proposal_approved', name = 'ho-so.pdf', bytes = PDF) => {
 	const form = new FormData();
 	form.append('file', new Blob([bytes], { type: 'application/pdf' }), name);
 	return fetch(`${base}/course-registrations/${enrollmentId}/files/${kind}`, {
@@ -246,15 +240,13 @@ test('danh sách bản khai chỉ lấy theo tài khoản đang đăng nhập; �
 		'waiting',
 	]);
 	assert.equal(mine.can_upload, true);
+	// Nội viện: chỉ còn tờ trình (nộp bổ sung sau) — chưa nộp thì vẫn là việc cần làm
 	assert.deepEqual(
 		mine.files.map((x) => [x.kind, x.uploaded_at]),
-		[
-			['application_signed', null],
-			['proposal_approved', null],
-		],
+		[['proposal_approved', null]],
 	);
-	assert.deepEqual(mine.files_missing, ['application_signed', 'proposal_approved']);
-	assert.deepEqual(mine.todo, ['Chưa nộp Đơn đăng ký đã ký', 'Chưa nộp Tờ trình đã duyệt']);
+	assert.deepEqual(mine.files_missing, ['proposal_approved']);
+	assert.deepEqual(mine.todo, ['Chưa nộp Tờ trình đã duyệt']);
 	const ext = data.find((r) => r.enrollment_id === 'E_A2');
 	assert.deepEqual(ext.files_missing, ['national_id', 'degree', 'license', 'decision']);
 	assert.equal(ext.todo.length, 4);
@@ -282,7 +274,7 @@ test('danh sách bản khai: file đã nộp có link (của chính mình); đơ
 		assert.equal(legacy.kind, 'dossier');
 		assert.equal(legacy.legacy, true);
 		assert.equal(legacy.file_url, '/uploads/training/course_registration/E_A/gop.pdf');
-		assert.equal(mine.files.length, 3, '2 loại của nội viện + dòng file gộp cũ');
+		assert.equal(mine.files.length, 2, 'tờ trình + dòng file gộp cũ');
 
 		FILE_ROWS.E_A = [];
 		REGS.E_A.enrollment_status = 'rejected';
@@ -290,7 +282,7 @@ test('danh sách bản khai: file đã nộp có link (của chính mình); đơ
 		mine = data.find((r) => r.enrollment_id === 'E_A');
 		assert.equal(mine.can_upload, false);
 		assert.deepEqual(mine.todo, []);
-		assert.equal(mine.files_missing.length, 2, 'vẫn báo thiếu nhưng không còn việc cần làm');
+		assert.equal(mine.files_missing.length, 1, 'vẫn báo thiếu nhưng không còn việc cần làm');
 	} finally {
 		REGS.E_A.enrollment_status = 'pending';
 		delete FILE_ROWS.E_A;
@@ -324,14 +316,14 @@ test('loại hồ sơ không thuộc đối tượng của đơn ⇒ 400 trướ
 	// Nội viện nộp loại của ngoại viện, ngoại viện nộp loại của nội viện
 	for (const [id, kind] of [
 		['E_A', 'national_id'],
-		['E_A2', 'application_signed'],
 		['E_A2', 'proposal_approved'],
 	]) {
 		const res = await upload('U_A', id, kind);
 		assert.equal(res.status, 400, `${id}/${kind}`);
 		assert.equal((await res.json()).message, 'Loại hồ sơ không hợp lệ cho đơn này.');
 	}
-	for (const kind of ['dossier', 'khong-co']) {
+	// Đơn đăng ký đã ký thôi yêu cầu ⇒ không còn trong danh sách nộp được
+	for (const kind of ['dossier', 'khong-co', 'application_signed']) {
 		const res = await upload('U_A', 'E_A', kind);
 		assert.equal(res.status, 400, kind);
 		// Lỗi validator: message chung của validate(), câu riêng nằm ở errors[].msg
@@ -365,7 +357,7 @@ test('nộp file cho bản khai của chính mình ⇒ attach đúng mã đơn +
 	assert.equal(first.message, 'Đã nộp hồ sơ, chờ Trung tâm Đào tạo xét duyệt');
 	assert.deepEqual(Object.keys(data).sort(), ['files_missing', 'kind', 'uploaded_at']);
 	assert.equal(data.kind, 'proposal_approved');
-	assert.deepEqual(data.files_missing, ['application_signed', 'proposal_approved']);
+	assert.deepEqual(data.files_missing, ['proposal_approved']);
 	// Ngoại viện (đơn của chính mình) — loại của ngoại viện, truyền cả trainee_id cho attach
 	res = await upload('U_A', 'E_A2', 'degree');
 	assert.equal(res.status, 200, await res.clone().text());
@@ -382,13 +374,13 @@ test('nộp file cho bản khai của chính mình ⇒ attach đúng mã đơn +
 
 test('nộp file: không kèm file ⇒ 400; đuôi ngoài PDF / JPG / PNG ⇒ 400 và không xuống đĩa', async () => {
 	calls.attach.length = 0;
-	let res = await fetch(`${base}/course-registrations/E_A/files/application_signed`, {
+	let res = await fetch(`${base}/course-registrations/E_A/files/proposal_approved`, {
 		method: 'POST',
 		headers: { 'x-user': 'U_A' },
 	});
 	assert.equal(res.status, 400);
 	assert.equal((await res.json()).message, 'Vui lòng chọn file cần nộp.');
-	res = await upload('U_A', 'E_A', 'application_signed', 'don.docx');
+	res = await upload('U_A', 'E_A', 'proposal_approved', 'don.docx');
 	assert.equal(res.status, 400);
 	assert.equal((await res.json()).message, 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.');
 	assert.equal(calls.attach.length, 0);

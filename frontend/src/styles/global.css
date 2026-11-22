@@ -252,12 +252,12 @@ table {
 
 /* === MOBILE TOUCH TARGETS & MODAL UTILITIES === */
 @media (max-width: 768px) {
-	/* Touch targets minimum 38px cho nút thông thường (ngoại trừ dot/chip/icon) */
+	/* Touch targets minimum 38px cho nút thông thường (ngoại trừ dot/chip/icon/công tắc Toggle) */
 	button:not([class*='dot']):not([class*='Dot']):not([class*='chip']):not(
 			[class*='Chip']
 		):not([class*='zoom']):not([class*='Zoom']):not([class*='arrow']):not(
 			[class*='Arrow']
-		):not([class*='close']):not([class*='Close']),
+		):not([class*='close']):not([class*='Close']):not([class*='_track_']),
 	a,
 	input[type='button'],
 	input[type='submit'] {

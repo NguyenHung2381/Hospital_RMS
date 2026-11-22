@@ -3,6 +3,7 @@ import { FormField } from '../components/Input/FormField';
 import m from '../components/Modal/Modal.module.css';
 import { cx } from '../utils/cx';
 import type { FormConfig } from './useFormConfig';
+import { withChoices } from './withChoices';
 
 type NativeInputProps = {
 	placeholder?: string;
@@ -149,14 +150,15 @@ export function CfgField({
 		if (f) {
 			if (f.placeholder) extra.placeholder = f.placeholder;
 			const r = f.rules;
-			if (r.maxLength) extra.maxLength = Math.min(r.maxLength, el.props.maxLength ?? Infinity);
+			if (!f.choices && r.maxLength) extra.maxLength = Math.min(r.maxLength, el.props.maxLength ?? Infinity);
 			if (r.minLength) extra.minLength = r.minLength;
 			if (f.type === 'number') {
 				if (r.min !== undefined) extra.min = r.min;
 				if (r.max !== undefined) extra.max = r.max;
 			}
 		}
-		input = cloneElement(el, extra);
+		// Admin đổi ô chữ thành danh sách chọn ⇒ thay bằng <select> cùng value/onChange
+		input = withChoices(f, cloneElement(el, extra));
 	}
 
 	return (

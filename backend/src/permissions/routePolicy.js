@@ -63,6 +63,10 @@ module.exports = {
 			'Cổng công khai — Đơn đăng ký nháp (.docx) của nội viện: phải khớp lại mã NV + họ tên (sai ⇒ 404 chung), không trả gì ngoài dữ liệu người đó vừa gõ + khoa / trình độ như staff-check, rate-limit theo IP + theo mã NV',
 		[`POST ${API}/public/course-registration/draft/proposal`]:
 			'Cổng công khai — Tờ trình nháp + Bảng phân tích để trống (.docx) của nội viện: khớp lại mã NV + họ tên, chỉ 1 người (chính người đó), rate-limit theo IP + theo mã NV',
+		[`POST ${API}/public/course-registration/:code/details`]:
+			'Cổng công khai — bản khai đầy đủ để điền sẵn form sửa, theo mã + CCCD / download_token trong body (không nhận email; sai mã hay sai yếu tố đều 404, giới hạn theo mã)',
+		[`POST ${API}/public/course-registration/:code/amend`]:
+			'Cổng công khai — người đăng ký tự sửa bản khai khi còn chờ duyệt: captcha + mã + CCCD / download_token (body.access) + lý do + ký lại (+ OTP email nếu bật), tối đa 5 lần, lưu lịch sử trước → sau (giới hạn theo mã)',
 		[`POST ${API}/public/course-registration/:code/files/:kind`]:
 			'Cổng công khai — nộp / thay 1 file hồ sơ (PDF / JPG / PNG, secureUpload) theo mã + yếu tố thứ hai trong body, chỉ khi đơn còn chờ duyệt (giới hạn theo mã)',
 		[`GET ${API}/public/topic-rounds`]: 'Cổng công khai — đợt đang mở',

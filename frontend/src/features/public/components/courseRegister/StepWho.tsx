@@ -30,8 +30,14 @@ interface Props {
 	errors: Record<string, string | undefined>;
 }
 
-// Bước 3: nội viện hay ngoại viện; nội viện tra mã nhân viên + họ tên
+// Mục "Đối tượng đăng ký": nội viện hay ngoại viện; nội viện tra mã nhân viên + họ tên
 export function StepWho({ form, onSource, onField, staff, staffOk, checking, onCheck, staffError, errors }: Props) {
+	// Enter trong ô mã NV / họ tên = bấm "Kiểm tra", không gửi cả trang đăng ký
+	const checkOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key !== 'Enter') return;
+		e.preventDefault();
+		if (!staffOk && !checking) onCheck();
+	};
 	return (
 		<>
 			<fieldset
@@ -85,6 +91,7 @@ export function StepWho({ form, onSource, onField, staff, staffOk, checking, onC
 								className={`${styles.input} ${errors.staff && !form.staff_number.trim() ? s.inputError : ''}`}
 								value={form.staff_number}
 								onChange={(e) => onField('staff_number', e.target.value.replace(/\D/g, '').slice(0, 9))}
+								onKeyDown={checkOnEnter}
 								inputMode='numeric'
 								autoComplete='off'
 								placeholder='VD: 1234'
@@ -103,6 +110,7 @@ export function StepWho({ form, onSource, onField, staff, staffOk, checking, onC
 								className={`${styles.input} ${errors.staff && !form.full_name.trim() ? s.inputError : ''}`}
 								value={form.full_name}
 								onChange={(e) => onField('full_name', e.target.value)}
+								onKeyDown={checkOnEnter}
 								autoComplete='name'
 								maxLength={150}
 								placeholder='VD: Nguyễn Văn An'
@@ -139,6 +147,10 @@ export function StepWho({ form, onSource, onField, staff, staffOk, checking, onC
 								<div>
 									<dt>Trình độ</dt>
 									<dd>{staff.info.qualification || 'Chưa có trong hồ sơ'}</dd>
+								</div>
+								<div>
+									<dt>Cơ quan công tác</dt>
+									<dd>{HOSPITAL}</dd>
 								</div>
 							</dl>
 						</div>

@@ -159,6 +159,10 @@ export interface RegisterPayload {
 	invoice_email?: string;
 	rules_accepted: boolean;
 	declared_true: boolean;
+	/** Đồng ý cho Bệnh viện xử lý dữ liệu cá nhân */
+	data_consent: boolean;
+	/** Họ tên gõ lại để ký xác nhận — máy chủ đòi trùng full_name (không phân biệt hoa thường) */
+	signature_name: string;
 	/** Trường tùy chỉnh (Cấu hình form 'course_registration') */
 	custom?: CustomValues;
 	course_id: string;
@@ -190,7 +194,10 @@ export interface RegistrationFileKindDef {
 	key: RegistrationFileKind;
 	label: string;
 	hint: string;
+	/** Bắt buộc lúc gửi đăng ký */
 	required: boolean;
+	/** Không bắt buộc lúc gửi, nộp bổ sung sau được (tờ trình nội viện) — vẫn tính là "còn thiếu" */
+	later?: boolean;
 }
 
 export interface RegistrationAttachmentRules {
@@ -207,6 +214,8 @@ export interface RegistrationFileItem {
 	kind: RegistrationFileKind | 'dossier';
 	label: string;
 	required: boolean;
+	/** Nộp bổ sung sau được (tờ trình nội viện) */
+	later?: boolean;
 	/** true = file gộp nộp theo cách cũ (chỉ xem, không nộp mới) */
 	legacy: boolean;
 	/** null = chưa nộp (hoặc file đã bị xóa) */
@@ -217,6 +226,31 @@ export interface RegistrationFileItem {
 	mime_type: string | null;
 	/** Ngoại viện: trạng thái duyệt của dòng trainee_documents; nội viện / chưa nộp: null */
 	review_status: 'pending' | 'approved' | 'rejected' | null;
+	/** Kết quả tự kiểm tra loại file (OCR / QR) — chỉ để cảnh báo; null = chưa nộp / loại không kiểm */
+	check?: RegistrationFileCheck | null;
+}
+
+/** Mã cảnh báo của bước tự kiểm tra (backend docCheckRules.js WARNING_MESSAGES + 'duplicate') */
+export type RegistrationFileCheckWarning =
+	| 'blank'
+	| 'low_resolution'
+	| 'duplicate'
+	| 'id_mismatch'
+	| 'cccd_missing_front'
+	| 'cccd_missing_back'
+	| 'name_not_found';
+
+/** Kết quả tự kiểm tra 1 file hồ sơ (backend docCheckService.present) */
+export interface RegistrationFileCheck {
+	status: 'pending' | 'running' | 'done' | 'error' | 'skipped';
+	/** ok = đúng loại; mismatch = có vẻ sai loại; unclear = không đọc được; null = chưa xong */
+	verdict: 'ok' | 'mismatch' | 'unclear' | null;
+	detected_kind: string | null;
+	detected_label: string | null;
+	/** ok = đúng, không cảnh báo; warn = nên xem lại; info = đang kiểm / không kết luận */
+	level: 'ok' | 'warn' | 'info';
+	message: string;
+	warnings: { code: RegistrationFileCheckWarning; message: string }[];
 }
 
 /** Kết quả nộp / thay 1 file (công khai và cổng nhân viên) */
@@ -244,6 +278,13 @@ export interface CourseRegistrationRules {
 	id_issue_places: string[];
 	email_otp_required: boolean;
 	attachments: RegistrationAttachmentRules;
+	/** Nguyên văn câu cam kết máy chủ sẽ lưu vào bản ghi xác nhận điện tử */
+	consent: RegistrationConsentText;
+}
+export interface RegistrationConsentText {
+	version: string;
+	commitments: { rules: string; declared: string; data: string };
+	signature_note: string;
 }
 export const getCourseRegistrationRules = () => request<CourseRegistrationRules>('/course-registration/rules');
 
@@ -303,7 +344,7 @@ export interface RegistrationStatus {
 	files: RegistrationFileItem[];
 	files_missing: RegistrationFileKind[];
 }
-const registrationPath = (code: string, action: 'status' | 'application') =>
+const registrationPath = (code: string, action: 'status' | 'application' | 'details' | 'amend') =>
 	`/course-registration/${encodeURIComponent(code)}/${seg(action)}`;
 
 export const getRegistrationStatus = (code: string, proof: RegistrationProof) =>
@@ -317,6 +358,57 @@ export const downloadRegistrationApplication = (code: string, proof: Registratio
 		method: 'POST',
 		body: JSON.stringify(proof),
 	});
+/** Bản khai đầy đủ để điền sẵn form sửa (mã + CCCD / download_token, không nhận email) */
+export interface RegistrationEditable {
+	registration_code: string;
+	source: RegistrationSource;
+	enrollment_status: string | null;
+	/** Còn chờ duyệt và chưa sửa quá số lần cho phép */
+	can_edit: boolean;
+	/** Lý do không sửa được (null = sửa được) */
+	closed_reason: string | null;
+	amendments_left: number;
+	snapshot: Record<string, string | number | null | undefined>;
+	/** null với nội viện */
+	invoice: Record<string, string | null> | null;
+	custom: CustomValues;
+	/** Nội viện: phần lấy từ hồ sơ nhân sự (không sửa ở đây) + email nhận OTP đã che */
+	staff: {
+		staff_number: number | string | null;
+		full_name: string | null;
+		department_id: string | null;
+		department_name: string | null;
+		qualification: string | null;
+		email_masked: string | null;
+	} | null;
+	amendments: { seq: number; created_at: string; reason: string; fields: string[] }[];
+}
+export const getRegistrationDetails = (code: string, proof: RegistrationProof) =>
+	request<RegistrationEditable>(registrationPath(code, 'details'), {
+		method: 'POST',
+		body: JSON.stringify(proof),
+	});
+
+/** Bản sửa: đúng các trường của form đăng ký (trừ khóa học / nội quy) + lý do + ký lại */
+export type AmendPayload = Omit<RegisterPayload, 'course_id' | 'program_id' | 'rules_accepted' | 'website'> & {
+	/** Yếu tố thứ hai ĐANG lưu (CCCD cũ / download_token) — body còn chứa CCCD mới */
+	access: { national_id: string } | { download_token: string };
+	reason: string;
+};
+export interface AmendResult {
+	seq: number;
+	consent_hash: string;
+	fields: string[];
+	identity_changed: boolean;
+	/** Trạng thái tra cứu sau khi sửa */
+	status: RegistrationStatus;
+}
+export const amendRegistration = (code: string, payload: AmendPayload) =>
+	request<AmendResult>(registrationPath(code, 'amend'), {
+		method: 'POST',
+		body: JSON.stringify(payload),
+	});
+
 /** Nộp / thay 1 loại hồ sơ của đơn (chỉ khi lượt ghi danh còn chờ duyệt) */
 export const uploadRegistrationFile = (
 	code: string,

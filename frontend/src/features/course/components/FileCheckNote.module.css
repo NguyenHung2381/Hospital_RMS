@@ -1,0 +1,32 @@
+.inline {
+	display: inline-flex;
+	align-items: center;
+}
+
+.muted {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-500);
+}
+
+/* Chiếm trọn 1 dòng trong .fileRow (flex-wrap) */
+.warn {
+	flex-basis: 100%;
+	padding: 6px 10px;
+	border: 1px solid var(--tone-amber-border);
+	border-radius: var(--radius-lg);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+}
+
+.list {
+	margin: 2px 0 0;
+	padding-left: 18px;
+}
+
+.hint {
+	display: block;
+	margin-top: 2px;
+	opacity: 0.8;
+}

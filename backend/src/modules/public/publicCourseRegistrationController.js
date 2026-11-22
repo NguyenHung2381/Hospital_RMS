@@ -5,6 +5,9 @@
 // riêng (attemptLimiter, khóa đã băm) — đổi IP liên tục vẫn không dò được. Khóa theo mã NV
 // đã chuẩn hóa (service.staffAttemptKey) — thêm số 0 đứng đầu không tạo bộ đếm mới.
 const service = require('./publicCourseRegistrationService');
+const amendService = require('./publicRegistrationAmendService');
+const { clientOf } = require('../training/registration/registrationConsent');
+const emailOtp = require('../training/registration/registrationEmailOtpService');
 const { verifyCaptcha } = require('../../utils/captcha');
 const { success, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
@@ -78,14 +81,14 @@ const verifyEmailOtp = asyncHandler(async (req, res) => {
 
 // Giới hạn theo mã đăng ký rồi mới tra — áp cho mọi mã (có hay không) như nhau.
 // opts.allowEmail = false: tải đơn / nộp hồ sơ không nhận email làm yếu tố thứ hai (service.resolveAccess).
-const withRegistration = async (req, res, opts) => {
+const withRegistration = async (req, res, opts, factor = req.body) => {
 	const code = String(req.params.code);
 	const key = normalizeCode(code) || code.slice(0, 32);
 	if (!(await attempts.hit('course-reg-code', key, CODE_PER_CODE_MAX, HOUR))) {
 		error(res, 'Mã đăng ký này đã được tra cứu quá nhiều lần. Vui lòng thử lại sau 1 giờ.', 429);
 		return null;
 	}
-	return service.resolveAccess(code, req.body, opts);
+	return service.resolveAccess(code, factor, opts);
 };
 
 const getStatus = asyncHandler(async (req, res) => {
@@ -140,7 +143,36 @@ const uploadFile = asyncHandler(async (req, res) => {
 	success(res, await service.uploadFile(reg, req.params.kind, req.file), 'Đã nộp hồ sơ.');
 });
 
+// Bản khai đầy đủ để điền sẵn form sửa — có CCCD ⇒ chỉ nhận CCCD / download_token như tải đơn
+const getEditable = asyncHandler(async (req, res) => {
+	const reg = await withRegistration(req, res, { allowEmail: false });
+	if (!reg) return;
+	success(res, await amendService.getEditable(reg));
+});
+
+// Sửa bản khai: captcha (dùng 1 lần) → giới hạn theo mã + yếu tố thứ hai (body.access) → lưu
+const amend = asyncHandler(async (req, res) => {
+	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip)))
+		return error(res, CAPTCHA_FAILED, 400);
+	const reg = await withRegistration(req, res, { allowEmail: false }, req.body.access);
+	if (!reg) return;
+	const otpRequired = await emailOtp.isRequired();
+	const result = await amendService.amend(reg, req.body, req.formCustom, {
+		otpRequired,
+		emailProof: otpRequired ? emailOtp.readToken(req.body.email_token) : null,
+		client: clientOf(req),
+	});
+	const fresh = await amendService.reload(reg.registration_code);
+	success(
+		res,
+		{ ...result, status: await service.getStatus(fresh) },
+		'Đã lưu bản sửa lần ' + result.seq + '.',
+	);
+});
+
 module.exports = {
+	getEditable,
+	amend,
 	getRules,
 	staffCheck,
 	requestEmailOtp,

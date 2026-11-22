@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
+import { BadgeSvg, BookOpenSvg, TopicSvg, UsersSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getOverviewStats } from '../api/overviewDashboardApi';
 import { DashboardTabs } from '../components/DashboardTabs';
 import {
-	ActivityRows,
+	ActivityChart,
 	AttentionStrip,
 	KpiBand,
 	Panel,
@@ -102,24 +103,28 @@ export default function OverviewDashboard() {
 				loading={loading}
 				items={[
 					{
+						icon: UsersSvg,
 						label: 'Tài khoản đang hoạt động',
 						value: fmt(kpi?.users_active),
 						context: `${fmt(kpi?.departments_total)} khoa/phòng`,
 						to: '/admin/users',
 					},
 					{
+						icon: TopicSvg,
 						label: 'Đề tài NCKH',
 						value: fmt(kpi?.topics_total),
 						context: `${fmt(kpi?.topics_this_year)} đăng ký năm ${year} · ${fmt(kpi?.topics_approved)} đã duyệt`,
 						to: '/admin/dashboard/research',
 					},
 					{
+						icon: BookOpenSvg,
 						label: 'Học viên đang đào tạo',
 						value: fmt(kpi?.trainees_active),
 						context: `${fmt(kpi?.courses_open)} khóa đang mở · ${fmt(kpi?.lecturers_active)} giảng viên`,
 						to: '/admin/dashboard/training',
 					},
 					{
+						icon: BadgeSvg,
 						label: `Hội thảo, hội nghị ${year}`,
 						value: fmt(kpi?.seminars_this_year),
 						context: `${fmt(kpi?.participants_this_year)} lượt tham dự · ${fmt(kpi?.cme_issued_this_year)} CME đã cấp`,
@@ -130,12 +135,13 @@ export default function OverviewDashboard() {
 
 			<Panel
 				title='Hoạt động 12 tháng gần nhất'
-				subtitle='Mỗi dòng một thang đo riêng; cột đậm là tháng hiện tại'
+				subtitle='Chọn chỉ số để xem; cột đậm là tháng hiện tại'
 			>
 				{panelState(loading, error, !hasActivity, 'Chưa có hoạt động nào trong 12 tháng qua') ?? (
-					<ActivityRows
+					<ActivityChart
 						labels={months.map(monthLabel)}
 						totalLabel='12 tháng'
+							height={220}
 						series={[
 							{ name: 'Đề tài mới', values: pick('topics'), unit: 'đề tài' },
 							{ name: 'Đăng ký khóa học', values: pick('enrollments'), unit: 'lượt' },

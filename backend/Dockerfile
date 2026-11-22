@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 FROM node:25-alpine AS base
 WORKDIR /app
+# Tesseract OCR + gói tiếng Việt (~15MB): tự kiểm tra loại file hồ sơ đăng ký khóa học
+# (src/modules/training/registration/docCheck/). Ở stage chung để cả dev lẫn prod đều có.
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-vie
 # Entrypoint tự sinh JWT secret nếu thiếu (xem docker-entrypoint.sh). Đặt ngoài
 # /app để bind mount ./backend:/app ở bản dev không che mất; tr bỏ CR (CRLF) phòng
 # khi file bị checkout trên Windows. Nằm ở stage chung, trước bước cài deps/copy

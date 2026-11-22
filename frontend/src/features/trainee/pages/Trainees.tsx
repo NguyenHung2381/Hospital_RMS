@@ -15,8 +15,8 @@ import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeImportModal } from '../components/TraineeImportModal';
 import { QuickAddExternalTraineeModal } from '../components/QuickAddExternalTraineeModal';
-import { TraineeDocStateBadge, TraineeDocStateLegend } from '../components/TraineeDocState';
-import { DOC_STATE_META, DOC_STATE_ORDER, docStateRowClass } from '../utils/docState';
+import { TraineeDocStateBadge } from '../components/TraineeDocState';
+import { DOC_STATE_META, DOC_STATE_ORDER } from '../utils/docState';
 import type { TraineeDocState } from '../api/traineeRecordApi';
 import { useTrainees } from '../hooks/useTrainees';
 import { formatDate } from '../../../shared/utils/formatDate';
@@ -153,7 +153,6 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 						)}
 					</div>
 					<div className={styles.tableControls}>
-						<TraineeDocStateLegend />
 						<select
 							className={styles.filterSelect}
 							value={d.docFilter}
@@ -238,7 +237,7 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 								return (
 									<tr
 										key={t.id}
-										className={`${styles.tr} ${docStateRowClass(t.doc_state)} ${rowSel.isSelected(t.id) ? sel.rowSelected : ''}`}
+										className={`${styles.tr} ${rowSel.isSelected(t.id) ? sel.rowSelected : ''}`}
 									>
 										<td className={sel.checkCol}>
 											<SelectCheckbox

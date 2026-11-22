@@ -44,7 +44,8 @@ const file = (name, over = {}) => ({
 	mimetype: 'application/pdf',
 	...over,
 });
-const INT = { application_signed: file('don.pdf'), proposal_approved: file('tt.jpg') };
+// Nội viện: chỉ còn tờ trình đã duyệt (không bắt buộc lúc gửi)
+const INT = { proposal_approved: file('tt.jpg') };
 const EXT = {
 	national_id: file('cccd.pdf'),
 	degree: file('bang.jpg'),
@@ -79,11 +80,21 @@ test('collectByKind: bóc files[<kind>] của multer .fields(); mảng / undefin
 test('assertSubmission: đủ hồ sơ thì qua; nội viện có thể gửi JPG / PNG', () => {
 	assert.doesNotThrow(() => svc.assertSubmission('internal', INT));
 	assert.doesNotThrow(() => svc.assertSubmission('external', EXT));
+	// Tờ trình nộp bổ sung sau được ⇒ nội viện không kèm file nào vẫn qua
+	assert.doesNotThrow(() => svc.assertSubmission('internal', {}));
 });
 
 test('assertSubmission: loại của đối tượng kia ⇒ 400 đúng câu', () => {
 	assert.throws(
-		() => svc.assertSubmission('external', { ...EXT, application_signed: INT.application_signed }),
+		() => svc.assertSubmission('external', { ...EXT, proposal_approved: INT.proposal_approved }),
+		{
+			statusCode: 400,
+			message: 'Hồ sơ "Tờ trình đã duyệt" không thuộc đối tượng đăng ký đã chọn.',
+		},
+	);
+	// Đơn đăng ký đã ký thôi yêu cầu ⇒ không nhận nữa
+	assert.throws(
+		() => svc.assertSubmission('internal', { ...INT, application_signed: file('don.pdf') }),
 		{
 			statusCode: 400,
 			message: 'Hồ sơ "Đơn đăng ký đã ký" không thuộc đối tượng đăng ký đã chọn.',
@@ -110,27 +121,18 @@ test('assertSubmission: thiếu ⇒ 400 liệt kê nhãn đúng thứ tự khai 
 	assert.throws(() => svc.assertSubmission('external', two), {
 		message: 'Vui lòng đính kèm đủ hồ sơ bắt buộc: Bằng tốt nghiệp, Quyết định cử đi học.',
 	});
-	assert.throws(
-		() => svc.assertSubmission('internal', { proposal_approved: INT.proposal_approved }),
-		{
-			message: 'Vui lòng đính kèm đủ hồ sơ bắt buộc: Đơn đăng ký đã ký.',
-		},
-	);
 });
 
 test('assertSubmission: file không phải PDF / JPG / PNG ⇒ 400', () => {
 	for (const bad of ['don.docx', 'don.exe', 'don', 'don.pdf.exe']) {
-		assert.throws(
-			() => svc.assertSubmission('internal', { ...INT, application_signed: file(bad) }),
-			{
-				statusCode: 400,
-				message: 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.',
-			},
-		);
+		assert.throws(() => svc.assertSubmission('internal', { proposal_approved: file(bad) }), {
+			statusCode: 400,
+			message: 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.',
+		});
 	}
 	// Đuôi hoa + jpeg vẫn nhận
 	assert.doesNotThrow(() =>
-		svc.assertSubmission('internal', { ...INT, application_signed: file('ĐƠN.JPEG') }),
+		svc.assertSubmission('internal', { proposal_approved: file('TỜ-TRÌNH.JPEG') }),
 	);
 });
 
@@ -147,7 +149,7 @@ const row = (kind, over = {}) => ({
 	...over,
 });
 
-test('summarize: luôn đủ dòng theo đối tượng + dossier cuối; file_url null khi withUrl:false', () => {
+test('summarize: luôn đủ dòng theo đối tượng + loại đã thôi yêu cầu + dossier cuối; file_url null khi withUrl:false', () => {
 	const none = svc.summarize('external', []);
 	assert.deepEqual(
 		none.map((x) => [x.kind, x.required, x.legacy, x.uploaded_at, x.file_name, x.file_url]),
@@ -163,18 +165,20 @@ test('summarize: luôn đủ dòng theo đối tượng + dossier cuối; file_u
 	assert.deepEqual(
 		noUrl.map((x) => [x.kind, x.legacy, x.file_url === null]),
 		[
-			['application_signed', false, true],
 			['proposal_approved', false, true],
+			['application_signed', true, true],
 			['dossier', true, true],
 		],
 	);
 	assert.equal(noUrl[2].label, 'Hồ sơ nộp bổ sung (đơn + tờ trình, 1 file)');
 	assert.equal(noUrl[2].required, false);
 	assert.deepEqual(Object.keys(noUrl[0]).sort(), [
+		'check',
 		'file_name',
 		'file_url',
 		'kind',
 		'label',
+		'later',
 		'legacy',
 		'mime_type',
 		'required',
@@ -182,10 +186,11 @@ test('summarize: luôn đủ dòng theo đối tượng + dossier cuối; file_u
 		'uploaded_at',
 	]);
 	const withUrl = svc.summarize('internal', rows, { withUrl: true });
-	assert.equal(withUrl[0].file_url, '/uploads/application_signed.pdf');
-	assert.equal(withUrl[1].file_url, null, 'loại chưa nộp không có link');
-	// Dòng dossier chỉ có khi đơn có file gộp
-	assert.equal(svc.summarize('internal', []).length, 2);
+	assert.equal(withUrl[1].file_url, '/uploads/application_signed.pdf');
+	assert.equal(withUrl[0].file_url, null, 'loại chưa nộp không có link');
+	assert.equal(withUrl[0].later, true, 'tờ trình nộp bổ sung sau được');
+	// Dòng đơn đã ký / dossier chỉ có khi đơn cũ có file đó
+	assert.equal(svc.summarize('internal', []).length, 1);
 	// Không có dòng nào của loại đối tượng kia lọt vào
 	assert.ok(!svc.summarize('internal', [row('national_id')]).some((x) => x.kind === 'national_id'));
 });
@@ -225,21 +230,21 @@ test('attach nội viện: lần đầu ⇒ file entity course_registration + 1 
 	reset();
 	const out = await svc.attach(
 		{ enrollment_id: 'E1', source: 'internal', trainee_id: 'T1' },
-		'application_signed',
-		file('don.pdf'),
+		'proposal_approved',
+		file('tt.pdf'),
 		null,
 	);
-	assert.equal(out.kind, 'application_signed');
+	assert.equal(out.kind, 'proposal_approved');
 	assert.ok(out.uploaded_at instanceof Date);
 	assert.deepEqual(saved, [
-		{ entity: 'course_registration', entityId: 'E1', name: 'don.pdf', actorId: null },
+		{ entity: 'course_registration', entityId: 'E1', name: 'tt.pdf', actorId: null },
 	]);
 	const ins = log.filter((q) => /INSERT INTO course_registration_files/.test(q.text));
 	assert.equal(ins.length, 1);
 	assert.match(ins[0].text, /ON CONFLICT \(enrollment_id, kind\) DO UPDATE/);
 	assert.deepEqual(
 		[ins[0].inputs.id, ins[0].inputs.kind, ins[0].inputs.file_id, ins[0].inputs.doc_id],
-		['E1', 'application_signed', 'TF_NEW1', null],
+		['E1', 'proposal_approved', 'TF_NEW1', null],
 	);
 	assert.deepEqual(softDeleted, []);
 	assert.equal(added.length, 0);
@@ -342,6 +347,6 @@ test('attachAll: nộp lần lượt theo thứ tự loại của đối tượn
 		log
 			.filter((q) => /INSERT INTO course_registration_files/.test(q.text))
 			.map((q) => q.inputs.kind),
-		['application_signed', 'proposal_approved'],
+		['proposal_approved'],
 	);
 });

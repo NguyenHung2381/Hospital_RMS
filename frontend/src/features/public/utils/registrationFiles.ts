@@ -13,6 +13,13 @@ export const extOf = (name: string) => {
 	return i < 0 ? '' : name.slice(i).toLowerCase();
 };
 
+/** File ảnh (JPG/PNG) — xem trước bằng <img> */
+export const isImageFile = (file: File) =>
+	file.type.startsWith('image/') || ['.jpg', '.jpeg', '.png'].includes(extOf(file.name));
+
+/** File PDF — xem trước bằng <embed> */
+export const isPdfFile = (file: File) => file.type === 'application/pdf' || extOf(file.name) === '.pdf';
+
 export const formatFileSize = (bytes: number) =>
 	bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 

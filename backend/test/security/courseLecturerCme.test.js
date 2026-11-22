@@ -104,13 +104,30 @@ const log = install(async (text, inputs) => {
 			},
 		];
 	// RETURNING tgt.approval_status: dòng chèn mới mang đúng trạng thái câu INSERT ghi
-	if (/INSERT INTO cme_records/.test(text))
+	if (/INSERT INTO cme_records/.test(text)) {
+		// chế độ cộng thẳng, người gọi thiếu quyền: dòng của chính người gọi 'pending'
+		if (/CASE WHEN src\.user_id = @actor_id THEN 'pending' ELSE 'approved' END/.test(text))
+			return JSON.parse(inputs.rows).map((x) => ({
+				approval_status: x.user_id === inputs.actor_id ? 'pending' : 'approved',
+			}));
 		return [{ approval_status: /'pending', NULL, NULL/.test(text) ? 'pending' : 'approved' }];
+	}
 	return [];
 });
 
 const { signToken } = require('../../src/utils/keys');
 const app = require('../../src/app');
+
+// Cấu hình chế độ duyệt (CME_TRAINEE_APPROVAL / CME_LECTURER_APPROVAL) cho từng test; trống =
+// mặc định. courseCmeService gọi systemSettingService.getValue qua đối tượng module ⇒ thay được.
+const settingSvc = require('../../src/modules/settings/systemSettingService');
+const settings = {};
+const realGetValue = settingSvc.getValue;
+settingSvc.getValue = async (key, fallback) =>
+	key in settings ? settings[key] : realGetValue(key, fallback);
+test.afterEach(() => {
+	for (const k of Object.keys(settings)) delete settings[k];
+});
 
 let srv;
 let base;
@@ -221,6 +238,89 @@ test('A2: dòng giảng viên tính theo buổi đã dạy (GV phụ chưa nhậ
 	assert.match(t.slice(t.indexOf('ON CONFLICT')), /category_id = EXCLUDED\.category_id/);
 	// câu xóa dòng GV không còn giờ giảng dùng cùng danh sách
 	assert.equal(lecturerDelete(r.entries).inputs.rows, up.inputs.rows);
+});
+
+// ─── Chế độ duyệt dòng tự cộng (TT 32/2023 Điều 9 khoản 1, 4; Điều 6.2.c) ────────────────────
+
+test('CME_LECTURER_APPROVAL=pending: cả người quản lý CME khóa điểm cũng chỉ ghi "pending"', async () => {
+	settings.CME_LECTURER_APPROVAL = 'pending';
+	const r = await call('UMGR', 'POST', '/courses/KH0001/cme-sync');
+	assert.equal(r.status, 200);
+	const t = normalize(lecturerUpsert(r.entries).text);
+	assert.match(t, /'pending', NULL, NULL, 'course_lecturer'/);
+	assert.doesNotMatch(t, /'approved', @actor_id/);
+	const conflict = t.slice(t.indexOf('ON CONFLICT'));
+	assert.match(conflict, /THEN 'rejected'/);
+	assert.match(conflict, /ELSE 'pending' END/);
+	assert.equal(r.body.data.lecturers_pending, true);
+	// quyền dọn dòng đã duyệt của GV bị gỡ phân công vẫn theo cme_records:manage
+	assert.doesNotMatch(normalize(lecturerDelete(r.entries).text), /approval_status = 'pending'/);
+});
+
+test('CME_LECTURER_APPROVAL=approved: người thiếu quyền không tự duyệt được dòng của chính mình', async () => {
+	settings.CME_LECTURER_APPROVAL = 'approved';
+	const r = await call('ULEC1', 'POST', '/courses/KH0001/grades/lock');
+	assert.equal(r.status, 200);
+	const t = normalize(lecturerUpsert(r.entries).text);
+	assert.match(t, /CASE WHEN src\.user_id = @actor_id THEN 'pending' ELSE 'approved' END/);
+	assert.match(t, /CASE WHEN src\.user_id = @actor_id THEN NULL ELSE @actor_id END/);
+	const conflict = t.slice(t.indexOf('ON CONFLICT'));
+	// lời từ chối vẫn giữ; nâng lên 'approved' chỉ theo trạng thái câu INSERT (không phải dòng của mình)
+	assert.match(
+		conflict,
+		/CASE WHEN tgt\.approval_status = 'rejected' THEN 'rejected' WHEN EXCLUDED\.approval_status = 'approved' THEN 'approved'/,
+	);
+	assert.match(conflict, /reject_reason = tgt\.reject_reason/);
+	// người thiếu quyền vẫn chỉ dọn được dòng 'pending'
+	assert.match(normalize(lecturerDelete(r.entries).text), /approval_status = 'pending'/);
+});
+
+test('CME_LECTURER_APPROVAL=approved: "Ghi lại CME" cho GV khác → đã duyệt, không báo chờ', async () => {
+	settings.CME_LECTURER_APPROVAL = 'approved';
+	// UAPP không phải giảng viên của khóa (dòng duy nhất là ULEC1)
+	let r = await call('UAPP', 'POST', '/courses/KH0001/cme-sync');
+	assert.equal(r.status, 200);
+	assert.equal(r.body.data.lecturers, 1);
+	assert.equal(r.body.data.lecturers_pending, false);
+	r = await call('UMGR', 'POST', '/courses/KH0001/cme-sync');
+	// người quản lý CME: duyệt thẳng như cũ
+	assert.match(normalize(lecturerUpsert(r.entries).text), /'approved', @actor_id/);
+	assert.equal(r.body.data.lecturers_pending, false);
+});
+
+test('CME_TRAINEE_APPROVAL=pending: dòng học viên theo giấy chứng nhận chờ duyệt', async () => {
+	const traineeUpsert = (entries) =>
+		entries.find((e) => /INSERT INTO cme_records/.test(e.text) && /course_trainee/.test(e.text));
+	// mặc định: duyệt thẳng như trước
+	let r = await call('UMGR', 'POST', '/courses/KH0001/cme-sync');
+	let t = normalize(traineeUpsert(r.entries).text);
+	assert.match(t, /'approved', @actor_id/);
+	assert.match(t.slice(t.indexOf('ON CONFLICT')), /approval_status = 'approved'/);
+	assert.equal(r.body.data.trainees_pending, false);
+
+	settings.CME_TRAINEE_APPROVAL = 'pending';
+	r = await call('UMGR', 'POST', '/courses/KH0001/cme-sync');
+	assert.equal(r.status, 200);
+	t = normalize(traineeUpsert(r.entries).text);
+	assert.match(t, /'pending', NULL, NULL, 'course_trainee'/);
+	const conflict = t.slice(t.indexOf('ON CONFLICT'));
+	// cấp lại giấy sau thu hồi: 'rejected' về 'pending' (không giữ), đã duyệt + tín chỉ không đổi thì giữ
+	assert.match(conflict, /tgt\.credits = EXCLUDED\.credits THEN 'approved' ELSE 'pending' END/);
+	assert.doesNotMatch(conflict, /THEN 'rejected'/);
+	assert.match(conflict, /reject_reason = NULL/);
+	assert.equal(r.body.data.trainees_pending, true);
+});
+
+test('Cấu hình chế độ duyệt chỉ nhận giá trị liệt kê', () => {
+	const v = settingSvc.validateSetting;
+	for (const ok of ['approved', 'pending', '', null])
+		assert.equal(v('CME_TRAINEE_APPROVAL', ok), null);
+	for (const ok of ['permission', 'approved', 'pending'])
+		assert.equal(v('CME_LECTURER_APPROVAL', ok), null);
+	assert.match(v('CME_TRAINEE_APPROVAL', 'permission') ?? '', /approved\/pending/);
+	assert.match(v('CME_LECTURER_APPROVAL', 'yes') ?? '', /permission\/approved\/pending/);
+	assert.ok(settingSvc.isKey('CME_TRAINEE_APPROVAL'));
+	assert.ok(settingSvc.isKey('CME_LECTURER_APPROVAL'));
 });
 
 test('M-07: số tiết của bài bị chặn trên theo số tiết bài học (lesson-lecturers)', async () => {

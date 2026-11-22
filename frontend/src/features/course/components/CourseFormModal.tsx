@@ -214,6 +214,19 @@ export function CourseFormModal({
 				>
 					1. Thông tin chung
 				</div>
+				<FormField label='Chế độ đăng ký'>
+					<select
+						className={styles.formInput}
+						value={form.is_public_registration ? '1' : '0'}
+						onChange={(e) => setForm((f) => ({ ...f, is_public_registration: e.target.value === '1' }))}
+					>
+						<option value='1'>Công khai</option>
+						<option value='0'>Nội bộ</option>
+					</select>
+					<span className={styles.fieldHint}>
+						{form.is_public_registration ? 'Có link đăng ký cho người ngoài bệnh viện' : 'Chỉ nhân sự nội bộ được ghi danh'}
+					</span>
+				</FormField>
 				<CfgField cfg={cfg} name='training_type_id' error={errors.training_type_id} label='Loại khóa'>
 					<select
 						className={styles.formInput}
@@ -265,6 +278,23 @@ export function CourseFormModal({
 						</span>
 					</FormField>
 				)}
+				<CfgField cfg={cfg} name='training_form_id' error={errors.training_form_id} label='Hình thức học'>
+					<select
+						className={styles.formInput}
+						value={form.training_form_id}
+						onChange={set('training_form_id')}
+					>
+						<option value=''>-- Chọn --</option>
+						{forms.map((f) => (
+							<option
+								key={f.id}
+								value={f.id}
+							>
+								{f.name}
+							</option>
+						))}
+					</select>
+				</CfgField>
 				<CfgField
 					cfg={cfg}
 					name='name'
@@ -339,6 +369,28 @@ export function CourseFormModal({
 						</div>
 					)}
 				</FormField>
+				{CLASS_TYPES.has(form.training_type_id) && (
+					<div
+						className={styles.hint}
+						style={full}
+					>
+						Mỗi chương trình của khóa là một lớp. Sĩ số tối thiểu / tối đa đặt ở Chương trình đào tạo: đủ tối thiểu thì
+						hệ thống báo để bấm "Mở lớp"; lớp đầy thì người duyệt sau vào danh sách chờ, khóa mới có chương trình đó tự
+						nhận người chờ.
+					</div>
+				)}
+				{mode === 'edit' && (
+					<FormField label='Hủy khóa'>
+						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>
+							<input
+								type='checkbox'
+								checked={form.status === 'cancelled'}
+								onChange={(e) => setForm((f) => ({ ...f, status: e.target.checked ? 'cancelled' : 'draft' }))}
+							/>
+							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Hủy khóa học này</span>
+						</label>
+					</FormField>
+				)}
 
 				<CustomFields
 					cfg={cfg}
@@ -414,66 +466,6 @@ export function CourseFormModal({
 					</>
 				)}
 
-				<div
-					className={styles.sectionTitle}
-					style={full}
-				>
-					3. Đăng ký
-				</div>
-				<FormField
-					label='Chế độ đăng ký'
-				>
-					<select
-						className={styles.formInput}
-						value={form.is_public_registration ? '1' : '0'}
-						onChange={(e) => setForm((f) => ({ ...f, is_public_registration: e.target.value === '1' }))}
-					>
-						<option value='0'>Nội bộ</option>
-						<option value='1'>Công khai</option>
-					</select>
-				</FormField>
-				<CfgField cfg={cfg} name='training_form_id' error={errors.training_form_id} label='Hình thức học'>
-					<select
-						className={styles.formInput}
-						value={form.training_form_id}
-						onChange={set('training_form_id')}
-					>
-						<option value=''>-- Chọn --</option>
-						{forms.map((f) => (
-							<option
-								key={f.id}
-								value={f.id}
-							>
-								{f.name}
-							</option>
-						))}
-					</select>
-				</CfgField>
-				{CLASS_TYPES.has(form.training_type_id) && (
-					<div
-						className={styles.hint}
-						style={full}
-					>
-						Mỗi chương trình của khóa là một lớp. Sĩ số tối thiểu / tối đa đặt ở Chương trình đào tạo: đủ tối thiểu thì
-						hệ thống báo để bấm "Mở lớp"; lớp đầy thì người duyệt sau vào danh sách chờ, khóa mới có chương trình đó tự
-						nhận người chờ.
-					</div>
-				)}
-				{mode === 'edit' ? (
-					<FormField label='Hủy khóa'>
-						<label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 38, cursor: 'pointer' }}>
-							<input
-								type='checkbox'
-								checked={form.status === 'cancelled'}
-								onChange={(e) => setForm((f) => ({ ...f, status: e.target.checked ? 'cancelled' : 'draft' }))}
-							/>
-							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Hủy khóa học này</span>
-						</label>
-					</FormField>
-				) : (
-					<div />
-				)}
-
 				{/* Phần giới thiệu ít dùng — thu gọn, chỉ mở sẵn khi đã có nội dung */}
 				<details
 					className={styles.collapse}
@@ -481,7 +473,7 @@ export function CourseFormModal({
 					open={!!(form.description || form.prerequisites.length || form.objectives.length)}
 				>
 					<summary className={styles.sectionTitle}>
-						4. Giới thiệu khóa học (mô tả, điều kiện, mục tiêu — không bắt buộc)
+						3. Giới thiệu khóa học (mô tả, điều kiện, mục tiêu — không bắt buộc)
 					</summary>
 					<div className={styles.formGrid2}>
 						<CfgField

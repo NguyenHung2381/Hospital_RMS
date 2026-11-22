@@ -17,7 +17,7 @@
  *     security: []
  *     responses:
  *       200:
- *         description: "{ version (phiên bản nội quy ghi vào bản khai), rules[], id_issue_places[], email_otp_required (Cấu hình hệ thống TRAINING_REGISTRATION_EMAIL_OTP, mặc định true), attachments: { extensions: ['.pdf','.jpg','.jpeg','.png'], max_size_mb (= UPLOAD_MAX_MB), kinds: { internal: [{ key, label, hint, required }], external: [...] } } — hồ sơ bắt buộc theo đối tượng }"
+ *         description: "{ version (phiên bản nội quy ghi vào bản khai), rules[], id_issue_places[], email_otp_required (Cấu hình hệ thống TRAINING_REGISTRATION_EMAIL_OTP, mặc định true), attachments: { extensions: ['.pdf','.jpg','.jpeg','.png'], max_size_mb (= UPLOAD_MAX_MB), kinds: { internal: [{ key, label, hint, required, later }], external: [...] } } — hồ sơ bắt buộc theo đối tượng }"
  *       403:
  *         description: Module Đào tạo đang tắt (MODULE_DISABLED)
  *       429:
@@ -133,8 +133,8 @@
  *     description: >
  *       Body BẮT BUỘC là multipart/form-data: toàn bộ dữ liệu form là chuỗi JSON trong field
  *       `data`; mỗi loại hồ sơ bắt buộc là 1 phần file riêng tên `files[<kind>]` (PDF, JPG hoặc PNG,
- *       mỗi file tối đa UPLOAD_MAX_MB). Nội viện: files[application_signed] (Đơn đăng ký đã ký) và
- *       files[proposal_approved] (Tờ trình đã duyệt). Ngoại viện: files[national_id], files[degree],
+ *       mỗi file tối đa UPLOAD_MAX_MB). Nội viện: files[proposal_approved] (Tờ trình đã duyệt) — không
+ *       bắt buộc lúc gửi, nộp bổ sung sau được. Ngoại viện: files[national_id], files[degree],
  *       files[license], files[decision]. Thiếu loại bắt buộc, gửi loại của đối tượng kia hoặc request
  *       không phải multipart ⇒ 400 trước khi kiểm captcha / giới hạn / ghi dữ liệu (honeypot vẫn đứng
  *       đầu). Danh sách loại lấy từ GET /public/course-registration/rules (attachments.kinds).
@@ -156,8 +156,7 @@
  *               data:
  *                 type: string
  *                 description: "Chuỗi JSON gồm các trường bên dưới (bắt buộc khi gửi multipart)"
- *               "files[application_signed]": { type: string, format: binary, description: 'Nội viện — Đơn đăng ký đã ký' }
- *               "files[proposal_approved]": { type: string, format: binary, description: 'Nội viện — Tờ trình đã duyệt' }
+ *               "files[proposal_approved]": { type: string, format: binary, description: 'Nội viện — Tờ trình đã duyệt (không bắt buộc, nộp bổ sung sau được)' }
  *               "files[national_id]": { type: string, format: binary, description: 'Ngoại viện — Căn cước công dân' }
  *               "files[degree]": { type: string, format: binary, description: 'Ngoại viện — Bằng tốt nghiệp' }
  *               "files[license]": { type: string, format: binary, description: 'Ngoại viện — Chứng chỉ hành nghề' }
@@ -312,7 +311,7 @@
  *       - in: path
  *         name: kind
  *         required: true
- *         schema: { type: string, enum: [application_signed, proposal_approved, national_id, degree, license, decision] }
+ *         schema: { type: string, enum: [proposal_approved, national_id, degree, license, decision] }
  *         description: Loại hồ sơ (phải thuộc đối tượng của đơn)
  *     requestBody:
  *       required: true

@@ -230,6 +230,23 @@ router.post(
 	regCtrl.downloadApplication,
 );
 router.post(
+	'/course-registration/:code/details',
+	training,
+	regCodeLimiter,
+	[registrationCode, ...regValidators.secondFactor],
+	validate,
+	regCtrl.getEditable,
+);
+router.post(
+	'/course-registration/:code/amend',
+	training,
+	regCodeLimiter,
+	[registrationCode, ...regValidators.amendment],
+	validate,
+	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),
+	regCtrl.amend,
+);
+router.post(
 	'/course-registration/:code/files/:kind',
 	training,
 	regCodeLimiter,

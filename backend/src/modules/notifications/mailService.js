@@ -186,7 +186,14 @@ const renderRegistrationOtpEmail = ({ code, ttlMin }) =>
 	);
 
 // Xác nhận đã nhận đăng ký khóa đào tạo — kèm mã đăng ký để tra cứu / tải lại đơn.
-const renderRegistrationReceivedEmail = ({ fullName, code, courseName, programName }) =>
+const renderRegistrationReceivedEmail = ({
+	fullName,
+	code,
+	courseName,
+	programName,
+	consentHash = null,
+	signedAt = new Date(),
+}) =>
 	renderShell(
 		'Đã nhận đăng ký khóa đào tạo',
 		`<tr><td style="padding:0 32px 20px;">
@@ -197,6 +204,39 @@ const renderRegistrationReceivedEmail = ({ fullName, code, courseName, programNa
 		<tr><td style="padding:20px 32px 28px;">
 			<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#4b5563;">Giữ mã này để tra cứu trạng thái và tải lại Đơn đăng ký trên trang đăng ký khóa học (kèm số CCCD hoặc email đã khai).</p>
 			<p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">Đăng ký sẽ được phòng Đào tạo đối chiếu hồ sơ trước khi duyệt.</p>
+		</td></tr>${
+			consentHash
+				? `
+		<tr><td style="padding:0 32px 28px;">
+			<p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#4b5563;">Bạn đã ký xác nhận điện tử bản đăng ký này${signedAt ? ` lúc ${escapeHtml(new Date(signedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}` : ''}. Mã xác thực bản ghi (giữ lại thư này để đối chiếu khi cần):</p>
+			<p style="margin:0;font-family:Consolas,monospace;font-size:12px;word-break:break-all;color:#111827;">${escapeHtml(consentHash)}</p>
+		</td></tr>`
+				: ''
+		}`,
+	);
+
+// Thư báo người đăng ký vừa tự sửa bản khai (trang Tra cứu). Chỉ nêu TÊN trường đã sửa, không
+// in giá trị (thư có thể bị chuyển tiếp — không đưa CCCD / ngày sinh vào thư).
+const renderRegistrationAmendedEmail = ({
+	fullName,
+	code,
+	courseName,
+	seq,
+	fieldLabels = [],
+	consentHash,
+	signedAt = new Date(),
+}) =>
+	renderShell(
+		'Đã sửa bản đăng ký khóa đào tạo',
+		`<tr><td style="padding:0 32px 20px;">
+			<p style="margin:0 0 12px;font-size:15px;line-height:1.6;">Xin chào ${escapeHtml(fullName || 'bạn')},</p>
+			<p style="margin:0;font-size:15px;line-height:1.6;">Bản đăng ký khóa <strong>${escapeHtml(courseName || '')}</strong> (mã bên dưới) vừa được sửa lần ${escapeHtml(String(seq))} lúc ${escapeHtml(new Date(signedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }))}. Các mục đã sửa: <strong>${escapeHtml(fieldLabels.join(', '))}</strong>.</p>
+		</td></tr>
+		${codeBox(code)}
+		<tr><td style="padding:20px 32px 28px;">
+			<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#4b5563;">Nếu không phải bạn sửa, hãy liên hệ ngay Trung tâm Đào tạo và Chỉ đạo tuyến.</p>
+			<p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#4b5563;">Mã xác thực bản ghi lần sửa này (giữ lại thư để đối chiếu khi cần):</p>
+			<p style="margin:0;font-family:Consolas,monospace;font-size:12px;word-break:break-all;color:#111827;">${escapeHtml(consentHash || '')}</p>
 		</td></tr>`,
 	);
 
@@ -262,6 +302,7 @@ module.exports = {
 	renderSeminarBadgeEmail,
 	renderRegistrationOtpEmail,
 	renderRegistrationReceivedEmail,
+	renderRegistrationAmendedEmail,
 	LOGO_ATTACHMENT,
 	isEnabled,
 	EVENT_DEFAULTS,

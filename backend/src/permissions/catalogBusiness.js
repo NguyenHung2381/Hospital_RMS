@@ -165,7 +165,12 @@ const BUSINESS_MODULES = [
 				key: 'courses',
 				label: 'Khóa học (đăng ký, lịch học, điểm danh)',
 				permissions: [
-					p('PERM-CRS-READ', 'read', 'Xem khóa học', 'Xem khóa học, đăng ký, lịch học, điểm danh'),
+					p(
+						'PERM-CRS-READ',
+						'read',
+						'Xem khóa học',
+						'Xem khóa học, đăng ký, lịch học, điểm danh; xem hồ sơ đăng ký, cảnh báo tự kiểm tra file, lịch sử sửa bản khai, tải bản xác nhận điện tử',
+					),
 					p(
 						'PERM-CRS-CREATE',
 						'create',
@@ -178,7 +183,7 @@ const BUSINESS_MODULES = [
 						'PERM-CRS-APPROVE',
 						'approve',
 						'Duyệt đăng ký khóa học',
-						'Duyệt / từ chối đăng ký khóa học của học viên',
+						'Duyệt / từ chối đăng ký khóa học của học viên; bật / tắt OTP xác minh email và tự kiểm tra file hồ sơ của form đăng ký công khai',
 					),
 				],
 			},

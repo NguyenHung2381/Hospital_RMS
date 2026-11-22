@@ -1,31 +1,20 @@
 import { useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { AlertSvg, SearchSvg } from '@/assets/icons';
 import PublicLayout from '../../../layouts/PublicLayout';
 import { ENROLLMENT_STATUS_CFG, type EnrollmentStatus } from '../../course/types/course.type';
 import { formatDateOr } from '../../../shared/utils/formatDate';
 import { lookupByNationalId, type LookupResult } from '../api/publicApi';
-import { RegistrationLookup } from '../components/RegistrationLookup';
 import styles from './PublicPortal.module.css';
-import s from './CourseRegisterPublic.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import { DatePicker } from '@/shared/components';
 
-type Tab = 'don' | 'ketqua';
-const TABS: { key: Tab; label: string }[] = [
-	{ key: 'don', label: 'Tra cứu đơn đăng ký' },
-	{ key: 'ketqua', label: 'Kết quả học tập, chứng chỉ' },
-];
-
-export default function PublicLookup() {
-	const { pathname } = useLocation();
+// Tra cứu kết quả học tập & chứng chỉ theo họ tên + CCCD + ngày sinh.
+// Tra cứu đơn đăng ký (mã đăng ký + CCCD) là trang riêng /tra-cuu-don-dang-ky.
+export default function LearningResultLookup() {
 	const [params] = useSearchParams();
-	// /tra-cuu-don-dang-ky và link kèm ?ma=<mã đăng ký> mở thẳng tab đơn đăng ký
-	const [tab, setTab] = useState<Tab>(() =>
-		pathname === '/tra-cuu-don-dang-ky' || params.get('ma') || params.get('tab') === 'don' ? 'don' : 'ketqua',
-	);
 	const [fullName, setFullName] = useState('');
 	const [nationalId, setNationalId] = useState('');
 	const [dob, setDob] = useState('');
@@ -51,52 +40,14 @@ export default function PublicLookup() {
 		}
 	};
 
-	const tabs = (
-		<div
-			className={s.tabs}
-			role='tablist'
-			aria-label='Loại tra cứu'
-		>
-			{TABS.map((x) => (
-				<button
-					key={x.key}
-					type='button'
-					role='tab'
-					id={`lookup-tab-${x.key}`}
-					aria-selected={tab === x.key}
-					aria-controls='lookup-panel'
-					tabIndex={tab === x.key ? 0 : -1}
-					className={`${s.tab} ${tab === x.key ? s.tabOn : ''}`}
-					onClick={() => setTab(x.key)}
-					onKeyDown={(e) => {
-						if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-						e.preventDefault();
-						const next = TABS[(TABS.findIndex((y) => y.key === tab) + 1) % TABS.length].key;
-						setTab(next);
-						document.getElementById(`lookup-tab-${next}`)?.focus();
-					}}
-				>
-					{x.label}
-				</button>
-			))}
-		</div>
-	);
-
-	if (tab === 'don')
+	// Link cũ /tra-cuu-ket-qua?ma=… hoặc ?tab=don (trước khi tách trang) → chuyển sang trang tra cứu đơn
+	const legacyCode = params.get('ma');
+	if (legacyCode || params.get('tab') === 'don')
 		return (
-			<PublicLayout
-				title='Tra cứu đơn đăng ký khóa học'
-				subtitle='Nhập mã đăng ký và số CCCD để xem tiến độ xử lý, tải lại đơn đăng ký và nộp hồ sơ bổ sung.'
-			>
-				{tabs}
-				<div
-					id='lookup-panel'
-					role='tabpanel'
-					aria-labelledby='lookup-tab-don'
-				>
-					<RegistrationLookup initialCode={params.get('ma') ?? ''} />
-				</div>
-			</PublicLayout>
+			<Navigate
+				replace
+				to={legacyCode ? `/tra-cuu-don-dang-ky?ma=${encodeURIComponent(legacyCode)}` : '/tra-cuu-don-dang-ky'}
+			/>
 		);
 
 	return (
@@ -104,12 +55,6 @@ export default function PublicLookup() {
 			title='Tra cứu kết quả học tập & chứng chỉ'
 			subtitle='Nhập họ tên, số CCCD/CMND và ngày sinh đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
 		>
-			{tabs}
-			<div
-				id='lookup-panel'
-				role='tabpanel'
-				aria-labelledby='lookup-tab-ketqua'
-			>
 			{error && (
 				<div className={`${styles.alertBox} ${styles.alertError}`}>
 					<AlertSvg /> {error}
@@ -228,7 +173,6 @@ export default function PublicLookup() {
 					)}
 				</>
 			)}
-			</div>
 		</PublicLayout>
 	);
 }

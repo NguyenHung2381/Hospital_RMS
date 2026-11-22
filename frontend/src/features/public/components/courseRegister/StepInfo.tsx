@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { ChevDSvg } from '@/assets/icons';
+import { CheckSvg, ChevDSvg } from '@/assets/icons';
 import { CustomFields } from '@/shared/formConfig/CustomFields';
 import type { CustomValues } from '@/shared/formConfig/types';
 import {
-	HOSPITAL,
 	INVOICE_KEYS,
 	nationalIdMessage,
 	type StaffMatch,
@@ -23,7 +22,7 @@ interface Props {
 	onInvoiceOpen: (open: boolean) => void;
 }
 
-// Bước 4: thông tin học viên, nhóm theo giấy tờ / liên hệ / văn bằng / công tác
+// Mục "Thông tin học viên": thông tin học viên, nhóm theo giấy tờ / liên hệ / văn bằng / công tác
 export function StepInfo({ staff, idIssuePlaces, custom, onCustom, invoiceOpen, onInvoiceOpen }: Props) {
 	const { cfg, form, errors, setField } = useRegister();
 	const internal = form.source === 'internal';
@@ -41,31 +40,9 @@ export function StepInfo({ staff, idIssuePlaces, custom, onCustom, invoiceOpen, 
 	return (
 		<>
 			{internal && staff && (
-				<div className={s.fromProfile}>
-					<div className={s.fromProfileTitle}>Lấy từ hồ sơ nhân sự — không cần nhập</div>
-					<dl className={s.profileList}>
-						<div>
-							<dt>Mã nhân viên</dt>
-							<dd>{staff.staff_number}</dd>
-						</div>
-						<div>
-							<dt>Họ và tên</dt>
-							<dd>{staff.info.full_name}</dd>
-						</div>
-						<div>
-							<dt>Khoa/Phòng/TT</dt>
-							<dd>{staff.info.department_name}</dd>
-						</div>
-						<div>
-							<dt>Trình độ</dt>
-							<dd>{staff.info.qualification || 'Chưa có trong hồ sơ'}</dd>
-						</div>
-						<div>
-							<dt>Cơ quan công tác</dt>
-							<dd>{HOSPITAL}</dd>
-						</div>
-					</dl>
-				</div>
+				<p className={s.hint}>
+					Họ tên, khoa/phòng, trình độ và cơ quan công tác đã lấy từ hồ sơ nhân sự ở mục trên — không cần nhập lại.
+				</p>
 			)}
 
 			<SubGroup title='Thông tin cá nhân'>
@@ -119,17 +96,27 @@ export function StepInfo({ staff, idIssuePlaces, custom, onCustom, invoiceOpen, 
 									role='group'
 									aria-label='Gợi ý nơi cấp'
 								>
-									{idIssuePlaces.map((p) => (
-										<button
-											type='button'
-											key={p}
-											className={`${s.chip} ${form.national_id_issued_place === p ? s.chipOn : ''}`}
-											aria-pressed={form.national_id_issued_place === p}
-											onClick={() => setField('national_id_issued_place', p)}
-										>
-											{p}
-										</button>
-									))}
+									<span
+										className={s.chipsLabel}
+										aria-hidden='true'
+									>
+										Gợi ý:
+									</span>
+									{idIssuePlaces.map((p) => {
+										const on = form.national_id_issued_place === p;
+										return (
+											<button
+												type='button'
+												key={p}
+												className={`${s.chip} ${on ? s.chipOn : ''}`}
+												aria-pressed={on}
+												onClick={() => setField('national_id_issued_place', p)}
+											>
+												{on && <CheckSvg aria-hidden='true' />}
+												{p}
+											</button>
+										);
+									})}
 								</div>
 							)}
 						</div>

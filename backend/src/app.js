@@ -274,6 +274,11 @@ app.use(
 	requireModule('ATTENDANCE'),
 	require('./modules/attendance/staffAttendance.routes'),
 );
+// Trước router system-settings (router đó có /:key) — xem docCheck.routes.js
+app.use(
+	`${API}/system-settings`,
+	require('./modules/training/registration/docCheck/docCheck.routes'),
+);
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
 app.use(`${API}/form-configs`, require('./modules/forms/formConfig.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));

@@ -1,8 +1,8 @@
 import { DndContext, type DragEndEvent, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useEffect, useMemo, useState } from 'react';
-import { EditSvg, InfoSvg } from '../../../assets/icons';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { EditSvg, EyeOffSvg, EyeSvg, InfoSvg, LockSvg, TrashSvg } from '../../../assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, Card, ConfirmDeleteModal, SearchInput } from '../../../shared/components';
 import { resetFormConfig } from '../../../shared/formConfig/useFormConfig';
@@ -15,19 +15,11 @@ import { removeDiacritics } from '../../../shared/utils/helper';
 import set from '../../settings/pages/SystemSettings.module.css';
 import { formConfigApi } from '../api/formConfigApi';
 import { BuiltinFieldRow } from '../components/BuiltinFieldRow';
-import { isOverridden, TYPE_LABEL } from '../utils/formConfigHelpers';
+import { FieldDetailDrawer } from '../components/FieldDetailDrawer';
+import { fieldState, isOverridden, MODULE_LABEL, shortVariant, TYPE_LABEL } from '../utils/formConfigHelpers';
 import { CustomFieldModal } from '../components/CustomFieldModal';
 import { FormPreview } from '../components/FormPreview';
 import s from './FormConfigs.module.css';
-
-const MODULE_LABEL: Record<string, string> = {
-	RESEARCH: 'Nghiên cứu khoa học',
-	TRAINING: 'Đào tạo',
-	SEMINAR: 'Hội nghị & CME',
-	SURVEY: 'Khảo sát',
-	ATTENDANCE: 'Điểm danh',
-	SYSTEM: 'Hệ thống',
-};
 
 const EMPTY: FormOverride = {};
 /** Override gọn để so sánh / lưu: bỏ nhóm rỗng. */
@@ -45,11 +37,13 @@ const changeCount = (o: FormOverride) =>
 function CustomRow({
 	f,
 	form,
+	unsaved,
 	onEdit,
 	onDelete,
 }: {
 	f: CustomFieldDef;
 	form: FormDefinition;
+	unsaved: boolean;
 	onEdit: () => void;
 	onDelete: () => void;
 }) {
@@ -57,49 +51,107 @@ function CustomRow({
 	const where = f.variants?.length
 		? form.variants
 				.filter((v) => f.variants!.includes(v.key))
-				.map((v) => v.label)
+				.map((v) => shortVariant(v.label))
 				.join(', ')
-		: 'Mọi form';
+		: form.variants.length > 1
+			? 'Mọi form'
+			: '';
+	const sub = [
+		where && `Hiện ở: ${where}`,
+		f.options?.length && `${f.options.length} lựa chọn`,
+		f.placeholder && `Gợi ý: “${f.placeholder}”`,
+		f.hint && `Ghi chú: “${f.hint}”`,
+	].filter(Boolean);
 	return (
 		<div
 			ref={setNodeRef}
 			style={{ transform: CSS.Transform.toString(transform), transition }}
-			className={cx(s.customRow, isDragging && s.customRowDragging)}
+			className={cx(s.customRow, unsaved && s.tRowUnsaved, isDragging && s.customRowDragging)}
 		>
 			<button
 				type='button'
 				className={s.dragHandle}
 				title='Kéo để đổi thứ tự'
+				aria-label='Kéo để đổi thứ tự'
 				{...attributes}
 				{...listeners}
 			>
 				⋮⋮
 			</button>
 			<div className={s.customMain}>
-				<div className={s.fieldName}>
-					<span className={s.fieldLabel}>{f.label}</span>
+				<button
+					type='button'
+					className={s.fieldLabelBtn}
+					onClick={onEdit}
+				>
+					{f.label}
+				</button>
+				<div className={s.fieldTags}>
 					<span className={s.typeTag}>{TYPE_LABEL[f.type]}</span>
-					{f.required && <span className={cx(s.typeTag, s.typeTagReq)}>Bắt buộc</span>}
+					{unsaved && <span className={cx(s.typeTag, s.typeTagUnsaved)}>Chưa lưu</span>}
 				</div>
-				<div className={s.customSub}>
-					{where}
-					{f.options?.length ? ` · ${f.options.length} lựa chọn` : ''}
-				</div>
+				{sub.length > 0 && <div className={s.changeLine}>{sub.join(' · ')}</div>}
 			</div>
+			<span className={f.required ? s.reqOn : s.reqOff}>{f.required ? 'Bắt buộc' : 'Không bắt buộc'}</span>
 			<button
 				type='button'
-				className={s.expandBtn}
+				className={s.detailBtn}
 				onClick={onEdit}
 			>
-				Sửa
+				<EditSvg /> Sửa
 			</button>
 			<button
 				type='button'
-				className={cx(s.expandBtn, s.dangerBtn)}
+				className={cx(s.iconBtn, s.iconBtnDanger)}
 				onClick={onDelete}
+				title='Xóa trường'
+				aria-label={`Xóa trường ${f.label}`}
 			>
-				Xóa
+				<TrashSvg />
 			</button>
+		</div>
+	);
+}
+
+type Filter = 'all' | 'changed' | 'hidden' | 'required';
+const FILTERS: { key: Filter; label: string }[] = [
+	{ key: 'all', label: 'Tất cả' },
+	{ key: 'changed', label: 'Đã chỉnh' },
+	{ key: 'hidden', label: 'Có ẩn' },
+	{ key: 'required', label: 'Bắt buộc' },
+];
+
+/** Chú giải ký hiệu của bảng — để không phải đoán. */
+function Legend() {
+	return (
+		<div className={s.legend}>
+			<span className={s.legendTitle}>Cách đọc:</span>
+			<span className={s.legendItem}>
+				<span className={cx(s.pill, s.pillOn)}>
+					<EyeSvg /> Hiện
+				</span>
+				ô có trên form — bấm để ẩn
+			</span>
+			<span className={s.legendItem}>
+				<span className={cx(s.pill, s.pillOff)}>
+					<EyeOffSvg /> Ẩn
+				</span>
+				bị bỏ khỏi form — bấm để hiện lại
+			</span>
+			<span className={s.legendItem}>
+				<span className={cx(s.pill, s.pillLock)}>
+					<LockSvg /> Luôn hiện
+				</span>
+				hệ thống cần, không đổi được
+			</span>
+			<span className={s.legendItem}>
+				<span className={cx(s.swatch, s.swatchCustom)} />
+				đã chỉnh khác mặc định
+			</span>
+			<span className={s.legendItem}>
+				<span className={cx(s.swatch, s.swatchUnsaved)} />
+				chưa lưu
+			</span>
 		</div>
 	);
 }
@@ -114,6 +166,9 @@ export default function FormConfigs() {
 	const [editing, setEditing] = useState<CustomFieldDef | 'new' | null>(null);
 	const [deleting, setDeleting] = useState<CustomFieldDef | null>(null);
 	const [confirmReset, setConfirmReset] = useState(false);
+	const [filter, setFilter] = useState<Filter>('all');
+	const [openField, setOpenField] = useState<string | null>(null);
+	const [hoverField, setHoverField] = useState<string | null>(null);
 	const modules = useModules();
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -144,6 +199,46 @@ export default function FormConfigs() {
 			).includes(q),
 		);
 	}, [forms, query]);
+
+	// Nhóm form theo module ở thanh bên
+	const groups = useMemo(() => {
+		const map = new Map<string, FormDefinition[]>();
+		for (const f of visibleForms) map.set(f.module, [...(map.get(f.module) ?? []), f]);
+		return [...map.entries()];
+	}, [visibleForms]);
+
+	// Đếm theo bộ lọc — React Compiler tự ghi nhớ, không cần useMemo
+	const fieldStats = (() => {
+		if (!form)
+			return {
+				all: 0,
+				changed: 0,
+				hidden: 0,
+				required: 0,
+				match: () => true,
+			};
+		const st = Object.fromEntries(form.fields.map((f) => [f.key, fieldState(form, f, draft.fields?.[f.key])]));
+		const is: Record<Filter, (k: string) => boolean> = {
+			all: () => true,
+			changed: (k) => isOverridden(draft.fields?.[k]),
+			hidden: (k) => st[k].variants.some((v) => !st[k].shown(v.key)),
+			required: (k) => !st[k].allHidden && st[k].variants.some((v) => st[k].shown(v.key) && st[k].requiredIn(v.key)),
+		};
+		const count = (fl: Filter) => form.fields.filter((f) => is[fl](f.key)).length;
+		return {
+			all: form.fields.length,
+			changed: count('changed'),
+			hidden: count('hidden'),
+			required: count('required'),
+			match: (k: string) => is[filter](k),
+		};
+	})();
+	const shownFields = form ? form.fields.filter((f) => fieldStats.match(f.key)) : [];
+	const fieldUnsaved = (key: string) =>
+		JSON.stringify(draft.fields?.[key] ?? null) !== JSON.stringify(saved.fields?.[key] ?? null);
+	const customUnsaved = (c: CustomFieldDef) =>
+		JSON.stringify(c) !== JSON.stringify(saved.custom?.find((x) => x.key === c.key) ?? null);
+	const openDef = form?.fields.find((f) => f.key === openField);
 
 	const setDraft = (next: FormOverride) => setDrafts((d) => ({ ...d, [active]: next }));
 	const setField = (key: string, ov: FieldOverride | undefined) => {
@@ -223,37 +318,53 @@ export default function FormConfigs() {
 						placeholder='Tìm form hoặc tên trường…'
 					/>
 					<nav className={set.tabs}>
-						{visibleForms.map((f) => {
-							const n = changeCount(normalize(f.override));
-							const isDirty = dirtyForms.some((x) => x.key === f.key);
-							return (
-								<button
-									key={f.key}
-									type='button'
-									className={cx(set.tab, f.key === active && set.tabActive)}
-									onClick={() => setActive(f.key)}
-								>
-									<span className={set.tabIcon}>
-										<EditSvg />
-									</span>
-									<span className={set.tabText}>
-										<span className={set.tabTitle}>{f.title}</span>
-										<span className={set.tabSub}>
-											{MODULE_LABEL[f.module] ?? f.module}
-											{n > 0 ? ` · ${n} tùy chỉnh` : ' · mặc định'}
-										</span>
-									</span>
-									{isDirty && (
-										<span
-											className={set.tabBadge}
-											title='Có thay đổi chưa lưu'
+						{groups.map(([mod, list]) => (
+							<div
+								key={mod}
+								className={s.navGroup}
+							>
+								<div className={s.navGroupTitle}>{MODULE_LABEL[mod] ?? mod}</div>
+								{list.map((f) => {
+									const n = changeCount(normalize(f.override));
+									const isDirty = dirtyForms.some((x) => x.key === f.key);
+									return (
+										<button
+											key={f.key}
+											type='button'
+											className={cx(set.tab, s.navTab, f.key === active && set.tabActive)}
+											onClick={() => {
+												setActive(f.key);
+												setOpenField(null);
+												setFilter('all');
+											}}
 										>
-											!
-										</span>
-									)}
-								</button>
-							);
-						})}
+											<span className={set.tabText}>
+												<span className={set.tabTitle}>{f.title}</span>
+												<span className={set.tabSub}>
+													{f.variants.length > 1 ? `${f.variants.length} form · ` : ''}
+													{f.fields.length} trường
+												</span>
+											</span>
+											{isDirty ? (
+												<span
+													className={cx(s.navBadge, s.navBadgeUnsaved)}
+													title='Có thay đổi chưa lưu'
+												>
+													Chưa lưu
+												</span>
+											) : n > 0 ? (
+												<span
+													className={cx(s.navBadge, s.navBadgeCustom)}
+													title={`${n} mục đã chỉnh khác mặc định`}
+												>
+													{n} chỉnh
+												</span>
+											) : null}
+										</button>
+									);
+								})}
+							</div>
+						))}
 						{!loading && !visibleForms.length && <div className={s.empty}>Không có form nào khớp.</div>}
 					</nav>
 				</aside>
@@ -276,6 +387,17 @@ export default function FormConfigs() {
 										{form.updated_at &&
 											` · Sửa lần cuối ${formatDateTimeVN(form.updated_at)}${form.updated_by ? ` (${form.updated_by})` : ''}`}
 									</p>
+									<div className={s.usedIn}>
+										<span>Dùng ở:</span>
+										{form.variants.map((v) => (
+											<span
+												key={v.key}
+												className={s.usedInChip}
+											>
+												{v.label}
+											</span>
+										))}
+									</div>
 								</div>
 							</div>
 							{moduleOff(form.module) && (
@@ -284,14 +406,6 @@ export default function FormConfigs() {
 									áp dụng khi bật lại.
 								</div>
 							)}
-							<div className={set.infoNote}>
-								<InfoSvg />
-								<span>
-									Áp dụng cho các form: <b>{form.variants.map((v) => v.label).join(' · ')}</b>. Bấm tên form ở mỗi
-									trường để ẩn/hiện riêng ở form đó. Trường gắn nhãn “Hệ thống” cần để tạo bản ghi nên không ẩn / bỏ bắt
-									buộc được. Máy chủ kiểm tra lại mọi ràng buộc khi lưu dữ liệu.
-								</span>
-							</div>
 
 							<div className={s.work}>
 								<div className={s.workMain}>
@@ -300,30 +414,80 @@ export default function FormConfigs() {
 											<div>
 												<div className={set.groupTitle}>Trường có sẵn</div>
 												<p className={set.groupDesc}>
-													Ẩn/hiện theo từng form, bật bắt buộc, đổi nhãn và giới hạn giá trị được nhập.
+													Bấm nút <b>Hiện / Ẩn</b> để bỏ ô khỏi form, gạt <b>Bắt buộc</b> để người dùng phải nhập. Đổi
+													nhãn, gợi ý, giới hạn giá trị ở nút <b>Chi tiết</b>.
 												</p>
 											</div>
 										</div>
-										<div className={s.fieldList}>
-											{form.fields.map((f) => (
+										<Legend />
+										<div className={s.filterBar}>
+											<span className={s.muted}>Lọc:</span>
+											<div className={s.segment}>
+												{FILTERS.map((fl) => (
+													<button
+														key={fl.key}
+														type='button'
+														className={cx(s.segBtn, filter === fl.key && s.segBtnOn)}
+														onClick={() => setFilter(fl.key)}
+													>
+														{fl.label}
+														<span className={s.segCount}>{fieldStats[fl.key]}</span>
+													</button>
+												))}
+											</div>
+										</div>
+										<div
+											className={s.table}
+											style={
+												{
+													'--cols': `minmax(0, 1fr) repeat(${form.variants.length}, ${form.variants.length > 1 ? 104 : 120}px) 156px 108px`,
+												} as CSSProperties
+											}
+										>
+											<div className={s.tHead}>
+												<div>Trường thông tin</div>
+												{form.variants.map((v) => (
+													<div
+														key={v.key}
+														title={v.label}
+													>
+														{form.variants.length > 1 ? (
+															<>
+																<span className={s.tHeadSup}>Hiện ở</span>
+																{shortVariant(v.label)}
+															</>
+														) : (
+															'Hiển thị'
+														)}
+													</div>
+												))}
+												<div>Bắt buộc nhập</div>
+												<div />
+											</div>
+											{shownFields.map((f) => (
 												<BuiltinFieldRow
 													key={f.key}
 													form={form}
 													field={f}
 													override={draft.fields?.[f.key]}
+													unsaved={fieldUnsaved(f.key)}
+													active={openField === f.key || hoverField === f.key}
 													onChange={(ov) => setField(f.key, ov)}
+													onOpen={() => setOpenField(f.key)}
+													onHover={(on) => setHoverField(on ? f.key : null)}
 												/>
 											))}
+											{!shownFields.length && <div className={s.empty}>Không có trường nào ở bộ lọc này.</div>}
 										</div>
 									</Card>
 
 									<Card className={set.groupCard}>
 										<div className={set.groupHead}>
 											<div>
-												<div className={set.groupTitle}>Trường tùy chỉnh</div>
+												<div className={set.groupTitle}>Trường tùy chỉnh ({custom.length}/30)</div>
 												<p className={set.groupDesc}>
-													Thêm thông tin riêng của bệnh viện (tối đa 30 trường) — hiện ở cuối form, mục “Thông tin bổ
-													sung”. Kéo để đổi thứ tự.
+													Thêm thông tin riêng của bệnh viện — hiện ở cuối form, mục “Thông tin bổ sung”. Kéo ⋮⋮ để đổi
+													thứ tự.
 												</p>
 											</div>
 											<div className={set.groupActions}>
@@ -352,6 +516,7 @@ export default function FormConfigs() {
 																key={c.key}
 																f={c}
 																form={form}
+																unsaved={customUnsaved(c)}
 																onEdit={() => setEditing(c)}
 																onDelete={() => setDeleting(c)}
 															/>
@@ -360,7 +525,12 @@ export default function FormConfigs() {
 												</SortableContext>
 											</DndContext>
 										) : (
-											<div className={s.empty}>Chưa có trường tùy chỉnh nào.</div>
+											<div className={s.emptyCustom}>
+												<span>Chưa có trường tùy chỉnh nào.</span>
+												<span className={s.muted}>
+													vd: Mã ORCID, Số chứng chỉ hành nghề, Cam kết trung thực… — bấm “+ Thêm trường”.
+												</span>
+											</div>
 										)}
 									</Card>
 								</div>
@@ -370,13 +540,17 @@ export default function FormConfigs() {
 										<div className={set.groupHead}>
 											<div>
 												<div className={set.groupTitle}>Xem trước</div>
-												<p className={set.groupDesc}>Theo cấu hình đang sửa, chưa cần lưu.</p>
+												<p className={set.groupDesc}>
+													Form người dùng sẽ thấy theo cấu hình đang sửa (chưa cần lưu). Rê chuột lên một dòng ở bảng để
+													tìm ô đó.
+												</p>
 											</div>
 										</div>
 										<FormPreview
 											key={form.key}
 											form={form}
 											draft={draft}
+											focusKey={openField ?? hoverField}
 										/>
 									</Card>
 								</aside>
@@ -419,6 +593,16 @@ export default function FormConfigs() {
 				</div>
 			</div>
 
+			{form && openDef && (
+				<FieldDetailDrawer
+					key={openDef.key}
+					form={form}
+					field={openDef}
+					override={draft.fields?.[openDef.key]}
+					onChange={(ov) => setField(openDef.key, ov)}
+					onClose={() => setOpenField(null)}
+				/>
+			)}
 			{form && editing && (
 				<CustomFieldModal
 					form={form}

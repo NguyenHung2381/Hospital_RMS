@@ -15,10 +15,12 @@ import {
 	REVIEW_STATUS_LABEL,
 	REVIEW_STATUS_TONE,
 	downloadRegistrationApplication,
+	downloadRegistrationConsent,
 	getEnrollmentRegistration,
 	registrationApplicationUrl,
 	type RegistrationReview,
 } from '../api/registrationApi';
+import { FileCheckNote } from './FileCheckNote';
 import styles from './RegistrationReviewTab.module.css';
 import cs from '../pages/Courses.module.css';
 
@@ -40,6 +42,33 @@ const formatStamp = (iso: string | null | undefined): string => {
 		minute: '2-digit',
 		hour12: false,
 	});
+};
+
+// signed_at trong bản ghi xác nhận là ISO giờ UTC thật ⇒ đổi sang giờ Việt Nam
+const formatRealTime = (iso: string): string => {
+	const d = new Date(iso);
+	return Number.isNaN(d.getTime())
+		? ''
+		: d.toLocaleString('vi-VN', {
+				timeZone: 'Asia/Ho_Chi_Minh',
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+				hour12: false,
+			});
+};
+
+/** Giá trị trước / sau của 1 lần sửa (ngày dd/mm/yyyy, giới tính; trường bổ sung nhiều lựa chọn) */
+const showChange = (key: string, value: unknown): string => {
+	if (value === null || value === undefined || value === '') return '';
+	if (Array.isArray(value)) return value.join(', ');
+	if (typeof value === 'object') return JSON.stringify(value);
+	if (key === 'gender') return GENDER_LABEL[String(value)] ?? String(value);
+	if (DATE_KEYS.has(key)) return formatDateVN(String(value));
+	return String(value);
 };
 
 /** Giá trị hiển thị của 1 trường bản khai (ngày dd/mm/yyyy, giới tính, tên danh mục). */
@@ -97,7 +126,21 @@ export function RegistrationReviewTab({
 		}
 	};
 
+	const downloadConsent = async (seq?: number) => {
+		try {
+			saveBlob(
+				await downloadRegistrationConsent(enrollmentId, seq),
+				seq ? `xac-nhan-sua-lan-${seq}_${data.registration_code}.json` : `xac-nhan-dien-tu_${data.registration_code}.json`,
+			);
+		} catch (err) {
+			showToast('error', err instanceof Error ? err.message : 'Không tải được bản ghi xác nhận');
+		}
+	};
+
 	const diffs = new Map(data.diffs.map((d) => [d.key, d]));
+	const consent = data.consent;
+	const amendments = data.amendments ?? [];
+	const identityAmended = amendments.some((a) => a.identity_changed);
 	const invoice = Object.entries(data.invoice).filter(([, v]) => v);
 
 	return (
@@ -109,7 +152,80 @@ export function RegistrationReviewTab({
 				<Badge tone={data.source === 'internal' ? 'teal' : 'blue'}>{data.source === 'internal' ? 'Nội viện' : 'Ngoại viện'}</Badge>
 				{data.created_at && <span>Gửi lúc {formatStamp(data.created_at)}</span>}
 				{data.channel === 'portal' && <span>Qua cổng nhân viên</span>}
+				{amendments.length > 0 && (
+					<Badge tone={identityAmended ? 'amber' : 'blue'}>Người đăng ký đã sửa {amendments.length} lần</Badge>
+				)}
 			</div>
+
+			{amendments.length > 0 && (
+				<section className={styles.section}>
+					<h3 className={styles.sectionTitle}>Lịch sử sửa của người đăng ký</h3>
+					<div className={cx(styles.note, identityAmended && styles.noteWarn)}>
+						Thông tin bên dưới là bản mới nhất. Hồ sơ học viên không tự đổi theo bản sửa — đối chiếu mục lệch rồi cập nhật hồ sơ nếu
+						cần.
+						{identityAmended &&
+							' Có lần sửa thông tin định danh (họ tên, ngày sinh, giới tính hoặc số CCCD): đối chiếu lại với giấy tờ trước khi duyệt.'}
+					</div>
+					<ol className={styles.amendList}>
+						{amendments.map((a) => (
+							<li
+								key={a.seq}
+								className={styles.amendItem}
+							>
+								<div className={styles.amendHead}>
+									<strong>Lần {a.seq}</strong>
+									{a.created_at && <span className={styles.meta}>{formatStamp(a.created_at)}</span>}
+									<span className={styles.meta}>ký: {a.signature_name}</span>
+									{a.identity_changed && <Badge tone='amber'>Sửa định danh</Badge>}
+									{a.intact && a.chained ? (
+										<Badge tone='green'>Nguyên vẹn</Badge>
+									) : (
+										<Badge tone='red'>{a.intact ? 'Chuỗi lịch sử bị đứt' : 'Bản ghi đã bị sửa'}</Badge>
+									)}
+									{canSensitive && (
+										<button
+											type='button'
+											className={styles.linkBtn}
+											onClick={() => void downloadConsent(a.seq)}
+										>
+											Tải bản ghi (.json)
+										</button>
+									)}
+								</div>
+								<p className={styles.amendReason}>Lý do: {a.reason}</p>
+								<table className={styles.amendTable}>
+									<thead>
+										<tr>
+											<th scope='col'>Mục</th>
+											<th scope='col'>Trước</th>
+											<th scope='col'>Sau</th>
+										</tr>
+									</thead>
+									<tbody>
+										{a.changes.map((c) => (
+											<tr key={c.key}>
+												<th scope='row'>
+													{c.key.startsWith('custom.')
+														? `Trường bổ sung: ${c.key.slice(7)}`
+														: (REGISTRATION_FIELD_LABELS[c.key] ?? c.key)}
+												</th>
+												<td>{showChange(c.key, c.before) || <span className={styles.empty}>(trống)</span>}</td>
+												<td>{showChange(c.key, c.after) || <span className={styles.empty}>(trống)</span>}</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+								{(a.ip || a.user_agent) && (
+									<p className={styles.meta}>
+										Gửi từ {a.ip ?? '—'}
+										{a.user_agent ? ` · ${a.user_agent}` : ''}
+									</p>
+								)}
+							</li>
+						))}
+					</ol>
+				</section>
+			)}
 
 			<section className={styles.section}>
 				<h3 className={styles.sectionTitle}>Hồ sơ đính kèm</h3>
@@ -152,6 +268,7 @@ export function RegistrationReviewTab({
 									Xem
 								</button>
 							)}
+							{f.uploaded_at && <FileCheckNote check={f.check} />}
 						</li>
 					))}
 				</ul>
@@ -243,7 +360,55 @@ export function RegistrationReviewTab({
 							{data.rules_version && <span className={styles.meta}> · nội quy bản {data.rules_version}</span>}
 						</dd>
 					</div>
+					{consent && (
+						<>
+							<div className={styles.field}>
+								<dt>Ký xác nhận điện tử</dt>
+								<dd>
+									<strong>{consent.signature_name}</strong>
+									{consent.signed_at && <span className={styles.meta}> · {formatRealTime(consent.signed_at)}</span>}
+									{consent.consent_version && <span className={styles.meta}> · mẫu cam kết {consent.consent_version}</span>}
+								</dd>
+							</div>
+							<div className={styles.field}>
+								<dt>Đồng ý xử lý dữ liệu cá nhân</dt>
+								<dd>{consent.data_consent_at ? `Đã đồng ý ${formatStamp(consent.data_consent_at)}` : 'Chưa ghi nhận'}</dd>
+							</div>
+							{(consent.ip || consent.user_agent) && (
+								<div className={styles.field}>
+									<dt>Gửi từ</dt>
+									<dd>
+										{consent.ip ?? '—'}
+										{consent.user_agent && <span className={styles.meta}> · {consent.user_agent}</span>}
+									</dd>
+								</div>
+							)}
+							<div className={styles.field}>
+								<dt>Mã xác nhận (SHA-256)</dt>
+								<dd>
+									<span className={styles.hash}>{consent.hash}</span>{' '}
+									{consent.intact ? (
+										<Badge tone='green'>Nguyên vẹn</Badge>
+									) : (
+										<Badge tone='red'>Bản ghi đã bị sửa</Badge>
+									)}
+								</dd>
+							</div>
+						</>
+					)}
 				</dl>
+				{consent && consent.commitments.length > 0 && (
+					<ol className={styles.commitments}>
+						{consent.commitments.map((c, i) => (
+							<li key={i}>{c}</li>
+						))}
+					</ol>
+				)}
+				{consent && (
+					<p className={styles.meta}>
+						Mã xác nhận cũng in trong thư xác nhận gửi người đăng ký — đối chiếu để chứng minh bản ghi không bị sửa.
+					</p>
+				)}
 			</section>
 
 			<div className={styles.actions}>
@@ -258,6 +423,15 @@ export function RegistrationReviewTab({
 						>
 							Xem đơn
 						</button>
+						{consent && (
+							<button
+								type='button'
+								className={cs.btnGhost}
+								onClick={() => void downloadConsent()}
+							>
+								Tải bản ghi xác nhận (.json)
+							</button>
+						)}
 						<button
 							type='button'
 							className={cs.btnPrimary}

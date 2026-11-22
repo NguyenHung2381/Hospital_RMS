@@ -1,5 +1,4 @@
 import type {
-	DraftApplicationPayload,
 	DraftProposalPayload,
 	RegistrationAttachmentRules,
 	RegistrationFileKind,
@@ -15,24 +14,19 @@ interface Props {
 	files: Partial<Record<RegistrationFileKind, File>>;
 	onFile: (kind: RegistrationFileKind, file: File | null) => void;
 	errors: Record<string, string | undefined>;
-	/** Chỉ nội viện (đã khớp hồ sơ nhân sự): dữ liệu để máy chủ điền sẵn đơn và tờ trình */
-	draft?: { application: DraftApplicationPayload; proposal: DraftProposalPayload };
+	/** Chỉ nội viện (đã khớp hồ sơ nhân sự): dữ liệu để máy chủ điền sẵn tờ trình */
+	draft?: DraftProposalPayload;
 }
 
-// Bước 5: mỗi loại hồ sơ bắt buộc 1 ô file (danh sách lấy từ máy chủ — rules.attachments)
+// Mục "Hồ sơ đính kèm": mỗi loại hồ sơ bắt buộc 1 ô file (danh sách lấy từ máy chủ — rules.attachments)
 export function StepAttach({ source, rules, files, onFile, errors, draft }: Props) {
 	const internal = source === 'internal';
 	return (
 		<>
 			{internal ? (
 				<>
-					{draft && (
-						<DraftDocuments
-							application={draft.application}
-							proposal={draft.proposal}
-						/>
-					)}
-					<h3 className={s.attachTitle}>Bước 2 — Đính kèm giấy tờ đã ký / đã duyệt</h3>
+					{draft && <DraftDocuments proposal={draft} />}
+					<h3 className={s.attachTitle}>Đính kèm tờ trình đã duyệt</h3>
 				</>
 			) : (
 				<div className={s.note}>
@@ -48,6 +42,7 @@ export function StepAttach({ source, rules, files, onFile, errors, draft }: Prop
 						label={k.label}
 						hint={k.hint}
 						required={k.required}
+						later={k.later}
 						file={files[k.key] ?? null}
 						onChange={(f) => onFile(k.key, f)}
 						error={errors[`file_${k.key}`]}
@@ -56,8 +51,11 @@ export function StepAttach({ source, rules, files, onFile, errors, draft }: Prop
 					/>
 				))}
 			</div>
-			<p className={s.hint}>
-				Mỗi file tối đa {rules.max_size_mb} MB. Thiếu giấy tờ bắt buộc thì chưa gửi được đăng ký.
+			{/* Giới hạn định dạng / dung lượng đã hiện trong từng ô — ở đây chỉ nói cách nộp */}
+			<p className={s.attachNote}>
+				{internal
+					? 'Nộp bổ sung tờ trình sau ở trang Tra cứu đơn đăng ký hoặc mục "Đơn đăng ký của tôi" ở cổng nhân viên.'
+					: 'Thiếu giấy tờ bắt buộc thì chưa gửi được đăng ký.'}
 			</p>
 		</>
 	);

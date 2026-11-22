@@ -144,3 +144,114 @@
 		align-self: stretch;
 	}
 }
+
+/* Sửa thông tin đã khai (khi còn chờ duyệt) */
+.amendCta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3) var(--space-4);
+	padding: var(--space-3) var(--space-4);
+	border: 1px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+}
+.amendCta p {
+	flex: 1 1 260px;
+	margin: 0;
+}
+.amend {
+	padding: var(--space-4) var(--space-5);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+}
+.amendHead {
+	margin-bottom: var(--space-4);
+}
+.amendTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	margin: 0 0 var(--space-1);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.amendTitle svg {
+	width: 18px;
+	height: 18px;
+}
+.amendHistory {
+	margin: var(--space-2) 0 0;
+	padding-left: var(--space-5);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+.amendBlock {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-1);
+	margin-top: var(--space-4);
+}
+.changeBox {
+	margin-top: var(--space-4);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+	color: var(--color-gray-700);
+}
+.changeBoxWarn {
+	border-color: var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+}
+.changeWarn {
+	margin: var(--space-2) 0 0;
+}
+.amendError {
+	margin: var(--space-4) 0 0;
+}
+.amendActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--space-3);
+	margin-top: var(--space-4);
+}
+.amendClosed {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+.amendClosed p {
+	margin: 0;
+}
+.amendDone {
+	align-items: flex-start;
+}
+.hash {
+	font-family: var(--font-mono, monospace);
+	font-size: var(--font-size-xs);
+	word-break: break-all;
+}
+@media (max-width: 640px) {
+	.amend {
+		padding: var(--space-3) 0 0;
+		border-width: 1px 0 0;
+		border-radius: 0;
+	}
+}
+
+/* Cảnh báo tự kiểm tra loại file (OCR / QR) dưới dòng trạng thái hồ sơ */
+.checkWarn {
+	display: block;
+	margin-top: 2px;
+	color: var(--tone-amber-fg);
+}

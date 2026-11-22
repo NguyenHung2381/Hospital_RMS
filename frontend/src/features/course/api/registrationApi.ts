@@ -50,12 +50,52 @@ export interface RegistrationReview {
 	rules_version: string | null;
 	rules_accepted_at: string | null;
 	declared_true_at: string | null;
+	/** Bằng chứng ký điện tử (null = bản khai trước khi có ký điện tử) */
+	consent: RegistrationConsent | null;
+	/** Các lần người đăng ký tự sửa (snapshot là bản mới nhất), cũ → mới */
+	amendments: RegistrationAmendment[];
 	verified_email: string | null;
 	email_verified_at: string | null;
 	invoice: Record<string, string | null>;
 	files: RegistrationFileItem[];
 	files_missing: RegistrationFileKind[];
 	created_at: string | null;
+}
+
+/** Bản ghi xác nhận điện tử: 3 cam kết + họ tên gõ để ký, băm SHA-256 (cũng gửi trong thư cho người đăng ký) */
+export interface RegistrationConsent {
+	signature_name: string | null;
+	/** ISO, giờ UTC thật (lấy từ bản ghi JSON) */
+	signed_at: string | null;
+	/** Cột timestamp lưu giờ VN — đọc như các mốc khác của bản khai */
+	data_consent_at: string | null;
+	consent_version: string | null;
+	commitments: string[];
+	hash: string;
+	/** false = bản ghi đã bị sửa so với mã băm lưu lúc ký */
+	intact: boolean;
+	/** null khi thiếu quyền xem dữ liệu nhạy cảm */
+	ip: string | null;
+	user_agent: string | null;
+}
+
+/** 1 lần người đăng ký tự sửa bản khai ở trang Tra cứu */
+export interface RegistrationAmendment {
+	seq: number;
+	/** Giờ VN (như các mốc khác của bản khai) */
+	created_at: string | null;
+	reason: string;
+	/** Có sửa họ tên / ngày sinh / giới tính / số CCCD */
+	identity_changed: boolean;
+	/** key 'custom.<khóa>' = trường bổ sung; CCCD đã che khi thiếu quyền dữ liệu nhạy cảm */
+	changes: { key: string; before: unknown; after: unknown }[];
+	signature_name: string;
+	hash: string;
+	intact: boolean;
+	/** false = chuỗi mã băm bị đứt (có lần sửa bị chèn / xóa / sửa) */
+	chained: boolean;
+	ip: string | null;
+	user_agent: string | null;
 }
 
 /** Tóm tắt bản khai trên 1 dòng danh sách ghi danh (null = ghi danh hộ / nhập Excel). */
@@ -66,6 +106,8 @@ export interface EnrollmentRegistrationFlag {
 	has_dossier: boolean;
 	/** Khóa loại còn thiếu */
 	files_missing: string[];
+	/** Số lần người đăng ký tự sửa bản khai */
+	amendments?: number;
 }
 
 /** 1 nhóm nội viện (khóa + chương trình + khoa) — dữ liệu Tờ trình. */
@@ -103,6 +145,9 @@ export const getRegistrationDossier = (enrollmentId: string) =>
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
 export const registrationApplicationUrl = (enrollmentId: string) => `/api/v1${reg(enrollmentId)}/application`;
 export const downloadRegistrationApplication = (enrollmentId: string) => getBlob(`${reg(enrollmentId)}/application`);
+/** Bản ghi xác nhận điện tử nguyên văn (JSON) */
+export const downloadRegistrationConsent = (enrollmentId: string, seq?: number) =>
+	getBlob(`${reg(enrollmentId)}/consent${seq ? `?seq=${seq}` : ''}`);
 
 export const getCourseProposals = (courseId: string) => apiClient.get<ProposalGroup[]>(`/courses/${seg(courseId)}/proposals`);
 export const downloadCourseProposal = (courseId: string, departmentId: string, programId: string | null) =>

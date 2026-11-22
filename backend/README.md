@@ -304,6 +304,7 @@ Tải về (`/uploads`, link ký HMAC có hạn — `UPLOAD_URL_SECRET`, `UPLOAD
 | 03:00 | `personLinkJob` | Gắn `person_id` còn thiếu |
 | 04:00 | `notificationCleanupJob` | Xoá thông báo **đã đọc > 90 ngày**, **chưa đọc > 180 ngày**, theo lô 2000 dòng |
 | 04:30 | `dataRetentionJob` | Tạo trước partition tháng của `security_events`, bỏ partition cũ hơn `SECURITY_EVENTS_RETENTION_MONTHS` (mặc định 24, tối thiểu 12, `0` = không xoá); xoá dòng `job_execution_log` > 180 ngày của job khoá theo ngày. Không xoá khoá "đã làm việc X cho bản ghi Y" (nhắc mật khẩu, nhắc deadline, tự từ chối bổ sung) để job không gửi lại |
+| liên tục | `docCheckWorker` | Tự kiểm tra file hồ sơ đăng ký khóa ĐTLT có đúng loại không (`training/registration/docCheck/`): lớp chữ PDF → mã QR → OCR Tesseract tiếng Việt (image Docker cài sẵn `tesseract-ocr-data-vie`). Chạy ngay sau khi nộp file + quét lại 30 giây/lần, hàng đợi ở bảng `registration_file_checks` (nhiều worker chia việc bằng `SKIP LOCKED`). **Chỉ cảnh báo** ở màn duyệt, không tự từ chối. Không lưu chữ đọc được. `DOC_CHECK_ENABLED=false` để tắt; máy không có Tesseract thì chỉ kiểm bằng lớp chữ PDF + QR |
 
 **Redis**: cache-aside cho số liệu dashboard và danh mục, fail-open (mất Redis thì đọc thẳng DB); dùng chung cho rate-limit và pub/sub xoá cache quyền.
 

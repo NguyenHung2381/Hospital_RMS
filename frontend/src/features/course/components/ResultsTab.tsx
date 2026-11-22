@@ -32,7 +32,9 @@ const PART_LABEL: Record<GradePart, string> = { theory: 'LT', practice: 'TH' };
 
 const cmeSyncMessage = (r: CourseCmeSyncResult) => {
 	const parts = [
-		r.trainees == null ? 'học viên: công tắc đang tắt' : `${r.trainees} học viên`,
+		r.trainees == null
+			? 'học viên: công tắc đang tắt'
+			: `${r.trainees} học viên${r.trainees_pending ? ' (chờ người quản lý CME duyệt)' : ''}`,
 		r.lecturers == null
 			? `giảng viên: ${r.lecturer_enabled ? 'điểm chưa khóa' : 'công tắc đang tắt'}`
 			: `${r.lecturers} giảng viên${r.lecturers_pending ? ' (chờ người quản lý CME duyệt)' : ''}`,

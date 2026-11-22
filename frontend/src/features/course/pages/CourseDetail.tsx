@@ -16,6 +16,7 @@ import { programClassStatus, programDates } from '../utils/programClass';
 import { CourseFormModal } from '../components/CourseFormModal';
 import { CourseRegisterLinkModal } from '../components/CourseRegisterLinkModal';
 import { EnrollmentsTab } from '../components/EnrollmentsTab';
+import { EnrollmentExportModal } from '../components/EnrollmentExportModal';
 import { ExamsTab } from '../components/ExamsTab';
 import { ResultsTab } from '../components/ResultsTab';
 import { SessionsTab } from '../components/SessionsTab';
@@ -59,6 +60,7 @@ export default function CourseDetail() {
 	const [saving, setSaving] = useState(false);
 	const [sharing, setSharing] = useState(false);
 	const [cloning, setCloning] = useState(false);
+	const [exporting, setExporting] = useState(false);
 	const d = useCourseDetail(id);
 	const { reload } = d;
 
@@ -318,6 +320,7 @@ export default function CourseDetail() {
 								onOpen={openProgram}
 								onOpenAll={() => openWholeCourse()}
 								onOpenUnassigned={() => openWholeCourse('_none')}
+								onExport={() => setExporting(true)}
 							/>
 						</div>
 					) : (
@@ -477,6 +480,14 @@ export default function CourseDetail() {
 				<CourseCloneModal
 					course={course}
 					onClose={() => setCloning(false)}
+				/>
+			)}
+			{exporting && course && (
+				<EnrollmentExportModal
+					courseId={course.id}
+					courseName={course.name}
+					programs={links.map((l) => ({ id: l.program_id, code: l.program_code ?? null, name: l.program_name }))}
+					onClose={() => setExporting(false)}
 				/>
 			)}
 			{sharing && course && (

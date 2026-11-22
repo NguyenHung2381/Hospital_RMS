@@ -10,6 +10,7 @@ const path = require('path');
 const { getPool, sql, nowSql } = require('../../../config/db');
 const { UPLOADS_ROOT, moveUploadedFiles } = require('../../../utils/uploadPaths');
 const { badRequest } = require('../../../utils/httpError');
+const logger = require('../../../config/logger');
 const trainingFileService = require('../trainingFileService');
 const traineeService = require('../trainees/traineeService');
 const { isPdfOrImage } = require('../trainees/traineeProfilePdf');
@@ -21,7 +22,10 @@ const {
 	kindDef,
 	labelOf,
 	missingKinds,
+	retiredKindsIn,
 } = require('./registrationFileKinds');
+const docCheckService = require('./docCheck/docCheckService');
+const docCheckWorker = require('./docCheck/docCheckWorker');
 
 const FIELD_RE = /^files\[(.+)\]$/;
 
@@ -54,7 +58,7 @@ const assertSubmission = (source, byKind) => {
 		if (!allowed.has(key))
 			throw badRequest(`Hồ sơ "${labelOf(key)}" không thuộc đối tượng đăng ký đã chọn.`);
 	}
-	const missing = missingKinds(source, Object.keys(byKind));
+	const missing = missingKinds(source, Object.keys(byKind), { atSubmit: true });
 	if (missing.length)
 		throw badRequest(`Vui lòng đính kèm đủ hồ sơ bắt buộc: ${missing.map(labelOf).join(', ')}.`);
 	for (const file of Object.values(byKind)) {
@@ -70,10 +74,13 @@ const listFiles = async (enrollmentId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('id', sql.VarChar(20), enrollmentId).query(`
 		SELECT crf.kind, crf.uploaded_at, crf.trainee_document_id,
-		       f.id AS file_id, f.file_name, f.file_url, f.mime_type, f.file_size, d.status AS review_status
+		       f.id AS file_id, f.file_name, f.file_url, f.mime_type, f.file_size, d.status AS review_status,
+		       ck.status AS check_status, ck.verdict AS check_verdict, ck.detected_kind AS check_detected_kind,
+		       ck.warnings AS check_warnings, ck.sha256 AS check_sha256
 		FROM course_registration_files crf
 		JOIN training_files f ON f.id = crf.file_id AND f.is_deleted = 'false'
 		LEFT JOIN trainee_documents d ON d.id = crf.trainee_document_id
+		LEFT JOIN registration_file_checks ck ON ck.file_id = crf.file_id
 		WHERE crf.enrollment_id = @id`);
 	return r.recordset;
 };
@@ -83,29 +90,35 @@ const presentKinds = (rows) =>
 	rows.filter((r) => r.review_status !== 'rejected').map((r) => r.kind);
 
 /**
- * Dòng hồ sơ gửi FE: luôn đủ các loại của đối tượng (theo thứ tự khai báo), thêm 'dossier'
- * ở cuối nếu đơn cũ có file gộp.
+ * Dòng hồ sơ gửi FE: luôn đủ các loại của đối tượng (theo thứ tự khai báo), thêm loại đã thôi
+ * yêu cầu (vd đơn đã ký) và 'dossier' ở cuối nếu đơn cũ có file đó.
  * @param {string} source
  * @param {Array<Record<string, any>>} rows kết quả listFiles
- * @param {{ withUrl?: boolean }} [opts] withUrl = false ⇒ file_url luôn null
+ * @param {{ withUrl?: boolean, withChecks?: boolean }} [opts] withUrl = false ⇒ file_url luôn null;
+ *   withChecks = false ⇒ check luôn null (công tắc tự kiểm tra đang tắt)
  */
-const summarize = (source, rows, { withUrl = false } = {}) => {
+const summarize = (source, rows, { withUrl = false, withChecks = true } = {}) => {
 	const byKey = new Map(rows.map((r) => [r.kind, r]));
+	const checks = withChecks ? docCheckService.presentAll(rows) : new Map();
 	const item = (def, legacy) => {
 		const row = byKey.get(def.key);
 		return {
 			kind: def.key,
 			label: def.label,
 			required: def.required,
+			later: !!def.later,
 			legacy,
 			uploaded_at: row?.uploaded_at ?? null,
 			file_name: row?.file_name ?? null,
 			file_url: withUrl ? (row?.file_url ?? null) : null,
 			mime_type: row?.mime_type ?? null,
 			review_status: row?.review_status ?? null,
+			// Tự kiểm tra loại file (docCheck/) — chỉ để cảnh báo, null = chưa / không kiểm
+			check: checks.get(def.key) ?? null,
 		};
 	};
 	const items = kindsFor(source).map((def) => item(def, false));
+	for (const def of retiredKindsIn(byKey.keys())) items.push(item(def, true));
 	if (byKey.has(LEGACY_KIND.key)) items.push(item(LEGACY_KIND, true));
 	return items;
 };
@@ -117,9 +130,12 @@ const summarize = (source, rows, { withUrl = false } = {}) => {
  * @returns {Promise<{ files: ReturnType<typeof summarize>, files_missing: string[] }>}
  */
 const describe = async (reg, opts = {}) => {
-	const rows = await listFiles(reg.enrollment_id);
+	const [rows, withChecks] = await Promise.all([
+		listFiles(reg.enrollment_id),
+		docCheckService.isEnabled(),
+	]);
 	return {
-		files: summarize(reg.source, rows, opts),
+		files: summarize(reg.source, rows, { ...opts, withChecks }),
 		files_missing: missingKinds(reg.source, presentKinds(rows)),
 	};
 };
@@ -192,6 +208,16 @@ const attach = async (reg, kind, file, actorId) => {
 			  SET file_id = EXCLUDED.file_id, trainee_document_id = EXCLUDED.trainee_document_id,
 			      uploaded_at = EXCLUDED.uploaded_at, updated_at = ${nowSql}, updated_by = @actor_id
 			RETURNING uploaded_at`);
+
+	// Xếp hàng tự kiểm tra loại file — lỗi ở đây không được làm hỏng việc nộp hồ sơ
+	try {
+		if (await docCheckService.enqueue({ fileId, enrollmentId: reg.enrollment_id, kind }))
+			docCheckWorker.kick();
+	} catch (err) {
+		logger.warn(
+			`[doc_check] không xếp hàng được ${fileId}: ${err instanceof Error ? err.message : err}`,
+		);
+	}
 
 	if (old && old.file_id !== fileId) {
 		if (reg.source === 'internal') {

@@ -6,6 +6,7 @@ const supplementDeadlineJob = require('./supplementDeadlineJob');
 const notificationCleanupJob = require('./notificationCleanupJob');
 const dataRetentionJob = require('./dataRetentionJob');
 const practiceAutoService = require('../modules/training/courses/practiceAutoService');
+const docCheckWorker = require('../modules/training/registration/docCheck/docCheckWorker');
 const logger = require('../config/logger');
 
 const TZ = process.env.CRON_TZ || 'Asia/Ho_Chi_Minh';
@@ -65,6 +66,9 @@ const start = () => {
 	cron.schedule('30 4 * * *', runSafely('data_retention', dataRetentionJob.run), {
 		timezone: TZ,
 	});
+
+	// Liên tục: tự kiểm tra loại file hồ sơ đăng ký khóa ĐTLT (OCR / QR) — DOC_CHECK_ENABLED=false để tắt
+	runSafely('doc_check', docCheckWorker.start)();
 
 	logger.info(`[jobs] Đã lên lịch cron job nền (timezone ${TZ}).`);
 };

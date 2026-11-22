@@ -16,6 +16,7 @@ export default function TopicLibrary() {
 
 	return (
 		<PublicLayout
+			section='research'
 			title='Thư viện đề tài'
 			subtitle='Các đề tài nghiên cứu khoa học và bài báo đã được công nhận, chọn giới thiệu công khai.'
 		>

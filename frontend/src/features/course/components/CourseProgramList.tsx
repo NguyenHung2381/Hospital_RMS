@@ -1,4 +1,4 @@
-import { BookOpenSvg, CalendarSvg, ChevRSvg, LayersSvg } from '@/assets/icons';
+import { BookOpenSvg, CalendarSvg, ChevRSvg, DownloadSvg, LayersSvg } from '@/assets/icons';
 import { Button } from '@/shared/components';
 import type { CourseProgramLink } from '../types/course.type';
 import { programClassStatus, programDates } from '../utils/programClass';
@@ -22,6 +22,7 @@ export function CourseProgramList({
 	onOpen,
 	onOpenAll,
 	onOpenUnassigned,
+	onExport,
 }: {
 	links: CourseProgramLink[];
 	statsOf: (programId: string) => ProgramStats;
@@ -30,6 +31,8 @@ export function CourseProgramList({
 	onOpen: (programId: string) => void;
 	onOpenAll: () => void;
 	onOpenUnassigned: () => void;
+	/** Mở hộp xuất danh sách học viên ra Excel. */
+	onExport?: () => void;
 }) {
 	return (
 		<section aria-labelledby='course-programs-title'>
@@ -43,14 +46,27 @@ export function CourseProgramList({
 					</h2>
 					<p className={styles.hint}>Chọn một chương trình để quản lý học viên, bài học, tài liệu, thi và kết quả.</p>
 				</div>
-				<Button
-					variant='secondary'
-					size='sm'
-					icon={<LayersSvg />}
-					onClick={onOpenAll}
-				>
-					Xem toàn khóa
-				</Button>
+				<div className={styles.headActions}>
+					{onExport && (
+						<Button
+							variant='secondary'
+							size='sm'
+							icon={<DownloadSvg />}
+							onClick={onExport}
+							title='Xuất danh sách học viên ra Excel (toàn khóa hoặc theo từng chương trình)'
+						>
+							Xuất danh sách học viên
+						</Button>
+					)}
+					<Button
+						variant='secondary'
+						size='sm'
+						icon={<LayersSvg />}
+						onClick={onOpenAll}
+					>
+						Xem toàn khóa
+					</Button>
+				</div>
 			</div>
 
 			{unassigned > 0 && (

@@ -16,7 +16,7 @@ require('../../src/modules/events/eventService').broadcast = () => {};
 const svc = require('../../src/modules/settings/systemSettingService');
 const otp = require('../../src/modules/training/registration/registrationEmailOtpService');
 
-const KEYS = ['TRAINING_REGISTRATION_EMAIL_OTP'];
+const KEYS = ['TRAINING_REGISTRATION_EMAIL_OTP', 'TRAINING_REGISTRATION_DOC_CHECK'];
 
 test('khóa nằm trong danh sách cho phép lưu', () => {
 	for (const key of KEYS) assert.equal(svc.isKey(key), true);
@@ -74,4 +74,53 @@ test('trang cấu hình đọc lại được giá trị đang áp dụng (effec
 	);
 	// Khóa đã gỡ không còn trong danh sách cấu hình
 	assert.equal(svc.isKey('TRAINING_REGISTRATION_REQUIRE_CHECKS'), false);
+});
+
+// Công tắc ở trang Khóa học (PUT /courses/registration-settings) ghi chung khóa trên
+test('cài đặt đăng ký ở trang Khóa học đọc / ghi chung khóa của Cấu hình hệ thống', async () => {
+	const regSettings = require('../../src/modules/training/registration/registrationSettingsService');
+	// Ghi qua update() để xóa cache 15s của systemSettingService
+	await svc.update('TRAINING_REGISTRATION_EMAIL_OTP', '', 'admin');
+	await svc.update('MAIL_ENABLED', 'true', 'admin');
+	const got = await regSettings.get();
+	assert.equal(got.email_otp_required, true);
+	assert.equal(got.mail_enabled, true);
+	assert.equal(got.doc_check_enabled, true, 'tự kiểm tra hồ sơ mặc định bật');
+	assert.equal(typeof got.doc_check_ocr, 'boolean', 'có / không có Tesseract tùy máy');
+
+	assert.equal(
+		(await regSettings.update({ email_otp_required: false }, 'u1')).email_otp_required,
+		false,
+	);
+	assert.equal(rows.get('TRAINING_REGISTRATION_EMAIL_OTP'), 'false');
+	assert.equal(await otp.isRequired(), false);
+
+	// Không gửi khóa ⇒ không đổi gì
+	assert.equal((await regSettings.update({}, 'u1')).email_otp_required, false);
+	assert.equal(
+		(await regSettings.update({ email_otp_required: true }, 'u1')).email_otp_required,
+		true,
+	);
+	assert.equal(rows.get('TRAINING_REGISTRATION_EMAIL_OTP'), 'true');
+});
+
+// Công tắc tự kiểm tra file hồ sơ (OCR / QR) — cùng chỗ lưu với Cấu hình hệ thống
+test('công tắc tự kiểm tra file hồ sơ: ghi chung khóa TRAINING_REGISTRATION_DOC_CHECK, có hiệu lực ngay', async () => {
+	const regSettings = require('../../src/modules/training/registration/registrationSettingsService');
+	const docCheck = require('../../src/modules/training/registration/docCheck/docCheckService');
+	await svc.update('TRAINING_REGISTRATION_DOC_CHECK', '', 'admin');
+	assert.equal(await docCheck.isEnabled(), true);
+
+	const off = await regSettings.update({ doc_check_enabled: false }, 'u1');
+	assert.equal(off.doc_check_enabled, false);
+	assert.equal(rows.get('TRAINING_REGISTRATION_DOC_CHECK'), 'false');
+	assert.equal(await docCheck.isEnabled(), false);
+	// Đổi công tắc này không đụng công tắc OTP
+	assert.equal(off.email_otp_required, true);
+
+	assert.equal(
+		(await regSettings.update({ doc_check_enabled: true }, 'u1')).doc_check_enabled,
+		true,
+	);
+	assert.equal(await docCheck.isEnabled(), true);
 });

@@ -19,6 +19,14 @@
  *     dạy); bài chưa có buổi nào gán GV thì GV chính được số tiết của bài.
  * Công tắc CME_AUTO_TRAINEE / CME_AUTO_LECTURER (mặc định bật). Thu hồi / xóa
  * luôn chạy (kể cả công tắc tắt) để CME không còn tính cho giấy đã hủy.
+ * Cách duyệt dòng tự cộng (TT 32/2023 Điều 9 khoản 1, 4: cơ sở tổ chức xác nhận, tính giờ tín
+ * chỉ và quản lý việc xác nhận):
+ *   - CME_TRAINEE_APPROVAL: 'approved' (mặc định — giấy chứng nhận do thủ trưởng ký đã là xác
+ *     nhận, Điều 4.1.i) | 'pending' (chờ người quản lý CME duyệt).
+ *   - CME_LECTURER_APPROVAL: 'permission' (mặc định — duyệt khi người khóa điểm có
+ *     cme_records:manage, M-07) | 'approved' (cộng thẳng, nhưng người thiếu cme_records:manage
+ *     không tự duyệt được dòng của CHÍNH MÌNH) | 'pending' (luôn chờ duyệt — thủ trưởng tính giờ
+ *     giảng dựa trên minh chứng, Điều 6.2.c).
  */
 const {
 	getPool,
@@ -43,6 +51,23 @@ const CATEGORY = 'DT_KHOAHOC';
 
 const isOn = async (key) => (await systemSettingService.getValue(key, 'true')) !== 'false';
 
+// Chế độ duyệt (systemSettingService.ENUM_KEYS chặn giá trị lạ khi lưu; đọc vẫn rơi về mặc định)
+const APPROVAL_MODES = {
+	CME_TRAINEE_APPROVAL: ['approved', 'pending'],
+	CME_LECTURER_APPROVAL: ['permission', 'approved', 'pending'],
+};
+const approvalMode = async (key) => {
+	const v = await systemSettingService.getValue(key, '');
+	return APPROVAL_MODES[key].includes(v) ? v : APPROVAL_MODES[key][0];
+};
+
+// Giá trị `approve` của upsertCmeSql cho dòng giảng viên theo chế độ + quyền người gọi.
+const lecturerApprove = (mode, canApprove) => {
+	if (mode === 'pending') return false;
+	if (canApprove) return true;
+	return mode === 'approved' ? 'except_self' : false;
+};
+
 // Ghi / cập nhật các dòng CME của khóa @course_id theo câu SELECT `source` (user_id,
 // enrollment_id, title, role, category_id, quantity, credits, activity_date, note) — khóa duy
 // nhất (source_type, source_id, user_id, enrollment_id), khớp uq_cme_records_source (NULLS NOT
@@ -64,9 +89,49 @@ const SAME_AS_INSERT = [
 //   - conflict: 'rejected' giữ nguyên (lời từ chối của người quản lý CME không bị hoàn tác),
 //     'approved' chỉ giữ khi tín chỉ không đổi, còn lại về 'pending' chờ duyệt lại.
 // approve=true: chèn 'approved'; conflict vẫn giữ 'rejected', không xóa lý do từ chối.
-// keepRejected=false (dòng học viên theo giấy chứng nhận): giữ hành vi cũ — luôn 'approved',
-// vì cấp lại giấy sau thu hồi (cần courses:approve) phải duyệt lại dòng CME.
+// approve='except_self' (chế độ cộng thẳng, người gọi thiếu cme_records:manage): dòng của
+//   người khác 'approved', dòng của chính người gọi (src.user_id = @actor_id) 'pending' —
+//   không ai tự duyệt CME cho mình; conflict nâng lên 'approved' theo trạng thái câu INSERT.
+// keepRejected=false (dòng học viên theo giấy chứng nhận): conflict bỏ trạng thái 'rejected'
+//   (do thu hồi giấy) vì cấp lại giấy (cần courses:approve) phải tính lại dòng CME:
+//   approve=true ⇒ 'approved'; approve=false (CME_TRAINEE_APPROVAL='pending') ⇒ 'pending',
+//   trừ dòng đã duyệt mà tín chỉ không đổi.
 // category_id nằm trong SAME_AS_INSERT ⇒ chạy lại sync đổi luôn danh mục của dòng cũ.
+const SELF = 'src.user_id = @actor_id';
+const insertStatus = (approve) => {
+	if (approve === 'except_self')
+		return {
+			approval_status: `CASE WHEN ${SELF} THEN 'pending' ELSE 'approved' END`,
+			reviewed_by: `CASE WHEN ${SELF} THEN NULL ELSE @actor_id END`,
+			reviewed_at: `CASE WHEN ${SELF} THEN NULL ELSE ${nowSql} END`,
+		};
+	return {
+		approval_status: approve ? "'approved'" : "'pending'",
+		reviewed_by: approve ? '@actor_id' : 'NULL',
+		reviewed_at: approve ? nowSql : 'NULL',
+	};
+};
+const KEEP_APPROVED =
+	"WHEN tgt.approval_status = 'approved' AND tgt.credits = EXCLUDED.credits THEN 'approved'";
+const conflictStatus = (approve, keepRejected) => {
+	if (!keepRejected) {
+		if (approve) return { approval_status: "'approved'", reject_reason: 'NULL' };
+		return { approval_status: `CASE ${KEEP_APPROVED} ELSE 'pending' END`, reject_reason: 'NULL' };
+	}
+	const rejected = "WHEN tgt.approval_status = 'rejected' THEN 'rejected'";
+	let status;
+	if (approve === 'except_self')
+		status = `CASE ${rejected} WHEN EXCLUDED.approval_status = 'approved' THEN 'approved' ${KEEP_APPROVED} ELSE 'pending' END`;
+	else if (approve) status = `CASE ${rejected} ELSE 'approved' END`;
+	else status = `CASE ${rejected} ${KEEP_APPROVED} ELSE 'pending' END`;
+	return { approval_status: status, reject_reason: 'tgt.reject_reason' };
+};
+/**
+ * @param {string} sourceType
+ * @param {string} source câu SELECT nguồn
+ * @param {{ approve?: boolean | 'except_self', keepRejected?: boolean }} [opts]
+ *   approve: true = đã duyệt, false = chờ duyệt, 'except_self' = duyệt trừ dòng của chính người ghi
+ */
 const upsertCmeSql = (sourceType, source, { approve = true, keepRejected = false } = {}) =>
 	upsert({
 		table: 'cme_records',
@@ -84,9 +149,7 @@ const upsertCmeSql = (sourceType, source, { approve = true, keepRejected = false
 			quantity: 'src.quantity',
 			credits: 'src.credits',
 			note: 'src.note',
-			approval_status: approve ? "'approved'" : "'pending'",
-			reviewed_by: approve ? '@actor_id' : 'NULL',
-			reviewed_at: approve ? nowSql : 'NULL',
+			...insertStatus(approve),
 			source_type: `'${sourceType}'`,
 			source_id: '@course_id',
 			enrollment_id: 'src.enrollment_id',
@@ -94,16 +157,7 @@ const upsertCmeSql = (sourceType, source, { approve = true, keepRejected = false
 		},
 		update: {
 			...Object.fromEntries(SAME_AS_INSERT.map((c) => [c, `EXCLUDED.${c}`])),
-			...(keepRejected
-				? {
-						approval_status: approve
-							? "CASE WHEN tgt.approval_status = 'rejected' THEN 'rejected' ELSE 'approved' END"
-							: `CASE WHEN tgt.approval_status = 'rejected' THEN 'rejected'
-                  WHEN tgt.approval_status = 'approved' AND tgt.credits = EXCLUDED.credits THEN 'approved'
-                  ELSE 'pending' END`,
-						reject_reason: 'tgt.reject_reason',
-					}
-				: { approval_status: "'approved'", reject_reason: 'NULL' }),
+			...conflictStatus(approve, keepRejected),
 			updated_at: nowSql,
 			updated_by: '@actor_id',
 		},
@@ -120,13 +174,14 @@ const conversionOf = (categoryId) =>
  */
 const syncTrainees = async (courseId, actorId, { enrollmentId = null } = {}) => {
 	if (!(await isOn('CME_AUTO_TRAINEE'))) return 0;
+	const approve = (await approvalMode('CME_TRAINEE_APPROVAL')) === 'approved';
 	const pool = await getPool();
 	const r = await pool
 		.request()
 		.input('course_id', sql.VarChar(20), courseId)
 		.input('enrollment_id', sql.VarChar(20), enrollmentId)
 		.input('actor_id', sql.VarChar(20), actorId)
-		.query(upsertCmeSql(SOURCE.trainee, TRAINEE_SOURCE));
+		.query(upsertCmeSql(SOURCE.trainee, TRAINEE_SOURCE, { approve }));
 	const n = r.rowsAffected[0] ?? 0;
 	if (n) broadcast('update', { entity: 'cme_record' });
 	return n;
@@ -316,6 +371,7 @@ const LECTURER_SOURCE = `
 
 // Ghi CME giảng viên, trả { n: số dòng ghi, pending: số dòng đang chờ duyệt sau khi ghi }.
 const writeLecturers = async (courseId, actorId, { canApprove = false } = {}) => {
+	const approve = lecturerApprove(await approvalMode('CME_LECTURER_APPROVAL'), canApprove);
 	// Đọc dữ kiện, xóa dòng của GV không còn giờ giảng rồi ghi / cập nhật, trong 1 transaction
 	const result = await withTransaction(async (tx) => {
 		const req = () =>
@@ -332,12 +388,7 @@ const writeLecturers = async (courseId, actorId, { canApprove = false } = {}) =>
         AND NOT EXISTS (SELECT 1 FROM ${LECTURER_ROWS} WHERE j.user_id = cme_records.user_id AND j.hours > 0)`);
 		const r = await req()
 			.input('rows', sql.NVarChar(sql.MAX), rows)
-			.query(
-				upsertCmeSql(SOURCE.lecturer, LECTURER_SOURCE, {
-					approve: canApprove,
-					keepRejected: true,
-				}),
-			);
+			.query(upsertCmeSql(SOURCE.lecturer, LECTURER_SOURCE, { approve, keepRejected: true }));
 		return {
 			n: r.rowsAffected[0] ?? 0,
 			pending: (r.recordset ?? []).filter((x) => x.approval_status === 'pending').length,
@@ -387,8 +438,12 @@ const syncCourse = async (courseId, actorId, { canApprove = false } = {}) => {
 		lecturerOn && locked ? await writeLecturers(courseId, actorId, { canApprove }) : null;
 	return {
 		trainees,
+		// CME_TRAINEE_APPROVAL='pending' ⇒ dòng học viên vừa ghi chờ người quản lý CME duyệt
+		trainees_pending: !!trainees && (await approvalMode('CME_TRAINEE_APPROVAL')) === 'pending',
 		lecturers: lecturer ? lecturer.n : null,
-		lecturers_pending: !canApprove && (lecturer?.pending ?? 0) > 0,
+		// còn dòng chờ duyệt sau lần ghi (người gọi thiếu quyền, chế độ "luôn chờ duyệt", hoặc dòng
+		// của chính người gọi ở chế độ cộng thẳng)
+		lecturers_pending: (lecturer?.pending ?? 0) > 0,
 		trainee_enabled: traineeOn,
 		lecturer_enabled: lecturerOn,
 		grades_locked: locked,

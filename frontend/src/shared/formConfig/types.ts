@@ -41,6 +41,8 @@ export interface ResolvedField {
 	hint: string | null;
 	rules: Omit<FieldRules, 'options'>;
 	options: FieldOption[] | null;
+	/** Ô chữ đã đổi thành ô chọn theo danh sách admin đặt (override.choices) */
+	choices?: boolean;
 	dynamic?: boolean;
 	when?: Record<string, string> | null;
 	/** Chỉ có ở form sửa — lúc tạo mới không kiểm */
@@ -76,6 +78,8 @@ export interface RegistryField {
 	dynamic?: boolean;
 	/** true | [variant...] */
 	editOnly?: VariantSpec;
+	/** Ô chữ không cho đổi thành danh sách chọn */
+	noChoices?: boolean;
 }
 
 export interface FieldOverride {
@@ -85,6 +89,8 @@ export interface FieldOverride {
 	placeholder?: string;
 	hint?: string;
 	rules?: FieldRules;
+	/** Chỉ trường `text`: danh sách chữ được chọn ⇒ ô nhập thành ô chọn 1 */
+	choices?: string[];
 }
 
 export interface CustomFieldDef {

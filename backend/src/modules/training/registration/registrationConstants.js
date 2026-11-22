@@ -17,6 +17,20 @@ const CLASS_RULES = [
 	'Đối với học viên là cán bộ, nhân viên của Bệnh viện HNĐK Nghệ An, khi đăng ký đào tạo phải có tờ trình của khoa/phòng/trung tâm đang công tác và xác nhận của Ban giám đốc Bệnh viện.',
 ];
 
+// Nguyên văn các cam kết người đăng ký tích chọn + ký bằng cách gõ lại họ tên. Ghi nguyên văn vào
+// course_registrations.consent_record (registrationConsent.js) để sau này đối chiếu đúng chữ người
+// đó đã đồng ý, kể cả khi câu chữ ở đây đã sửa. Đổi câu chữ ⇒ đổi CONSENT_VERSION.
+// Câu chữ nên được bộ phận pháp chế của bệnh viện rà soát trước khi dùng chính thức.
+const CONSENT_VERSION = '2026-11';
+const COMMITMENTS = {
+	rules: `Tôi đã đọc toàn bộ Nội quy lớp học (phiên bản ${RULES_VERSION}) và cam kết thực hiện đầy đủ; nếu vi phạm, tôi chấp nhận hình thức xử lý theo nội quy.`,
+	declared:
+		'Tôi cam đoan các thông tin đã khai và giấy tờ đã đính kèm là đúng sự thật, chịu hoàn toàn trách nhiệm trước Bệnh viện và trước pháp luật nếu có sai lệch.',
+	data: 'Tôi đồng ý để Bệnh viện Hữu nghị Đa khoa Nghệ An thu thập, lưu trữ và xử lý dữ liệu cá nhân đã khai (họ tên, ngày sinh, số định danh, thông tin liên hệ, văn bằng, giấy tờ đính kèm) cho mục đích xét duyệt đăng ký, tổ chức đào tạo, cấp giấy chứng nhận và lưu hồ sơ đào tạo theo quy định. Tôi được quyền xem, yêu cầu sửa hoặc rút lại sự đồng ý bằng cách liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.',
+};
+const SIGNATURE_NOTE =
+	'Tích chọn các cam kết và gõ lại đúng họ tên là cách bạn ký xác nhận bản đăng ký điện tử này (Luật Giao dịch điện tử 2023). Hệ thống lưu nguyên văn nội dung đã xác nhận, thời điểm, địa chỉ IP và thiết bị gửi làm bằng chứng.';
+
 const SOURCES = ['internal', 'external'];
 
 // Gợi ý nơi cấp CCCD (người đăng ký vẫn nhập được nơi khác)
@@ -84,9 +98,21 @@ const INVOICE_FIELDS = [
 	'invoice_email',
 ];
 
+// Người đăng ký tự sửa bản khai (trang Tra cứu) — chỉ khi lượt ghi danh còn chờ duyệt, tối đa
+// MAX_AMENDMENTS lần. Sửa trường định danh thì màn duyệt tô cảnh báo; hồ sơ học viên KHÔNG tự đổi.
+const AMEND_STATUSES = ['pending', 'waitlisted'];
+const MAX_AMENDMENTS = 5;
+const IDENTITY_FIELDS = ['full_name', 'dob', 'gender', 'national_id'];
+
 module.exports = {
+	AMEND_STATUSES,
+	MAX_AMENDMENTS,
+	IDENTITY_FIELDS,
 	RULES_VERSION,
 	CLASS_RULES,
+	CONSENT_VERSION,
+	COMMITMENTS,
+	SIGNATURE_NOTE,
 	SOURCES,
 	ID_ISSUE_PLACES,
 	SNAPSHOT_FIELDS,

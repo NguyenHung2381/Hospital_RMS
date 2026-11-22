@@ -12,6 +12,7 @@
 //     đơn sau cùng (sau bản khai) — nhánh queueUnverified gắn vào hồ sơ MỚI, không vào hồ sơ
 //     của người khác.
 const crypto = require('crypto');
+const { publicConsent, consentInput } = require('../training/registration/registrationConsent');
 const fsp = require('fs/promises');
 const { getPool, sql } = require('../../config/db');
 const traineeService = require('../training/trainees/traineeService');
@@ -108,6 +109,7 @@ const staffCheck = async (staffNumber, fullName) => {
 const getRules = async () => ({
 	version: RULES_VERSION,
 	rules: CLASS_RULES,
+	consent: publicConsent(),
 	id_issue_places: ID_ISSUE_PLACES,
 	email_otp_required: await emailOtp.isRequired(),
 	attachments: {
@@ -172,7 +174,12 @@ const EMAIL_NOT_VERIFIED =
 	'Email chưa được xác minh hoặc mã xác minh đã hết hạn. Vui lòng xác minh lại email trước khi gửi đăng ký.';
 
 // Email xác nhận kèm mã đăng ký — chạy nền (mailQueue), gửi lỗi không làm hỏng đăng ký.
-const notifyReceived = (to, { fullName, code, courseName, programId }) => {
+/**
+ * @param {string | null | undefined} to
+ * @param {{ programId?: string | null, fullName: string, code: string, courseName: string,
+ *   consentHash?: string | null, signedAt?: Date }} info consentHash = mã băm bản ghi xác nhận điện tử
+ */
+const notifyReceived = (to, { programId, ...info }) => {
 	if (!to) return;
 	mailQueue.enqueue('xác nhận đăng ký khóa đào tạo', async () => {
 		let programName = null;
@@ -186,13 +193,8 @@ const notifyReceived = (to, { fullName, code, courseName, programId }) => {
 		}
 		await mailService.send({
 			to,
-			subject: `Đã nhận đăng ký khóa đào tạo — mã ${code}`,
-			html: mailService.renderRegistrationReceivedEmail({
-				fullName,
-				code,
-				courseName,
-				programName,
-			}),
+			subject: `Đã nhận đăng ký khóa đào tạo — mã ${info.code}`,
+			html: mailService.renderRegistrationReceivedEmail({ ...info, programName }),
 			attachments: [mailService.LOGO_ATTACHMENT],
 			event: 'COURSE_ENROLLMENT',
 		});
@@ -223,6 +225,7 @@ const enrollTrainee = async (ctx, traineeId) => {
 			rulesVersion: RULES_VERSION,
 			verifiedEmail: ctx.verifiedEmail,
 			invoice: ctx.invoice,
+			consent: ctx.consent,
 		},
 		null,
 	);
@@ -252,13 +255,14 @@ const queueUnverified = async (ctx) => {
 	return enrollTrainee(ctx, trainee.id);
 };
 
-const registerExternal = async (data, byKind, custom, { otpRequired, emailProof }) => {
+const registerExternal = async (data, byKind, custom, { otpRequired, emailProof, consent }) => {
 	if (otpRequired && !emailOtp.tokenMatchesEmail(emailProof, data.email))
 		throw httpError(400, EMAIL_NOT_VERIFIED);
 	const snapshot = buildSnapshot(data, { internal: false });
 	const invoice = {};
 	for (const k of INVOICE_FIELDS) invoice[k] = clean(data[k]);
 	const ctx = {
+		consent,
 		data,
 		byKind,
 		custom,
@@ -308,7 +312,7 @@ const registerExternal = async (data, byKind, custom, { otpRequired, emailProof 
 // ─── Nội viện ───────────────────────────────────────────────────────────────
 // Không tin form cho khoa / trình độ: khớp lại mã NV + họ tên, lấy từ hồ sơ nhân sự.
 // Ghi danh bằng registerStaff (dùng / tạo hồ sơ học viên gắn staff_user_id).
-const registerInternal = async (data, byKind, custom, { otpRequired, emailProof }) => {
+const registerInternal = async (data, byKind, custom, { otpRequired, emailProof, consent }) => {
 	const u = await findStaff(data.full_name, data.staff_number);
 	const staffEmail = realEmail(u.email);
 	if (otpRequired) {
@@ -351,6 +355,7 @@ const registerInternal = async (data, byKind, custom, { otpRequired, emailProof 
 			snapshot,
 			rulesVersion: RULES_VERSION,
 			verifiedEmail,
+			consent: consent && { ...consent, fullName: u.full_name },
 		},
 		null,
 	);
@@ -411,12 +416,18 @@ const loadOpenCourse = async (courseId, programId) => {
  * @param {Record<string, { originalname: string, filename?: string, path?: string, size?: number, mimetype?: string }>} byKind
  *   file hồ sơ theo loại (registrationFileService.collectByKind)
  * @param {Record<string, any> | null} custom trường tùy chỉnh (Cấu hình form 'course_registration')
- * @param {{ otpRequired?: boolean, emailProof?: { eh: string, sid: string | null } | null }} [opts]
- *   controller đọc email_token; otpRequired = bắt email của bản khai khớp token
+ * @param {{ otpRequired?: boolean, emailProof?: { eh: string, sid: string | null } | null,
+ *   client?: { ip?: string | null, userAgent?: string | null } }} [opts]
+ *   controller đọc email_token; otpRequired = bắt email của bản khai khớp token; client = IP / thiết bị lúc ký
  * @returns {Promise<{ submitted: boolean, registration_code: string, download_token: string }>}
  */
 const register = async (data, byKind, custom = null, opts = {}) => {
-	const otp = { otpRequired: !!opts.otpRequired, emailProof: opts.emailProof || null };
+	// consent: họ tên gõ để ký + IP / thiết bị (validator đã kiểm khớp họ tên khai; nội viện ký theo hồ sơ nhân sự)
+	const otp = {
+		otpRequired: !!opts.otpRequired,
+		emailProof: opts.emailProof || null,
+		consent: consentInput(data, opts.client),
+	};
 	const course = await getOpenCourse(data.course_id);
 	// Kiểm lần 2 (controller đã kiểm) trước khi tạo hồ sơ / ghi danh — tránh ghi danh xong mới báo sai file
 	registrationFileService.assertSubmission(data.source, byKind ?? {});
@@ -432,6 +443,7 @@ const register = async (data, byKind, custom = null, opts = {}) => {
 		code: reg.registration_code,
 		courseName: course.name,
 		programId: data.program_id || null,
+		consentHash: reg.consent_hash ?? null,
 	});
 	return ackFor(reg);
 };

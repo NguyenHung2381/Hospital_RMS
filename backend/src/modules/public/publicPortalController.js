@@ -1,4 +1,5 @@
 const service = require('./publicPortalService');
+const { clientOf } = require('../training/registration/registrationConsent');
 const courseRegistration = require('./publicCourseRegistrationService');
 const emailOtp = require('../training/registration/registrationEmailOtpService');
 const registrationFileService = require('../training/registration/registrationFileService');
@@ -93,6 +94,7 @@ const register = asyncHandler(async (req, res) => {
 	const ack = await service.register(req.body, byKind, req.formCustom, {
 		otpRequired,
 		emailProof,
+		client: clientOf(req),
 	});
 	created(res, ack, REGISTER_MESSAGE);
 });

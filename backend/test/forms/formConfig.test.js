@@ -272,3 +272,41 @@ test('kinh phí ở cổng nhân viên: chỉ form nhập đề tài đã hoàn 
 	// Form quản trị vẫn đòi ngay khi tạo
 	assert.equal(resolve(topic, ov, 'admin').fields.budget_estimated.editOnly, false);
 });
+
+test('choices: ô chữ đổi thành danh sách chọn', () => {
+	const ov = {
+		fields: { journal_name: { choices: ['Tạp chí Y học Việt Nam', 'Tạp chí Y học Lâm sàng'] } },
+	};
+	assert.equal(validateOverride(topic, ov), null);
+	const r = resolve(topic, ov, 'admin');
+	const f = r.fields.journal_name;
+	assert.equal(f.type, 'select');
+	assert.equal(f.choices, true);
+	assert.deepEqual(
+		f.options.map((o) => o.value),
+		['Tạp chí Y học Việt Nam', 'Tạp chí Y học Lâm sàng'],
+	);
+	// Giá trị ngoài danh sách bị từ chối, giá trị trong danh sách lưu đúng chữ đã chọn
+	assert.match(checkValue(f, 'Tạp chí khác'), /không hợp lệ/);
+	assert.equal(checkValue(f, 'Tạp chí Y học Việt Nam'), null);
+	// Bỏ choices (mảng rỗng không lưu) ⇒ về ô chữ như cũ
+	assert.equal(
+		resolve(topic, { fields: { journal_name: {} } }, 'admin').fields.journal_name.type,
+		'text',
+	);
+});
+
+test('choices không hợp lệ bị từ chối khi lưu', () => {
+	const bad = (choices, key = 'journal_name') =>
+		validateOverride(topic, { fields: { [key]: { choices } } });
+	assert.match(bad([]), /ít nhất 1/);
+	assert.match(bad(['A', 'A']), /trùng/);
+	assert.match(bad([' A']), /khoảng trắng/);
+	assert.match(bad(['x'.repeat(256)]), /tối đa 255/);
+	assert.match(bad(Array.from({ length: 101 }, (_, i) => `L${i}`)), /tối đa 100/);
+	// Chỉ trường chữ, không phải SĐT / mã NV / select / đoạn văn
+	assert.match(bad(['A'], 'phone'), /không đổi được/);
+	assert.match(bad(['A'], 'staff_number'), /không đổi được/);
+	assert.match(bad(['A'], 'article_type'), /không đổi được/);
+	assert.match(bad(['A'], 'description'), /không đổi được/);
+});

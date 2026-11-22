@@ -14,6 +14,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { validationResult } = require('express-validator');
 const { install } = require('../auth/fakeDb');
+const { verifyRecord } = require('../../src/modules/training/registration/registrationConsent');
+const {
+	RULES_VERSION,
+	CLASS_RULES,
+	COMMITMENTS,
+} = require('../../src/modules/training/registration/registrationConstants');
 
 const STAFF = {
 	id: 'U1',
@@ -212,8 +218,8 @@ const fakeFile = (name, over = {}) => ({
 	mimetype: 'application/pdf',
 	...over,
 });
+// Nội viện: chỉ còn tờ trình đã duyệt (không bắt buộc lúc gửi — nộp bổ sung sau được)
 const INT_FILES = {
-	application_signed: fakeFile('don.pdf'),
 	proposal_approved: fakeFile('to-trinh.jpg', { mimetype: 'image/jpeg' }),
 };
 const EXT_FILES = {
@@ -271,6 +277,8 @@ const VALID_EXTERNAL = {
 	captcha_token: 'x',
 	rules_accepted: true,
 	declared_true: true,
+	data_consent: true,
+	signature_name: ' nguyễn thị  HOA ', // ký: so khớp không phân biệt hoa thường / khoảng trắng thừa
 	national_id: '040301001234', // 3 = nữ sinh 20xx, 01 = 2001
 	dob: '2001-03-04',
 	gender: 'female',
@@ -302,6 +310,30 @@ test('validator: CCCD lệch giới tính / năm sinh / sai cấu trúc bị ch�
 			await runChain(validators.registration, { ...VALID_EXTERNAL, national_id: '040901001234' })
 		).includes('national_id'),
 		'số thứ 4 > 5 là sai cấu trúc',
+	);
+});
+
+test('validator: đồng ý xử lý dữ liệu phải là true; họ tên ký phải trùng họ tên khai', async () => {
+	const noConsent = { ...VALID_EXTERNAL };
+	delete noConsent.data_consent;
+	assert.ok((await runChain(validators.registration, noConsent)).includes('data_consent'));
+	const noSig = { ...VALID_EXTERNAL };
+	delete noSig.signature_name;
+	assert.ok((await runChain(validators.registration, noSig)).includes('signature_name'));
+	for (const signature_name of ['', '   ', 'Nguyễn Thị Hoà', 'Nguyen Thi Hoa', 'Người Khác'])
+		assert.ok(
+			(await runChain(validators.registration, { ...VALID_EXTERNAL, signature_name })).includes(
+				'signature_name',
+			),
+			`ký "${signature_name}" phải bị chặn`,
+		);
+	// Unicode tổ hợp (NFD) = dựng sẵn
+	assert.deepEqual(
+		await runChain(validators.registration, {
+			...VALID_EXTERNAL,
+			signature_name: 'Nguyễn Thị Hoa'.normalize('NFD'),
+		}),
+		[],
 	);
 });
 
@@ -488,8 +520,24 @@ test('đăng ký ngoại viện: bản khai chỉ chứa dữ liệu vừa gửi
 		},
 		EXT_FILES,
 		null,
+		{ client: { ip: '203.0.113.7', userAgent: 'Mozilla/5.0 Test' } },
 	);
 	const ins = regInserts()[0].inputs;
+	// Bằng chứng xác nhận điện tử: nguyên văn nội quy + cam kết, họ tên ký, IP, thiết bị; băm SHA-256
+	assert.match(ins.consent_hash, /^[0-9a-f]{64}$/);
+	assert.ok(verifyRecord(ins.consent_record, ins.consent_hash));
+	const rec = JSON.parse(ins.consent_record);
+	assert.equal(rec.registration_code, ins.code, 'bản ghi mang đúng mã đăng ký của lượt này');
+	assert.equal(rec.signature_name, 'nguyễn thị  HOA');
+	assert.equal(rec.full_name, VALID_EXTERNAL.full_name);
+	assert.equal(rec.ip, '203.0.113.7');
+	assert.equal(rec.user_agent, 'Mozilla/5.0 Test');
+	assert.equal(rec.rules_version, RULES_VERSION);
+	assert.deepEqual(rec.rules, CLASS_RULES);
+	assert.deepEqual(rec.commitments, Object.values(COMMITMENTS));
+	assert.equal(ins.signature_name, 'nguyễn thị  HOA');
+	assert.equal(ins.consent_ip, '203.0.113.7');
+	assert.match(regInserts()[0].text, /data_consent_at/);
 	const snapshot = JSON.parse(ins.snapshot);
 	assert.equal(snapshot.hometown, 'Nghệ An');
 	assert.equal(snapshot.foo, undefined);
@@ -534,11 +582,25 @@ const INTERNAL = {
 	...VALID_EXTERNAL,
 	source: 'internal',
 	full_name: 'LE VAN  BINH',
+	signature_name: 'Le Van Binh',
 	staff_number: '123',
 	department_id: 'K9', // giá trị form — server phải bỏ qua
 	qualification: 'Giáo sư', // giá trị form — server phải bỏ qua
 	invoice_org_name: 'Không được ghi',
 };
+
+test('nội viện: chưa có tờ trình vẫn gửi đăng ký được (nộp bổ sung sau), không ghi file nào', async () => {
+	reset();
+	const ack = await reg.register(INTERNAL, {}, null, {
+		otpRequired: true,
+		emailProof: emailOtp.readToken(tokenFor(STAFF.email, 'U1')),
+	});
+	assert.ok(ack.registration_code);
+	assert.equal(staffEnrolled.length, 1);
+	assert.deepEqual(savedFiles, []);
+	assert.ok(!log.some((q) => /INSERT INTO course_registration_files/.test(q.text)));
+	await mailQueue.drain();
+});
 
 test('nội viện: khoa / trình độ / mã NV lấy từ hồ sơ nhân sự, ghi danh bằng registerStaff', async () => {
 	reset();
@@ -563,19 +625,15 @@ test('nội viện: khoa / trình độ / mã NV lấy từ hồ sơ nhân sự,
 	assert.equal(snapshot.qualification, STAFF.qualification);
 	assert.equal(snapshot.staff_number, 123);
 	assert.equal(snapshot.full_name, 'LE VAN  BINH'.trim());
-	// Đơn đã ký + tờ trình đã duyệt: file entity course_registration của lượt ghi danh, 2 dòng course_registration_files
+	// Tờ trình đã duyệt: file entity course_registration của lượt ghi danh, 1 dòng course_registration_files
 	assert.deepEqual(savedFiles, [
-		{ entity: 'course_registration', entityId: 'DK202611190001', name: 'don.pdf' },
 		{ entity: 'course_registration', entityId: 'DK202611190001', name: 'to-trinh.jpg' },
 	]);
 	assert.deepEqual(
 		log
 			.filter((q) => /INSERT INTO course_registration_files/.test(q.text))
 			.map((q) => [q.inputs.id, q.inputs.kind, q.inputs.file_id, q.inputs.doc_id]),
-		[
-			['DK202611190001', 'application_signed', 'TF_NEW1', null],
-			['DK202611190001', 'proposal_approved', 'TF_NEW2', null],
-		],
+		[['DK202611190001', 'proposal_approved', 'TF_NEW1', null]],
 	);
 	assert.equal(docsAdded.length, 0, 'nội viện không ghi vào hồ sơ học viên');
 	// Email xác nhận kèm mã đăng ký tới email đã xác minh
@@ -583,6 +641,10 @@ test('nội viện: khoa / trình độ / mã NV lấy từ hồ sơ nhân sự,
 	assert.equal(mails.length, 1);
 	assert.equal(mails[0].to, STAFF.email);
 	assert.match(mails[0].html, new RegExp(ack.registration_code));
+	// Thư kèm mã băm bản ghi xác nhận — bản đối chiếu độc lập nằm trong hộp thư người đăng ký
+	assert.ok(mails[0].html.includes(ins.consent_hash));
+	// Nội viện: họ tên trong bản ghi = họ tên hồ sơ nhân sự
+	assert.equal(JSON.parse(ins.consent_record).full_name, STAFF.full_name);
 });
 
 test('nội viện: sai họ tên / mã NV ⇒ 404 chung, không ghi danh; token không phải của nhân viên đó ⇒ 400', async () => {
@@ -759,7 +821,7 @@ test('M-10: tải đơn / nộp hồ sơ theo mã không nhận email làm yếu
 				resolve({ status: err.statusCode || 500, body: { message: err.message } }),
 			);
 		});
-	const params = { code: REG.registration_code, kind: 'application_signed' };
+	const params = { code: REG.registration_code, kind: 'proposal_approved' };
 	assert.equal((await run(regController.downloadApplication, email, params)).status, 404);
 	assert.equal((await run(regController.uploadFile, email, params)).status, 404);
 	assert.equal((await run(regController.getStatus, email, params)).status, 200, 'trạng thái');
@@ -791,18 +853,16 @@ test('tra cứu theo mã: trạng thái không lộ dữ liệu ngoài hợp đ�
 		'source',
 	]);
 	assert.equal(status.can_upload, true);
-	// Chưa nộp gì: luôn đủ dòng của đối tượng (nội viện 2 loại), thiếu cả 2
+	// Chưa nộp gì: luôn đủ dòng của đối tượng (nội viện: tờ trình — nộp bổ sung sau), báo còn thiếu
 	assert.deepEqual(
-		status.files.map((x) => [x.kind, x.label, x.required, x.legacy, x.uploaded_at]),
-		[
-			['application_signed', 'Đơn đăng ký đã ký', true, false, null],
-			['proposal_approved', 'Tờ trình đã duyệt', true, false, null],
-		],
+		status.files.map((x) => [x.kind, x.label, x.required, x.later, x.legacy, x.uploaded_at]),
+		[['proposal_approved', 'Tờ trình đã duyệt', false, true, false, null]],
 	);
-	assert.deepEqual(status.files_missing, ['application_signed', 'proposal_approved']);
+	assert.deepEqual(status.files_missing, ['proposal_approved']);
 	assert.ok(!JSON.stringify(status).includes(r.snapshot.national_id));
 
-	// Đã nộp: file_url KHÔNG bao giờ lộ ở cổng công khai
+	// Đơn cũ đã nộp đơn đã ký (loại thôi yêu cầu): vẫn hiện, đánh dấu legacy.
+	// file_url KHÔNG bao giờ lộ ở cổng công khai
 	fileRows = [
 		{
 			kind: 'application_signed',
@@ -815,8 +875,15 @@ test('tra cứu theo mã: trạng thái không lộ dữ liệu ngoài hợp đ�
 		},
 	];
 	const after = await reg.getStatus(found);
-	assert.equal(after.files[0].file_name, 'don.pdf');
-	assert.equal(after.files[0].file_url, null);
+	assert.deepEqual(
+		after.files.map((x) => [x.kind, x.legacy]),
+		[
+			['proposal_approved', false],
+			['application_signed', true],
+		],
+	);
+	assert.equal(after.files[1].file_name, 'don.pdf');
+	assert.equal(after.files[1].file_url, null);
 	assert.deepEqual(after.files_missing, ['proposal_approved']);
 	assert.ok(!JSON.stringify(after).includes('/uploads/'));
 	// Đơn đã xử lý: không nộp thêm được
@@ -877,7 +944,7 @@ test('/files/:kind: loại không thuộc đơn ⇒ 400; đơn đã xử lý ⇒
 	const r = putReg();
 	const found = await reg.resolveAccess(r.registration_code, { email: r.verified_email });
 	const png = fakeFile('don-ky.png', { mimetype: 'image/png' });
-	await assert.rejects(reg.uploadFile(found, 'application_signed', undefined), {
+	await assert.rejects(reg.uploadFile(found, 'proposal_approved', undefined), {
 		statusCode: 400,
 		message: 'Vui lòng chọn file cần nộp.',
 	});
@@ -887,8 +954,13 @@ test('/files/:kind: loại không thuộc đơn ⇒ 400; đơn đã xử lý ⇒
 		message: 'Loại hồ sơ không hợp lệ cho đơn này.',
 	});
 	await assert.rejects(reg.uploadFile(found, 'dossier', png), { statusCode: 400 });
+	// Đơn đăng ký đã ký thôi yêu cầu ⇒ không nộp mới được
+	await assert.rejects(reg.uploadFile(found, 'application_signed', png), {
+		statusCode: 400,
+		message: 'Loại hồ sơ không hợp lệ cho đơn này.',
+	});
 	// Đuôi ngoài PDF / JPG / PNG
-	await assert.rejects(reg.uploadFile(found, 'application_signed', fakeFile('don.docx')), {
+	await assert.rejects(reg.uploadFile(found, 'proposal_approved', fakeFile('don.docx')), {
 		statusCode: 400,
 		message: 'Hồ sơ chỉ nhận file PDF, JPG hoặc PNG.',
 	});
@@ -898,16 +970,16 @@ test('/files/:kind: loại không thuộc đơn ⇒ 400; đơn đã xử lý ⇒
 	);
 
 	// Có file cũ cùng loại ⇒ ghi file mới rồi xóa mềm file cũ
-	prevFiles.set('application_signed', { file_id: 'TF_OLD', trainee_document_id: null });
-	const out = await reg.uploadFile(found, 'application_signed', png);
+	prevFiles.set('proposal_approved', { file_id: 'TF_OLD', trainee_document_id: null });
+	const out = await reg.uploadFile(found, 'proposal_approved', png);
 	assert.deepEqual(Object.keys(out).sort(), ['files_missing', 'kind', 'uploaded_at']);
-	assert.equal(out.kind, 'application_signed');
+	assert.equal(out.kind, 'proposal_approved');
 	assert.ok(out.uploaded_at instanceof Date);
-	// listFiles giả trả [] ⇒ cả 2 loại còn thiếu
-	assert.deepEqual(out.files_missing, ['application_signed', 'proposal_approved']);
+	// listFiles giả trả [] ⇒ tờ trình vẫn tính là còn thiếu
+	assert.deepEqual(out.files_missing, ['proposal_approved']);
 	const ins = log.find((q) => /INSERT INTO course_registration_files/.test(q.text));
 	assert.equal(ins.inputs.id, r.enrollment_id);
-	assert.equal(ins.inputs.kind, 'application_signed');
+	assert.equal(ins.inputs.kind, 'proposal_approved');
 	assert.equal(ins.inputs.file_id, 'TF_NEW1');
 	assert.equal(ins.inputs.actor_id, null);
 	assert.deepEqual(softDeleted, ['TF_OLD']);
@@ -916,7 +988,7 @@ test('/files/:kind: loại không thuộc đơn ⇒ 400; đơn đã xử lý ⇒
 	for (const status of ['approved', 'rejected']) {
 		log.length = 0;
 		await assert.rejects(
-			reg.uploadFile({ ...found, enrollment_status: status }, 'application_signed', png),
+			reg.uploadFile({ ...found, enrollment_status: status }, 'proposal_approved', png),
 			(e) => e.statusCode === 409 && /Đơn đăng ký đã được xử lý/.test(e.message),
 		);
 		assert.ok(
@@ -1011,17 +1083,9 @@ test('đăng ký: thiếu hồ sơ ⇒ 400 liệt kê nhãn đúng thứ tự, t
 	}
 	// Thiếu 1 loại
 	const { license: _l, ...noLicense } = EXT_FILES;
-	let r = await call(controller.register, VALID_EXTERNAL, asMulter(noLicense));
+	const r = await call(controller.register, VALID_EXTERNAL, asMulter(noLicense));
 	assert.equal(r.status, 400);
 	assert.equal(r.body.message, 'Vui lòng đính kèm đủ hồ sơ bắt buộc: Chứng chỉ hành nghề.');
-	// Nội viện: chỉ có đơn đã ký
-	r = await call(
-		controller.register,
-		INTERNAL,
-		asMulter({ application_signed: INT_FILES.application_signed }),
-	);
-	assert.equal(r.status, 400);
-	assert.equal(r.body.message, 'Vui lòng đính kèm đủ hồ sơ bắt buộc: Tờ trình đã duyệt.');
 	assertNothingHappened('thiếu 1 loại');
 });
 
@@ -1030,10 +1094,10 @@ test('đăng ký: file loại của đối tượng kia / đuôi ngoài PDF-JPG-
 	let r = await call(
 		controller.register,
 		VALID_EXTERNAL,
-		asMulter({ ...EXT_FILES, application_signed: INT_FILES.application_signed }),
+		asMulter({ ...EXT_FILES, proposal_approved: INT_FILES.proposal_approved }),
 	);
 	assert.equal(r.status, 400);
-	assert.equal(r.body.message, 'Hồ sơ "Đơn đăng ký đã ký" không thuộc đối tượng đăng ký đã chọn.');
+	assert.equal(r.body.message, 'Hồ sơ "Tờ trình đã duyệt" không thuộc đối tượng đăng ký đã chọn.');
 	r = await call(
 		controller.register,
 		INTERNAL,

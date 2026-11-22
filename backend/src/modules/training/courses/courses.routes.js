@@ -5,6 +5,7 @@ const practiceCtrl = require('./practiceRecordController');
 const waitlistCtrl = require('./waitlistController');
 const cmeCtrl = require('./courseCmeController');
 const registrationCtrl = require('./registrationReviewController');
+const { updateRegistrationSettingsRules } = require('./registrationSettings.validators');
 const enrollmentExportCtrl = require('./enrollmentExportController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
@@ -116,6 +117,21 @@ router.put(
 	],
 	validate,
 	practiceCtrl.saveResultsBulk,
+);
+// Cài đặt form đăng ký công khai (/dang-ky-khoa-hoc): bật/tắt OTP xác minh email, bật/tắt tự kiểm
+// tra file hồ sơ (trước '/:id'). Ghi chung khóa TRAINING_REGISTRATION_EMAIL_OTP /
+// TRAINING_REGISTRATION_DOC_CHECK của Cấu hình hệ thống.
+router.get(
+	'/registration-settings',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.getSettings,
+);
+router.put(
+	'/registration-settings',
+	authorizePermission(['courses', 'approve']),
+	updateRegistrationSettingsRules,
+	validate,
+	registrationCtrl.updateSettings,
 );
 router.get('/:id', authorizePermission(['courses', 'read']), ctrl.getById);
 
@@ -315,6 +331,11 @@ router.get(
 	'/enrollments/:enrollmentId/registration/application',
 	authorizePermission(['courses', 'read']),
 	registrationCtrl.downloadApplication,
+);
+router.get(
+	'/enrollments/:enrollmentId/registration/consent',
+	authorizePermission(['courses', 'read']),
+	registrationCtrl.downloadConsent,
 );
 router.get(
 	'/enrollments/:enrollmentId/registration/dossier',

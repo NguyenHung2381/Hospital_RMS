@@ -2,6 +2,7 @@
 // tải Tờ trình theo khoa — registration/registrationReviewService, registrationProposalService.
 const registrationReviewService = require('../registration/registrationReviewService');
 const registrationProposalService = require('../registration/registrationProposalService');
+const registrationSettingsService = require('../registration/registrationSettingsService');
 const { success } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 const { hasPermission } = require('../../../permissions/authz');
@@ -60,7 +61,48 @@ const downloadProposal = asyncHandler(async (req, res) => {
 	return sendDocx(res, await registrationProposalService.renderGroup(group));
 });
 
+// Bản ghi xác nhận điện tử (JSON nguyên văn; ?seq=N = lần sửa thứ N) — có IP / thiết bị ⇒ cần
+// quyền dữ liệu nhạy cảm
+const downloadConsent = asyncHandler(async (req, res) => {
+	assertSensitive(req.user);
+	return sendDocx(
+		res,
+		await registrationReviewService.consentRecordForEnrollment(
+			req.params.enrollmentId,
+			Number.parseInt(String(req.query.seq ?? ''), 10) || null,
+		),
+	);
+});
+
+const getSettings = asyncHandler(async (_req, res) =>
+	success(res, await registrationSettingsService.get()),
+);
+
+// Lời nhắn theo công tắc vừa đổi (mỗi lần giao diện gửi 1 công tắc)
+const settingsMessage = ({ email_otp_required: otp, doc_check_enabled: doc }) => {
+	if (typeof doc === 'boolean')
+		return doc ? 'Đã bật tự kiểm tra file hồ sơ' : 'Đã tắt tự kiểm tra file hồ sơ';
+	return otp ? 'Đã bật gửi mã OTP xác minh email' : 'Đã tắt gửi mã OTP xác minh email';
+};
+
+const updateSettings = asyncHandler(async (req, res) =>
+	success(
+		res,
+		await registrationSettingsService.update(
+			{
+				email_otp_required: req.body.email_otp_required,
+				doc_check_enabled: req.body.doc_check_enabled,
+			},
+			req.user.id,
+		),
+		settingsMessage(req.body),
+	),
+);
+
 module.exports = {
+	downloadConsent,
+	getSettings,
+	updateSettings,
 	getRegistration,
 	downloadApplication,
 	getDossier,

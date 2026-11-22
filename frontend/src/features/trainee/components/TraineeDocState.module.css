@@ -1,21 +1,5 @@
-/* Ô vuông trạng thái hồ sơ PDF ở đầu dòng — cùng hình với chú thích (.swatch)
-   (xanh = đã nộp, vàng = chờ duyệt, đỏ = chưa nộp); không dùng sọc trái */
-.row_done > td:first-child::before,
-.row_pending > td:first-child::before,
-.row_missing > td:first-child::before {
-	content: '';
-	display: inline-block;
-	width: 10px;
-	height: 10px;
-	margin-right: 8px;
-	border-radius: 3px;
-	vertical-align: middle;
-	background: var(--doc-state);
-}
-.row_done { --doc-state: var(--color-success); }
-.row_pending { --doc-state: var(--color-warning); }
-.row_missing { --doc-state: var(--color-error); }
-
+/* Trạng thái hồ sơ PDF hiện bằng nhãn có chữ (TraineeDocStateBadge) trong dòng,
+   không dùng ô màu không chữ ở đầu dòng. */
 .badgeBtn {
 	display: inline-flex;
 	padding: 0;
@@ -28,38 +12,4 @@
 .badgeBtn:focus-visible {
 	outline: 2px solid var(--color-primary);
 	outline-offset: 2px;
-}
-
-.legend {
-	display: inline-flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 4px 12px;
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-600);
-}
-
-.legendItem {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	white-space: nowrap;
-}
-
-.swatch {
-	width: 10px;
-	height: 10px;
-	border-radius: 3px;
-}
-
-.swatch_done {
-	background: var(--color-success);
-}
-
-.swatch_pending {
-	background: var(--color-warning);
-}
-
-.swatch_missing {
-	background: var(--color-error);
 }

@@ -128,6 +128,7 @@ GET    /api/v1/courses/enrollments/:enrollmentId/lessons  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/lessons/sync  courses:update
 GET    /api/v1/courses/enrollments/:enrollmentId/registration  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/registration/application  courses:read
+GET    /api/v1/courses/enrollments/:enrollmentId/registration/consent  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/registration/dossier  courses:read
 GET    /api/v1/courses/enrollments/:enrollmentId/rotations  courses:read
 POST   /api/v1/courses/enrollments/:enrollmentId/rotations/auto  courses:update
@@ -140,6 +141,8 @@ GET    /api/v1/courses/practice-board  courses:read
 GET    /api/v1/courses/practice-records  courses:read
 GET    /api/v1/courses/practice-results  courses:read
 PUT    /api/v1/courses/practice-results/bulk  courses:update
+PUT    /api/v1/courses/registration-settings  courses:approve
+GET    /api/v1/courses/registration-settings  courses:read
 PUT    /api/v1/courses/rotations/:rotationId  courses:update
 DELETE /api/v1/courses/rotations/:rotationId  courses:update
 POST   /api/v1/courses/rotations/:rotationId/move  courses:update
@@ -288,7 +291,9 @@ PUT    /api/v1/professional-fields/:id  training_catalog:update
 GET    /api/v1/public/captcha  public
 GET    /api/v1/public/categories  public
 POST   /api/v1/public/course-registration  public
+POST   /api/v1/public/course-registration/:code/amend  public
 POST   /api/v1/public/course-registration/:code/application  public
+POST   /api/v1/public/course-registration/:code/details  public
 POST   /api/v1/public/course-registration/:code/files/:kind  public
 POST   /api/v1/public/course-registration/:code/status  public
 POST   /api/v1/public/course-registration/draft/application  public
@@ -426,6 +431,8 @@ GET    /api/v1/surveys/active  authOnly
 GET    /api/v1/system-settings/  system_settings:manage
 GET    /api/v1/system-settings/:key  system_settings:manage
 PUT    /api/v1/system-settings/:key  system_settings:manage
+GET    /api/v1/system-settings/doc-check  system_settings:manage
+POST   /api/v1/system-settings/doc-check/retry  system_settings:manage
 POST   /api/v1/system-settings/test-clamav  system_settings:manage
 POST   /api/v1/system-settings/test-mail  system_settings:manage
 POST   /api/v1/topics/  topics:create

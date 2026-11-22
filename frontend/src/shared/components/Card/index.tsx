@@ -5,12 +5,17 @@ import { cx } from '@/shared/utils/cx';
 interface CardProps {
 	as?: ElementType;
 	className?: string;
+	id?: string;
 	children: ReactNode;
 }
 
 /** Khung card có viền dùng chung. Ghép với `Card.Header` / `Card.Body`. */
-export function Card({ as: Tag = 'section', className, children }: CardProps) {
-	return <Tag className={cx(styles.card, className)}>{children}</Tag>;
+export function Card({ as: Tag = 'section', className, id, children }: CardProps) {
+	return (
+		<Tag id={id} className={cx(styles.card, className)}>
+			{children}
+		</Tag>
+	);
 }
 
 interface CardHeaderProps {

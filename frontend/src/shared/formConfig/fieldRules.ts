@@ -158,20 +158,26 @@ const resolveField = (
 	const lockRequired = inVariant(field.lock?.required, variant);
 	const hidden = !lockVisible && (ov.hidden ?? []).includes(variant);
 	const required = lockRequired || (ov.required !== undefined ? !!ov.required : inVariant(field.required, variant));
-	const { options: keep, ...rules } = { ...(field.base ?? {}), ...(ov.rules ?? {}) };
-	const options =
-		field.options && Array.isArray(keep) ? field.options.filter((o) => keep.includes(o.value)) : field.options;
+	// Ô chữ đổi thành ô chọn theo danh sách admin đặt — bỏ qua ràng buộc chữ
+	const asSelect = field.type === 'text' && !!ov.choices?.length;
+	const { options: keep, ...rules } = asSelect ? {} : { ...(field.base ?? {}), ...(ov.rules ?? {}) };
+	const options = asSelect
+		? ov.choices!.map((c) => ({ value: c, label: c }))
+		: field.options && Array.isArray(keep)
+			? field.options.filter((o) => keep.includes(o.value))
+			: field.options;
 	return {
 		key: field.key,
 		label: ov.label || field.label,
 		labelSet: !!ov.label,
-		type: field.type,
+		type: asSelect ? 'select' : field.type,
 		visible: !hidden,
 		required: !hidden && required,
 		placeholder: ov.placeholder || null,
 		hint: ov.hint || null,
 		rules,
 		options: options ?? null,
+		...(asSelect && { choices: true }),
 		dynamic: !!field.dynamic,
 		when: field.when ?? null,
 		editOnly: inVariant(field.editOnly, variant),

@@ -38,6 +38,7 @@ export default function TopicStatusLookup() {
 
 	return (
 		<PublicLayout
+			section='research'
 			title='Tra cứu hồ sơ đề tài đã nộp'
 			subtitle='Nhập mã hồ sơ được cấp khi đăng ký đề tài, kèm email hoặc số điện thoại đã khai trong hồ sơ, để xem trạng thái xét duyệt.'
 		>

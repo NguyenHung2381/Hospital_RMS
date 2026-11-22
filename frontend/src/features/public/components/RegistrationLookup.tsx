@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { AlertSvg, CheckCircleSvg, SearchSvg, UploadSvg } from '@/assets/icons';
+import { AlertSvg, CheckCircleSvg, EditSvg, SearchSvg, UploadSvg } from '@/assets/icons';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { ENROLLMENT_STATUS_CFG, type EnrollmentStatus } from '../../course/types/course.type';
 import { formatDateOr } from '../../../shared/utils/formatDate';
@@ -13,12 +13,24 @@ import {
 } from '../api/publicApi';
 import { REGISTRATION_FILE_EXTENSIONS } from '../utils/registrationFiles';
 import { ApplicationActions } from './ApplicationActions';
+import { RegistrationAmend } from './RegistrationAmend';
 import { FileSlot } from './courseRegister/FileSlot';
 import styles from '../pages/PublicPortal.module.css';
 import s from '../pages/CourseRegisterPublic.module.css';
 import r from './RegistrationLookup.module.css';
 
 const REVIEW_LABEL = { pending: 'Chờ duyệt', approved: 'Đã duyệt' } as const;
+
+// Cảnh báo tự kiểm tra hiện cho người nộp — chỉ những lỗi rõ (nộp nhầm loại, trang trắng, thiếu mặt
+// CCCD, trùng file); cảnh báo dễ sai do OCR (không thấy họ tên...) chỉ người duyệt thấy.
+const APPLICANT_WARNINGS = new Set(['blank', 'cccd_missing_front', 'cccd_missing_back', 'duplicate']);
+function checkHint(item: RegistrationFileItem): string | null {
+	const c = item.check;
+	if (!c || c.status !== 'done' || item.review_status === 'approved') return null;
+	const parts = c.verdict === 'mismatch' ? [c.message] : [];
+	for (const w of c.warnings) if (APPLICANT_WARNINGS.has(w.code)) parts.push(w.message);
+	return parts.length ? `Hệ thống tự kiểm tra: ${parts.join(' ')} Nếu nộp nhầm, hãy nộp lại file đúng.` : null;
+}
 
 // Dòng trạng thái của 1 loại hồ sơ theo dữ liệu máy chủ
 function fileStatus(item: RegistrationFileItem): ReactNode {
@@ -27,6 +39,7 @@ function fileStatus(item: RegistrationFileItem): ReactNode {
 		return <span className={s.slotStatusBad}>Bị từ chối — vui lòng nộp lại</span>;
 	if (!item.uploaded_at) return 'Chưa nộp';
 	const review = item.review_status && item.review_status !== 'rejected' ? REVIEW_LABEL[item.review_status] : null;
+	const hint = checkHint(item);
 	return (
 		<>
 			Đã nộp {formatDateOr(item.uploaded_at)}
@@ -37,6 +50,7 @@ function fileStatus(item: RegistrationFileItem): ReactNode {
 					<span className={item.review_status === 'approved' ? s.slotStatusOk : undefined}>{review}</span>
 				</>
 			)}
+			{hint && <span className={r.checkWarn}>{hint}</span>}
 		</>
 	);
 }
@@ -55,6 +69,9 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 	const [uploading, setUploading] = useState<RegistrationFileKind | null>(null);
 	const [slotErrors, setSlotErrors] = useState<Partial<Record<RegistrationFileKind, string>>>({});
 	const [uploadedLabel, setUploadedLabel] = useState('');
+	// Sửa thông tin đã khai (chỉ khi còn chờ duyệt) + thông báo vừa lưu bản sửa
+	const [editing, setEditing] = useState(false);
+	const [amended, setAmended] = useState<{ seq: number; hash: string } | null>(null);
 	const policy = useUploadPolicy();
 
 	const search = async (e: React.FormEvent) => {
@@ -70,6 +87,8 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 		setUploadedLabel('');
 		setSlotErrors({});
 		setPicked({});
+		setEditing(false);
+		setAmended(null);
 		try {
 			const p = { national_id: id };
 			setStatus(await getRegistrationStatus(c, p));
@@ -275,6 +294,7 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 									kind={kind}
 									label={item.label}
 									required={item.required}
+									later={item.later}
 									file={file}
 									onChange={(f) => {
 										setPicked((p) => ({ ...p, [kind]: f ?? undefined }));
@@ -304,6 +324,54 @@ export function RegistrationLookup({ initialCode = '' }: { initialCode?: string 
 					{!status.can_upload && (
 						<p className={s.hint}>
 							Đơn đã được xử lý — muốn thay hồ sơ, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.
+						</p>
+					)}
+
+					<h3 className={r.subTitle}>Thông tin đã khai</h3>
+					{amended && (
+						<div
+							className={`${styles.alertBox} ${styles.alertSuccess} ${r.amendDone}`}
+							role='status'
+						>
+							<CheckCircleSvg />
+							<span>
+								Đã lưu bản sửa lần {amended.seq}. Mã xác nhận lần sửa: <span className={r.hash}>{amended.hash}</span>
+							</span>
+						</div>
+					)}
+					{editing && proof ? (
+						<RegistrationAmend
+							code={status.registration_code}
+							proof={proof}
+							onCancel={() => setEditing(false)}
+							onSaved={(res, nextProof) => {
+								setStatus(res.status);
+								setProof(nextProof);
+								if ('national_id' in nextProof) setNationalId(nextProof.national_id);
+								setAmended({ seq: res.seq, hash: res.consent_hash });
+								setEditing(false);
+							}}
+						/>
+					) : status.can_upload ? (
+						<div className={r.amendCta}>
+							<p className={s.hint}>
+								Phát hiện khai sai (họ tên, ngày sinh, số CCCD, liên hệ, văn bằng...)? Bạn tự sửa được khi đăng ký còn chờ duyệt — cần
+								ghi lý do và ký xác nhận lại.
+							</p>
+							<button
+								type='button'
+								className={s.ghostBtn}
+								onClick={() => {
+									setAmended(null);
+									setEditing(true);
+								}}
+							>
+								<EditSvg /> Sửa thông tin đã khai
+							</button>
+						</div>
+					) : (
+						<p className={s.hint}>
+							Đăng ký đã được xử lý — muốn điều chỉnh thông tin, vui lòng liên hệ Trung tâm Đào tạo và Chỉ đạo tuyến.
 						</p>
 					)}
 

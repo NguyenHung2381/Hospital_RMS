@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TraineeDocStateBadge } from "../../trainee/components/TraineeDocState";
-import { docStateRowClass } from "../../trainee/utils/docState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CalendarSvg, CheckSvg, PlusSvg, UserCheckSvg, XSvg } from "@/assets/icons";
 import {
@@ -599,7 +598,7 @@ export function EnrollmentsTab({
       <tr
         key={en.id}
         data-enrollment-id={en.id}
-        className={`${tbl.tr} ${docStateRowClass(en.trainee_doc_state)} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""} ${flash?.id === en.id ? styles.rowFlash : ""}`}
+        className={`${tbl.tr} ${rowSel.isSelected(en.id) ? sel.rowSelected : ""} ${flash?.id === en.id ? styles.rowFlash : ""}`}
       >
         <td className={sel.checkCol}>
           <SelectCheckbox
@@ -647,8 +646,18 @@ export function EnrollmentsTab({
               </button>
             );
           })()}
+          {!!en.registration?.amendments && (
+            <button
+              type="button"
+              className={styles.regTagBtn}
+              title="Người đăng ký đã tự sửa bản khai — bấm để xem lịch sử sửa"
+              onClick={() => openDetail(en.id, "registration")}
+            >
+              <Badge tone="blue">Đã sửa {en.registration.amendments} lần</Badge>
+            </button>
+          )}
           <span className={styles.docStateTag}>
-            <TraineeDocStateBadge state={en.trainee_doc_state} />
+            <TraineeDocStateBadge state={en.trainee_doc_state} withSubject />
           </span>
           {en.practice_code && (
             <div className={tbl.cellSub}>Mã thực hành {en.practice_code}</div>

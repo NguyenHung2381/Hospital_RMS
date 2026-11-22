@@ -1,4 +1,5 @@
 import type { FormConfig } from '@/shared/formConfig/useFormConfig';
+import { withChoices } from '@/shared/formConfig/withChoices';
 import type { SimpleOption } from '../api/publicApi';
 import type { PersonField, TopicPerson } from '../utils/topicPerson';
 import styles from '../pages/PublicPortal.module.css';
@@ -29,14 +30,17 @@ export function TopicPersonFields({ person, errors = {}, departments, secretaryT
 				<label className={styles.label}>
 					{cfg ? cfg.label(field, label) : label} {required && <span className={styles.required}>*</span>}
 				</label>
-				<input
-					type={opts.type ?? 'text'}
-					className={`${styles.input} ${errors[field] ? styles.inputError : ''}`}
-					placeholder={cfg ? cfg.placeholder(field, opts.placeholder) : opts.placeholder}
-					maxLength={cfg?.maxLength(field)}
-					value={person[field]}
-					onChange={(e) => onChange(field, e.target.value)}
-				/>
+				{withChoices(
+					cfg?.field(field),
+					<input
+						type={opts.type ?? 'text'}
+						className={`${styles.input} ${errors[field] ? styles.inputError : ''}`}
+						placeholder={cfg ? cfg.placeholder(field, opts.placeholder) : opts.placeholder}
+						maxLength={cfg?.maxLength(field)}
+						value={person[field]}
+						onChange={(e) => onChange(field, e.target.value)}
+					/>,
+				)}
 				{hint && <span className={styles.fieldHint}>{hint}</span>}
 				{errors[field] && <span className={styles.fieldError}>{errors[field]}</span>}
 			</div>

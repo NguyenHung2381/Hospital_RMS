@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CourseRegistrationRules } from '../../api/publicApi';
 import s from '../../pages/CourseRegisterPublic.module.css';
 
@@ -10,8 +11,23 @@ interface Props {
 	error?: string;
 }
 
-// Bước 2: đọc nội quy lớp học và cam kết thực hiện
+// Mục "Nội quy lớp học" (sát cuối trang): đọc hết nội quy rồi mới tích được ô cam kết.
+// Câu cam kết lấy nguyên văn từ máy chủ — đúng câu sẽ lưu vào bản ghi xác nhận điện tử.
 export function StepRules({ rules, loadError, onRetry, accepted, onAccept, error }: Props) {
+	const boxRef = useRef<HTMLDivElement>(null);
+	const [readAll, setReadAll] = useState(false);
+
+	// Đã cuộn tới cuối (hoặc nội quy ngắn, không cần cuộn)
+	const checkEnd = useCallback(() => {
+		const el = boxRef.current;
+		if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 8) setReadAll(true);
+	}, []);
+	useEffect(() => {
+		checkEnd();
+		window.addEventListener('resize', checkEnd);
+		return () => window.removeEventListener('resize', checkEnd);
+	}, [checkEnd, rules]);
+
 	if (!rules) {
 		return loadError ? (
 			<div
@@ -33,32 +49,47 @@ export function StepRules({ rules, loadError, onRetry, accepted, onAccept, error
 			<p className={s.muted}>Đang tải nội quy lớp học...</p>
 		);
 	}
+	// Bản nháp đã tích từ trước thì không bắt đọc lại
+	const canAccept = readAll || accepted;
 	return (
 		<>
+			<p className={s.rulesMeta}>Nội quy lớp học — phiên bản {rules.version}</p>
 			<div
+				ref={boxRef}
 				className={s.rulesBox}
 				tabIndex={0}
 				role='region'
 				aria-label='Nội quy lớp học — dùng phím mũi tên để cuộn'
+				onScroll={checkEnd}
 			>
 				<ol className={s.rulesList}>
 					{rules.rules.map((r, i) => (
 						<li key={i}>{r}</li>
 					))}
 				</ol>
+				<p className={s.rulesEnd}>— Hết nội quy —</p>
 			</div>
+			{!canAccept && (
+				<p
+					className={s.hint}
+					aria-live='polite'
+				>
+					Cuộn đọc hết nội quy để tích ô cam kết bên dưới.
+				</p>
+			)}
 			<label
 				id='f-rules'
-				className={s.agreeRow}
+				className={`${s.agreeRow} ${canAccept ? '' : s.agreeRowDisabled}`}
 			>
 				<input
 					type='checkbox'
 					className={s.agreeBox}
 					checked={accepted}
+					disabled={!canAccept}
 					onChange={(e) => onAccept(e.target.checked)}
 					aria-invalid={error ? true : undefined}
 				/>
-				<span>Tôi đã đọc và cam kết thực hiện đầy đủ các nội quy lớp học nêu trên.</span>
+				<span>{rules.consent.commitments.rules}</span>
 			</label>
 			{error && (
 				<div

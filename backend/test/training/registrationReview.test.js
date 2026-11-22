@@ -63,6 +63,8 @@ install(async (text, inputs) => {
 				]
 			: [];
 	}
+	if (/FROM course_registration_amendments WHERE enrollment_id = @id ORDER BY seq/.test(text))
+		return world.amendments?.[inputs.id] ?? [];
 	if (/^\s*SELECT \* FROM course_enrollments WHERE id = @id/.test(text)) {
 		const e = world.enrollments[inputs.id];
 		return e ? [e] : [];
@@ -205,11 +207,17 @@ test('duyệt hàng loạt: không đăng ký nào bị bỏ qua vì thiếu m�
 });
 
 // ─── Danh sách ghi danh: tóm tắt bản khai ───────────────────────────────────
-test('annotateEnrollments: gom cột bản khai thành registration { code, source, has_dossier, files_missing }', async () => {
+test('annotateEnrollments: gom cột bản khai thành registration { code, source, has_dossier, files_missing, amendments }', async () => {
 	const [plain, ext, extFull, int, intOld, intHalf] = await gate.annotateEnrollments(
 		[
 			{ id: 'A', reg_code: null },
-			{ id: 'B', reg_code: 'DKAAAA', reg_source: 'external', reg_file_kinds: null },
+			{
+				id: 'B',
+				reg_code: 'DKAAAA',
+				reg_source: 'external',
+				reg_file_kinds: null,
+				reg_amendments: 2,
+			},
 			{
 				id: 'B2',
 				reg_code: 'DKAAAB',
@@ -235,12 +243,14 @@ test('annotateEnrollments: gom cột bản khai thành registration { code, sour
 		source: 'external',
 		has_dossier: false,
 		files_missing: ['national_id', 'degree', 'license', 'decision'],
+		amendments: 2,
 	});
 	assert.deepEqual(extFull.registration, {
 		code: 'DKAAAB',
 		source: 'external',
 		has_dossier: true,
 		files_missing: [],
+		amendments: 0,
 	});
 	// Nội viện: thiếu tờ trình
 	assert.deepEqual(int.registration, {
@@ -248,6 +258,7 @@ test('annotateEnrollments: gom cột bản khai thành registration { code, sour
 		source: 'internal',
 		has_dossier: false,
 		files_missing: ['proposal_approved'],
+		amendments: 0,
 	});
 	// Đơn cũ có file gộp ⇒ đủ hồ sơ
 	assert.deepEqual(intOld.registration, {
@@ -255,6 +266,7 @@ test('annotateEnrollments: gom cột bản khai thành registration { code, sour
 		source: 'internal',
 		has_dossier: true,
 		files_missing: [],
+		amendments: 0,
 	});
 	assert.equal(intHalf.registration.has_dossier, true);
 	assert.equal('reg_file_kinds' in int, false);
@@ -306,8 +318,9 @@ test('getForReview: files đủ các loại + files_missing; file_url chỉ có 
 	assert.deepEqual(
 		withPerm.files.map((x) => [x.kind, x.file_name, x.file_url]),
 		[
-			['application_signed', 'don.pdf', '/uploads/training/course_registration/E_INT/don.pdf'],
+			// Đơn đã ký (đơn cũ) vẫn hiện sau các loại hiện hành
 			['proposal_approved', null, null],
+			['application_signed', 'don.pdf', '/uploads/training/course_registration/E_INT/don.pdf'],
 		],
 	);
 	const without = await reviewService.getForReview('E_INT', { permissions: new Set() });
@@ -315,8 +328,8 @@ test('getForReview: files đủ các loại + files_missing; file_url chỉ có 
 	assert.equal(withPerm.registration_code, 'DKE_INT');
 	assert.equal(without.registration_code, 'DK••••••_INT');
 	assert.ok(!JSON.stringify(without).includes('DKE_INT'));
-	assert.equal(without.files[0].file_name, 'don.pdf');
-	assert.equal(without.files[0].file_url, null, 'thiếu quyền ⇒ không có link xem file');
+	assert.equal(without.files[1].file_name, 'don.pdf');
+	assert.equal(without.files[1].file_url, null, 'thiếu quyền ⇒ không có link xem file');
 	assert.deepEqual(without.files_missing, ['proposal_approved']);
 
 	// Ngoại viện: file bị từ chối tính là thiếu nhưng vẫn hiện trạng thái duyệt
@@ -334,6 +347,100 @@ test('getForReview: files đủ các loại + files_missing; file_url chỉ có 
 	assert.deepEqual(ext.files_missing, ['degree']);
 	assert.equal(ext.files.find((x) => x.kind === 'degree').review_status, 'rejected');
 	assert.equal(ext.files.length, 4);
+});
+
+test('getForReview: bằng chứng ký điện tử — IP / thiết bị chỉ cho quyền dữ liệu nhạy cảm; báo bản ghi bị sửa', async () => {
+	reset();
+	const reviewService = require('../../src/modules/training/registration/registrationReviewService');
+	const { buildRecord } = require('../../src/modules/training/registration/registrationConsent');
+	const { json, hash } = buildRecord({
+		registrationCode: 'DKE_EXT',
+		enrollmentId: 'E_EXT',
+		source: 'external',
+		fullName: 'Nguyễn Văn An',
+		signatureName: 'Nguyễn Văn An',
+		client: { ip: '1.2.3.4', userAgent: 'UA' },
+	});
+	world.registrations.E_EXT = {
+		source: 'external',
+		signature_name: 'Nguyễn Văn An',
+		consent_record: json,
+		consent_hash: hash,
+		consent_ip: '1.2.3.4',
+		consent_user_agent: 'UA',
+	};
+	const allowed = { permissions: new Set(['trainees:read_sensitive']) };
+	const withPerm = (await reviewService.getForReview('E_EXT', allowed)).consent;
+	assert.equal(withPerm.intact, true);
+	assert.equal(withPerm.signature_name, 'Nguyễn Văn An');
+	assert.equal(withPerm.commitments.length, 3);
+	assert.equal(withPerm.ip, '1.2.3.4');
+	const without = (await reviewService.getForReview('E_EXT', { permissions: new Set() })).consent;
+	assert.equal(without.ip, null);
+	assert.equal(without.user_agent, null);
+	assert.equal(without.hash, hash);
+
+	world.registrations.E_EXT.consent_record = json.replace('Nguyễn Văn An', 'Người Khác');
+	assert.equal((await reviewService.getForReview('E_EXT', allowed)).consent.intact, false);
+	// Tải bản ghi JSON nguyên văn
+	const out = await reviewService.consentRecordForEnrollment('E_EXT');
+	assert.equal(out.filename, 'Xac-nhan-dien-tu-DKE_EXT.json');
+	// Bản khai cũ: không có bằng chứng ⇒ null / 404
+	world.registrations.E_INT = { source: 'internal' };
+	assert.equal((await reviewService.getForReview('E_INT', allowed)).consent, null);
+	await assert.rejects(reviewService.consentRecordForEnrollment('E_INT'), { statusCode: 404 });
+});
+
+test('getForReview: lịch sử sửa — che CCCD khi thiếu quyền, phát hiện bản ghi bị sửa / chuỗi mã bị đứt', async () => {
+	reset();
+	const reviewService = require('../../src/modules/training/registration/registrationReviewService');
+	const {
+		buildAmendmentRecord,
+	} = require('../../src/modules/training/registration/registrationConsent');
+	const changes = [{ key: 'national_id', before: '040301001234', after: '040301004321' }];
+	const r1 = buildAmendmentRecord({
+		registrationCode: 'DKE_EXT',
+		enrollmentId: 'E_EXT',
+		seq: 1,
+		source: 'external',
+		fullName: 'A',
+		signatureName: 'A',
+		reason: 'Gõ nhầm CCCD',
+		changes,
+		prevHash: 'a'.repeat(64),
+	});
+	const row = (rec, over = {}) => ({
+		seq: rec.record.seq,
+		reason: rec.record.reason,
+		changes: JSON.stringify(rec.record.changes),
+		identity_changed: true,
+		signature_name: 'A',
+		consent_record: rec.json,
+		consent_hash: rec.hash,
+		prev_hash: rec.record.prev_hash,
+		consent_ip: '1.2.3.4',
+		...over,
+	});
+	world.registrations.E_EXT = { source: 'external', consent_hash: 'a'.repeat(64) };
+	world.amendments = { E_EXT: [row(r1)] };
+	const allowed = { permissions: new Set(['trainees:read_sensitive']) };
+	const [a] = (await reviewService.getForReview('E_EXT', allowed)).amendments;
+	assert.equal(a.intact, true);
+	assert.equal(a.chained, true);
+	assert.equal(a.identity_changed, true);
+	assert.equal(a.changes[0].after, '040301004321');
+	assert.equal(a.ip, '1.2.3.4');
+	const [masked] = (await reviewService.getForReview('E_EXT', { permissions: new Set() }))
+		.amendments;
+	assert.notEqual(masked.changes[0].after, '040301004321', 'CCCD bị che');
+	assert.equal(masked.ip, null);
+	// Lần sửa bị xóa khỏi giữa chuỗi / bản ghi bị sửa
+	world.registrations.E_EXT.consent_hash = 'c'.repeat(64);
+	world.amendments.E_EXT = [row(r1, { consent_record: r1.json.replace('Gõ nhầm', 'Sửa') })];
+	const [bad] = (await reviewService.getForReview('E_EXT', allowed)).amendments;
+	assert.equal(bad.chained, false);
+	assert.equal(bad.intact, false);
+	world.amendments = {};
 });
 
 test('dossierForEnrollment: đọc file kind = dossier; không có ⇒ 404 "Chưa có hồ sơ nộp bổ sung."', async () => {

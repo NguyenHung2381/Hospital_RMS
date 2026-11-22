@@ -3,16 +3,34 @@ import { Link, NavLink } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import styles from './PublicLayout.module.css';
 
-const NAV = [
-	['/dang-ky-khoa-hoc', 'Đăng ký khóa học'],
-	['/de-xuat-de-tai', 'Đăng ký đề tài'],
-	['/tra-cuu-ket-qua', 'Tra cứu kết quả'],
-	['/tra-cuu-ho-so', 'Tra cứu hồ sơ đề tài'],
-] as const;
+export type PublicSection = 'training' | 'research';
+
+// Mỗi mảng một menu riêng: học viên đăng ký khóa học không thấy mục nghiên cứu
+// khoa học và ngược lại.
+const SECTIONS: Record<PublicSection, { sub: string; nav: readonly (readonly [string, string])[] }> = {
+	training: {
+		sub: 'Cổng thông tin đào tạo',
+		nav: [
+			['/dang-ky-khoa-hoc', 'Đăng ký khóa học'],
+			['/tra-cuu-don-dang-ky', 'Tra cứu đơn đăng ký'],
+			['/tra-cuu-ket-qua', 'Kết quả học tập, chứng chỉ'],
+		],
+	},
+	research: {
+		sub: 'Cổng nghiên cứu khoa học',
+		nav: [
+			['/de-xuat-de-tai', 'Đăng ký đề tài'],
+			['/tra-cuu-ho-so', 'Tra cứu hồ sơ đề tài'],
+			['/thu-vien-de-tai', 'Thư viện đề tài'],
+		],
+	},
+};
 
 interface PublicLayoutProps {
 	title: string;
 	subtitle?: string;
+	/** Mảng của trang — quyết định menu hiển thị (mặc định: đào tạo) */
+	section?: PublicSection;
 	/** Trang đứng riêng (vd. đăng ký hội nghị qua QR): không menu, không nút đăng nhập */
 	bare?: boolean;
 	children: React.ReactNode;
@@ -21,7 +39,8 @@ interface PublicLayoutProps {
 // Layout tối giản cho cổng công khai (đăng ký khóa học, tra cứu kết quả) —
 // không sidebar admin, không yêu cầu đăng nhập. Tách hẳn khỏi AdminLayout để
 // tránh lộ điều hướng nội bộ cho người ngoài hệ thống.
-export default function PublicLayout({ title, subtitle, bare, children }: PublicLayoutProps) {
+export default function PublicLayout({ title, subtitle, section = 'training', bare, children }: PublicLayoutProps) {
+	const { sub, nav } = SECTIONS[section];
 	const brand = (
 		<>
 			<img
@@ -31,7 +50,7 @@ export default function PublicLayout({ title, subtitle, bare, children }: Public
 			/>
 			<div className={styles.brandText}>
 				<div className={styles.brandName}>Bệnh viện Hữu nghị Đa khoa Nghệ An</div>
-				<div className={styles.brandSub}>Cổng thông tin đào tạo</div>
+				<div className={styles.brandSub}>{sub}</div>
 			</div>
 		</>
 	);
@@ -56,7 +75,7 @@ export default function PublicLayout({ title, subtitle, bare, children }: Public
 								Đăng nhập<span className={styles.hideXs}> hệ thống</span>
 							</Link>
 							<nav className={styles.nav}>
-								{NAV.map(([to, label]) => (
+								{nav.map(([to, label]) => (
 									<NavLink
 										key={to}
 										to={to}

@@ -3,10 +3,12 @@
 // sửa cả bên kia.
 //
 // Override lưu ở form_configs.config:
-//   { fields: { <key>: { hidden: [variant], required, label, placeholder, hint, rules } },
+//   { fields: { <key>: { hidden: [variant], required, label, placeholder, hint, rules, choices } },
 //     custom: [ { key, label, type, variants, required, placeholder, hint, options, rules } ] }
 // rules: minLength, maxLength, pattern, patternMessage, format, min, max, integer,
 //        minDate, maxDate ('today' = ngày hiện tại), options (giá trị được chọn), maxItems
+// choices: chỉ trường có sẵn loại `text` — danh sách chữ được chọn ⇒ ô nhập thành
+//        ô chọn 1 (lưu đúng chữ đã chọn, cột DB không đổi), bỏ qua ràng buộc chữ.
 
 const CUSTOM_TYPES = [
 	'text',
@@ -31,6 +33,7 @@ const TEXT_TYPES = new Set(['text', 'textarea', 'email', 'phone']);
 const CUSTOM_MAX_LENGTH = { text: 500, email: 100, phone: 20, textarea: 4000 };
 const MAX_CUSTOM_FIELDS = 30;
 const MAX_OPTIONS = 100;
+const DEFAULT_TEXT_MAX = 500;
 const RULES_BY_TYPE = {
 	text: ['minLength', 'maxLength', 'pattern', 'patternMessage', 'format'],
 	textarea: ['minLength', 'maxLength', 'pattern', 'patternMessage'],
@@ -75,9 +78,11 @@ const resolveField = (form, field, ov, variant) => {
 	const required =
 		lockRequired ||
 		(ov.required !== undefined ? !!ov.required : inVariant(field.required, variant));
-	const rules = { ...(field.base || {}), ...(ov.rules || {}) };
-	let options = field.options;
-	if (options && Array.isArray(ov.rules?.options))
+	// Ô chữ đổi thành ô chọn theo danh sách admin đặt
+	const asSelect = field.type === 'text' && Array.isArray(ov.choices) && ov.choices.length > 0;
+	const rules = asSelect ? {} : { ...(field.base || {}), ...(ov.rules || {}) };
+	let options = asSelect ? ov.choices.map((c) => ({ value: c, label: c })) : field.options;
+	if (!asSelect && options && Array.isArray(ov.rules?.options))
 		options = options.filter((o) => ov.rules.options.includes(o.value));
 	delete rules.options;
 	return {
@@ -85,13 +90,14 @@ const resolveField = (form, field, ov, variant) => {
 		label: ov.label || field.label,
 		// Form giữ nhãn đang viết trong JSX trừ khi admin đặt nhãn mới
 		labelSet: !!ov.label,
-		type: field.type,
+		type: asSelect ? 'select' : field.type,
 		visible: !hidden,
 		required: !hidden && required,
 		placeholder: ov.placeholder || null,
 		hint: ov.hint || null,
 		rules,
 		options: options || null,
+		...(asSelect && { choices: true }),
 		dynamic: !!field.dynamic,
 		when: field.when || null,
 		editOnly: inVariant(field.editOnly, variant),
@@ -346,6 +352,26 @@ const checkTexts = (label, o) => {
 	return null;
 };
 
+// Danh sách chọn thay ô chữ: chỉ trường `text`, mỗi lựa chọn vừa cột DB, không trùng
+const checkChoices = (f, choices) => {
+	if (choices === undefined || choices === null) return null;
+	// Trường có định dạng cứng (SĐT, CCCD, giờ…) hoặc ô nhập đặc biệt (noChoices) thì không đổi
+	if (f.type !== 'text' || f.dynamic || f.noChoices || f.base?.format || f.base?.pattern)
+		return `${f.label}: trường này không đổi được thành danh sách chọn`;
+	if (!Array.isArray(choices) || !choices.length) return `${f.label}: cần ít nhất 1 lựa chọn`;
+	if (choices.length > MAX_OPTIONS) return `${f.label}: tối đa ${MAX_OPTIONS} lựa chọn`;
+	const max = f.base?.maxLength || DEFAULT_TEXT_MAX;
+	const seen = new Set();
+	for (const c of choices) {
+		if (typeof c !== 'string' || !c.trim() || c !== c.trim())
+			return `${f.label}: lựa chọn không được để trống hoặc thừa khoảng trắng`;
+		if (c.length > max) return `${f.label}: mỗi lựa chọn tối đa ${max} ký tự`;
+		if (seen.has(c)) return `${f.label}: lựa chọn "${c}" bị trùng`;
+		seen.add(c);
+	}
+	return null;
+};
+
 const validateOverride = (form, override) => {
 	if (!override || typeof override !== 'object' || Array.isArray(override))
 		return 'Cấu hình không hợp lệ';
@@ -372,6 +398,8 @@ const validateOverride = (form, override) => {
 		if (e) return e;
 		if (ov.rules?.options !== undefined && !f.options)
 			return `${f.label}: danh sách lấy từ danh mục, không giới hạn được`;
+		const ce = checkChoices(f, ov.choices);
+		if (ce) return ce;
 	}
 	const custom = override.custom || [];
 	if (!Array.isArray(custom)) return 'Danh sách trường tùy chỉnh không hợp lệ';

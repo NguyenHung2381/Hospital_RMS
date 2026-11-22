@@ -87,7 +87,8 @@ export const EMPTY_FORM: CourseFormData = {
 	enrollment_start_date: '',
 	enrollment_end_date: '',
 	status: 'draft',
-	is_public_registration: false,
+	// Khóa mới mặc định công khai (người ngoài đăng ký qua link); chọn "Nội bộ" nếu cần.
+	is_public_registration: true,
 	description: '',
 	prerequisites: [],
 	objectives: [],

@@ -79,7 +79,7 @@
  *       - in: path
  *         name: kind
  *         required: true
- *         schema: { type: string, enum: [application_signed, proposal_approved, national_id, degree, license, decision] }
+ *         schema: { type: string, enum: [proposal_approved, national_id, degree, license, decision] }
  *         description: Loại hồ sơ
  *     requestBody:
  *       required: true

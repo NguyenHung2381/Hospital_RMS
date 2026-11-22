@@ -71,7 +71,8 @@ const safeSheetName = (raw, used) => {
 	return name;
 };
 
-const programLabel = (p) => (p.code ? `${p.code} – ${p.name}` : (p.name ?? ''));
+// Hiển thị chương trình bằng TÊN (cột, phụ đề, tên sheet); chỉ rơi về mã khi thiếu tên.
+const programLabel = (p) => p.name || p.code || '';
 
 const buildColumns = ({ includeProgram, includeNationalId }) => {
 	const cols = [
@@ -188,7 +189,7 @@ const buildCourseEnrollmentWorkbook = (data) => {
 		if (seen.has(p.id)) return;
 		seen.add(p.id);
 		sheets.push({
-			name: p.code || p.name,
+			name: programLabel(p),
 			full: programLabel(p),
 			rows: byProgram.get(p.id) ?? [],
 		});

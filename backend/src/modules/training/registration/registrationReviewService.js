@@ -10,6 +10,64 @@ const registrationDocumentService = require('./registrationDocumentService');
 const registrationFileService = require('./registrationFileService');
 const { TRAINEE_FIELDS, INVOICE_FIELDS } = require('./registrationConstants');
 const { maskRegistrationCode } = require('./registrationApprovalGate');
+const { verifyRecord } = require('./registrationConsent');
+const amendments = require('./registrationAmendments');
+
+const parseJson = (s) => {
+	try {
+		return s ? JSON.parse(s) : null;
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * Bằng chứng xác nhận điện tử của bản khai (null = bản khai cũ, trước khi có ký điện tử).
+ * intact = consent_record còn khớp mã băm đã lưu. IP / thiết bị là dữ liệu cá nhân ⇒ chỉ
+ * người có trainees:read_sensitive mới thấy.
+ * @param {Record<string, any>} reg
+ * @param {boolean} sensitive
+ */
+const consentFor = (reg, sensitive) => {
+	if (!reg.consent_hash) return null;
+	const record = parseJson(reg.consent_record);
+	return {
+		signature_name: reg.signature_name ?? null,
+		signed_at: record?.signed_at ?? null,
+		data_consent_at: reg.data_consent_at ?? null,
+		consent_version: record?.consent_version ?? null,
+		commitments: Array.isArray(record?.commitments) ? record.commitments : [],
+		hash: reg.consent_hash,
+		intact: verifyRecord(reg.consent_record, reg.consent_hash),
+		ip: sensitive ? (reg.consent_ip ?? null) : null,
+		user_agent: sensitive ? (reg.consent_user_agent ?? null) : null,
+	};
+};
+
+/**
+ * Tải nguyên văn bản ghi xác nhận (JSON) của 1 bản khai — làm bằng chứng khi cần đối chiếu.
+ * @param {string} enrollmentId
+ * @returns {Promise<{ buffer: Buffer, filename: string, mime: string }>}
+ */
+const consentRecordForEnrollment = async (enrollmentId, seq = null) => {
+	if (seq) {
+		const a = await amendments.getOne(enrollmentId, seq);
+		if (!a) throw httpError(404, 'Không tìm thấy lần sửa này của bản khai.');
+		const code = JSON.parse(a.consent_record).registration_code ?? enrollmentId;
+		return {
+			buffer: Buffer.from(a.consent_record, 'utf8'),
+			filename: `Xac-nhan-sua-lan-${seq}-${code}.json`,
+			mime: 'application/json; charset=utf-8',
+		};
+	}
+	const reg = await courseRegistrationService.getByEnrollment(enrollmentId);
+	if (!reg?.consent_record) throw httpError(404, 'Bản khai này chưa có bản ghi xác nhận điện tử.');
+	return {
+		buffer: Buffer.from(reg.consent_record, 'utf8'),
+		filename: `Xac-nhan-dien-tu-${reg.registration_code}.json`,
+		mime: 'application/json; charset=utf-8',
+	};
+};
 
 // ─── So sánh bản khai ↔ hồ sơ học viên ──────────────────────────────────────
 const DATE_FIELDS = new Set(['dob', 'national_id_issued_date']);
@@ -134,13 +192,14 @@ const getForReview = async (enrollmentId, actor) => {
 	const reg = await courseRegistrationService.getByEnrollment(enrollmentId);
 	if (!reg) return null;
 	const sensitive = canReadSensitive(actor);
-	const [ctx, profile, { files, files_missing }] = await Promise.all([
+	const [ctx, profile, { files, files_missing }, history] = await Promise.all([
 		loadContext(enrollmentId, reg),
 		loadProfile(enrollmentId),
 		registrationFileService.describe(
 			{ ...reg, enrollment_id: enrollmentId },
 			{ withUrl: sensitive },
 		),
+		amendments.list(enrollmentId),
 	]);
 	const snapshot = { ...(reg.snapshot ?? {}) };
 	let diffs = computeDiffs(snapshot, profile).map((d) => {
@@ -186,6 +245,13 @@ const getForReview = async (enrollmentId, actor) => {
 		rules_version: reg.rules_version ?? null,
 		rules_accepted_at: reg.rules_accepted_at ?? null,
 		declared_true_at: reg.declared_true_at ?? null,
+		consent: consentFor(reg, sensitive),
+		// Các lần người đăng ký tự sửa (snapshot ở trên là bản mới nhất)
+		amendments: amendments.forReview(history, {
+			originalHash: reg.consent_hash ?? null,
+			sensitive,
+			mask: (key, v) => (key === 'national_id' && !sensitive ? maskId(v) : v),
+		}),
 		verified_email: reg.verified_email ?? null,
 		email_verified_at: reg.email_verified_at ?? null,
 		invoice: Object.fromEntries(INVOICE_FIELDS.map((k) => [k, reg[k] ?? null])),
@@ -237,6 +303,7 @@ const dossierForEnrollment = async (enrollmentId) => {
 };
 
 module.exports = {
+	consentRecordForEnrollment,
 	normalizeValue,
 	computeDiffs,
 	getForReview,

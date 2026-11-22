@@ -114,8 +114,25 @@ export const suggestClassDates = (courseId: string, programId: string) =>
 		`/courses/${seg(courseId)}/programs/suggest-dates?program_id=${encodeURIComponent(programId)}`,
 	);
 
+// ─── Cài đặt form đăng ký công khai (/dang-ky-khoa-hoc) ──────────────────
+export interface RegistrationSettings {
+	/** Bắt xác minh email bằng mã OTP gửi về mail trước khi gửi đăng ký */
+	email_otp_required: boolean;
+	/** Gửi mail toàn hệ thống đang bật (tắt thì không ai nhận được mã OTP) */
+	mail_enabled: boolean;
+	/** Tự kiểm tra loại file hồ sơ (OCR / mã QR) — chỉ cảnh báo người duyệt */
+	doc_check_enabled: boolean;
+	/** Máy chủ có OCR (Tesseract) — không có thì chỉ kiểm được PDF có chữ + mã QR */
+	doc_check_ocr: boolean;
+}
+export const getRegistrationSettings = () => apiClient.get<RegistrationSettings>('/courses/registration-settings');
+export const updateRegistrationSettings = (
+	data: Partial<Pick<RegistrationSettings, 'email_otp_required' | 'doc_check_enabled'>>,
+) =>
+	apiClient.put<RegistrationSettings>('/courses/registration-settings', data);
+
 // ─── Enrollments ──────────────────────────────────────────────────────────
-export const getEnrollments = (courseId: string) =>
+export const getEnrollments =(courseId: string) =>
 	apiClient.get<Enrollment[]>(`/courses/${seg(courseId)}/enrollments`);
 export const getEnrollment = (enrollmentId: string) =>
 	apiClient.get<Enrollment>(`/courses/enrollments/${seg(enrollmentId)}`);
@@ -381,9 +398,11 @@ export const issueCertificatesBulk = (courseId: string, expiryDate?: string) =>
 	});
 
 /** Ghi lại CME tự động của khóa (courseCmeService) — null = không chạy (công tắc tắt / điểm chưa khóa).
- *  lecturers_pending = true: dòng CME giảng viên đang chờ người quản lý CME duyệt, chưa được cộng. */
+ *  *_pending = true: dòng CME vừa ghi đang chờ người quản lý CME duyệt, chưa được cộng
+ *  (cấu hình CME_TRAINEE_APPROVAL / CME_LECTURER_APPROVAL hoặc người gọi thiếu quyền). */
 export interface CourseCmeSyncResult {
 	trainees: number | null;
+	trainees_pending: boolean;
 	lecturers: number | null;
 	lecturers_pending: boolean;
 	trainee_enabled: boolean;

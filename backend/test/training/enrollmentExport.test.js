@@ -158,7 +158,7 @@ test('chế độ toàn khóa: 1 sheet, có cột Chương trình, sắp theo ch
 	assert.equal(cell(ws, 4, 3), '07/05/1990');
 	assert.equal(cell(ws, 4, 4), 'Nam');
 	assert.equal(cell(ws, 4, 5), '012345678901');
-	assert.equal(cell(ws, 4, 11), 'ĐTLT-1 – Chương trình 1');
+	assert.equal(cell(ws, 4, 11), 'Chương trình 1');
 	assert.equal(cell(ws, 6, 11), 'Chương trình hai không mã');
 	assert.equal(cell(ws, 7, 11), '');
 	assert.equal(cell(ws, 4, 12), 'Đã duyệt');
@@ -216,10 +216,10 @@ test('chế độ theo chương trình: mỗi chương trình 1 sheet, sheet r�
 	const out = await reload(wb);
 	assert.deepEqual(
 		out.worksheets.map((w) => w.name),
-		['ĐTLT-1', 'Chương trình hai không mã', UNASSIGNED_SHEET],
+		['Chương trình 1', 'Chương trình hai không mã', UNASSIGNED_SHEET],
 	);
-	const p1 = out.getWorksheet('ĐTLT-1');
-	assert.equal(cell(p1, 2, 1), 'Khóa Tim mạch 01 · ĐTLT-1 – Chương trình 1 · 2 học viên');
+	const p1 = out.getWorksheet('Chương trình 1');
+	assert.equal(cell(p1, 2, 1), 'Khóa Tim mạch 01 · Chương trình 1 · 2 học viên');
 	assert.ok(!headers(p1).includes('Chương trình'));
 	assert.deepEqual(
 		[4, 5].map((r) => cell(p1, r, 2)),
@@ -239,10 +239,10 @@ test('chế độ theo chương trình: không có chương trình lẫn học v
 	assert.equal(cell(out.worksheets[0], 1, 1), 'DANH SÁCH HỌC VIÊN');
 });
 
-test('chế độ theo chương trình: mã trùng / quá dài vẫn ra sheet khác nhau', async () => {
+test('chế độ theo chương trình: tên trùng / quá dài vẫn ra sheet khác nhau', async () => {
 	const dup = [
-		{ id: 'A', code: 'MA', name: 'Một' },
-		{ id: 'B', code: 'ma', name: 'Hai' },
+		{ id: 'A', code: 'MA1', name: 'Siêu âm cơ bản' },
+		{ id: 'B', code: 'MA2', name: 'siêu âm cơ bản' },
 		{ id: 'C', code: null, name: 'Chương trình đào tạo rất dài hơn ba mươi mốt ký tự nhiều' },
 	];
 	const out = await reload(

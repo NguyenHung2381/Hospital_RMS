@@ -1,73 +1,225 @@
+/* Modal xuất danh sách học viên — theo mẫu form chung (Modal.module.css):
+ * nhãn formLabel, thẻ chọn viền 1.5px, danh sách tích chọn, chip trạng thái, warnBox. */
 .body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
+
+/* Nhóm = nhãn + nội dung (không đóng khung như fieldset mặc định) */
 .group {
-	margin: 0;
-	padding: var(--space-3);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
-.legend {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--space-3);
-	width: 100%;
-	padding: 0 var(--space-1);
-	font-size: var(--font-size-sm);
-	font-weight: 600;
-	color: var(--color-gray-700);
+.label {
+  composes: formLabel from "../../../shared/components/Modal/Modal.module.css";
+  padding: 0;
 }
-.legendTools {
-	display: inline-flex;
-	gap: var(--space-3);
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0;
+  /* legend không nhận gap của flex cha → tự tạo khoảng cách */
+  margin-bottom: var(--space-2);
+}
+.count {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-gray-400);
+}
+.labelTools {
+  display: inline-flex;
+  gap: var(--space-3);
 }
 .link {
-	padding: 0;
-	border: 0;
-	background: none;
-	font-size: var(--font-size-xs);
-	color: var(--color-primary-dark);
-	cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-dark);
+  cursor: pointer;
 }
 .link:hover:not(:disabled) {
-	text-decoration: underline;
+  text-decoration: underline;
 }
 .link:disabled {
-	color: var(--color-gray-500);
-	cursor: default;
+  color: var(--color-gray-300);
+  cursor: default;
 }
-.option {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-2);
-	padding: 4px 0;
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-900);
-	cursor: pointer;
+
+/* Legend thường (không phải labelRow) cũng cần khoảng cách dưới */
+.group > legend.label {
+  margin-bottom: var(--space-2);
 }
-.option input {
-	margin-top: 3px;
-	flex: none;
+
+/* Giới hạn trong .body — selector thẻ trong CSS module là global */
+.body input[type="radio"],
+.body input[type="checkbox"] {
+  accent-color: var(--color-primary);
 }
-.list {
-	max-height: 200px;
-	overflow-y: auto;
+
+/* ── Cách xuất: 2 thẻ chọn ─────────────── */
+.modeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
 }
-.statusRow {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--space-1) var(--space-4);
+.modeCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1.5px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
-.reason {
-	margin: 0;
-	padding: var(--space-2) var(--space-3);
-	border: 1px solid var(--tone-amber-border, var(--color-gray-200));
-	border-radius: var(--radius-lg);
-	background: var(--tone-amber-bg);
-	color: var(--tone-amber-fg);
-	font-size: var(--font-size-xs);
+.modeCard:hover {
+  border-color: var(--color-primary-light);
+}
+.modeCard:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-pale);
+}
+.modeCard input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.modeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.modeTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-800);
+}
+.modeHint {
+  font-size: var(--font-size-2xs);
+  color: var(--color-gray-500);
+}
+
+/* ── Chương trình: danh sách tích chọn ─── */
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  border: 1.5px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-gray-50);
+}
+.search {
+  margin-bottom: var(--space-2);
+}
+.search > * {
+  width: 100%;
+}
+.empty {
+  padding: var(--space-3);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-500);
+}
+.checkItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.checkItem:hover {
+  background: var(--color-white);
+}
+.checkItem:has(input:checked) {
+  color: var(--color-gray-900);
+}
+.checkItem input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.checkText {
+  min-width: 0;
+  line-height: 1.45;
+}
+.code {
+  display: inline-block;
+  margin-right: var(--space-2);
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-100);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-600);
+  white-space: nowrap;
+}
+.checkItem:has(input:checked) .code {
+  background: var(--color-primary-pale);
+  color: var(--color-primary-dark);
+}
+
+/* ── Trạng thái: chip bật/tắt ──────────── */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1.5px solid var(--color-gray-200);
+  border-radius: var(--radius-full);
+  background: var(--color-gray-50);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-700);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.chip:hover {
+  border-color: var(--color-primary);
+}
+.chip:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-primary-pale);
+  color: var(--color-primary-dark);
+}
+.chip input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.warnBox {
+  composes: warnBox from "../../../shared/components/Modal/Modal.module.css";
+}
+
+@media (max-width: 480px) {
+  .modeGrid {
+    grid-template-columns: 1fr;
+  }
 }

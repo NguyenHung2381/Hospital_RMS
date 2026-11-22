@@ -1,14 +1,15 @@
+import { ApproveSvg, ProgressSvg, RoundSvg, TopicSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { DashboardTabs } from '../components/DashboardTabs';
 import {
-	ActivityRows,
+	ActivityChart,
 	AttentionStrip,
 	KpiBand,
 	Panel,
 	RankBars,
 	RankTable,
-	ShareBar,
+	ShareDonut,
 	ShortList,
 } from '../components/DashKit';
 import { dk, fmt, panelState } from '../components/dashKitHelpers';
@@ -112,23 +113,27 @@ export default function ResearchDashboard() {
 				loading={loading}
 				items={[
 					{
+						icon: TopicSvg,
 						label: 'Tổng hồ sơ NCKH',
 						value: fmt(total),
 						context: `${fmt(articleCount('de_tai'))} đề tài · ${fmt(articleCount('bai_bao'))} bài báo · ${fmt(summary?.topics_this_year)} năm ${year}`,
 						to: '/admin/topics',
 					},
 					{
+						icon: ApproveSvg,
 						label: 'Đã phê duyệt',
 						value: fmt(st?.approved),
 						context: total > 0 ? `${pct((st?.approved ?? 0) / total)} tổng số hồ sơ` : undefined,
 					},
 					{
+						icon: RoundSvg,
 						label: 'Đợt nghiên cứu đang mở',
 						value: fmt(summary?.rounds_active),
 						context: `${fmt(summary?.councils_total)} hội đồng khoa học`,
 						to: '/admin/rounds',
 					},
 					{
+						icon: ProgressSvg,
 						label: 'Đánh giá tiến độ của hội đồng',
 						value: progressPct === null ? '—' : <>{progressPct}<small>%</small></>,
 						context:
@@ -146,7 +151,7 @@ export default function ResearchDashboard() {
 					subtitle='Toàn bộ đề tài và bài báo trong hệ thống'
 				>
 					{panelState(loading, error, total === 0) ?? (
-						<ShareBar
+						<ShareDonut
 							data={statusShare}
 							unit='hồ sơ'
 						/>
@@ -162,10 +167,10 @@ export default function ResearchDashboard() {
 
 			<Panel
 				title='Đề tài đăng ký theo lĩnh vực'
-				subtitle='Theo năm đăng ký; tối đa 6 lĩnh vực nhiều đề tài nhất, mỗi dòng một thang đo'
+				subtitle='Theo năm đăng ký; 6 lĩnh vực nhiều đề tài nhất, chọn lĩnh vực để xem'
 			>
 				{panelState(loading, error, trendSeries.length === 0 || trendYears.length === 0) ?? (
-					<ActivityRows
+					<ActivityChart
 						labels={trendYears}
 						series={trendSeries}
 						highlightIndex={lastIsThisYear ? trendYears.length - 1 : null}
@@ -217,6 +222,7 @@ export default function ResearchDashboard() {
 								meta: [c.round_name, c.chairman_name && `Chủ tịch: ${c.chairman_name}`]
 									.filter(Boolean)
 									.join(' · '),
+								date: c.defense_date,
 								side: c.defense_date ? formatDate(c.defense_date) : '—',
 								sideSub: `${fmt(c.topic_count)} đề tài`,
 								to: '/admin/councils',

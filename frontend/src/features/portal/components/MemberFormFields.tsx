@@ -7,6 +7,7 @@ import type { MemberFormState } from '../types/topicDetail.type';
 import { allowedOptions } from '../../../shared/formConfig/allowedOptions';
 import { CustomFields } from '../../../shared/formConfig/CustomFields';
 import { useFormConfig } from '../../../shared/formConfig/useFormConfig';
+import { withChoices } from '../../../shared/formConfig/withChoices';
 
 const ROLE_OPTIONS = [
 	{ value: 'leader', label: 'Chủ nhiệm' },
@@ -224,14 +225,17 @@ export default function MemberFormFields({
 			</div>
 
 			<div style={{ display: 'flex', gap: 8 }}>
-				<input
-					className={styles.formInput}
-					placeholder={ph('ho_ten', 'Họ tên', true)}
-					maxLength={cfg.maxLength('ho_ten')}
-					value={form.ho_ten}
-					onChange={set('ho_ten')}
-					style={{ flex: 2 }}
-				/>
+				{withChoices(
+					cfg.field('ho_ten'),
+					<input
+						className={styles.formInput}
+						placeholder={ph('ho_ten', 'Họ tên', true)}
+						maxLength={cfg.maxLength('ho_ten')}
+						value={form.ho_ten}
+						onChange={set('ho_ten')}
+						style={{ flex: 2 }}
+					/>,
+				)}
 				<select
 					className={styles.formInput}
 					value={form.role}
@@ -278,16 +282,18 @@ export default function MemberFormFields({
 			)}
 			{(show('chuc_vu') || show('staff_number')) && (
 				<div style={{ display: 'flex', gap: 8 }}>
-					{show('chuc_vu') && (
-						<input
-							className={styles.formInput}
-							placeholder={ph('chuc_vu', 'Chức vụ')}
-							maxLength={cfg.maxLength('chuc_vu')}
-							value={form.chuc_vu}
-							onChange={set('chuc_vu')}
-							style={{ flex: 1 }}
-						/>
-					)}
+					{show('chuc_vu') &&
+						withChoices(
+							cfg.field('chuc_vu'),
+							<input
+								className={styles.formInput}
+								placeholder={ph('chuc_vu', 'Chức vụ')}
+								maxLength={cfg.maxLength('chuc_vu')}
+								value={form.chuc_vu}
+								onChange={set('chuc_vu')}
+								style={{ flex: 1 }}
+							/>,
+						)}
 					{show('staff_number') && (
 						<input
 							className={styles.formInput}

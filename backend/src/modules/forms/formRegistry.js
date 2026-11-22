@@ -13,6 +13,7 @@
 //   options   giá trị hợp lệ của select (admin được thu hẹp)
 //   when      chỉ áp bắt buộc/ràng buộc khi điều kiện đúng, vd { article_type: 'bai_bao' }
 //   dynamic   select lấy từ danh mục (đợt, khoa...) — không cấu hình option
+//   noChoices ô chữ không cho đổi thành danh sách chọn (gán tự động ở cuối file)
 //   editOnly  chỉ có ở form SỬA (vd kết quả nghiệm thu) — lúc tạo mới không đòi.
 //             true | [variant...]
 //
@@ -461,6 +462,26 @@ const FORMS = [
 	// ─── Đợt 3: Đào tạo (formRegistry.training.js) ─────────────────────────────
 	...TRAINING_FORMS,
 ];
+
+// Ô chữ KHÔNG cho đổi thành danh sách chọn (choices): số điện thoại, CCCD, mã NV
+// (giá trị riêng từng người), giờ học (TimePicker), và các ô form vẽ bằng component
+// riêng / đã chọn từ danh mục nên không thay được bằng ô chọn.
+const NO_CHOICES = new Set([
+	'phone',
+	'so_dien_thoai',
+	'national_id',
+	'staff_number',
+	'start_time',
+	'end_time',
+]);
+const NO_CHOICES_IN = {
+	user_profile: ['full_name'], // ô sửa nhanh ở Hồ sơ
+	course_session: ['room'], // VenueSelect
+	enrollment: ['sending_unit', 'professional_field', 'practice_form'], // chọn từ danh mục
+};
+for (const form of FORMS)
+	for (const f of form.fields)
+		if (NO_CHOICES.has(f.key) || NO_CHOICES_IN[form.key]?.includes(f.key)) f.noChoices = true;
 
 const byKey = new Map(FORMS.map((f) => [f.key, f]));
 const getForm = (key) => byKey.get(key) || null;

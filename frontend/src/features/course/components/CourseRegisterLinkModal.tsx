@@ -6,6 +6,8 @@ import { formatDateOr } from '@/shared/utils/formatDate';
 import { isLoopbackOrigin, publicUrl } from '@/shared/utils/publicUrl';
 import type { Course } from '../types/course.type';
 import styles from './CourseRegisterLinkModal.module.css';
+import { RegistrationDocCheckSwitch } from './RegistrationDocCheckSwitch';
+import { RegistrationOtpSwitch } from './RegistrationOtpSwitch';
 
 type LinkCourse = Pick<Course, 'id' | 'name' | 'start_date' | 'is_public_registration' | 'enrollment_open'>;
 
@@ -95,7 +97,7 @@ export function CourseRegisterLinkModal({ course, onClose }: { course?: LinkCour
 							size={220}
 						/>
 					</div>
-					<span className={styles.hint}>Học viên quét mã → chọn chương trình → điền thông tin → gửi đăng ký</span>
+					<span className={styles.hint}>Học viên quét mã → điền một trang đăng ký → gửi</span>
 					<div className={styles.linkRow}>
 						<LinkSvg />
 						<a
@@ -116,6 +118,8 @@ export function CourseRegisterLinkModal({ course, onClose }: { course?: LinkCour
 							{copied ? <CheckSvg /> : <CopySvg />}
 						</button>
 					</div>
+					<RegistrationOtpSwitch />
+					<RegistrationDocCheckSwitch />
 				</div>
 			</Modal>
 			{qrImage.sheet}

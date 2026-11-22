@@ -220,6 +220,7 @@ export default function TopicRegisterPublic() {
 
 	return (
 		<PublicLayout
+			section='research'
 			title='Đăng ký đề tài nghiên cứu khoa học'
 			subtitle='Điền thông tin bên dưới để đăng ký đề tài. Hồ sơ sẽ được khoa/phòng và hội đồng xét duyệt trước khi chính thức triển khai.'
 		>

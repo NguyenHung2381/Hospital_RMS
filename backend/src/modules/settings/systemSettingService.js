@@ -66,6 +66,8 @@ const KEYS = [
 	// Form đăng ký khóa đào tạo liên tục — public/publicPortalService.js, training/registration/
 	// 'false' ⇒ không bắt xác minh email bằng OTP trước khi gửi đăng ký (mặc định bật)
 	'TRAINING_REGISTRATION_EMAIL_OTP',
+	// 'false' ⇒ tắt tự kiểm tra loại file hồ sơ đăng ký (OCR / QR) — training/registration/docCheck/
+	'TRAINING_REGISTRATION_DOC_CHECK',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',
@@ -78,6 +80,9 @@ const KEYS = [
 	// Tự cộng tín chỉ CME từ khóa ĐTLT / CTCV — training/courses/courseCmeService.js
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
+	// Dòng tự cộng được duyệt luôn hay chờ người quản lý CME duyệt — xem ENUM_KEYS
+	'CME_TRAINEE_APPROVAL',
+	'CME_LECTURER_APPROVAL',
 	// Email theo chức năng — mặc định ở mailService.EVENT_DEFAULTS
 	'MAIL_EVENT_TOPIC_RESULT',
 	'MAIL_EVENT_DEADLINE_REMINDER',
@@ -97,12 +102,22 @@ const isKey = (key) => KEYS.includes(key);
 // công tắc tự cộng tín chỉ CME (training/courses/courseCmeService.js).
 const BOOLEAN_KEYS = new Set([
 	'TRAINING_REGISTRATION_EMAIL_OTP',
+	'TRAINING_REGISTRATION_DOC_CHECK',
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
 ]);
+// Khóa chỉ nhận một trong các giá trị liệt kê (rỗng = bỏ ghi đè, về mặc định — giá trị đầu).
+// Khớp courseCmeService.APPROVAL_MODES.
+const ENUM_KEYS = {
+	CME_TRAINEE_APPROVAL: ['approved', 'pending'],
+	CME_LECTURER_APPROVAL: ['permission', 'approved', 'pending'],
+};
 // null = hợp lệ; ngược lại là thông báo lỗi (dùng khi admin lưu cấu hình)
 const validateSetting = (key, value) => {
-	if (!BOOLEAN_KEYS.has(key) || value === null || value === '') return null;
+	if (value === null || value === '') return null;
+	if (ENUM_KEYS[key])
+		return ENUM_KEYS[key].includes(value) ? null : `Giá trị phải là ${ENUM_KEYS[key].join('/')}`;
+	if (!BOOLEAN_KEYS.has(key)) return null;
 	return value === 'true' || value === 'false' ? null : 'Giá trị phải là true/false';
 };
 const MASK = '••••••';

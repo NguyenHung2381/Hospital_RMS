@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BadgeSvg, BookOpenSvg, UserCheckSvg, UsersSvg } from '@/assets/icons';
 import { DISPLAY_STATUS_CFG } from '@/features/course/types/course.type';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -6,12 +7,12 @@ import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getTrainingStats } from '../api/trainingDashboardApi';
 import { DashboardTabs } from '../components/DashboardTabs';
 import {
-	ActivityRows,
+	ActivityChart,
 	AttentionStrip,
 	KpiBand,
 	Panel,
 	RankBars,
-	ShareBar,
+	ShareDonut,
 	ShortList,
 } from '../components/DashKit';
 import { dk, fmt, last12Months, monthLabel, panelState } from '../components/dashKitHelpers';
@@ -146,23 +147,27 @@ export default function TrainingDashboard() {
 				loading={loading}
 				items={[
 					{
+						icon: BookOpenSvg,
 						label: 'Khóa học đang mở',
 						value: fmt(kpi?.open_courses),
 						context: `trên ${fmt(kpi?.total_courses)} khóa trong hệ thống`,
 						to: '/admin/dtlt',
 					},
 					{
+						icon: UsersSvg,
 						label: 'Học viên đang hoạt động',
 						value: fmt(kpi?.total_trainees),
 						context: `${fmt(kpi?.trainees_this_year)} học viên mới năm ${year}`,
 						to: '/admin/trainees',
 					},
 					{
+						icon: UserCheckSvg,
 						label: 'Giảng viên, báo cáo viên',
 						value: fmt(kpi?.total_lecturers),
 						to: '/admin/lecturers',
 					},
 					{
+						icon: BadgeSvg,
 						label: 'Chứng chỉ còn hiệu lực',
 						value: fmt(kpi?.certificates_issued),
 					},
@@ -220,10 +225,10 @@ export default function TrainingDashboard() {
 					subtitle='12 tháng gần nhất; cột đậm là tháng hiện tại'
 				>
 					{panelState(loading, error, !hasTrend, 'Chưa có lượt đăng ký nào trong 12 tháng qua', 200) ?? (
-						<ActivityRows
+						<ActivityChart
 							labels={months.map(monthLabel)}
 							series={[{ name: 'Lượt đăng ký', values: trendValues, unit: 'lượt' }]}
-							rowHeight={140}
+							height={220}
 							totalLabel='12 tháng'
 						/>
 					)}
@@ -235,7 +240,7 @@ export default function TrainingDashboard() {
 							{traineeShare.length > 0 && (
 								<div className={dk.shareGroup}>
 									<h3 className={dk.shareGroupTitle}>Học viên theo đối tượng</h3>
-									<ShareBar
+									<ShareDonut
 										data={traineeShare}
 										unit='học viên'
 									/>
@@ -244,7 +249,7 @@ export default function TrainingDashboard() {
 							{courseShare.length > 0 && (
 								<div className={dk.shareGroup}>
 									<h3 className={dk.shareGroupTitle}>Khóa học theo trạng thái</h3>
-									<ShareBar
+									<ShareDonut
 										data={courseShare}
 										unit='khóa học'
 									/>

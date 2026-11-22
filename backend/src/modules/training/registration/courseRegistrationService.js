@@ -5,6 +5,7 @@
 // Cổng công khai, cổng nhân viên và màn duyệt đều đọc / ghi bản khai qua file này.
 // snapshot lưu dạng chuỗi JSON, đọc ra luôn parse thành object.
 const crypto = require('crypto');
+const { buildRecord } = require('./registrationConsent');
 const { getPool, sql, nowSql } = require('../../../config/db');
 const { isUniqueViolation, constraintName } = require('../../../utils/dbErrors');
 const { badRequest } = require('../../../utils/httpError');
@@ -102,9 +103,11 @@ const genCode = async () => {
  *   rulesVersion: string,
  *   verifiedEmail?: string | null,
  *   invoice?: Record<string, string | null>,
+ *   consent?: { signatureName: string, fullName: string, client?: { ip?: string | null, userAgent?: string | null } } | null,
  * }} data
+ *   consent: bản ghi xác nhận điện tử (registrationConsent.buildRecord) — form công khai luôn có
  * @param {string | null} actorId
- * @returns {Promise<{ enrollment_id: string, registration_code: string }>}
+ * @returns {Promise<{ enrollment_id: string, registration_code: string, consent_hash: string | null }>}
  */
 const create = async (enrollmentId, data, actorId) => {
 	if (!SOURCES.includes(data.source)) throw badRequest('Đối tượng đăng ký không hợp lệ.');
@@ -119,6 +122,18 @@ const create = async (enrollmentId, data, actorId) => {
 
 	for (let i = 0; i < CODE_ATTEMPTS; i++) {
 		const code = await genCode();
+		// Bản ghi xác nhận mang chính mã đăng ký này ⇒ dựng lại mỗi lần rút mã
+		const consent = data.consent
+			? buildRecord({
+					registrationCode: code,
+					enrollmentId,
+					source: data.source,
+					fullName: data.consent.fullName,
+					signatureName: data.consent.signatureName,
+					verifiedEmail,
+					client: data.consent.client,
+				})
+			: null;
 		try {
 			await pool
 				.request()
@@ -137,20 +152,32 @@ const create = async (enrollmentId, data, actorId) => {
 				.input('invoice_tax_code', sql.VarChar(20), invoice.invoice_tax_code)
 				.input('invoice_budget_code', sql.VarChar(20), invoice.invoice_budget_code)
 				.input('invoice_email', sql.VarChar(100), invoice.invoice_email)
+				.input('signature_name', sql.NVarChar(150), consent ? consent.record.signature_name : null)
+				.input('consent_ip', sql.VarChar(45), consent?.record.ip ?? null)
+				.input('consent_user_agent', sql.NVarChar(300), consent?.record.user_agent ?? null)
+				.input('consent_record', sql.NVarChar(sql.MAX), consent?.json ?? null)
+				.input('consent_hash', sql.Char(64), consent?.hash ?? null)
 				.input('actor_id', sql.VarChar(20), actorId || null).query(`
 					INSERT INTO course_registrations (
 						enrollment_id, registration_code, source, channel, staff_user_id, staff_number, department_id,
 						snapshot, rules_version, rules_accepted_at, declared_true_at, verified_email, email_verified_at,
 						invoice_org_name, invoice_org_address, invoice_tax_code, invoice_budget_code, invoice_email,
+						signature_name, data_consent_at, consent_ip, consent_user_agent, consent_record, consent_hash,
 						created_by
 					) VALUES (
 						@enrollment_id, @code, @source, @channel, @staff_user_id, @staff_number, @department_id,
 						@snapshot, @rules_version, ${nowSql}, ${nowSql}, @verified_email,
 						CASE WHEN CAST(@verified_email AS VARCHAR(100)) IS NULL THEN NULL ELSE ${nowSql} END,
 						@invoice_org_name, @invoice_org_address, @invoice_tax_code, @invoice_budget_code, @invoice_email,
+						@signature_name, CASE WHEN CAST(@consent_hash AS CHAR(64)) IS NULL THEN NULL ELSE ${nowSql} END,
+						@consent_ip, @consent_user_agent, @consent_record, @consent_hash,
 						@actor_id
 					)`);
-			return { enrollment_id: enrollmentId, registration_code: code };
+			return {
+				enrollment_id: enrollmentId,
+				registration_code: code,
+				consent_hash: consent?.hash ?? null,
+			};
 		} catch (err) {
 			// 2 bản khai cùng lúc rút trúng 1 mã (gần như không thể) ⇒ rút lại
 			if (isUniqueViolation(err) && constraintName(err) === 'uq_course_registrations_code')
