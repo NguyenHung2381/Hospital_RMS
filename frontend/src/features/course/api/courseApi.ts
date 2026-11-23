@@ -308,6 +308,8 @@ export const createSession = (
 		end_time?: string;
 		room?: string;
 		session_kind?: SessionKind;
+		/** Trợ giảng (mã GV, nhận cả 'user:<id>' — nhân viên có CCHN) */
+		assistant_ids?: string[];
 	},
 ) => apiClient.post<{ id: string; warnings: string[] }>(`/courses/${seg(courseId)}/sessions`, data);
 export const updateSession = (
@@ -320,6 +322,8 @@ export const updateSession = (
 		end_time?: string;
 		room?: string;
 		session_kind?: SessionKind | '';
+		/** Đặt lại toàn bộ trợ giảng của buổi; bỏ trường = giữ nguyên */
+		assistant_ids?: string[];
 	},
 ) => apiClient.put<{ warnings: string[] }>(`/courses/sessions/${seg(sessionId)}`, data);
 export const removeSession = (sessionId: string) => apiClient.delete<null>(`/courses/sessions/${seg(sessionId)}`);
@@ -337,6 +341,50 @@ export const createSessionsBulk = (
 		session_kind?: SessionKind;
 	},
 ) => apiClient.post<{ created: number; skipped: number; warnings: string[] }>(`/courses/${seg(courseId)}/sessions/bulk`, data);
+
+// ─── Nhập kế hoạch giảng dạy (Excel) — sessionLecturerImportService ───
+export type SessionImportStatus = 'update' | 'unchanged' | 'skipped' | 'failed';
+export interface TeachingPlanPerson {
+	name: string;
+	/** Mã nhân viên (giảng viên trong viện) */
+	staff_number: number | string | null;
+	/** Nhân viên có CCHN chưa có hồ sơ giảng viên — ghi thì hệ thống tự tạo hồ sơ */
+	is_new: boolean;
+}
+/** 1 dòng file = 1 phần LT / TH của 1 bài, áp cho các buổi đã xếp trong khoảng ngày. */
+export interface SessionImportRow {
+	row: number;
+	status: SessionImportStatus;
+	code: string | null;
+	title: string;
+	kind: SessionKind | null;
+	from?: string | null;
+	to?: string | null;
+	/** Giờ bắt đầu nếu dòng chỉ định 1 buổi cụ thể trong ngày */
+	start?: string | null;
+	main?: TeachingPlanPerson;
+	assistants?: TeachingPlanPerson[];
+	/** Số buổi khớp / số buổi sẽ đổi */
+	sessions?: number;
+	changed?: number;
+	/** "dd/mm/yyyy hh:mm" của các buổi khớp */
+	dates?: string[];
+	note?: string;
+}
+export interface SessionImportResult {
+	dry_run: boolean;
+	summary: { rows: number; update: number; unchanged: number; skipped: number; sessions: number; updated_sessions?: number };
+	rows: SessionImportRow[];
+	warnings: string[];
+}
+export const importSessionLecturers = (courseId: string, file: File, dryRun: boolean) => {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('dry_run', dryRun ? '1' : '0');
+	return apiClient.postForm<SessionImportResult>(`/courses/${seg(courseId)}/sessions/lecturers/import`, form);
+};
+export const downloadSessionLecturerTemplate = (courseId: string, programId?: string | null) =>
+	apiClient.postBlob(`/courses/${seg(courseId)}/sessions/lecturers/template`, { program_id: programId ?? null });
 
 // ─── Attendance ───────────────────────────────────────────────────────────
 export const getAttendance = (sessionId: string) =>

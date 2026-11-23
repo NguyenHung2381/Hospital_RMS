@@ -251,7 +251,9 @@ const remove = async (id, actorId) => {
 			.request()
 			.input('id', sql.VarChar(20), id)
 			.query(
-				'SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM lecturer_assignments WHERE lecturer_id = @id)',
+				`SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM lecturer_assignments WHERE lecturer_id = @id)
+           OR EXISTS (SELECT 1 FROM class_sessions WHERE lecturer_id = @id)
+           OR EXISTS (SELECT 1 FROM session_lecturers WHERE lecturer_id = @id)`,
 			);
 	} catch {
 		// Bảng lecturer_assignments chưa tồn tại (Giai đoạn 4 chưa chạy) ⇒ coi như chưa dùng.

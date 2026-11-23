@@ -261,13 +261,23 @@ const withdrawForCertificate = async (certId, actorId, { remove = false, reason 
 // dạy buổi của bài mà không có phân công (dạy thay). lesson_sessions đếm buổi đã diễn ra có
 // gán GV của bài, KỂ CẢ GV chưa có tài khoản / ngoại viện, để phần của họ không dồn sang người
 // khác. class_sessions không có số tiết ⇒ chia theo số buổi, không quy đổi theo phút.
+// Trợ giảng (session_lecturers) tính như 1 lượt dạy buổi đó: buổi đồng giảng 2 người ⇒
+// mỗi người 1 lượt, số tiết bài chia theo tổng lượt (không cộng dồn quá số tiết bài).
 const LECTURER_FACTS = `
     WITH sess AS (
-      SELECT cs.subject_id, cs.lecturer_id, COUNT(*) AS n
-      FROM class_sessions cs
-      WHERE cs.course_id = @course_id AND cs.subject_id IS NOT NULL AND cs.lecturer_id IS NOT NULL
-        AND cs.session_date <= ${vnTodaySql}
-      GROUP BY cs.subject_id, cs.lecturer_id
+      SELECT x.subject_id, x.lecturer_id, COUNT(*) AS n
+      FROM (
+        SELECT cs.subject_id, cs.lecturer_id
+        FROM class_sessions cs
+        WHERE cs.course_id = @course_id AND cs.subject_id IS NOT NULL AND cs.lecturer_id IS NOT NULL
+          AND cs.session_date <= ${vnTodaySql}
+        UNION ALL
+        SELECT cs.subject_id, sl.lecturer_id
+        FROM session_lecturers sl JOIN class_sessions cs ON cs.id = sl.session_id
+        WHERE cs.course_id = @course_id AND cs.subject_id IS NOT NULL
+          AND cs.session_date <= ${vnTodaySql}
+      ) x
+      GROUP BY x.subject_id, x.lecturer_id
     ), lesson_sess AS (
       SELECT subject_id, SUM(n) AS n FROM sess GROUP BY subject_id
     ), pairs AS (

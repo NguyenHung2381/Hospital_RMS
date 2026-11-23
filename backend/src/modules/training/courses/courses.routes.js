@@ -467,6 +467,8 @@ router.post(
 	formConfigGuard('course_session', { variant: bodyVariant('admin'), mode: 'update' }),
 	ctrl.createSessionsBulk,
 );
+// Nhập giảng viên giảng dạy theo buổi từ Excel (sessionImportRoutes.js)
+require('./sessionImportRoutes')(router);
 
 // ─── Attendance ───────────────────────────────────────────────────────────
 router.get(

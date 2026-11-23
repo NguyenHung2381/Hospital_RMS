@@ -353,7 +353,8 @@ const resolveSessionLecturer = async (courseId, id, actorId) => {
 
 /**
  * Đồng bộ phân công GV theo bài từ buổi học (bỏ ô "GV chính / GV phụ" nhập tay ở
- * bảng Lịch học). Bài chưa có buổi nào gán GV thì giữ nguyên phân công cũ; bài
+ * bảng Lịch học): GV chính = người đứng chính nhiều buổi nhất; GV phụ = các GV chính
+ * khác + trợ giảng của các buổi (session_lecturers). Bài chưa có buổi nào gán GV thì giữ nguyên phân công cũ; bài
  * ngoài chương trình của khóa thì bỏ qua. Lỗi ở đây không chặn việc lưu buổi học.
  */
 const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
@@ -383,9 +384,21 @@ const syncLessonsFromSessions = async (courseId, lessonIds, actorId) => {
           JOIN lesson_programs lp ON lp.program_id = cp.program_id
           WHERE cp.course_id = @course_id AND lp.lesson_id = @lesson_id)
 				`,
+					// Trợ giảng các buổi (session_lecturers) ⇒ GV phụ của bài
+					`
+          SELECT sl.lecturer_id, COUNT(*) AS n
+          FROM session_lecturers sl JOIN class_sessions cs ON cs.id = sl.session_id
+          WHERE cs.course_id = @course_id AND cs.subject_id = @lesson_id
+          GROUP BY sl.lecturer_id
+          ORDER BY COUNT(*) DESC, sl.lecturer_id
+				`,
 				],
 			);
-			const [rows, existing, inCourse] = sets;
+			const [mains, existing, inCourse, assistants] = sets;
+			const rows = [
+				...mains,
+				...assistants.filter((a) => !mains.some((m) => m.lecturer_id === a.lecturer_id)),
+			];
 			const data = lessonLecturersFromSessions(
 				rows,
 				new Map(existing.map((x) => [x.lecturer_id, x.hours])),

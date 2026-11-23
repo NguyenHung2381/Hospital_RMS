@@ -9,6 +9,7 @@ const {
 	queryBatch,
 } = require('../../../config/db');
 const { genClassSessionId } = require('../../../utils/idGenerator');
+const { httpError } = require('../../../utils/httpError');
 const { broadcast } = require('../../events/eventService');
 const { scopeOf } = require('../../../permissions/authz');
 const { ASSIGNED_EXISTS_SQL } = require('./coursePolicy');
@@ -152,7 +153,8 @@ const listTraineeSessions = async ({ from, to, traineeId = null, userId = null }
 const listSessions = async (courseId) => {
 	const pool = await getPool();
 	const r = await pool.request().input('course_id', sql.VarChar(20), courseId).query(`
-    SELECT sess.*, s.title AS subject_name, l.full_name AS lecturer_name, clash.lecturer_clashes
+    SELECT sess.*, s.title AS subject_name, l.full_name AS lecturer_name, clash.lecturer_clashes,
+           ${ASSISTANTS_SQL('sess')} AS assistants
     FROM class_sessions sess
     LEFT JOIN program_lessons s ON s.id = sess.subject_id
     LEFT JOIN lecturers l ON l.id = sess.lecturer_id
@@ -169,7 +171,72 @@ const listSessions = async (courseId) => {
     WHERE sess.course_id = @course_id
     ORDER BY sess.session_date, sess.start_time
   `);
-	return r.recordset;
+	// Adapter PG trả cột json dạng chuỗi ⇒ parse thành mảng [{ id, name }]
+	return r.recordset.map((x) => ({
+		...x,
+		assistants: typeof x.assistants === 'string' ? JSON.parse(x.assistants) : x.assistants || [],
+	}));
+};
+
+// Trợ giảng của buổi (session_lecturers) — mảng JSON [{ id, name }] theo họ tên.
+const ASSISTANTS_SQL = (s) => `COALESCE((
+      SELECT json_agg(json_build_object('id', al.id, 'name', al.full_name) ORDER BY al.full_name)
+      FROM session_lecturers sl JOIN lecturers al ON al.id = sl.lecturer_id
+      WHERE sl.session_id = ${s}.id), '[]'::json)`;
+
+const assertAssistantIds = (ids) => {
+	const ok =
+		ids == null ||
+		(Array.isArray(ids) && ids.length <= 20 && ids.every((x) => typeof x === 'string'));
+	if (!ok) throw httpError(400, 'Danh sách trợ giảng không hợp lệ.');
+};
+
+/**
+ * Danh sách trợ giảng sẽ lưu từ `ids` (mã GV, nhận cả 'user:<id>' — nhân viên có CCHN, tự tạo
+ * hồ sơ GV): bỏ trùng, bỏ người trùng GV chính. Người MỚI thêm phải dạy được khóa này
+ * (resolveSessionLecturer — chặn học viên, GV ngừng hoạt động); người đã là trợ giảng của buổi
+ * thì giữ nguyên, không kiểm lại (như GV chính: sửa giờ / phòng không vướng người đã nghỉ).
+ * Gọi TRƯỚC khi ghi buổi để lỗi không để lại buổi ghi dở.
+ */
+const resolveAssistants = async (courseId, mainId, ids, actorId, current = []) => {
+	assertAssistantIds(ids);
+	const wanted = [];
+	for (const raw of ids || []) {
+		if (!raw) continue;
+		const id = current.includes(raw)
+			? raw
+			: await lecturerAssignmentService.resolveSessionLecturer(courseId, raw, actorId);
+		if (id && id !== mainId && !wanted.includes(id)) wanted.push(id);
+	}
+	return wanted;
+};
+
+const currentAssistants = async (sessionId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('id', sql.VarChar(20), sessionId)
+		.query('SELECT lecturer_id FROM session_lecturers WHERE session_id = @id');
+	return r.recordset.map((x) => x.lecturer_id);
+};
+
+/** Ghi lại trợ giảng của 1 buổi đúng như `wanted` (đã qua resolveAssistants). */
+const writeAssistants = async (sessionId, wanted, actorId) => {
+	await withTransaction(async (tx) => {
+		await tx
+			.request()
+			.input('session_id', sql.VarChar(20), sessionId)
+			.query('DELETE FROM session_lecturers WHERE session_id = @session_id');
+		for (const id of wanted) {
+			await tx
+				.request()
+				.input('session_id', sql.VarChar(20), sessionId)
+				.input('lecturer_id', sql.VarChar(20), id)
+				.input('actor_id', sql.VarChar(20), actorId)
+				.query(`INSERT INTO session_lecturers (session_id, lecturer_id, created_by)
+                VALUES (@session_id, @lecturer_id, @actor_id)`);
+		}
+	});
 };
 
 // Buổi lý thuyết / thực hành (tính chuyên cần LT/TH ở bảng điểm). NULL = suy ra từ
@@ -178,10 +245,17 @@ const kindOf = (v) => (['theory', 'practice'].includes(v) ? v : null);
 
 // Giảng viên chỉ chọn ở buổi học — phân công GV theo bài tự cập nhật theo các buổi.
 const createSession = async (courseId, data, actorId) => {
+	assertAssistantIds(data.assistant_ids);
 	await assertClassOpen(courseId, data.subject_id);
 	const lecturerId = await lecturerAssignmentService.resolveSessionLecturer(
 		courseId,
 		data.lecturer_id,
+		actorId,
+	);
+	const assistants = await resolveAssistants(
+		courseId,
+		lecturerId || null,
+		data.assistant_ids,
 		actorId,
 	);
 	const result = await withTransaction(async (tx) =>
@@ -205,8 +279,9 @@ const createSession = async (courseId, data, actorId) => {
 			],
 		),
 	);
-	broadcast('update', { entity: 'class_session' });
 	const id = result.recordset[0].id;
+	if (assistants.length) await writeAssistants(id, assistants, actorId);
+	broadcast('update', { entity: 'class_session' });
 	await lecturerAssignmentService.syncLessonsFromSessions(courseId, [data.subject_id], actorId);
 	// Bài có thêm buổi ⇒ học viên đã "xong" bài phải có mặt cả buổi mới (quyết định 13)
 	await lessonProgressService.recompute({ sessionId: id });
@@ -231,6 +306,18 @@ const updateSession = async (sessionId, data, actorId) => {
 				actorId,
 			),
 		};
+	}
+	// Trợ giảng: kiểm trước khi ghi buổi (lỗi thì buổi giữ nguyên)
+	let assistants = null;
+	if (row && data.assistant_ids !== undefined) {
+		const mainId = data.lecturer_id === undefined ? row.lecturer_id : data.lecturer_id || null;
+		assistants = await resolveAssistants(
+			row.course_id,
+			mainId,
+			data.assistant_ids,
+			actorId,
+			await currentAssistants(sessionId),
+		);
 	}
 	if (data.subject_id !== undefined) {
 		if (row && (row.subject_id ?? '') !== (data.subject_id ?? '')) {
@@ -264,6 +351,16 @@ const updateSession = async (sessionId, data, actorId) => {
 		}
 	}
 	await req.query(`UPDATE class_sessions SET ${sets.join(', ')} WHERE id = @id`);
+	if (assistants) {
+		await writeAssistants(sessionId, assistants, actorId);
+	} else if (data.lecturer_id) {
+		// Trợ giảng vừa được đổi thành GV chính ⇒ bỏ khỏi danh sách trợ giảng
+		await pool
+			.request()
+			.input('id', sql.VarChar(20), sessionId)
+			.input('lecturer_id', sql.VarChar(20), data.lecturer_id)
+			.query('DELETE FROM session_lecturers WHERE session_id = @id AND lecturer_id = @lecturer_id');
+	}
 	broadcast('update', { entity: 'class_session' });
 	// Bài cũ (nếu đổi bài) và bài mới đều tính lại GV chính / phụ
 	if (row) {
@@ -372,4 +469,5 @@ module.exports = {
 	updateSession,
 	removeSession,
 	createSessionsBulk,
+	ASSISTANTS_SQL,
 };

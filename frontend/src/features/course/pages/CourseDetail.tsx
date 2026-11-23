@@ -434,6 +434,7 @@ export default function CourseDetail() {
 									key={scope ?? '_all'}
 									d={d}
 									scopeProgramId={scope}
+									courseName={course.name}
 								/>
 							) : tab === 'documents' ? (
 								<>

@@ -108,6 +108,8 @@ GET    /api/v1/courses/:id/proposals/document  courses:read
 GET    /api/v1/courses/:id/sessions  courses:read
 POST   /api/v1/courses/:id/sessions  courses:update
 POST   /api/v1/courses/:id/sessions/bulk  courses:update
+POST   /api/v1/courses/:id/sessions/lecturers/import  courses:update
+POST   /api/v1/courses/:id/sessions/lecturers/template  courses:read
 GET    /api/v1/courses/:id/waitlist-candidates  courses:read
 POST   /api/v1/courses/:id/waitlist-transfer  courses:approve
 POST   /api/v1/courses/attendance/check-in  authOnly

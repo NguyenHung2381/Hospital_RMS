@@ -8,8 +8,10 @@ import {
 	EditSvg,
 	PlusSvg,
 	TrashSvg,
+	UploadSvg,
 	UserCheckSvg,
 	UserSvg,
+	UsersSvg,
 	XSvg,
 } from '@/assets/icons';
 import { Badge, Button, DatePicker, EmptyState, TimePicker } from '@/shared/components';
@@ -26,6 +28,7 @@ import type { LecturerItem, useCourseDetail } from '../hooks/useCourseDetail';
 import type { ClassSession, CourseLesson, SessionKind } from '../types/course.type';
 import { LecturerSelect } from './LecturerOptions';
 import { ProgramFilter } from './ProgramFilter';
+import { SessionLecturerImportModal } from './SessionLecturerImportModal';
 import styles from '../pages/Courses.module.css';
 import ss from './SessionsTab.module.css';
 import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
@@ -282,6 +285,12 @@ function SessionDay({
 									<UserSvg />
 									{s.lecturer_name ?? 'Chưa gán giảng viên'}
 								</span>
+								{!!s.assistants?.length && (
+									<span title='Trợ giảng (đồng giảng buổi này)'>
+										<UsersSvg />
+										Trợ giảng: {s.assistants.map((a) => a.name).join(', ')}
+									</span>
+								)}
 								<span className={s.room ? undefined : ss.sessMissing}>
 									<DeptSvg />
 									{s.room ?? 'Chưa gán phòng'}
@@ -373,6 +382,10 @@ function SessionFormModal({
 	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
 	const cfg = useFormConfig('course_session', 'admin');
 	const [custom, setCustom] = useState<CustomValues>(editing?.custom ?? {});
+	// Trợ giảng (đồng giảng) — chỉ ở form 1 buổi
+	const [assistants, setAssistants] = useState<string[]>(() => editing?.assistants?.map((a) => a.id) ?? []);
+	const assistantName = (id: string) =>
+		sessionLecturers.find((l) => l.id === id)?.name ?? editing?.assistants?.find((a) => a.id === id)?.name ?? id;
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	// Phần chung 2 chế độ (giờ, phòng, bài, LT/TH, GV) đọc/ghi qua 1 bộ hàm
 	const f = bulk ? many : one;
@@ -425,6 +438,7 @@ function SessionFormModal({
 				subject_id: one.lesson_id,
 				lecturer_id: one.lecturer_id,
 				session_kind: one.session_kind,
+				assistant_ids: assistants.filter((id) => id !== one.lecturer_id),
 				...extra,
 			});
 			if (ok) onClose();
@@ -438,6 +452,7 @@ function SessionFormModal({
 			subject_id: one.lesson_id || undefined,
 			lecturer_id: one.lecturer_id || undefined,
 			session_kind: one.session_kind || undefined,
+			assistant_ids: assistants.filter((id) => id !== one.lecturer_id),
 			...extra,
 		});
 		if (ok) onClose();
@@ -556,6 +571,36 @@ function SessionFormModal({
 					onChange={(lecturer_id) => set({ lecturer_id })}
 				/>
 			</CfgField>
+			{!bulk && (
+				<FormField label='Trợ giảng (cùng dạy buổi này)'>
+					{assistants.length > 0 && (
+						<div className={`${styles.chipList} ${ss.assistantChips}`}>
+							{assistants.map((id) => (
+								<span
+									key={id}
+									className={styles.chip}
+								>
+									<strong>{assistantName(id)}</strong>
+									<button
+										type='button'
+										className={styles.chipRemove}
+										title='Bỏ trợ giảng'
+										onClick={() => setAssistants((xs) => xs.filter((x) => x !== id))}
+									>
+										<XSvg />
+									</button>
+								</span>
+							))}
+						</div>
+					)}
+					<LecturerSelect
+						lecturers={sessionLecturers.filter((l) => l.id !== f.lecturer_id && !assistants.includes(l.id))}
+						value=''
+						placeholder='-- Thêm trợ giảng --'
+						onChange={(id) => id && setAssistants((xs) => [...xs, id])}
+					/>
+				</FormField>
+			)}
 			<div className={m.formRow}>
 				<CfgField cfg={cfg} name='session_kind' error={errors.session_kind} label='Loại buổi'>
 					{kindSelect(f.session_kind, (session_kind) => set({ session_kind }), m.formInput, allowedOptions(cfg, 'session_kind', KIND_OPTIONS))}
@@ -585,10 +630,19 @@ function SessionFormModal({
 
 /** Bước "Bài học & lịch học": 1 bảng theo bài học — ngày học (buổi học, điểm danh) và giảng viên cùng chỗ.
  *  `scopeProgramId`: đang làm việc trong 1 chương trình — chỉ bài của chương trình đó, ẩn bộ lọc chương trình. */
-export function SessionsTab({ d, scopeProgramId }: { d: Detail; scopeProgramId?: string }) {
+export function SessionsTab({
+	d,
+	scopeProgramId,
+	courseName,
+}: {
+	d: Detail;
+	scopeProgramId?: string;
+	courseName?: string;
+}) {
 	const [newLecturerId, setNewLecturerId] = useState('');
 	const [form, setForm] = useState<FormState | null>(null);
 	const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number } | null>(null);
+	const [importing, setImporting] = useState(false);
 	// Lọc theo chương trình (?program=, dùng chung với tab Học viên) — khóa nhiều chương trình mới hiện.
 	const [params, setParams] = useSearchParams();
 	const multiProgram = d.programLinks.length > 1;
@@ -691,6 +745,14 @@ export function SessionsTab({ d, scopeProgramId }: { d: Detail; scopeProgramId?:
 					</span>
 				</div>
 				<div className={ss.actions}>
+					<Button
+						variant='secondary'
+						size='sm'
+						icon={<UploadSvg />}
+						onClick={() => setImporting(true)}
+					>
+						Nhập giảng viên (Excel)
+					</Button>
 					<Button
 						variant='secondary'
 						size='sm'
@@ -945,6 +1007,19 @@ export function SessionsTab({ d, scopeProgramId }: { d: Detail; scopeProgramId?:
 						</span>
 					))}
 				</div>
+			)}
+
+			{importing && (
+				<SessionLecturerImportModal
+					courseId={d.courseId}
+					courseName={courseName}
+					programId={programFilter}
+					onClose={() => setImporting(false)}
+					onImported={() => {
+						void d.reload();
+						d.reloadLecturers();
+					}}
+				/>
 			)}
 
 			{form && (

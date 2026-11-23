@@ -1,0 +1,56 @@
+/* Nhập giảng viên giảng dạy theo buổi (SessionLecturerImportModal) */
+.body {
+	display: flex;
+	flex-direction: column;
+}
+.templateRow {
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-3);
+}
+.templateRow > span {
+	flex: 1;
+	min-width: 0;
+}
+.templateBtn {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+	flex: none;
+	white-space: nowrap;
+}
+.summary {
+	margin-top: var(--space-3);
+}
+
+.tdRow {
+	width: 56px;
+	color: var(--color-gray-500);
+}
+.thStatus {
+	width: 220px;
+}
+.nowrap {
+	white-space: nowrap;
+}
+.missing {
+	color: var(--color-gray-500);
+	font-style: italic;
+}
+.note {
+	composes: cellSub from '@/shared/components/Table/Table.module.css';
+	margin-top: 4px;
+	color: var(--tone-red-fg);
+}
+.rowMuted td {
+	color: var(--color-gray-500);
+}
+
+@media (max-width: 640px) {
+	.templateRow {
+		flex-direction: column;
+	}
+}
+
+.personSub {
+	color: var(--color-gray-500);
+	font-size: var(--font-size-xs);
+}

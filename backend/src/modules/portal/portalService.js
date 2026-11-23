@@ -106,7 +106,9 @@ const getMyTraining = async (actor) => {
            s.code AS lesson_code, s.title AS lesson_title, la.role, la.hours,
            (SELECT COUNT(*) FROM class_sessions cs
             WHERE cs.course_id = la.course_id AND cs.subject_id = la.subject_id
-              AND cs.lecturer_id = la.lecturer_id) AS session_count
+              AND (cs.lecturer_id = la.lecturer_id
+                OR EXISTS (SELECT 1 FROM session_lecturers sl
+                           WHERE sl.session_id = cs.id AND sl.lecturer_id = la.lecturer_id))) AS session_count
     FROM lecturer_assignments la
     JOIN lecturers l ON l.id = la.lecturer_id AND l.user_id = @uid
     JOIN courses c ON c.id = la.course_id AND c.status <> 'cancelled'

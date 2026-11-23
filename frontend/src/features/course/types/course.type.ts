@@ -494,6 +494,8 @@ export interface ClassSession {
 	session_kind: SessionKind | null;
 	/** Buổi khác cùng GV, cùng ngày, chồng giờ ("Khóa X 08:00–10:00; …") — chỉ cảnh báo */
 	lecturer_clashes: string | null;
+	/** Trợ giảng (đồng giảng) của buổi — GV chính ở lecturer_id */
+	assistants?: { id: string; name: string }[];
 }
 
 export interface AttendanceRow {

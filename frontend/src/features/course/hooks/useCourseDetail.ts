@@ -160,6 +160,10 @@ const toLecturerItem = (l: LecturerRow): LecturerItem => {
 /** Các bước của trang chi tiết khóa học, theo đúng thứ tự công việc. */
 export type DetailTab = 'enrollments' | 'sessions' | 'documents' | 'exams' | 'results';
 
+/** Có chọn nhân viên CCHN (chưa là GV) làm GV chính / trợ giảng — sau khi lưu thì nạp lại danh sách GV. */
+const hasStaffOption = (d: { lecturer_id?: string; assistant_ids?: string[] }) =>
+	[d.lecturer_id, ...(d.assistant_ids ?? [])].some((id) => id?.startsWith(STAFF_OPTION_PREFIX));
+
 export function useCourseDetail(courseId: string) {
 	const [programLinks, setProgramLinks] = useState<CourseProgramLink[]>([]);
 	const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -374,13 +378,14 @@ export function useCourseDetail(courseId: string) {
 			end_time?: string;
 			room?: string;
 			session_kind?: SessionKind;
+			assistant_ids?: string[];
 		}) => {
 			setBusy(true);
 			setError('');
 			try {
 				warnClashes((await apiCreateSession(courseId, data)).warnings);
 				await load();
-				if (data.lecturer_id?.startsWith(STAFF_OPTION_PREFIX)) loadLecturers();
+				if (hasStaffOption(data)) loadLecturers();
 				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Thêm buổi học thất bại');
@@ -400,7 +405,7 @@ export function useCourseDetail(courseId: string) {
 				warnClashes((await apiUpdateSession(sessionId, data)).warnings);
 				await load();
 				// Nhân viên CCHN vừa thành GV — nạp lại để đổi sang mã GV thật
-				if (data.lecturer_id?.startsWith(STAFF_OPTION_PREFIX)) loadLecturers();
+				if (hasStaffOption(data)) loadLecturers();
 				return true;
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Cập nhật buổi học thất bại');
@@ -547,7 +552,10 @@ export function useCourseDetail(courseId: string) {
 	);
 
 	return {
+		courseId,
 		reload: load,
+		/** Ứng viên giảng viên đổi khi nhân viên có CCHN vừa được tạo hồ sơ GV (nhập Excel). */
+		reloadLecturers: loadLecturers,
 		programLinks,
 		enrollments,
 		assignments,

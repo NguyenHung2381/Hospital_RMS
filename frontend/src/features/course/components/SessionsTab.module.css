@@ -539,3 +539,8 @@
 	background: var(--color-primary-dark);
 	color: var(--color-white);
 }
+
+/* Trợ giảng đã chọn trong form buổi học */
+.assistantChips {
+	margin-bottom: var(--space-2);
+}
