@@ -295,7 +295,7 @@ CREATE INDEX IF NOT EXISTS ix_users_person_id ON users (person_id) WHERE (person
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users (email) WHERE (email IS NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_staff_number ON users (staff_number) WHERE (staff_number IS NOT NULL);
 CREATE INDEX IF NOT EXISTS ix_users_shift_pattern ON users (shift_pattern_id);
-ALTER TABLE users ADD CONSTRAINT chk_user_id CHECK (id LIKE 'NV%');
+ALTER TABLE users ADD CONSTRAINT chk_user_id CHECK (id LIKE 'NV%' OR id LIKE 'HV%');
 CREATE UNIQUE INDEX IF NOT EXISTS uq_venues_name ON venues (name);
 ALTER TABLE venues ADD CONSTRAINT chk_venues_capacity CHECK (capacity IS NULL OR capacity>0);
 ALTER TABLE venues ADD CONSTRAINT chk_venues_usage_scope CHECK (usage_scope='both' OR usage_scope='training' OR usage_scope='defense');
