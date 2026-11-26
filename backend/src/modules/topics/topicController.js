@@ -16,6 +16,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { maskMembers, maskTopicMembers, maskExportTopics } = require('./memberEmailMask');
+const { formFlag } = require('../../utils/formFlag');
 
 const base = createCrudController(topicService);
 
@@ -262,7 +263,7 @@ const importExcel = asyncHandler(async (req, res) => {
 	const out = await topicImportService.importExcel(
 		{
 			buffer: req.file.buffer,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			dry_run: formFlag(req.body.dry_run),
 			defaults: {
 				round_id: req.body.round_id || null,
 				category_id: req.body.category_id || null,

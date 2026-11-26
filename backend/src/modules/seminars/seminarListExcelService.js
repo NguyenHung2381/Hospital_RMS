@@ -18,6 +18,7 @@ const xl = require('../../utils/excelTemplate');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { httpError } = require('../../utils/httpError');
 const { loadWorkbook } = require('../../utils/excelImport');
+const { fmtDateUTC: fmtDate, fmtDateVN } = require('../../utils/vnDate');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -168,12 +169,6 @@ const COUNT_KEYS = [
 ];
 
 const pad2 = (n) => String(n).padStart(2, '0');
-const fmtDate = (d) => {
-	if (!d) return '';
-	const x = d instanceof Date ? d : new Date(d);
-	if (Number.isNaN(x.getTime())) return '';
-	return `${pad2(x.getUTCDate())}/${pad2(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
-};
 
 // Cột có giá trị cố định → dropdown trong file mẫu và file xuất
 const DROPDOWNS = {
@@ -225,7 +220,7 @@ const exportWorkbook = async (filters = {}) => {
 	const wb = new ExcelJS.Workbook();
 	const subtitle = [
 		filters.year ? `Năm ${filters.year}` : 'Tất cả các năm',
-		`Xuất ngày ${fmtDate(new Date())}`,
+		`Xuất ngày ${fmtDateVN(new Date())}`,
 		`${data.length} sự kiện`,
 	].join(' · ');
 	const ws = buildSheet(wb, 'DANH SÁCH HỘI THẢO, HỘI NGHỊ', subtitle);

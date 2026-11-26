@@ -5,6 +5,7 @@ const councilImportService = require('./councilImportService');
 const { success, created, notFound } = require('../../utils/response');
 const { createCrudController } = require('../../shared/crudController');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { formFlag } = require('../../utils/formFlag');
 
 const base = createCrudController(councilService);
 
@@ -24,7 +25,7 @@ const importExcel = asyncHandler(async (req, res) => {
 		{
 			buffer: req.file.buffer,
 			round_id: req.body.round_id,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			dry_run: formFlag(req.body.dry_run),
 		},
 		req.user.id,
 	);

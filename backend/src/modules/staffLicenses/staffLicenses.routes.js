@@ -8,6 +8,7 @@ const uploadExcel = require('../../middlewares/uploadExcel');
 const staffLicenseImportService = require('./staffLicenseImportService');
 const { success } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { formFlag } = require('../../utils/formFlag');
 
 const ctrl = createCrudController(staffLicenseService);
 
@@ -49,7 +50,7 @@ router.post(
 	asyncHandler(async (req, res) => {
 		if (!req.file)
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
-		const dry_run = req.body.dry_run === '1' || req.body.dry_run === 'true';
+		const dry_run = formFlag(req.body.dry_run);
 		return success(
 			res,
 			await staffLicenseImportService.importExcel(

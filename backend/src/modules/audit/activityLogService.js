@@ -6,6 +6,7 @@
 const fsp = require('fs/promises');
 const path = require('path');
 const { describe, normalizeIp, ipKind, MODULE_LABELS } = require('../../utils/activityDescribe');
+const { formFlag } = require('../../utils/formFlag');
 
 // Phải khớp CHÍNH XÁC với auditLogger.js: mặc định <server>/logs, neo theo mã
 // nguồn để không lệ thuộc thư mục chạy server.
@@ -81,7 +82,7 @@ const parseFilters = (q = {}) => {
 		ip: q.ip ? String(q.ip).trim() : undefined,
 		search: q.search ? String(q.search).trim().toLowerCase() : undefined,
 		min_duration: toMs(q.min_duration),
-		exclude_views: q.exclude_views === '1' || q.exclude_views === 'true',
+		exclude_views: formFlag(q.exclude_views),
 	};
 };
 
