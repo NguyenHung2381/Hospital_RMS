@@ -193,7 +193,7 @@ export function ApprovalListPanel({
 						style={{
 							padding: '48px 24px',
 							textAlign: 'center',
-							color: '#A32D2D',
+							color: 'var(--tone-red-fg)',
 						}}
 					>
 						<div style={{ fontSize: 13, fontWeight: 600 }}>{error}</div>
@@ -299,7 +299,7 @@ export function ApprovalListPanel({
 										<span
 											style={{
 												fontSize: 10,
-												color: '#E24B4A',
+												color: 'var(--tone-red-fg)',
 												fontWeight: 700,
 											}}
 										>
