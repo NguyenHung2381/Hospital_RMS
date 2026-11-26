@@ -6,6 +6,8 @@ const trainingFileService = require('../trainingFileService');
 const gradebookService = require('../courses/gradebookService');
 const { SESSION_IN_PROGRAM_SQL } = require('../courses/sessionScope');
 const { TRAINEE_OF_USER_SQL } = require('./traineeOfUser');
+const docCheckService = require('../registration/docCheck/docCheckService');
+const docCheckWorker = require('../registration/docCheck/docCheckWorker');
 
 // ─── Hồ sơ học viên đầy đủ (giai đoạn 3, docs/ke-hoach-nang-cap-dao-tao.md) ─────
 // Chỉ đọc: điểm danh, kết quả & điểm, hồ sơ PDF của học viên.
@@ -129,6 +131,9 @@ const addMyDocument = async (userId, file) => {
       VALUES (@new_id, @trainee_id, @doc_type, @file_id, 'pending', @actor_id);
     `);
 	broadcast('update', { entity: 'trainee_document' });
+	// Tự kiểm chữ ký (docCheck/) — chỉ cảnh báo cán bộ duyệt, không chặn việc nộp
+	if (await docCheckService.enqueueTraineeDocument({ fileId: saved.id, traineeDocumentId: newId }))
+		docCheckWorker.kick();
 	return myChecklist(userId);
 };
 

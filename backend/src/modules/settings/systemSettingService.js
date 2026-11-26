@@ -73,6 +73,8 @@ const KEYS = [
 	'TRAINING_REGISTRATION_EMAIL_OTP',
 	// 'false' ⇒ tắt tự kiểm tra loại file hồ sơ đăng ký (OCR / QR) — training/registration/docCheck/
 	'TRAINING_REGISTRATION_DOC_CHECK',
+	// 'true' ⇒ kiểm thêm chữ ký số / dấu / chữ ký tay (mặc định TẮT) — docCheck/signature/
+	'TRAINING_DOC_SIGNATURE_CHECK',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',
@@ -108,6 +110,7 @@ const isKey = (key) => KEYS.includes(key);
 const BOOLEAN_KEYS = new Set([
 	'TRAINING_REGISTRATION_EMAIL_OTP',
 	'TRAINING_REGISTRATION_DOC_CHECK',
+	'TRAINING_DOC_SIGNATURE_CHECK',
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
 	'DEVICE_FP_SYNC',

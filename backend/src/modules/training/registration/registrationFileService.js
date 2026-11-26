@@ -76,7 +76,8 @@ const listFiles = async (enrollmentId) => {
 		SELECT crf.kind, crf.uploaded_at, crf.trainee_document_id,
 		       f.id AS file_id, f.file_name, f.file_url, f.mime_type, f.file_size, d.status AS review_status,
 		       ck.status AS check_status, ck.verdict AS check_verdict, ck.detected_kind AS check_detected_kind,
-		       ck.warnings AS check_warnings, ck.sha256 AS check_sha256
+		       ck.warnings AS check_warnings, ck.sha256 AS check_sha256,
+		       ck.sig_verdict AS check_sig_verdict, ck.sig_details AS check_sig_details
 		FROM course_registration_files crf
 		JOIN training_files f ON f.id = crf.file_id AND f.is_deleted = 'false'
 		LEFT JOIN trainee_documents d ON d.id = crf.trainee_document_id
@@ -94,12 +95,17 @@ const presentKinds = (rows) =>
  * yêu cầu (vd đơn đã ký) và 'dossier' ở cuối nếu đơn cũ có file đó.
  * @param {string} source
  * @param {Array<Record<string, any>>} rows kết quả listFiles
- * @param {{ withUrl?: boolean, withChecks?: boolean }} [opts] withUrl = false ⇒ file_url luôn null;
- *   withChecks = false ⇒ check luôn null (công tắc tự kiểm tra đang tắt)
+ * @param {{ withUrl?: boolean, withChecks?: boolean, withSignature?: boolean }} [opts] withUrl =
+ *   false ⇒ file_url luôn null; withChecks = false ⇒ check luôn null (công tắc tự kiểm tra đang
+ *   tắt); withSignature = false ⇒ check.signature luôn null (công tắc kiểm chữ ký đang tắt)
  */
-const summarize = (source, rows, { withUrl = false, withChecks = true } = {}) => {
+const summarize = (
+	source,
+	rows,
+	{ withUrl = false, withChecks = true, withSignature = true } = {},
+) => {
 	const byKey = new Map(rows.map((r) => [r.kind, r]));
-	const checks = withChecks ? docCheckService.presentAll(rows) : new Map();
+	const checks = withChecks ? docCheckService.presentAll(rows, { withSignature }) : new Map();
 	const item = (def, legacy) => {
 		const row = byKey.get(def.key);
 		return {
@@ -130,12 +136,13 @@ const summarize = (source, rows, { withUrl = false, withChecks = true } = {}) =>
  * @returns {Promise<{ files: ReturnType<typeof summarize>, files_missing: string[] }>}
  */
 const describe = async (reg, opts = {}) => {
-	const [rows, withChecks] = await Promise.all([
+	const [rows, withChecks, withSignature] = await Promise.all([
 		listFiles(reg.enrollment_id),
 		docCheckService.isEnabled(),
+		docCheckService.isSignatureEnabled(),
 	]);
 	return {
-		files: summarize(reg.source, rows, { ...opts, withChecks }),
+		files: summarize(reg.source, rows, { ...opts, withChecks, withSignature }),
 		files_missing: missingKinds(reg.source, presentKinds(rows)),
 	};
 };

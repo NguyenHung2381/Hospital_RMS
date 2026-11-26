@@ -20,13 +20,16 @@ router.get(
 	'/doc-check',
 	...guard,
 	asyncHandler(async (req, res) => {
-		const [queue, ocr, enabled] = await Promise.all([
+		const [queue, ocr, enabled, signatureEnabled] = await Promise.all([
 			docCheckService.queueStats(),
 			tesseractAvailable(),
 			docCheckService.isEnabled(),
+			docCheckService.isSignatureEnabled(),
 		]);
 		return success(res, {
 			enabled,
+			// Công tắc TRAINING_DOC_SIGNATURE_CHECK (mặc định tắt) — chỉ chạy khi `enabled` cũng bật
+			signature_enabled: signatureEnabled,
 			// DOC_CHECK_ENABLED=false trong .env tắt vòng xử lý trên mọi tiến trình — công tắc UI vô tác dụng
 			worker_disabled: process.env.DOC_CHECK_ENABLED === 'false',
 			ocr,

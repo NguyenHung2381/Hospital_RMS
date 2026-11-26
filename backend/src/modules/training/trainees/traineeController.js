@@ -4,6 +4,7 @@ const traineeAccountService = require('./traineeAccountService');
 const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
 const traineeProgressService = require('./traineeProgressService');
+const docCheckService = require('../registration/docCheck/docCheckService');
 const classSessionService = require('../courses/classSessionService');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { success, created, notFound } = require('../../../utils/response');
@@ -75,7 +76,9 @@ const removeDocument = asyncHandler(async (req, res) => {
 
 // Hồ sơ học viên đầy đủ (giai đoạn 3) — traineeRecordService
 const getDocumentChecklist = asyncHandler(async (req, res) => {
-	return success(res, await traineeRecordService.documentChecklist(req.params.id));
+	const checklist = await traineeRecordService.documentChecklist(req.params.id);
+	// Kết quả tự kiểm chữ ký / loại giấy tờ (docCheck/) — chỉ màn cán bộ, học viên không thấy
+	return success(res, await docCheckService.withTraineeDocumentChecks(req.params.id, checklist));
 });
 
 const reviewDocument = asyncHandler(async (req, res) => {
