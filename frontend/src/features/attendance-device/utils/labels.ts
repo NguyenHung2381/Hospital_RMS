@@ -51,10 +51,9 @@ export const isOnline = (d: AttendanceDevice) =>
 
 export const deviceLabel = (d: AttendanceDevice) => d.name || `Máy ${d.serial_no}`;
 
-/** Mở tab Bảng công đúng khoảng ngày (và máy) */
+/** Mở trang Bảng công đúng khoảng ngày (và máy) */
 export const timesheetHref = (from: string, to: string, deviceId?: number) =>
-	`/admin/attendance-devices?${new URLSearchParams({
-		tab: 'timesheet',
+	`/admin/attendance-timesheet?${new URLSearchParams({
 		from,
 		to,
 		...(deviceId ? { device: String(deviceId) } : {}),

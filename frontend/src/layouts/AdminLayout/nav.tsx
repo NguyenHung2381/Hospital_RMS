@@ -9,6 +9,7 @@ import {
 	CheckCircleSvg,
 	ClipboardCheckSvg,
 	ClipboardSvg,
+	FileTextSvg,
 	ClockSvg,
 	CopySvg,
 	DashboardSvg,
@@ -79,6 +80,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	staffLicenses: '/admin/staff-licenses',
 	staffAttendance: '/admin/staff-attendance',
 	attendanceDevices: '/admin/attendance-devices',
+	attendanceTimesheet: '/admin/attendance-timesheet',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -247,6 +249,7 @@ export const NAV_GROUPS: NavGroup[] = [
 		section: 'Ca & điểm danh học viên',
 		items: [
 			navItem('staffAttendance', 'Ca & điểm danh', ClockSvg),
+			navItem('attendanceTimesheet', 'Bảng công', FileTextSvg, 'attendance_devices:read'),
 			navItem('attendanceDevices', 'Máy chấm công', FingerprintSvg, 'attendance_devices:read'),
 		],
 	},
@@ -359,6 +362,7 @@ const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	staffAttendance: 'attendance',
 	// Máy chấm công thuộc phân hệ Đào tạo (điểm danh buổi học), không phụ thuộc phân hệ ca
 	attendanceDevices: 'training',
+	attendanceTimesheet: 'training',
 };
 export const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];

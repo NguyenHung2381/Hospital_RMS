@@ -60,7 +60,7 @@ export function TimesheetPanel({ devices }: { devices: AttendanceDevice[] }) {
 		if (t < f) t = f;
 		const d = next.device !== undefined ? next.device : deviceId;
 		setParams(
-			{ tab: 'timesheet', from: f, to: t, ...(d ? { device: String(d) } : {}) },
+			{ from: f, to: t, ...(d ? { device: String(d) } : {}) },
 			{ replace: true },
 		);
 	};
@@ -257,7 +257,7 @@ export function TimesheetPanel({ devices }: { devices: AttendanceDevice[] }) {
 								desc={
 									search
 										? 'Thử tìm bằng mã học viên hoặc mã trên máy.'
-										: 'Máy gửi lượt chấm lên là bảng tự cập nhật. Thiếu lượt thì dùng nút "Kéo lại lượt chấm" ở tab Máy chấm công.'
+										: 'Máy gửi lượt chấm lên là bảng tự cập nhật. Thiếu lượt thì dùng nút "Kéo lại lượt chấm" ở trang Máy chấm công.'
 								}
 							/>
 						) : (

@@ -292,7 +292,7 @@ export function DevicesPanel({
 				>
 					<p className={styles.modalNote}>
 						Dùng khi máy mất kết nối lâu hoặc nghi thiếu lượt chấm. Lượt đã nhận sẽ tự bỏ qua, không
-						bị trùng. Lượt máy gửi về hiện ở tab <strong>Bảng công</strong> (xuất Excel được); số lượt
+						bị trùng. Lượt máy gửi về hiện ở trang <strong>Bảng công</strong> (xuất Excel được); số lượt
 						đã nhận xem ở tab <strong>Lệnh đồng bộ</strong>.
 					</p>
 					<div className={styles.formRow}>
