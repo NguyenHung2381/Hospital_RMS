@@ -690,11 +690,19 @@
 	outline: none;
 }
 
+/* Vùng nội dung hẹp hơn màn hình (trừ sidebar) ⇒ không đủ chỗ cho tiêu đề + nhiều nút
+   thì nhóm nút xuống dòng, không ép tiêu đề thành cột chữ dọc */
 .pageHeader {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: var(--space-4);
+	gap: var(--space-3) var(--space-4);
+}
+
+.pageHeaderLeft {
+	flex: 1 1 320px;
+	min-width: min(100%, 280px);
 }
 
 /* Thanh tab của mục menu gộp nhiều trang (Khóa học, Thực hành GPHN, Ca & điểm danh…) */
@@ -749,9 +757,11 @@
 
 .pageHeaderRight {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-3);
 	flex-shrink: 0;
+	max-width: 100%;
 }
 
 /* Mobile hamburger toggle button */
@@ -977,6 +987,11 @@
 		flex-direction: column;
 		gap: var(--space-3);
 		align-items: stretch;
+	}
+
+	/* Xếp cột: flex-basis 320px sẽ thành chiều cao */
+	.pageHeaderLeft {
+		flex: none;
 	}
 
 	.pageTitle {
