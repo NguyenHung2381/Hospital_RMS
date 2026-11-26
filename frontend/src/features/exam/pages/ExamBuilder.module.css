@@ -38,7 +38,7 @@
 	flex-shrink: 0;
 }
 .crumbLink:hover {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .crumbSep {
 	color: var(--color-gray-300);
@@ -379,7 +379,7 @@
 .bankLine > svg {
 	width: 16px;
 	height: 16px;
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 	flex-shrink: 0;
 }
 .bankLink {
