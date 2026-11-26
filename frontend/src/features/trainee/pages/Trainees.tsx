@@ -10,7 +10,7 @@ import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { BulkButton, BulkDeleteModal, SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
-import { GrantedAccountsModal } from '../components/GrantedAccountsModal';
+import { GrantedAccountsModal } from '@/shared/components/GrantedAccountsModal';
 import { TraineeDeleteModal } from '../components/TraineeDeleteModal';
 import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeImportModal } from '../components/TraineeImportModal';

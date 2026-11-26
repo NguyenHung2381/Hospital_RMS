@@ -10,7 +10,7 @@ import { ConfirmUploadModal } from './ConfirmUploadModal';
 import { DrawerAuthorsTab } from './DrawerAuthorsTab';
 import { DrawerFilesTab } from './DrawerFilesTab';
 import { DrawerMembersTab } from './DrawerMembersTab';
-import { GrantedAccountsModal } from './GrantedAccountsModal';
+import { GrantedAccountsModal } from '@/shared/components/GrantedAccountsModal';
 import { formatDateTimeVN } from '../../../shared/utils/formatDate';
 import { EditSvg as IcEdit, XSvg as IcX } from '@/assets/icons';
 import { CustomFieldsView } from '@/shared/formConfig/CustomFieldsView';
@@ -290,7 +290,9 @@ export function TopicDrawer({
 			{d.grantedAccounts.length > 0 && (
 				<GrantedAccountsModal
 					accounts={d.grantedAccounts}
-					members={d.members}
+					nameOf={(acc) =>
+						acc.full_name || d.members.find((m) => m.id === acc.member_id)?.ho_ten || acc.username
+					}
 					onClose={() => d.setGrantedAccounts([])}
 				/>
 			)}
