@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BadgeSvg, BookOpenSvg, TopicSvg, UsersSvg } from '@/assets/icons';
+import { BadgeSvg, BookOpenSvg, TopicSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { getOverviewStats } from '../api/overviewDashboardApi';
@@ -12,6 +12,7 @@ import {
 	RankTable,
 } from '../components/DashKit';
 import { fmt, last12Months, monthLabel, panelState } from '../components/dashKitHelpers';
+import styles from './OverviewDashboard.module.css';
 import type { OverviewStats } from '../types/overviewDashboard.type';
 
 type DeptRow = OverviewStats['top_departments'][number];
@@ -75,6 +76,7 @@ export default function OverviewDashboard() {
 			<DashboardTabs />
 
 			<AttentionStrip
+				compactWhenEmpty
 				loading={loading}
 				error={error}
 				items={[
@@ -82,56 +84,49 @@ export default function OverviewDashboard() {
 						kind: 'pending',
 						count: kpi?.topics_pending ?? 0,
 						label: 'đề tài chờ thẩm định',
+						action: 'Xem đề tài',
 						to: '/admin/approvals',
 					},
 					{
 						kind: 'pending',
 						count: kpi?.enrollments_pending ?? 0,
 						label: 'đăng ký khóa học chờ duyệt',
-						to: '/admin/dtlt',
-					},
-					{
-						kind: 'warn',
-						count: kpi?.users_locked ?? 0,
-						label: 'tài khoản đang bị khóa',
-						to: '/admin/users',
+						action: 'Xem đăng ký',
+						to: '/admin/courses/pending-enrollments',
 					},
 				]}
 			/>
 
-			<KpiBand
-				loading={loading}
-				items={[
-					{
-						icon: UsersSvg,
-						label: 'Tài khoản đang hoạt động',
-						value: fmt(kpi?.users_active),
-						context: `${fmt(kpi?.departments_total)} khoa/phòng`,
-						to: '/admin/users',
-					},
-					{
-						icon: TopicSvg,
-						label: 'Đề tài NCKH',
-						value: fmt(kpi?.topics_total),
-						context: `${fmt(kpi?.topics_this_year)} đăng ký năm ${year} · ${fmt(kpi?.topics_approved)} đã duyệt`,
-						to: '/admin/dashboard/research',
-					},
-					{
-						icon: BookOpenSvg,
-						label: 'Học viên đang đào tạo',
-						value: fmt(kpi?.trainees_active),
-						context: `${fmt(kpi?.courses_open)} khóa đang mở · ${fmt(kpi?.lecturers_active)} giảng viên`,
-						to: '/admin/dashboard/training',
-					},
-					{
-						icon: BadgeSvg,
-						label: `Hội thảo, hội nghị ${year}`,
-						value: fmt(kpi?.seminars_this_year),
-						context: `${fmt(kpi?.participants_this_year)} lượt tham dự · ${fmt(kpi?.cme_issued_this_year)} CME đã cấp`,
-						to: '/admin/dashboard/seminar',
-					},
-				]}
-			/>
+			{!error && (
+				<div className={styles.metrics} aria-label="Chỉ số chính" role="group">
+					<KpiBand
+						loading={loading}
+						items={[
+							{
+								icon: TopicSvg,
+								label: `Đề tài đăng ký năm ${year}`,
+								value: fmt(kpi?.topics_this_year),
+								context: `${fmt(kpi?.topics_total)} đề tài từ trước đến nay`,
+								to: '/admin/dashboard/research',
+							},
+							{
+								icon: BookOpenSvg,
+								label: 'Học viên đang đào tạo',
+								value: fmt(kpi?.trainees_active),
+								context: `${fmt(kpi?.courses_open)} khóa đang mở`,
+								to: '/admin/dashboard/training',
+							},
+							{
+								icon: BadgeSvg,
+								label: `Hội thảo, hội nghị ${year}`,
+								value: fmt(kpi?.seminars_this_year),
+								context: `${fmt(kpi?.participants_this_year)} lượt tham dự`,
+								to: '/admin/dashboard/seminar',
+							},
+						]}
+					/>
+				</div>
+			)}
 
 			<Panel
 				title='Hoạt động 12 tháng gần nhất'
@@ -175,6 +170,11 @@ export default function OverviewDashboard() {
 					/>
 				)}
 			</Panel>
+		{kpi && !error && (
+				<Panel title='Quản trị hệ thống' action={{ label: 'Xem tài khoản', to: '/admin/users' }}>
+					{fmt(kpi.users_active)} tài khoản đang hoạt động · {fmt(kpi.users_locked)} tài khoản bị khóa · {fmt(kpi.departments_total)} khoa/phòng
+				</Panel>
+			)}
 		</AdminLayout>
 	);
 }

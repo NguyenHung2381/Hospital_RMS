@@ -139,6 +139,7 @@ POST   /api/v1/courses/enrollments/:enrollmentId/rotations/segment  courses:upda
 POST   /api/v1/courses/enrollments/bulk-decide  courses:approve
 DELETE /api/v1/courses/grades/:gradeId  courses:update
 DELETE /api/v1/courses/lecturer-assignments/:assignmentId  courses:update
+GET    /api/v1/courses/pending-enrollments  courses:read
 GET    /api/v1/courses/practice-board  courses:read
 GET    /api/v1/courses/practice-records  courses:read
 GET    /api/v1/courses/practice-results  courses:read

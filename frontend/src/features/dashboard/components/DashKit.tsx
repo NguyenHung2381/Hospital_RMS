@@ -64,6 +64,7 @@ export function Panel({ title, subtitle, action, children, className }: PanelPro
 /* ─── Cần xử lý ─────────────────────────────────────── */
 
 export interface AttentionItem {
+	action?: string;
 	count: number;
 	label: string;
 	to: string;
@@ -79,10 +80,12 @@ const KIND_ICON: Record<AttentionItem['kind'], SvgIcon> = {
 };
 
 export function AttentionStrip({
+	compactWhenEmpty = false,
 	items,
 	loading,
 	error,
 }: {
+	compactWhenEmpty?: boolean;
 	items: AttentionItem[];
 	loading: boolean;
 	error?: boolean;
@@ -105,7 +108,7 @@ export function AttentionStrip({
 			) : !anyActive ? (
 				<span className={`${s.statusPill} ${s.statusCalm}`}>
 					<CheckCircleSvg aria-hidden />
-					Không có việc tồn đọng
+					{compactWhenEmpty ? 'Không có hồ sơ chờ xử lý' : 'Không có việc tồn đọng'}
 				</span>
 			) : null;
 	}
@@ -121,7 +124,7 @@ export function AttentionStrip({
 			</header>
 			{error ? (
 				<p className={s.note}>Không tải được số liệu. Tải lại trang để thử lại.</p>
-			) : (
+			) : compactWhenEmpty && !loading && !anyActive ? null : (
 				<ul
 					className={s.attentionGrid}
 					style={{ ['--cols' as string]: Math.max(items.length, 2) } as CSSProperties}
@@ -149,6 +152,7 @@ export function AttentionStrip({
 										)}
 										<span className={s.aLabel}>{it.label}</span>
 									</span>
+									{it.action && <span className={s.queueAction}>{it.action}</span>}
 									<ChevRSvg
 										className={s.aChev}
 										aria-hidden

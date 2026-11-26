@@ -1576,3 +1576,10 @@ th.rankSorted .sortIcon {
 	color: var(--color-white);
 	background: var(--color-primary-dark);
 }
+
+.queueAction {
+	margin-inline-start: auto;
+	color: var(--color-gray-700);
+	font-size: 0.8125rem;
+	font-weight: 600;
+}

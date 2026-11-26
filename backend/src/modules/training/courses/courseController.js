@@ -453,6 +453,9 @@ const revokeCertificate = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+	listPendingEnrollments: asyncHandler(async (req, res) =>
+		success(res, await courseService.listPendingEnrollments(req.user)),
+	),
 	getAll,
 	getById,
 	createOne,

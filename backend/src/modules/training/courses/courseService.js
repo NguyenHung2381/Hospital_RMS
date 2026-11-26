@@ -376,7 +376,23 @@ const setPrograms = async (courseId, programIds, actorId) => {
 	}
 };
 
+async function listPendingEnrollments(actor) {
+	const request = (await getPool()).request();
+	const assigned = scopeOf(actor, 'courses') === 'assigned';
+	if (assigned) request.input('actor_id', sql.VarChar(20), actor.id);
+	const result = await request.query(`
+		SELECT e.id, c.id AS course_id, c.name AS course_name, t.full_name AS trainee_name
+		FROM course_enrollments e
+		JOIN courses c ON c.id = e.course_id
+		JOIN trainees t ON t.id = e.trainee_id
+		WHERE e.status = 'pending' ${assigned ? 'AND ' + ASSIGNED_EXISTS_SQL : ''}
+		ORDER BY c.name, t.full_name, e.id
+	`);
+	return result.recordset;
+}
+
 module.exports = {
+	listPendingEnrollments,
 	isEnrollmentOpenRow,
 	computeDisplayStatus,
 	COURSE_DISPLAY_STATUS,

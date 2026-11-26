@@ -90,6 +90,7 @@ const StaffLicenses = lazy(
 );
 const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
+const PendingEnrollments = lazy(() => import('../../features/course/pages/PendingEnrollments'));
 const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
 const PracticeBoard = lazy(() => import('../../features/course/pages/PracticeBoard'));
 const PracticeRecords = lazy(() => import('../../features/course/pages/PracticeRecords'));
@@ -463,6 +464,10 @@ export const adminRoutes: RouteObject[] = [
 				{admin('Thực hành theo ngày', <PracticeBoard />)}
 			</RequirePermission>
 		),
+	},
+	{
+		path: '/admin/courses/pending-enrollments',
+		element: <RequirePermission perm='courses:read'>{admin('Đăng ký chờ duyệt', <PendingEnrollments />)}</RequirePermission>,
 	},
 	{
 		path: '/admin/courses/:id',

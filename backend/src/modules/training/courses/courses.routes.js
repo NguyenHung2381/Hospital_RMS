@@ -66,6 +66,11 @@ for (const name of Object.keys(coursePolicy.CHILD_COURSE_SQL)) {
 }
 
 // ─── Courses ──────────────────────────────────────────────────────────────
+router.get(
+	'/pending-enrollments',
+	authorizePermission(['courses', 'read']),
+	ctrl.listPendingEnrollments,
+);
 router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
 // Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
 // khai báo trước '/:id').
