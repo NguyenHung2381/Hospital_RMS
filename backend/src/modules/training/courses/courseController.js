@@ -8,10 +8,11 @@ const enrollmentProgramService = require('./enrollmentProgramService');
 const practiceBoardService = require('./practiceBoardService');
 const coursePolicy = require('./coursePolicy');
 const courseService = require('./courseService');
+const { createCustomFormCrud } = require('../customFormCrud');
 const gradeService = require('./gradeService');
 const gradebookService = require('./gradebookService');
 const lecturerAssignmentService = require('./lecturerAssignmentService');
-const { success, created, notFound } = require('../../../utils/response');
+const { success, created } = require('../../../utils/response');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { hasPermission } = require('../../../permissions/authz');
 const { asyncHandler } = require('../../../utils/asyncHandler');
@@ -32,46 +33,11 @@ const {
 	removeRotation,
 } = require('./practiceController');
 
-const getAll = asyncHandler(async (req, res) => {
-	return success(
-		res,
-		await formCustomValueService.attachResult(
-			'course',
-			await courseService.getAll(req.query, req.user),
-		),
-	);
-});
-
-const getById = asyncHandler(async (req, res) => {
-	const item = await courseService.getById(req.params.id, req.user);
-	if (!item) return notFound(res);
-	item.custom = await formCustomValueService.get('course', item.id);
-	return success(res, item);
-});
-
-const createOne = asyncHandler(async (req, res) => {
-	const item = await courseService.create(req.body, req.user.id);
-	const custom = await formCustomValueService.save('course', item.id, req.formCustom, req.user.id);
-	return created(res, custom ? { ...item, custom } : item);
-});
-
-const updateOne = asyncHandler(async (req, res) => {
-	const item = await courseService.update(req.params.id, req.body, req.user.id);
-	if (!item) return notFound(res);
-	const custom = await formCustomValueService.save(
-		'course',
-		req.params.id,
-		req.formCustom,
-		req.user.id,
-	);
-	return success(res, custom ? { ...item, custom } : item, 'Cập nhật thành công');
-});
-
-const removeOne = asyncHandler(async (req, res) => {
-	await courseService.remove(req.params.id, req.user.id);
-	await formCustomValueService.remove('course', req.params.id);
-	return success(res, null, 'Xóa thành công');
-});
+const { getAll, getById, createOne, updateOne, removeOne } = createCustomFormCrud(
+	'course',
+	courseService,
+	{ scoped: true, removeCustom: true },
+);
 
 // ─── Chương trình đào tạo áp dụng (course_programs, N:N) ──────────────────
 const listProgramLinks = asyncHandler(async (req, res) => {

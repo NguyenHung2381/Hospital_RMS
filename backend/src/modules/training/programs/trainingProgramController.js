@@ -1,56 +1,17 @@
 const trainingProgramService = require('./trainingProgramService');
+const { createCustomFormCrud } = require('../customFormCrud');
 const programCatalogImportService = require('./programCatalogImportService');
 const { hasPermission } = require('../../../permissions/authz');
 const lessonLecturerImportService = require('./programLessonLecturerImportService');
-const { success, created, notFound, sendWorkbook } = require('../../../utils/response');
+const { success, created, sendWorkbook } = require('../../../utils/response');
 const formCustomValueService = require('../../forms/formCustomValueService');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 
-const getAll = asyncHandler(async (req, res) => {
-	return success(
-		res,
-		await formCustomValueService.attachResult(
-			'training_program',
-			await trainingProgramService.getAll(req.query),
-		),
-	);
-});
-
-const getById = asyncHandler(async (req, res) => {
-	const item = await trainingProgramService.getById(req.params.id);
-	if (!item) return notFound(res);
-	item.custom = await formCustomValueService.get('training_program', item.id);
-	return success(res, item);
-});
-
-const createOne = asyncHandler(async (req, res) => {
-	const item = await trainingProgramService.create(req.body, req.user.id);
-	const custom = await formCustomValueService.save(
-		'training_program',
-		item.id,
-		req.formCustom,
-		req.user.id,
-	);
-	return created(res, custom ? { ...item, custom } : item);
-});
-
-const updateOne = asyncHandler(async (req, res) => {
-	const item = await trainingProgramService.update(req.params.id, req.body, req.user.id);
-	if (!item) return notFound(res);
-	const custom = await formCustomValueService.save(
-		'training_program',
-		req.params.id,
-		req.formCustom,
-		req.user.id,
-	);
-	return success(res, custom ? { ...item, custom } : item, 'Cập nhật thành công');
-});
-
-const removeOne = asyncHandler(async (req, res) => {
-	await trainingProgramService.remove(req.params.id, req.user.id);
-	await formCustomValueService.remove('training_program', req.params.id);
-	return success(res, null, 'Xóa thành công');
-});
+const { getAll, getById, createOne, updateOne, removeOne } = createCustomFormCrud(
+	'training_program',
+	trainingProgramService,
+	{ removeCustom: true },
+);
 
 const importCatalog = asyncHandler(async (req, res) => {
 	if (!req.file) {
