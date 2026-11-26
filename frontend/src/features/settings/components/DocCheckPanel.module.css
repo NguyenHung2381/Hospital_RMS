@@ -1,0 +1,14 @@
+/* Hàng chứa thẻ công tắc kiểm chữ ký — cùng lưới với .tiles của trang Cấu hình hệ thống,
+   nhưng không có khoảng trên (đã nằm ngay dưới lưới công tắc của nhóm). */
+.sigRow {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--space-3);
+	padding: 0 var(--space-5) var(--space-3);
+}
+
+@media (max-width: 640px) {
+	.sigRow {
+		padding: 0 var(--space-4) var(--space-3);
+	}
+}

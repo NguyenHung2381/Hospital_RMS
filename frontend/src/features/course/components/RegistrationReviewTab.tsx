@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DocSvg } from '@/assets/icons';
-import { Badge, InlineLoading } from '@/shared/components';
+import { Badge, FileCheckNote, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -20,7 +20,6 @@ import {
 	registrationApplicationUrl,
 	type RegistrationReview,
 } from '../api/registrationApi';
-import { FileCheckNote } from './FileCheckNote';
 import styles from './RegistrationReviewTab.module.css';
 import cs from '../pages/Courses.module.css';
 

@@ -3,6 +3,7 @@ import type { MyCme } from '../../portal/api/meApi';
 import type { ClassCalendarResponse } from '../../class-schedule/types/classSchedule.type';
 import type { CertificateStatus, GradeFlag, GradePart, GradebookRow } from '../../course/types/course.type';
 import { seg } from '../../../shared/api/path';
+import type { DocFileCheck } from '../../../shared/components/FileCheckNote/fileCheck.types';
 
 // Hồ sơ học viên đầy đủ (giai đoạn 3) — backend training/trainees/traineeRecordService.js
 
@@ -22,6 +23,8 @@ export interface ChecklistDocument {
 	file_url: string;
 	mime_type: string | null;
 	file_size: number | null;
+	/** Kết quả tự kiểm chữ ký / dấu (chỉ màn cán bộ GET /trainees/:id/document-checklist; null = chưa / không kiểm) */
+	check?: DocFileCheck | null;
 }
 
 /** Trạng thái hồ sơ PDF: đã nộp (đã duyệt) / chờ duyệt / chưa nộp */

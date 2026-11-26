@@ -66,3 +66,6 @@ export {
 	InlineLoading,
 } from './Loading/Skeleton';
 export { default as PageLoading } from './Loading';
+
+export { FileCheckNote } from './FileCheckNote';
+export type { DocCheckLevel, DocFileCheck, DocSignatureCheck, SignatureWarningCode } from './FileCheckNote';

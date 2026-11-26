@@ -30,3 +30,30 @@
 	margin-top: 2px;
 	opacity: 0.8;
 }
+
+/* Dòng chữ ký: tách riêng 1 dòng khỏi phần "đúng loại" */
+.line {
+	flex-basis: 100%;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px var(--space-3);
+	font-size: var(--font-size-xs);
+	line-height: 1.5;
+}
+
+/* contents: từng mục (người ký, CA, thời điểm) tự xuống dòng riêng khi hẹp */
+.detail {
+	display: contents;
+	color: var(--color-gray-600);
+}
+
+.signer {
+	font-weight: 600;
+	color: var(--color-gray-800);
+}
+
+.claimed {
+	font-size: inherit;
+	color: var(--color-gray-500);
+}
