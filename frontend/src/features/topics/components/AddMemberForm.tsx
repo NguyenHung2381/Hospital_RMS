@@ -66,9 +66,16 @@ export function AddMemberForm({
 							marginBottom: 4,
 						}}
 					>
-						Họ tên <span style={{ color: 'var(--color-error)' }}>*</span>
+						Họ tên <span style={{ color: 'var(--tone-red-fg)' }}>*</span>
 					</label>
-					<div style={{ position: 'relative' }}>
+					<div
+						style={{ position: 'relative' }}
+						// Rời hẳn ô họ tên + danh sách gợi ý thì đóng; Tab xuống gợi ý thì giữ mở
+						onBlur={(e) => {
+							if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+							setTimeout(() => setShowNameSuggestions(false), 150);
+						}}
+					>
 						<input
 							id={`${uid}-f1`}
 							className={styles.formInput}
@@ -82,9 +89,6 @@ export function AddMemberForm({
 								if (e.target.value.trim().length < 2)
 									setShowNameSuggestions(false);
 							}}
-							onBlur={() =>
-								setTimeout(() => setShowNameSuggestions(false), 150)
-							}
 						/>
 						{showNameSuggestions && (
 							<div
@@ -124,9 +128,13 @@ export function AddMemberForm({
 									</div>
 								) : (
 									nameSuggestions.map((u) => (
-										<div
+										<button
 											key={u.id}
-											onMouseDown={() => {
+											type='button'
+											className={styles.suggestRow}
+											// Giữ focus ở ô họ tên khi bấm chuột (ô mất focus sẽ đóng danh sách)
+											onMouseDown={(e) => e.preventDefault()}
+											onClick={() => {
 												setNewMember((p) => ({
 													...p,
 													ho_ten: u.full_name,
@@ -140,36 +148,29 @@ export function AddMemberForm({
 												}));
 												setShowNameSuggestions(false);
 											}}
-											style={{
-												padding: '7px 12px',
-												cursor: 'pointer',
-												borderBottom: '1px solid var(--color-gray-100)',
-											}}
-											onMouseEnter={(e) =>
-												(e.currentTarget.style.background = '#f0fbf5')
-											}
-											onMouseLeave={(e) =>
-												(e.currentTarget.style.background = '')
-											}
 										>
-											<div
+											<span
 												style={{
+													display: 'flex',
+													flexDirection: 'column',
+													minWidth: 0,
 													fontWeight: 600,
 													fontSize: 12,
 													color: 'var(--color-gray-800)',
 												}}
 											>
 												{u.full_name}
-											</div>
-											<div
-												style={{
-													fontSize: 11,
-													color: 'var(--color-gray-400)',
-												}}
-											>
-												MNV: {u.staff_number ?? '—'} · {u.username}
-											</div>
-										</div>
+												<span
+													style={{
+														fontSize: 11,
+														fontWeight: 400,
+														color: 'var(--color-gray-400)',
+													}}
+												>
+													MNV: {u.staff_number ?? '—'} · {u.username}
+												</span>
+											</span>
+										</button>
 									))
 								)}
 							</div>
@@ -188,7 +189,7 @@ export function AddMemberForm({
 						}}
 					>
 						Mã nhân viên{' '}
-						<span style={{ color: 'var(--color-error)' }}>*</span>
+						<span style={{ color: 'var(--tone-red-fg)' }}>*</span>
 					</label>
 					<input
 						id={`${uid}-f2`}
