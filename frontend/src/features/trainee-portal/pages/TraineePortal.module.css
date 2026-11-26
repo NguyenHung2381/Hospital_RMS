@@ -13,17 +13,6 @@
 		linear-gradient(120deg, var(--color-primary-dark) 0%, var(--color-primary) 60%, #19a85a 100%);
 }
 
-.heroText {
-	min-width: 0;
-	flex: 1 1 320px;
-}
-
-.heroDate {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	opacity: 0.85;
-}
-
 .heroTitle {
 	margin-top: 2px;
 	color: #fff;
