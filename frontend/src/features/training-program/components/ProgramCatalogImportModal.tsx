@@ -10,7 +10,7 @@ import tbl from '@/shared/components/Table/Table.module.css';
 const StatusTag = ({ status }: { status: 'new' | 'update' }) => (
 	<span
 		className={styles.badge}
-		style={status === 'new' ? { background: '#e1f5ea', color: '#085028' } : undefined}
+		style={status === 'new' ? { background: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' } : undefined}
 	>
 		{status === 'new' ? 'Mới' : 'Cập nhật'}
 	</span>
