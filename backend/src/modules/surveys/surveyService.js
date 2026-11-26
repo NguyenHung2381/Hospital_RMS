@@ -246,6 +246,7 @@ const submitResponse = async (surveyId, answers, actor) => {
 	// Validate lại toàn bộ điều kiện (trạng thái/vai trò/đã nộp chưa) ngay
 	// trước khi ghi — tránh race giữa lúc mở form và lúc bấm nộp.
 	const survey = await getForRespond(surveyId, actor);
+	if (!survey) throw httpError(404, 'Không tìm thấy khảo sát.');
 	const questionMap = new Map(survey.questions.map((q) => [q.id, q]));
 
 	const pool = await getPool();
