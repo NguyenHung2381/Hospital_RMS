@@ -117,6 +117,7 @@ export default function MemberFormFields({
 				<input
 					className={styles.formInput}
 					style={{ paddingLeft: 32, width: '100%' }}
+					aria-label='Tìm nhân viên có sẵn theo tên hoặc mã nhân viên'
 					placeholder='Tìm nhân viên có sẵn theo tên, mã NV…'
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
@@ -229,6 +230,7 @@ export default function MemberFormFields({
 					cfg.field('ho_ten'),
 					<input
 						className={styles.formInput}
+						aria-label='Họ tên'
 						placeholder={ph('ho_ten', 'Họ tên', true)}
 						maxLength={cfg.maxLength('ho_ten')}
 						value={form.ho_ten}
@@ -238,6 +240,7 @@ export default function MemberFormFields({
 				)}
 				<select
 					className={styles.formInput}
+					aria-label='Vai trò trong đề tài'
 					value={form.role}
 					onChange={set('role')}
 					style={{ flex: 1 }}
@@ -262,6 +265,7 @@ export default function MemberFormFields({
 									? `Email tài khoản: ${form.accountEmailHint}`
 									: ph('email', 'Email')
 							}
+							aria-label='Email'
 							maxLength={cfg.maxLength('email')}
 							value={form.email}
 							onChange={set('email')}
@@ -271,6 +275,7 @@ export default function MemberFormFields({
 					{show('so_dien_thoai') && (
 						<input
 							className={styles.formInput}
+							aria-label='Số điện thoại'
 							placeholder={ph('so_dien_thoai', 'Điện thoại')}
 							maxLength={cfg.maxLength('so_dien_thoai')}
 							value={form.so_dien_thoai}
@@ -287,6 +292,7 @@ export default function MemberFormFields({
 							cfg.field('chuc_vu'),
 							<input
 								className={styles.formInput}
+								aria-label='Chức vụ'
 								placeholder={ph('chuc_vu', 'Chức vụ')}
 								maxLength={cfg.maxLength('chuc_vu')}
 								value={form.chuc_vu}
@@ -297,6 +303,7 @@ export default function MemberFormFields({
 					{show('staff_number') && (
 						<input
 							className={styles.formInput}
+							aria-label='Mã nhân viên'
 							placeholder={ph('staff_number', 'Mã NV')}
 							maxLength={cfg.maxLength('staff_number')}
 							value={form.staff_number}
@@ -318,6 +325,7 @@ export default function MemberFormFields({
 			)}
 			<div style={{ display: 'flex', gap: 8 }}>
 				<button
+					type='button'
 					className={styles.btnPrimary}
 					onClick={onSave}
 					disabled={saving}
@@ -326,6 +334,7 @@ export default function MemberFormFields({
 					{saving ? 'Đang lưu...' : saveLabel}
 				</button>
 				<button
+					type='button'
 					className={styles.btnSecondary}
 					onClick={onCancel}
 					disabled={saving}

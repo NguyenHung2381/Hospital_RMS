@@ -150,6 +150,7 @@ function RotationCard({ row, onSaved }: { row: MentorRotation; onSaved: () => vo
 						className={styles.textarea}
 						rows={2}
 						maxLength={1000}
+						aria-label='Nhận xét đánh giá'
 						placeholder='Nhận xét (không bắt buộc)'
 						value={comment}
 						onChange={(e) => setComment(e.target.value)}

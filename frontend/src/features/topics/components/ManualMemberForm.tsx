@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useId } from 'react';
 import { AlertSvg, PlusSvg, UserSvg, XSvg } from '@/assets/icons';
 import type { SimpleItem } from '../api/topicApi';
 import type { ManualMemberForm as ManualMemberFormData, PendingMember } from '../hooks/useTopicModal';
@@ -30,6 +31,7 @@ export function ManualMemberForm({
 	closeManualAdd,
 	addManual,
 }: ManualMemberFormProps) {
+	const uid = useId();
 	return (
 		<div
 			style={{
@@ -79,6 +81,7 @@ export function ManualMemberForm({
 				</div>
 				<button
 					type='button'
+					aria-label='Đóng biểu mẫu thêm thủ công'
 					onClick={closeManualAdd}
 					style={{
 						background: 'none',
@@ -104,10 +107,11 @@ export function ManualMemberForm({
 				}}
 			>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>
+					<label htmlFor={`${uid}-f1`} className={styles.formLabel}>
 						Họ tên <span className={styles.formRequired}>*</span>
 					</label>
 					<input
+						id={`${uid}-f1`}
 						className={styles.formInput}
 						placeholder='Nguyễn Văn A'
 						value={manualForm.ho_ten}
@@ -119,10 +123,11 @@ export function ManualMemberForm({
 
 				<div className={styles.formRow}>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>
+						<label htmlFor={`${uid}-f2`} className={styles.formLabel}>
 							Mã nhân viên <span className={styles.formRequired}>*</span>
 						</label>
 						<input
+							id={`${uid}-f2`}
 							className={styles.formInput}
 							placeholder='VD: 0123'
 							value={manualForm.staff_number}
@@ -135,8 +140,9 @@ export function ManualMemberForm({
 						/>
 					</div>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Chức vụ</label>
+						<label htmlFor={`${uid}-f3`} className={styles.formLabel}>Chức vụ</label>
 						<input
+							id={`${uid}-f3`}
 							className={styles.formInput}
 							placeholder='Bác sĩ, Điều dưỡng...'
 							value={manualForm.chuc_vu}
@@ -148,8 +154,9 @@ export function ManualMemberForm({
 				</div>
 
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Khoa / Phòng ban</label>
+					<label htmlFor={`${uid}-f4`} className={styles.formLabel}>Khoa / Phòng ban</label>
 					<SearchableSelect
+						id={`${uid}-f4`}
 						options={departments}
 						value={manualForm.department_id}
 						onChange={(id) =>
@@ -161,8 +168,9 @@ export function ManualMemberForm({
 
 				<div className={styles.formRow}>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Email</label>
+						<label htmlFor={`${uid}-f5`} className={styles.formLabel}>Email</label>
 						<input
+							id={`${uid}-f5`}
 							className={styles.formInput}
 							placeholder='email@hospital.vn'
 							type='email'
@@ -173,8 +181,9 @@ export function ManualMemberForm({
 						/>
 					</div>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Số điện thoại</label>
+						<label htmlFor={`${uid}-f6`} className={styles.formLabel}>Số điện thoại</label>
 						<input
+							id={`${uid}-f6`}
 							className={styles.formInput}
 							placeholder='0901234567'
 							type='tel'

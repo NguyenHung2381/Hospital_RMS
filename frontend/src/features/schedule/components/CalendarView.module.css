@@ -109,13 +109,20 @@
 	color: var(--color-gray-800);
 }
 .zoomHint {
+	/* <button> — bỏ kiểu mặc định của nút, vẫn như dòng chữ gợi ý */
+	background: none;
+	border: none;
+	padding: 0;
+	font-family: inherit;
+	cursor: pointer;
 	font-size: var(--font-size-2xs);
 	font-weight: 600;
 	color: var(--color-gray-400);
 	opacity: 0;
 	transition: opacity 0.15s ease, color 0.15s ease;
 }
-.card:hover .zoomHint {
+.card:hover .zoomHint,
+.zoomHint:focus-visible {
 	opacity: 1;
 	color: var(--color-primary-dark);
 }
@@ -337,6 +344,9 @@
 }
 
 /* ─── Event Detail Modal ─────────────────────────────────────────────────── */
+.detailCard:focus {
+	outline: none;
+}
 .detailCard {
 	background: #ffffff;
 	border-radius: 14px;

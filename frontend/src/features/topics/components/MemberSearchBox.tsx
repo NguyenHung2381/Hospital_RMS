@@ -64,6 +64,7 @@ export function MemberSearchBox({
 					<input
 						className={styles.formInput}
 						style={{ paddingLeft: 32 }}
+						aria-label='Tìm nhân viên theo tên hoặc mã nhân viên'
 						placeholder='Tìm theo tên, mã nhân viên...'
 						value={memberQuery}
 						onChange={(e) => {
@@ -152,30 +153,12 @@ export function MemberSearchBox({
 								(m) => m.staff_number === (u.staff_number ?? ''),
 							);
 							return (
-								<div
+								<button
 									key={u.id}
-									onClick={() => !alreadyAdded && selectUser(u)}
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 10,
-										padding: '8px 14px',
-										cursor: alreadyAdded ? 'default' : 'pointer',
-										borderBottom: '1px solid var(--color-gray-100)',
-										background: alreadyAdded
-											? 'var(--color-gray-50)'
-											: undefined,
-										transition: 'background 0.12s',
-									}}
-									onMouseEnter={(e) => {
-										if (!alreadyAdded)
-											(e.currentTarget as HTMLDivElement).style.background =
-												'#f0fbf5';
-									}}
-									onMouseLeave={(e) => {
-										(e.currentTarget as HTMLDivElement).style.background =
-											alreadyAdded ? 'var(--color-gray-50)' : '';
-									}}
+									type='button'
+									className={styles.suggestRow}
+									disabled={alreadyAdded}
+									onClick={() => selectUser(u)}
 								>
 									<div
 										className={styles.memberAvatar}
@@ -228,40 +211,19 @@ export function MemberSearchBox({
 											+ Thêm
 										</span>
 									)}
-								</div>
+								</button>
 							);
 						})
 					)}
 					{suggestions.length > 0 && (
-						<div
-							style={{
-								padding: '8px 14px',
-								borderTop: '1px solid var(--color-gray-100)',
-								cursor: 'pointer',
-								fontSize: 12,
-								color: 'var(--color-gray-500)',
-								display: 'flex',
-								alignItems: 'center',
-								gap: 6,
-								transition: 'background 0.12s, color 0.12s',
-								position: 'sticky',
-								bottom: 0,
-								background: 'var(--color-white)',
-								zIndex: 1,
-							}}
-							onMouseEnter={(e) => {
-								(e.currentTarget as HTMLDivElement).style.background = '#f9fafb';
-								(e.currentTarget as HTMLDivElement).style.color = 'var(--color-primary-dark)';
-							}}
-							onMouseLeave={(e) => {
-								(e.currentTarget as HTMLDivElement).style.background = '';
-								(e.currentTarget as HTMLDivElement).style.color = '';
-							}}
+						<button
+							type='button'
+							className={styles.suggestManual}
 							onClick={startManualAdd}
 						>
 							<PlusSvg style={{ width: 12, height: 12 }} />
 							Thêm thủ công (không có trong hệ thống)
-						</div>
+						</button>
 					)}
 				</div>
 			)}
@@ -281,33 +243,8 @@ export function MemberSearchBox({
 			{!isManualAdd && (
 				<button
 					type='button'
-					className={styles.btnSecondary}
-					style={{
-						fontSize: 12,
-						padding: '6px 12px',
-						marginBottom: 8,
-						alignSelf: 'flex-start',
-						display: 'inline-flex',
-						alignItems: 'center',
-						gap: 6,
-						cursor: 'pointer',
-						boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-						border: '1.5px dashed var(--color-gray-300)',
-						color: 'var(--color-gray-500)',
-						background: 'none',
-						transition: 'all 0.15s ease',
-					}}
+					className={`${styles.btnSecondary} ${styles.manualAddDashed}`}
 					onClick={startManualAdd}
-					onMouseEnter={(e) => {
-						e.currentTarget.style.borderColor = 'var(--color-primary)';
-						e.currentTarget.style.color = 'var(--color-primary-dark)';
-						e.currentTarget.style.background = 'var(--color-primary-pale)';
-					}}
-					onMouseLeave={(e) => {
-						e.currentTarget.style.borderColor = 'var(--color-gray-300)';
-						e.currentTarget.style.color = 'var(--color-gray-500)';
-						e.currentTarget.style.background = 'none';
-					}}
 				>
 					<PlusSvg style={{ width: 12, height: 12 }} />
 					Thêm thủ công

@@ -1,4 +1,4 @@
-import type { NavigateFunction } from 'react-router-dom';
+import { Link, type NavigateFunction } from 'react-router-dom';
 import { ChevRSvg, HelpSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import type { MyTopic } from '../types/topicregister.type';
@@ -89,10 +89,10 @@ export function RegisterSidePanel({
 						</div>
 					) : (
 						myTopics.slice(0, 5).map((t) => (
-							<div
+							<Link
 								key={t.id}
+								to='/user/my-topics'
 								className={styles.myTopicItem}
-								onClick={() => navigate('/user/my-topics')}
 							>
 								<div className={styles.myTopicTitle}>{t.title}</div>
 								<div className={styles.myTopicMeta}>
@@ -104,7 +104,7 @@ export function RegisterSidePanel({
 										{STATUS_CFG[t.status].label}
 									</Badge>
 								</div>
-							</div>
+							</Link>
 						))
 					)}
 				</div>

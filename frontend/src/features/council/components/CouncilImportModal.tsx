@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { CheckSvg, InfoSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { FileDropzone } from '@/shared/components';
+import { useId, useState } from 'react';
+import { CheckSvg, InfoSvg, UploadSvg } from '@/assets/icons';
+import { FileDropzone, Modal } from '@/shared/components';
 import {
 	importCouncilsExcel,
 	type ImportExcelResult,
@@ -20,6 +20,7 @@ export function CouncilImportModal({
 	onClose: () => void;
 	onDone: () => void;
 }) {
+	const uid = useId();
 	const [roundId, setRoundId] = useState(rounds[0]?.id ?? '');
 	const [file, setFile] = useState<File | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -70,180 +71,22 @@ export function CouncilImportModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={styles.modal} style={{ width: '40vw', maxWidth: '40vw' }}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UploadSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle} style={{ fontSize: 22 }}>
-							Nhập hội đồng từ Excel
-						</div>
-						<div className={styles.modalSub} style={{ fontSize: 14 }}>
-							File lịch bảo vệ chuẩn bệnh viện — mỗi dòng 1 đề tài kèm 5 ghế hội đồng
-						</div>
-					</div>
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-
-				<div className={styles.modalBody}>
-					{!result && (
-						<>
-							<div className={styles.warnBox}>
-								<InfoSvg />
-								<span>
-									Các dòng cùng bộ 5 ghế được gom thành 1 hội đồng; đề tài match
-									theo tên với đề tài có sẵn trong đợt. Hội đồng sinh ra ở trạng
-									thái Nháp — rà lại trước khi chốt.
-								</span>
-							</div>
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Đợt nghiên cứu</label>
-								<select
-									className={styles.formInput}
-									value={roundId}
-									onChange={(e) => onChangeRound(e.target.value)}
-								>
-									{rounds.map((r) => (
-										<option key={r.id} value={r.id}>
-											{r.name} ({r.year})
-										</option>
-									))}
-								</select>
-							</div>
-							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>File Excel (.xlsx)</label>
-								<FileDropzone
-									value={file}
-									onChange={onPickFile}
-									accept='.xlsx'
-									disabled={loading}
-								/>
-							</div>
-							{loading && (
-								<div className={styles.modalSub}>
-									<span className={styles.spinner} /> Đang đọc file…
-								</div>
-							)}
-							{error && <div className={styles.fieldError}>{error}</div>}
-
-							{preview?.councils && (
-								<>
-									<div className={styles.warnBox}>
-										<CheckSvg />
-										<span>
-											Đọc được {preview.councils.length} hội đồng,{' '}
-											{preview.topics_matched}/{preview.topics_total} đề tài
-											match được với dữ liệu trong đợt.
-										</span>
-									</div>
-									{preview.warnings.length > 0 && (
-										<ul className={styles.deleteDesc}>
-											{preview.warnings.map((w, i) => (
-												<li key={i}>{w}</li>
-											))}
-										</ul>
-									)}
-									<div className={styles.createdCouncilsSection}>
-										{preview.councils.map((c) => (
-											<div key={c.name} className={styles.createdCouncilCard}>
-												<div className={styles.createdCouncilHeader}>
-													<span className={styles.createdCouncilName}>
-														{c.name}
-														{c.duplicate ? ' — TRÙNG, sẽ bỏ qua' : ''}
-													</span>
-													<span className={styles.createdCouncilGroup}>
-														{[c.specialty_group, c.location]
-															.filter(Boolean)
-															.join(' · ')}
-													</span>
-												</div>
-												<div className={styles.createdCouncilMembers}>
-													{c.seats.map((s) => (
-														<div key={s.role} className={styles.createdMemberRow}>
-															<span className={styles.createdMemberRole}>
-																{SEAT_ROLE_LABELS[s.role]}
-															</span>
-															{s.matched ? (
-																<>
-																	<span
-																		className={styles.createdMemberName}
-																		title={s.raw_name}
-																	>
-																		{s.matched.full_name}
-																		{s.matched.type === 'external'
-																			? ' (ngoài viện)'
-																			: ''}
-																	</span>
-																	<span className={styles.createdMemberDept}>
-																		{s.matched.department_name || ''}
-																	</span>
-																</>
-															) : (
-																<span
-																	className={styles.createdMemberName}
-																	style={{ color: 'var(--tone-red-fg)' }}
-																	title={s.error}
-																>
-																	{s.raw_name} — {s.error}
-																</span>
-															)}
-														</div>
-													))}
-												</div>
-												<div className={styles.modalSub} style={{ marginTop: 6 }}>
-													{c.topics.filter((t) => t.matched && !t.skip_assign).length}
-													/{c.topics.length} đề tài sẽ được gán
-													{c.topics.some((t) => t.session) &&
-														` (${c.topics.filter((t) => t.session === 'morning').length} ${SESSION_LABELS.morning.toLowerCase()}, ${c.topics.filter((t) => t.session === 'afternoon').length} ${SESSION_LABELS.afternoon.toLowerCase()})`}
-													{(() => {
-														const n = c.topics.reduce(
-															(s, t) => s + t.substitutes.length,
-															0,
-														);
-														return n > 0 ? ` · ${n} ghế thay thế theo đề tài` : '';
-													})()}
-												</div>
-											</div>
-										))}
-									</div>
-								</>
-							)}
-						</>
-					)}
-
-					{result && (
-						<>
-							<div className={styles.warnBox}>
-								<CheckSvg />
-								<span>
-									Đã nhập {result.councils_created} hội đồng, gán{' '}
-									{result.topics_assigned} đề tài.
-								</span>
-							</div>
-							{result.warnings.length > 0 && (
-								<ul className={styles.deleteDesc}>
-									{result.warnings.map((w, i) => (
-										<li key={i}>{w}</li>
-									))}
-								</ul>
-							)}
-						</>
-					)}
-				</div>
-
-				<div className={styles.modalFooter}>
-					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+		<Modal
+			open
+			onClose={onClose}
+			title='Nhập hội đồng từ Excel'
+			subtitle='File lịch bảo vệ chuẩn bệnh viện — mỗi dòng 1 đề tài kèm 5 ghế hội đồng'
+			icon={<UploadSvg />}
+			size='lg'
+			bodyClassName={styles.modalBody}
+			footer={
+				<>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={loading}>
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button
+							type='button'
 							className={styles.btnConfirmApprove}
 							onClick={commit}
 							disabled={loading || !preview || importable === 0}
@@ -252,8 +95,161 @@ export function CouncilImportModal({
 							Nhập {importable} hội đồng
 						</button>
 					)}
-				</div>
-			</div>
-		</div>
+				</>
+			}
+		>
+			{!result && (
+				<>
+					<div className={styles.warnBox}>
+						<InfoSvg />
+						<span>
+							Các dòng cùng bộ 5 ghế được gom thành 1 hội đồng; đề tài match
+							theo tên với đề tài có sẵn trong đợt. Hội đồng sinh ra ở trạng
+							thái Nháp — rà lại trước khi chốt.
+						</span>
+					</div>
+					<div className={styles.formGroup}>
+						<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Đợt nghiên cứu</label>
+						<select
+							id={`${uid}-f1`}
+							className={styles.formInput}
+							value={roundId}
+							onChange={(e) => onChangeRound(e.target.value)}
+						>
+							{rounds.map((r) => (
+								<option key={r.id} value={r.id}>
+									{r.name} ({r.year})
+								</option>
+							))}
+						</select>
+					</div>
+					<div className={styles.formGroup}>
+						<label htmlFor={`${uid}-f2`} className={styles.formLabel}>File Excel (.xlsx)</label>
+						<FileDropzone
+							id={`${uid}-f2`}
+							value={file}
+							onChange={onPickFile}
+							accept='.xlsx'
+							disabled={loading}
+						/>
+					</div>
+					{loading && (
+						<div className={styles.modalSub}>
+							<span className={styles.spinner} /> Đang đọc file…
+						</div>
+					)}
+					{error && (
+						<div
+							className={styles.fieldError}
+							role='alert'
+						>
+							{error}
+						</div>
+					)}
+
+					{preview?.councils && (
+						<>
+							<div className={styles.warnBox}>
+								<CheckSvg />
+								<span>
+									Đọc được {preview.councils.length} hội đồng,{' '}
+									{preview.topics_matched}/{preview.topics_total} đề tài
+									match được với dữ liệu trong đợt.
+								</span>
+							</div>
+							{preview.warnings.length > 0 && (
+								<ul className={styles.deleteDesc}>
+									{preview.warnings.map((w, i) => (
+										<li key={i}>{w}</li>
+									))}
+								</ul>
+							)}
+							<div className={styles.createdCouncilsSection}>
+								{preview.councils.map((c) => (
+									<div key={c.name} className={styles.createdCouncilCard}>
+										<div className={styles.createdCouncilHeader}>
+											<span className={styles.createdCouncilName}>
+												{c.name}
+												{c.duplicate ? ' — TRÙNG, sẽ bỏ qua' : ''}
+											</span>
+											<span className={styles.createdCouncilGroup}>
+												{[c.specialty_group, c.location]
+													.filter(Boolean)
+													.join(' · ')}
+											</span>
+										</div>
+										<div className={styles.createdCouncilMembers}>
+											{c.seats.map((s) => (
+												<div key={s.role} className={styles.createdMemberRow}>
+													<span className={styles.createdMemberRole}>
+														{SEAT_ROLE_LABELS[s.role]}
+													</span>
+													{s.matched ? (
+														<>
+															<span
+																className={styles.createdMemberName}
+																title={s.raw_name}
+															>
+																{s.matched.full_name}
+																{s.matched.type === 'external'
+																	? ' (ngoài viện)'
+																	: ''}
+															</span>
+															<span className={styles.createdMemberDept}>
+																{s.matched.department_name || ''}
+															</span>
+														</>
+													) : (
+														<span
+															className={styles.createdMemberName}
+															style={{ color: 'var(--tone-red-fg)' }}
+															title={s.error}
+														>
+															{s.raw_name} — {s.error}
+														</span>
+													)}
+												</div>
+											))}
+										</div>
+										<div className={styles.modalSub} style={{ marginTop: 6 }}>
+											{c.topics.filter((t) => t.matched && !t.skip_assign).length}
+											/{c.topics.length} đề tài sẽ được gán
+											{c.topics.some((t) => t.session) &&
+												` (${c.topics.filter((t) => t.session === 'morning').length} ${SESSION_LABELS.morning.toLowerCase()}, ${c.topics.filter((t) => t.session === 'afternoon').length} ${SESSION_LABELS.afternoon.toLowerCase()})`}
+											{(() => {
+												const n = c.topics.reduce(
+													(s, t) => s + t.substitutes.length,
+													0,
+												);
+												return n > 0 ? ` · ${n} ghế thay thế theo đề tài` : '';
+											})()}
+										</div>
+									</div>
+								))}
+							</div>
+						</>
+					)}
+				</>
+			)}
+
+			{result && (
+				<>
+					<div className={styles.warnBox}>
+						<CheckSvg />
+						<span>
+							Đã nhập {result.councils_created} hội đồng, gán{' '}
+							{result.topics_assigned} đề tài.
+						</span>
+					</div>
+					{result.warnings.length > 0 && (
+						<ul className={styles.deleteDesc}>
+							{result.warnings.map((w, i) => (
+								<li key={i}>{w}</li>
+							))}
+						</ul>
+					)}
+				</>
+			)}
+		</Modal>
 	);
 }

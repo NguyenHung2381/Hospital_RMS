@@ -124,6 +124,7 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 								onClick={() => moveAuthor(i, -1)}
 								disabled={i === 0}
 								title='Lên'
+								aria-label={`Chuyển tác giả ${i + 1} lên trên`}
 								style={{ width: 22, height: 22 }}
 							>
 								↑
@@ -134,6 +135,7 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 								onClick={() => moveAuthor(i, 1)}
 								disabled={i === authors.length - 1}
 								title='Xuống'
+								aria-label={`Chuyển tác giả ${i + 1} xuống dưới`}
 								style={{ width: 22, height: 22 }}
 							>
 								↓
@@ -143,6 +145,7 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 						<div className={styles.memberInfo} style={{ flex: 1 }}>
 							<input
 								className={styles.formInput}
+								aria-label={`Họ tên tác giả ${i + 1}`}
 								placeholder={`Tác giả ${i + 1}`}
 								value={a.author_name}
 								onChange={(e) => updateAuthor(a.tempId, { author_name: e.target.value })}
@@ -150,6 +153,7 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 							/>
 							<input
 								className={styles.formInput}
+								aria-label={`Đơn vị công tác của tác giả ${i + 1}`}
 								placeholder='Đơn vị công tác (nếu có)'
 								value={a.affiliation}
 								onChange={(e) => updateAuthor(a.tempId, { affiliation: e.target.value })}
@@ -166,13 +170,15 @@ export function DrawerAuthorsTab({ topicId }: { topicId: string }) {
 							</label>
 						</div>
 
-						<div
+						<button
+							type='button'
 							className={`${styles.actionBtn} ${styles.danger}`}
 							title='Xóa tác giả'
+							aria-label={`Xóa tác giả ${i + 1}`}
 							onClick={() => removeAuthor(a.tempId)}
 						>
 							<IcTrash />
-						</div>
+						</button>
 					</div>
 				))}
 			</div>

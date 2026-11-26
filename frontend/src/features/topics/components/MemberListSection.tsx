@@ -42,6 +42,7 @@ export function MemberListSection({
 						{pendingMembers.length} thành viên chưa có tài khoản
 					</div>
 					<button
+						type='button'
 						className={styles.grantBarBtn}
 						onClick={() => handleGrantAccountsNoEmail()}
 						disabled={grantingIds.size > 0 || !canGrantAccountsNoEmail}
@@ -176,6 +177,7 @@ export function MemberListSection({
 												</span>
 											)}
 											<button
+												type='button'
 												className={styles.grantBtn}
 												onClick={() => handleGrantSingleMember(m.id)}
 												disabled={
@@ -189,14 +191,16 @@ export function MemberListSection({
 										</div>
 									)}
 								</div>
-								<div
+								<button
+									type='button'
 									className={`${styles.actionBtn} ${styles.danger}`}
 									title='Xóa thành viên'
+									aria-label={`Xóa thành viên ${m.ho_ten}`}
 									onClick={() => handleDeleteMember(m.id)}
 									style={{ marginLeft: 4, flexShrink: 0 }}
 								>
 									<IcTrash />
-								</div>
+								</button>
 							</div>
 						);
 					})}

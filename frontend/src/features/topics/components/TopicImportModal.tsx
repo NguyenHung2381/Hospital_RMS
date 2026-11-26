@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg } from '@/assets/icons';
 import { Badge, FileDropzone, Modal } from '@/shared/components';
 import { Pagination } from '@/shared/components/Table/Pagination';
@@ -29,6 +29,7 @@ export function TopicImportModal({
 	onClose: () => void;
 	onDone: () => void;
 }) {
+	const uid = useId();
 	const canApprove = usePermission().has('topics:approve');
 	const [file, setFile] = useState<File | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -47,6 +48,8 @@ export function TopicImportModal({
 	);
 
 	useEffect(() => {
+		// Đổi file/đợt/mặc định thì bản xem trước cũ không còn đúng — xóa ngay rồi đọc lại (đã có từ trước, chỉ tắt cảnh báo lint)
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setPreview(null);
 		if (!file || !roundId) return;
 		let stale = false;
@@ -99,17 +102,6 @@ export function TopicImportModal({
 	const rows = preview?.rows ?? [];
 	const pg = useClientPaging(rows);
 	const s = preview?.summary;
-	const select = (value: string, onChange: (v: string) => void, items: SimpleItem[], empty: string) => (
-		<select className={styles.formInput} value={value} onChange={(e) => onChange(e.target.value)}>
-			<option value=''>{empty}</option>
-			{items.map((x) => (
-				<option key={x.id} value={x.id}>
-					{x.name}
-				</option>
-			))}
-		</select>
-	);
-
 	return (
 		<Modal
 			open
@@ -121,11 +113,11 @@ export function TopicImportModal({
 			bodyClassName={styles.modalBody}
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={loading}>
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
-						<button className={styles.btnPrimary} onClick={commit} disabled={loading || !roundId || !s || s.importable === 0}>
+						<button type='button' className={styles.btnPrimary} onClick={commit} disabled={loading || !roundId || !s || s.importable === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
 							Nhập {s?.importable || ''} đề tài
 						</button>
@@ -144,15 +136,34 @@ export function TopicImportModal({
 					</div>
 					<div className={styles.importDefaults}>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
+							<label
+								htmlFor={`${uid}-round`}
+								className={styles.formLabel}
+							>
 								Đợt nghiên cứu <span className={styles.required}>*</span>
 							</label>
-							{select(roundId, setRoundId, rounds, '-- Chọn đợt --')}
+							<select
+								id={`${uid}-round`}
+								className={styles.formInput}
+								value={roundId}
+								onChange={(e) => setRoundId(e.target.value)}
+							>
+								<option value=''>-- Chọn đợt --</option>
+								{rounds.map((x) => (
+									<option
+										key={x.id}
+										value={x.id}
+									>
+										{x.name}
+									</option>
+								))}
+							</select>
 						</div>
 						{articleType !== 'bai_bao' && (
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Cấp độ (theo đợt)</label>
+								<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Cấp độ (theo đợt)</label>
 								<input
+									id={`${uid}-f1`}
 									className={styles.formInput}
 									value={roundId ? (roundLevelName ?? 'Đợt chưa cấu hình cấp độ') : 'Chọn đợt trước'}
 									readOnly
@@ -161,8 +172,9 @@ export function TopicImportModal({
 							</div>
 						)}
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Loại</label>
+							<label htmlFor={`${uid}-f2`} className={styles.formLabel}>Loại</label>
 							<select
+								id={`${uid}-f2`}
 								className={styles.formInput}
 								value={articleType}
 								onChange={(e) => setArticleType(e.target.value as 'de_tai' | 'bai_bao')}
@@ -173,8 +185,9 @@ export function TopicImportModal({
 						</div>
 						{canApprove && (
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Trạng thái sau khi nhập</label>
+								<label htmlFor={`${uid}-f3`} className={styles.formLabel}>Trạng thái sau khi nhập</label>
 								<select
+									id={`${uid}-f3`}
 									className={styles.formInput}
 									value={status}
 									onChange={(e) => setStatus(e.target.value as typeof status)}

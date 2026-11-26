@@ -145,6 +145,7 @@ export function GanttRow({
 					</div>
 				)}
 				<button
+					type='button'
 					className={styles.addBtn}
 					onClick={onAddDeadline}
 					title='Thêm mốc thời gian'
@@ -280,6 +281,7 @@ export function GanttRow({
 
 					return (
 						<button
+							type='button'
 							key={dl.id}
 							className={`${styles.deadlinePin}${isActive ? ` ${styles.deadlinePinActive}` : ''}`}
 							style={{ left: `${activePct}%` }}

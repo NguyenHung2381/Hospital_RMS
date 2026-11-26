@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
 import React, { useEffect, useState } from 'react';
@@ -62,6 +63,7 @@ function RowForm({
 	roundStart?: string;
 	roundEnd?: string;
 }) {
+	const uid = useId();
 	// Show the round's context band only while the milestone range is incomplete.
 	// Once both dates are picked, only the milestone band is shown.
 	const bothDatesPicked = Boolean(row.start_date && row.date);
@@ -80,6 +82,7 @@ function RowForm({
 					className={styles.closeFormBtn}
 					onClick={onCancel}
 					title='Đóng'
+					aria-label='Đóng biểu mẫu mốc thời gian'
 				>
 					<XSvg style={{ width: 14, height: 14 }} />
 				</button>
@@ -88,11 +91,12 @@ function RowForm({
 			<div className={styles.timelineFormGrid}>
 				{/* Field 1: Tên mốc thời gian (Full width) */}
 				<div className={`${styles.fieldGroup} ${styles.timelineFormFull}`}>
-					<label className={styles.fieldLabel}>
+					<label htmlFor={`${uid}-f1`} className={styles.fieldLabel}>
 						Tên mốc thời gian / Hạn nộp{' '}
 						<span className={styles.fieldRequired}>*</span>
 					</label>
 					<input
+						id={`${uid}-f1`}
 						className={styles.formInput}
 						placeholder='VD: Đăng ký đề tài, Bổ sung đề cương...'
 						value={row.name}
@@ -105,8 +109,9 @@ function RowForm({
 
 				{/* Field 2: Loại hạn nộp (Full width) */}
 				<div className={`${styles.fieldGroup} ${styles.timelineFormFull}`}>
-					<label className={styles.fieldLabel}>Loại hạn nộp</label>
+					<label htmlFor={`${uid}-f2`} className={styles.fieldLabel}>Loại hạn nộp</label>
 					<select
+						id={`${uid}-f2`}
 						className={styles.formSelect}
 						value={row.deadline_type}
 						onChange={(e) =>
@@ -181,8 +186,9 @@ function RowForm({
 				{/* Field 4: Date Pickers (2 columns full width) */}
 				<div className={styles.dateRow}>
 					<div className={styles.fieldGroup}>
-						<label className={styles.fieldLabel}>Ngày bắt đầu</label>
+						<label htmlFor={`${uid}-f3`} className={styles.fieldLabel}>Ngày bắt đầu</label>
 						<DatePicker
+							id={`${uid}-f3`}
 							value={row.start_date}
 							onChange={(val) =>
 								setRow((p) => p && { ...p, start_date: val })
@@ -197,10 +203,11 @@ function RowForm({
 						/>
 					</div>
 					<div className={styles.fieldGroup}>
-						<label className={styles.fieldLabel}>
+						<label htmlFor={`${uid}-f4`} className={styles.fieldLabel}>
 							Hạn cuối <span className={styles.fieldRequired}>*</span>
 						</label>
 						<DatePicker
+							id={`${uid}-f4`}
 							value={row.date}
 							onChange={(val) => setRow((p) => p && { ...p, date: val })}
 							min={roundStart}
@@ -493,6 +500,7 @@ export function DeadlineManager({
 											className={`${styles.timelineActionBtn} ${styles.edit}`}
 											onClick={() => startEdit(d)}
 											title='Chỉnh sửa'
+											aria-label={`Chỉnh sửa mốc ${d.name}`}
 										>
 											<EditSvg style={{ width: 14, height: 14 }} />
 										</button>
@@ -501,6 +509,7 @@ export function DeadlineManager({
 											className={`${styles.timelineActionBtn} ${styles.delete}`}
 											onClick={() => void handleRemove(d.phase)}
 											title='Xóa mốc'
+											aria-label={`Xóa mốc ${d.name}`}
 										>
 											<XSvg style={{ width: 14, height: 14 }} />
 										</button>

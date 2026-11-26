@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, QrSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
-import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
+import { Badge, Button, Card, EmptyState, InlineLoading, confirmDialog } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -67,7 +67,7 @@ export default function MyCme() {
 	useRealtimeUpdate(['seminar', 'cme_record', 'cme_requirement'], load);
 
 	const handleDelete = async (id: string) => {
-		if (!window.confirm('Xóa khai báo CME này?')) return;
+		if (!(await confirmDialog({ title: 'Xóa khai báo CME này?', tone: 'danger', confirmLabel: 'Xóa' }))) return;
 		try {
 			await deleteMyCmeRecord(id);
 			load();
@@ -103,7 +103,7 @@ export default function MyCme() {
 		}
 	};
 	const handleDeleteResultFile = async (id: string, fileId: string, name: string) => {
-		if (!window.confirm(`Xóa file "${name}"?`)) return;
+		if (!(await confirmDialog({ title: `Xóa file "${name}"?`, tone: 'danger', confirmLabel: 'Xóa' }))) return;
 		try {
 			await deleteMyCmeResultFile(id, fileId);
 			load();

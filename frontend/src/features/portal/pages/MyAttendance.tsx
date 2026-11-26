@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarSvg, ClockSvg, FileTextSvg, PlusSvg } from '@/assets/icons';
-import { Badge, Button, Card, EmptyState, InlineLoading, type BadgeTone } from '@/shared/components';
+import { Badge, Button, Card, EmptyState, InlineLoading, confirmDialog, type BadgeTone } from '@/shared/components';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
@@ -153,7 +153,13 @@ export default function MyAttendance() {
 	useRealtimeUpdate(['attendance_leave'], loadLeaves);
 
 	const cancelLeave = async (l: LeaveRequest) => {
-		if (!window.confirm(`Hủy đơn ${LEAVE_TYPE_TEXT[l.type].toLowerCase()} ${leavePeriod(l)}?`)) return;
+		const ok = await confirmDialog({
+			title: `Hủy đơn ${LEAVE_TYPE_TEXT[l.type].toLowerCase()} ${leavePeriod(l)}?`,
+			tone: 'danger',
+			confirmLabel: 'Hủy đơn',
+			cancelLabel: 'Giữ lại',
+		});
+		if (!ok) return;
 		setCancelling(l.id);
 		try {
 			await cancelLeaveRequest(l.id);

@@ -1,3 +1,5 @@
+import { useEffect, useId, useRef } from 'react';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { CheckCircleSvg, XCircleSvg } from '@/assets/icons';
 import styles from '../pages/Approval.module.css';
 
@@ -20,6 +22,16 @@ export function BulkConfirmModal({
 	onClose,
 	loading,
 }: BulkConfirmModalProps) {
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const commentRef = useRef<HTMLTextAreaElement>(null);
+	const titleId = useId();
+	const descId = useId();
+	// Giữ focus trong hộp thoại, Esc để đóng, trả focus về nút đã mở khi đóng
+	useFocusTrap(dialogRef, { active: true, onEscape: onClose });
+	useEffect(() => {
+		commentRef.current?.focus();
+	}, []);
+
 	const isApprove = action === 'approve';
 	const canSubmit = isApprove || comment.trim().length > 0;
 
@@ -31,9 +43,13 @@ export function BulkConfirmModal({
 			}}
 		>
 			<div
+				ref={dialogRef}
 				className={styles.modal}
-				role='alertdialog'
+				role='dialog'
 				aria-modal='true'
+				aria-labelledby={titleId}
+				aria-describedby={descId}
+				tabIndex={-1}
 			>
 				<div className={styles.modalBody}>
 					<div
@@ -41,10 +57,10 @@ export function BulkConfirmModal({
 					>
 						{isApprove ? <CheckCircleSvg /> : <XCircleSvg />}
 					</div>
-					<h2 className={styles.modalTitle}>
+					<h2 id={titleId} className={styles.modalTitle}>
 						{isApprove ? 'Phê duyệt' : 'Không phê duyệt'} {count} đề tài đã chọn
 					</h2>
-					<p className={styles.modalDesc}>
+					<p id={descId} className={styles.modalDesc}>
 						Thao tác này sẽ {isApprove ? 'phê duyệt' : 'không phê duyệt'}{' '}
 						<strong>{count} đề tài</strong> cùng lúc.
 						{isApprove
@@ -52,7 +68,10 @@ export function BulkConfirmModal({
 							: ' Vui lòng nêu rõ lý do để các nhóm nghiên cứu có thể cải thiện.'}
 					</p>
 					<textarea
+						ref={commentRef}
 						className={styles.modalComment}
+						aria-label={isApprove ? 'Nhận xét chung' : 'Lý do không phê duyệt'}
+						aria-required={!isApprove}
 						placeholder={
 							isApprove
 								? 'Nhận xét chung (không bắt buộc)...'
@@ -66,12 +85,14 @@ export function BulkConfirmModal({
 				</div>
 				<div className={styles.modalFooter}>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={
 							styles[
 								isApprove ? 'btnConfirmApprove' : 'btnConfirmReject'

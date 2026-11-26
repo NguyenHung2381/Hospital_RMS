@@ -328,6 +328,10 @@
 
 /* ── FILE UPLOAD ── */
 .uploadZone {
+	/* Là <button>: nhận lại kiểu chữ, chiều rộng như khung div trước đây */
+	width: 100%;
+	font: inherit;
+	color: inherit;
 	border: 1.5px dashed var(--color-gray-300);
 	border-radius: var(--radius-lg);
 	padding: var(--space-6);

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import {
 	AlertSvg,
 	PlusSvg,
@@ -68,10 +69,11 @@ export function RegisterMemberSection({
 	setManualErrors,
 	addMemberManual,
 }: RegisterMemberSectionProps) {
+	const uid = useId();
 	return (
 		<>
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Tìm kiếm thành viên</label>
+				<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Tìm kiếm thành viên</label>
 				<div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
 					<div
 						className={styles.memberSearch}
@@ -95,6 +97,7 @@ export function RegisterMemberSection({
 							)}
 						</span>
 						<input
+							id={`${uid}-f1`}
 							className={styles.memberSearchInput}
 							placeholder='Tìm theo tên hoặc mã nhân viên...'
 							value={memberQuery}
@@ -226,10 +229,11 @@ export function RegisterMemberSection({
 
 					<div className={styles.formRow}>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
+							<label htmlFor={`${uid}-f2`} className={styles.formLabel}>
 								Họ tên <span className={styles.formRequired}>*</span>
 							</label>
 							<input
+								id={`${uid}-f2`}
 								className={`${styles.formInput} ${manualErrors.ho_ten ? styles.hasError : ''}`}
 								placeholder='Nguyễn Văn A'
 								value={manualForm.ho_ten}
@@ -245,10 +249,11 @@ export function RegisterMemberSection({
 							)}
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
+							<label htmlFor={`${uid}-f3`} className={styles.formLabel}>
 								Mã nhân viên (MNV) <span className={styles.formRequired}>*</span>
 							</label>
 							<input
+								id={`${uid}-f3`}
 								className={`${styles.formInput} ${manualErrors.staff_number ? styles.hasError : ''}`}
 								placeholder='NV001'
 								value={manualForm.staff_number}
@@ -270,10 +275,11 @@ export function RegisterMemberSection({
 
 					<div className={styles.formRow}>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
+							<label htmlFor={`${uid}-f4`} className={styles.formLabel}>
 								Số điện thoại <span className={styles.formRequired}>*</span>
 							</label>
 							<input
+								id={`${uid}-f4`}
 								className={`${styles.formInput} ${manualErrors.phone_number ? styles.hasError : ''}`}
 								placeholder='0912345678'
 								type='tel'
@@ -293,10 +299,11 @@ export function RegisterMemberSection({
 							)}
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>
+							<label htmlFor={`${uid}-f5`} className={styles.formLabel}>
 								Chức danh chuyên môn <span className={styles.formRequired}>*</span>
 							</label>
 							<input
+								id={`${uid}-f5`}
 								className={`${styles.formInput} ${manualErrors.chuc_vu ? styles.hasError : ''}`}
 								placeholder='Bác sĩ, Điều dưỡng...'
 								value={manualForm.chuc_vu}
@@ -315,8 +322,9 @@ export function RegisterMemberSection({
 
 					<div className={styles.formRow}>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Khoa phòng</label>
+							<label htmlFor={`${uid}-f6`} className={styles.formLabel}>Khoa phòng</label>
 							<SearchableSelect
+								id={`${uid}-f6`}
 								options={[{ id: '', name: '-- Chọn khoa/phòng ban --' }, ...depts]}
 								value={manualForm.department_id}
 								onChange={(id) => setManualForm({ ...manualForm, department_id: id })}
@@ -325,8 +333,9 @@ export function RegisterMemberSection({
 							/>
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Vai trò trong đề tài</label>
+							<label htmlFor={`${uid}-f7`} className={styles.formLabel}>Vai trò trong đề tài</label>
 							<select
+								id={`${uid}-f7`}
 								className={styles.formSelect}
 								value={manualForm.role}
 								onChange={(e) =>
@@ -389,6 +398,7 @@ export function RegisterMemberSection({
 								rolePill={
 									<RoleSelectPill
 										value={m.role}
+										ariaLabel={`Vai trò của ${m.ho_ten}`}
 										onChange={(role) => changeRole(m.id, role)}
 										allowedRoles={roleKeys}
 										roleLabels={roleCfg}

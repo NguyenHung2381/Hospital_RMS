@@ -836,6 +836,9 @@
 
 /* My Topics list */
 .myTopicItem {
+	/* Là <Link> — giữ nguyên dáng khối cũ */
+	color: inherit;
+	text-decoration: none;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
@@ -910,6 +913,11 @@
 
 /* ─── FILE UPLOAD ── */
 .dropZone {
+	/* Là <button> — nhận lại kiểu chữ, chiều rộng như khung div trước đây */
+	width: 100%;
+	font: inherit;
+	color: inherit;
+	text-align: center;
 	border: 2px dashed var(--color-gray-300);
 	border-radius: var(--radius-lg);
 	padding: 28px 20px;

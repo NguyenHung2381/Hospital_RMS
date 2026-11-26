@@ -217,18 +217,21 @@ export default function Schedule() {
 				<div className={styles.toolbar}>
 					<div className={styles.viewSwitcher}>
 						<button
+							type='button'
 							className={`${styles.viewBtn}${viewMode === 'gantt' ? ` ${styles.viewBtnActive}` : ''}`}
 							onClick={() => setViewMode('gantt')}
 						>
 							📊 Biểu đồ Gantt
 						</button>
 						<button
+							type='button'
 							className={`${styles.viewBtn}${viewMode === 'list' ? ` ${styles.viewBtnActive}` : ''}`}
 							onClick={() => setViewMode('list')}
 						>
 							📋 Danh sách mốc
 						</button>
 						<button
+							type='button'
 							className={`${styles.viewBtn}${viewMode === 'calendar' ? ` ${styles.viewBtnActive}` : ''}`}
 							onClick={() => setViewMode('calendar')}
 						>
@@ -244,6 +247,7 @@ export default function Schedule() {
 					/>
 					<select
 						className={styles.roundFilter}
+						aria-label='Lọc theo đợt nghiên cứu'
 						value={filterRoundId}
 						onChange={(e) => setFilterRoundId(e.target.value)}
 						disabled={loading}
@@ -258,6 +262,7 @@ export default function Schedule() {
 							<div className={styles.calViewGroup} role='tablist' aria-label='Chế độ xem lịch'>
 								{CAL_MODES.map(({ key, label }) => (
 									<button
+										type='button'
 										key={key}
 										role='tab'
 										aria-selected={calMode === key}
@@ -270,6 +275,7 @@ export default function Schedule() {
 							</div>
 							{!calShowsToday && (
 								<button
+									type='button'
 									className={styles.todayBtn}
 									onClick={calGoToday}
 									title={todayTitle}
@@ -285,6 +291,7 @@ export default function Schedule() {
 							<div className={styles.actionGroup}>
 								{todayPct !== null && (
 									<button
+										type='button'
 										className={styles.todayBtn}
 										onClick={scrollToToday}
 										title='Cuộn tới mốc thời gian hiện tại'
@@ -294,9 +301,9 @@ export default function Schedule() {
 									</button>
 								)}
 								<div className={styles.zoomGroup}>
-									<button className={styles.zoomBtn} onClick={zoomOut} disabled={zoom === 1} title='Thu nhỏ'>−</button>
+									<button type='button' className={styles.zoomBtn} onClick={zoomOut} disabled={zoom === 1} title='Thu nhỏ'>−</button>
 									<span className={styles.zoomLabel}>{zoom}×</span>
-									<button className={styles.zoomBtn} onClick={zoomIn} disabled={zoom === 8} title='Phóng to'>+</button>
+									<button type='button' className={styles.zoomBtn} onClick={zoomIn} disabled={zoom === 8} title='Phóng to'>+</button>
 								</div>
 							</div>
 							<div className={styles.legend}>
@@ -355,6 +362,7 @@ export default function Schedule() {
 						{/* Gantt */}
 						<div className={styles.ganttWrapper}>
 							<button
+								type='button'
 								className={`${styles.scrollArrow} ${styles.scrollArrowLeft}`}
 								onClick={() => scrollGantt(-300)}
 								aria-label='Cuộn sang trái'
@@ -414,6 +422,7 @@ export default function Schedule() {
 							</div>
 
 							<button
+								type='button'
 								className={`${styles.scrollArrow} ${styles.scrollArrowRight}`}
 								onClick={() => scrollGantt(300)}
 								aria-label='Cuộn sang trái'

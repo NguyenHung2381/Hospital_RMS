@@ -49,9 +49,11 @@ export default function TopicDetail() {
 			<div className={styles.detailHeader}>
 				<div className={styles.pageTopRow}>
 					<button
+						type='button'
 						className={styles.backBtn}
 						onClick={() => d.navigate('/user/my-topics')}
 						title='Quay lại danh sách'
+						aria-label='Quay lại danh sách đề tài'
 					>
 						<ChevLSvg />
 					</button>

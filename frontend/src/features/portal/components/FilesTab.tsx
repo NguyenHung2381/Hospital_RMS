@@ -74,7 +74,8 @@ export default function FilesTab({
 							e.target.value = '';
 						}}
 					/>
-					<div
+					<button
+						type='button'
 						className={`${styles.uploadZone} ${dragging ? styles.uploadZoneActive : ''}`}
 						onClick={() => fileInputRef.current?.click()}
 						onDragOver={(e) => {
@@ -107,7 +108,7 @@ export default function FilesTab({
 								</span>
 							))}
 						</div>
-					</div>
+					</button>
 				</>
 			) : (
 				<div className={styles.noUploadNotice}>
@@ -124,6 +125,7 @@ export default function FilesTab({
 							tổng
 						</span>
 						<button
+							type='button'
 							className={styles.pendingClearBtn}
 							onClick={() => setPendingFiles([])}
 							disabled={uploading}
@@ -151,7 +153,9 @@ export default function FilesTab({
 										{formatFileSize(f.size)}
 									</span>
 									<button
+										type='button'
 										className={styles.pendingRemove}
+										aria-label={`Bỏ file ${f.name} khỏi danh sách tải lên`}
 										onClick={() =>
 											setPendingFiles((p) => p.filter((_, j) => j !== i))
 										}
@@ -166,6 +170,7 @@ export default function FilesTab({
 
 					<input
 						className={styles.noteInput}
+						aria-label='Ghi chú lần tải lên'
 						placeholder='Ghi chú lần tải lên (tùy chọn)'
 						value={batchNote}
 						onChange={(e) => setBatchNote(e.target.value)}
@@ -174,6 +179,7 @@ export default function FilesTab({
 
 					{uploadError && <p className={styles.uploadError}>{uploadError}</p>}
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={handleUpload}
 						disabled={uploading}
@@ -197,6 +203,7 @@ export default function FilesTab({
 				<label className={styles.filesSelectAll}>
 					<input
 						type='checkbox'
+						aria-label='Chọn tất cả file'
 						className={styles.fileCheckbox}
 						checked={files.length > 0 && selectedIds.size === files.length}
 						ref={(el) => {
@@ -218,6 +225,7 @@ export default function FilesTab({
 						{selectedIds.size} file đã chọn
 					</span>
 					<button
+						type='button'
 						className={styles.bulkBtn}
 						onClick={handleBulkDownload}
 					>
@@ -225,6 +233,7 @@ export default function FilesTab({
 					</button>
 					{canDeleteFiles && (
 						<button
+							type='button'
 							className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
 							onClick={handleBulkDelete}
 						>
@@ -255,6 +264,7 @@ export default function FilesTab({
 								<input
 									type='checkbox'
 									className={styles.fileCheckbox}
+									aria-label={`Chọn file ${f.file_name}`}
 									checked={isSelected}
 									onChange={() => toggleSelect(f.id)}
 								/>
@@ -280,14 +290,17 @@ export default function FilesTab({
 										download={f.file_name}
 										className={styles.fileActionBtn}
 										title='Tải xuống'
+										aria-label={`Tải xuống ${f.file_name}`}
 										onClick={(e) => e.stopPropagation()}
 									>
 										<DownloadSvg />
 									</a>
 									{canDeleteFiles && (
 										<button
+											type='button'
 											className={`${styles.fileActionBtn} ${styles.fileActionDanger}`}
 											title='Xóa file'
+											aria-label={`Xóa file ${f.file_name}`}
 											onClick={() => handleDeleteFile(f.id)}
 										>
 											<TrashSvg />

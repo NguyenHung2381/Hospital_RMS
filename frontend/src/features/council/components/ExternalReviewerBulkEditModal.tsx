@@ -1,5 +1,5 @@
 import { Modal, ModalActions } from '@/shared/components';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { EditSvg, InfoSvg } from '@/assets/icons';
 import { SPECIALTY_GROUPS } from '../../department/types/department.type';
 import type { ExternalReviewerPatch } from '../api/externalReviewerApi';
@@ -16,6 +16,7 @@ export function ExternalReviewerBulkEditModal({
 	onSave: (patch: ExternalReviewerPatch) => void;
 	loading: boolean;
 }) {
+	const uid = useId();
 	const [organization, setOrganization] = useState('');
 	const [specialtyGroup, setSpecialtyGroup] = useState('');
 
@@ -51,8 +52,9 @@ export function ExternalReviewerBulkEditModal({
 			</div>
 			<div className={styles.formGrid2}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Hệ chuyên môn</label>
+					<label htmlFor={`${uid}-f1`} className={styles.formLabel}>Hệ chuyên môn</label>
 					<select
+						id={`${uid}-f1`}
 						className={styles.formInput}
 						value={specialtyGroup}
 						onChange={(e) => setSpecialtyGroup(e.target.value)}
@@ -69,8 +71,9 @@ export function ExternalReviewerBulkEditModal({
 					</select>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Đơn vị công tác</label>
+					<label htmlFor={`${uid}-f2`} className={styles.formLabel}>Đơn vị công tác</label>
 					<input
+						id={`${uid}-f2`}
 						className={styles.formInput}
 						value={organization}
 						onChange={(e) => setOrganization(e.target.value)}

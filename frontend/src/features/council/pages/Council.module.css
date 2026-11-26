@@ -333,6 +333,29 @@
 	transform: rotate(90deg);
 }
 
+.groupToggle {
+	/* Nút mở/đóng nhóm theo đợt — giữ nguyên dáng chữ trong ô nhóm */
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	letter-spacing: inherit;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.councilNameBtn {
+	/* Nút mở chi tiết hội đồng ở cột tên — trông như chữ thường */
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
 .groupCount {
 	margin-left: var(--space-3);
 	font-weight: var(--font-weight-bold);
@@ -1004,6 +1027,19 @@ select.formInput:focus {
 
 .checkRow input {
 	flex-shrink: 0;
+}
+
+/* Hàng chọn dạng <button> (danh sách gợi ý) — bỏ kiểu mặc định của nút */
+.checkRowBtn {
+	width: 100%;
+	text-align: left;
+	font-family: inherit;
+	color: inherit;
+}
+
+.checkRowBtn:focus-visible {
+	background: rgba(10, 155, 74, 0.03);
+	border-color: var(--color-primary-light);
 }
 
 /* ── CUSTOM WEBKIT SCROLLBAR ─────────────── */

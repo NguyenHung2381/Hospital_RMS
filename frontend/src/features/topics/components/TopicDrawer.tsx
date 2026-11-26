@@ -87,6 +87,7 @@ export function TopicDrawer({
 						</div>
 					</div>
 					<button
+						type='button'
 						className={styles.drawerCloseBtn}
 						onClick={onClose}
 						aria-label='Đóng'
@@ -96,10 +97,17 @@ export function TopicDrawer({
 				</div>
 
 				{/* Tabs */}
-				<div className={styles.drawerTabs}>
+				<div
+					className={styles.drawerTabs}
+					role='tablist'
+					aria-label='Thông tin đề tài'
+				>
 					{TABS.map((t) => (
-						<div
+						<button
 							key={t.key}
+							type='button'
+							role='tab'
+							aria-selected={tab === t.key}
 							className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
 							onClick={() => setTab(t.key)}
 						>
@@ -107,7 +115,7 @@ export function TopicDrawer({
 							{t.count !== undefined && (
 								<span className={styles.tabBadge}>{t.count}</span>
 							)}
-						</div>
+						</button>
 					))}
 				</div>
 
@@ -241,12 +249,14 @@ export function TopicDrawer({
 				{/* Footer */}
 				<div className={styles.drawerFooter}>
 					<button
+						type='button'
 						className={styles.btnSecondary}
 						onClick={onClose}
 					>
 						Đóng
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={onEdit}
 					>

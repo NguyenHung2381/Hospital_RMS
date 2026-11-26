@@ -167,6 +167,11 @@
 }
 
 .deadlineItem {
+	/* <button> — nhận lại dáng khối như thẻ div trước đây */
+	width: 100%;
+	font: inherit;
+	color: inherit;
+	text-align: left;
 	position: relative;
 	display: flex;
 	align-items: center;

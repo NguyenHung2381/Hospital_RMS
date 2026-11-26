@@ -63,6 +63,7 @@ function FileBox({
 							onChange={(e) => upload.onFiles(e.target.files)}
 						/>
 						<button
+							type='button'
 							className={styles.uploadBtn}
 							disabled={upload.uploading}
 							onClick={upload.onClick}
@@ -95,8 +96,10 @@ function FileBox({
 							</span>
 							{onDelete && (
 								<button
+									type='button'
 									className={styles.fileDelete}
 									title={deleteTitle}
+									aria-label={`${deleteTitle ?? 'Xóa file'}: ${f.file_name}`}
 									onClick={() => onDelete(f.id)}
 								>
 									✕

@@ -1,44 +1,3 @@
-/* ─── Overlay ────────────────────────────────────────────────────────────── */
-.overlay {
-	position: fixed;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.45);
-	z-index: 100;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--space-4);
-}
-.modal {
-	background: var(--color-white);
-	border-radius: var(--radius-xl);
-	box-shadow: var(--shadow-xl);
-	width: 480px;
-	max-width: 100%;
-	display: flex;
-	flex-direction: column;
-}
-
-/* ─── Header ─────────────────────────────────────────────────────────────── */
-.modalHead {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--space-5) var(--space-6);
-	border-bottom: 1px solid var(--color-gray-100);
-}
-.modalTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-	margin: 0;
-}
-.closeBtn {
-	composes: closeBtn from '../styles/shared.module.css';
-	width: 30px;
-	height: 30px;
-}
-
 /* ─── Body ───────────────────────────────────────────────────────────────── */
 .modalBody {
 	padding: var(--space-5) var(--space-6);
@@ -90,12 +49,11 @@
 }
 
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
-.modalFoot {
+.footRow {
 	display: flex;
 	align-items: center;
 	gap: var(--space-3);
-	padding: var(--space-4) var(--space-6);
-	border-top: 1px solid var(--color-gray-100);
+	flex: 1;
 }
 .modalFootRight {
 	display: flex;

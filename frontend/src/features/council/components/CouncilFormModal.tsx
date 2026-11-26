@@ -1,5 +1,5 @@
 import { Modal, ModalActions } from '@/shared/components';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { ClipboardCheckSvg } from '@/assets/icons';
 import type { ResearchRound } from '../../round/types/round.type';
 import {
@@ -28,6 +28,7 @@ export function CouncilFormModal({
 	onSave: (form: CouncilForm) => void;
 	loading: boolean;
 }) {
+	const uid = useId();
 	const [form, setForm] = useState<CouncilForm>(
 		council
 			? {
@@ -40,6 +41,8 @@ export function CouncilFormModal({
 				}
 			: EMPTY_FORM,
 	);
+	// Ảnh chụp ban đầu của form: so sánh để biết còn thay đổi chưa lưu khi đóng.
+	const [initialForm] = useState(form);
 	const [errors, setErrors] = useState<Partial<Record<keyof CouncilForm, string>>>({});
 
 	const set =
@@ -61,6 +64,7 @@ export function CouncilFormModal({
 		<Modal
 			open
 			onClose={onClose}
+			dirty={JSON.stringify(form) !== JSON.stringify(initialForm)}
 			icon={<ClipboardCheckSvg />}
 			title={mode === 'add' ? 'Tạo hội đồng' : 'Chỉnh sửa hội đồng'}
 			subtitle={mode === 'add' ? 'Tạo hội đồng chấm đề cương mới' : `Cập nhật — ${council?.id}`}
@@ -79,12 +83,15 @@ export function CouncilFormModal({
 				className={styles.formGroup}
 				style={{ gridColumn: '1 / -1' }}
 			>
-				<label className={styles.formLabel}>
+				<label htmlFor={`${uid}-f1`} className={styles.formLabel}>
 					Đợt nghiên cứu <span className={styles.required}>*</span>
 				</label>
 				<select
+					id={`${uid}-f1`}
 					className={`${styles.formInput} ${errors.round_id ? styles.inputError : ''}`}
 					aria-invalid={errors.round_id ? true : undefined}
+					aria-describedby={errors.round_id ? `${uid}-f1-error` : undefined}
+					aria-required
 					value={form.round_id}
 					onChange={set('round_id')}
 					disabled={mode === 'edit'}
@@ -100,29 +107,46 @@ export function CouncilFormModal({
 					))}
 				</select>
 				{errors.round_id && (
-					<div className={styles.fieldError}>{errors.round_id}</div>
+					<div
+						id={`${uid}-f1-error`}
+						className={styles.fieldError}
+						role='alert'
+					>
+						{errors.round_id}
+					</div>
 				)}
 			</div>
 
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>
+				<label htmlFor={`${uid}-f2`} className={styles.formLabel}>
 					Tên hội đồng <span className={styles.required}>*</span>
 				</label>
 				<input
+					id={`${uid}-f2`}
 					className={`${styles.formInput} ${errors.name ? styles.inputError : ''}`}
+					aria-invalid={errors.name ? true : undefined}
+					aria-describedby={errors.name ? `${uid}-f2-error` : undefined}
+					aria-required
 					value={form.name}
 					onChange={set('name')}
 					placeholder='VD: Hội đồng 1 - Khoa Bỏng'
 				/>
 				{errors.name && (
-					<div className={styles.fieldError}>{errors.name}</div>
+					<div
+						id={`${uid}-f2-error`}
+						className={styles.fieldError}
+						role='alert'
+					>
+						{errors.name}
+					</div>
 				)}
 			</div>
 
 			<div className={styles.formGrid2}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Hệ chuyên môn</label>
+					<label htmlFor={`${uid}-f3`} className={styles.formLabel}>Hệ chuyên môn</label>
 					<input
+						id={`${uid}-f3`}
 						className={styles.formInput}
 						value={form.specialty_group}
 						onChange={set('specialty_group')}
@@ -141,8 +165,9 @@ export function CouncilFormModal({
 			</div>
 
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Ngày bảo vệ</label>
+				<label htmlFor={`${uid}-f4`} className={styles.formLabel}>Ngày bảo vệ</label>
 				<DatePicker
+					id={`${uid}-f4`}
 					value={form.defense_date}
 					onChange={(val) =>
 						setForm((prev) => ({ ...prev, defense_date: val }))
@@ -153,8 +178,9 @@ export function CouncilFormModal({
 
 			{mode === 'edit' && (
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Trạng thái</label>
+					<label htmlFor={`${uid}-f5`} className={styles.formLabel}>Trạng thái</label>
 					<select
+						id={`${uid}-f5`}
 						className={styles.formInput}
 						value={form.status}
 						onChange={set('status')}

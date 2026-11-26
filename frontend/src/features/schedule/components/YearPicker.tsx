@@ -60,6 +60,7 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 	return (
 		<div className={styles.root} ref={rootRef}>
 			<button
+				type='button'
 				className={styles.nav}
 				onClick={() => onChange(value - 1)}
 				disabled={value <= min}
@@ -69,6 +70,7 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 				<Chevron dir='left' />
 			</button>
 			<button
+				type='button'
 				className={`${styles.trigger}${open ? ` ${styles.triggerOpen}` : ''}`}
 				onClick={() => {
 					// Mở lại luôn hiện trang chứa năm đang chọn
@@ -85,6 +87,7 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 				<span className={styles.caret}><Chevron dir='down' /></span>
 			</button>
 			<button
+				type='button'
 				className={styles.nav}
 				onClick={() => onChange(value + 1)}
 				disabled={value >= max}
@@ -98,6 +101,7 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 				<div className={styles.popover} role='dialog' aria-label='Chọn năm'>
 					<div className={styles.popHeader}>
 						<button
+							type='button'
 							className={styles.pageBtn}
 							onClick={() => setPageStart((s) => s - PAGE_SIZE)}
 							disabled={pageStart <= min}
@@ -107,6 +111,7 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 						</button>
 						<span className={styles.popTitle}>{pageStart} – {pageEnd}</span>
 						<button
+							type='button'
 							className={styles.pageBtn}
 							onClick={() => setPageStart((s) => s + PAGE_SIZE)}
 							disabled={pageEnd >= max}
@@ -123,14 +128,14 @@ export function YearPicker({ value, onChange, min, max, currentYear }: YearPicke
 								y === currentYear && styles.cellCurrent,
 							].filter(Boolean).join(' ');
 							return (
-								<button key={y} className={cls} onClick={() => pick(y)} disabled={y < min || y > max}>
+								<button type='button' key={y} className={cls} onClick={() => pick(y)} disabled={y < min || y > max}>
 									{y}
 								</button>
 							);
 						})}
 					</div>
 					{value !== currentYear && (
-						<button className={styles.todayBtn} onClick={() => pick(currentYear)}>
+						<button type='button' className={styles.todayBtn} onClick={() => pick(currentYear)}>
 							Về năm nay ({currentYear})
 						</button>
 					)}

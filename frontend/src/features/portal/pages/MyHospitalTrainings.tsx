@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BadgeSvg, BuildingSvg, CalendarSvg, CheckSvg, ClockSvg, TagSvg, XSvg } from '@/assets/icons';
-import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
+import { Badge, Button, Card, EmptyState, InlineLoading, confirmDialog } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { showToast } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
@@ -175,8 +175,15 @@ function TrainingCard({ row, onChanged }: { row: MyHospitalTraining; onChanged: 
 							icon={<XSvg />}
 							className={styles.bigBtn}
 							loading={busy}
-							onClick={() => {
-								if (confirm(`Hủy đăng ký "${row.title}"?`))
+							onClick={async () => {
+								if (
+									await confirmDialog({
+										title: `Hủy đăng ký "${row.title}"?`,
+										tone: 'danger',
+										confirmLabel: 'Hủy đăng ký',
+										cancelLabel: 'Giữ lại',
+									})
+								)
 									void act(() => hospitalTrainingSelfApi.cancel(row.id), 'Đã hủy đăng ký');
 							}}
 						>
