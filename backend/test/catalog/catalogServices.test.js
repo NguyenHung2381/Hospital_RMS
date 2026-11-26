@@ -136,25 +136,40 @@ test('roundType.setLevels: xoá rồi ghi lại trong 1 transaction, bỏ trùng
 	const t = texts();
 	const iDel = t.findIndex((x) => x.includes('DELETE FROM round_type_levels'));
 	const ins = log.filter((l) => l.text.includes('INSERT INTO round_type_levels'));
+	assert.ok(ins.length >= 1);
 	assert.ok(iDel >= 0 && iDel < t.findIndex((x) => x.includes('INSERT')));
-	assert.deepEqual(
-		ins.map((l) => l.inputs.lid),
-		['CD01', 'CD02'],
+	assert.ok(t.indexOf('COMMIT') > t.lastIndexOf(ins.at(-1).text), 'mọi câu ghi trước COMMIT');
+	// Không phụ thuộc cách ghi (từng dòng VALUES hay 1 câu INSERT…SELECT FROM levels):
+	// mã gửi xuống đã bỏ trùng / rỗng; mã không có trong levels bị lọc ở JS hoặc ở SQL.
+	const sent = ins.flatMap((l) =>
+		Object.entries(l.inputs)
+			.filter(([k]) => /^lid/.test(k))
+			.map(([, v]) => v),
 	);
-	assert.ok(t.indexOf('COMMIT') > t.lastIndexOf(ins.at(-1).text));
+	assert.equal(new Set(sent).size, sent.length, 'không ghi trùng');
+	assert.ok(
+		sent.every((v) => typeof v === 'string' && v),
+		'không có mã rỗng',
+	);
+	assert.ok(sent.includes('CD01') && sent.includes('CD02'));
+	if (sent.includes('CD99'))
+		assert.ok(
+			ins.every((l) => /SELECT[\s\S]+FROM levels/.test(l.text)),
+			'mã lạ chỉ được gửi xuống khi SQL tự lọc qua bảng levels',
+		);
+	assert.ok(ins.every((l) => l.inputs.rt === 'RT01'));
 	assert.deepEqual(res, ['CD01', 'CD02']);
 });
 
 test('roundType.setLevels: lỗi giữa chừng ⇒ rollback (loại đợt không mất hết cấp độ)', async () => {
 	reset();
 	const orig = db.sql.Transaction.prototype.request;
-	let n = 0;
+	// Lỗi ở câu INSERT (sau khi đã DELETE) — DELETE phải được hoàn tác
 	db.sql.Transaction.prototype.request = function () {
 		const req = orig.call(this);
 		const q = req.query;
 		req.query = async (text) => {
-			if (text.includes('INSERT INTO round_type_levels') && ++n === 2)
-				throw new Error('mất kết nối');
+			if (text.includes('INSERT INTO round_type_levels')) throw new Error('mất kết nối');
 			return q(text);
 		};
 		return req;
