@@ -214,11 +214,6 @@
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
 }
-.select.fileType {
-	flex: none;
-	width: 170px;
-	min-height: 36px;
-}
 .fileRemove {
 	flex: none;
 	display: inline-flex;
@@ -531,10 +526,6 @@
 	}
 	.fileItem {
 		flex-wrap: wrap;
-	}
-	.select.fileType {
-		order: 3;
-		width: 100%;
 	}
 	.courseList {
 		grid-template-columns: 1fr;
