@@ -80,7 +80,7 @@ export default function ExamTaking({
 			<div className={styles.examHeader}>
 				<div
 					className={styles.timer}
-					style={{ color: remainingMs < 60_000 ? '#e24b4a' : undefined }}
+					style={{ color: remainingMs < 60_000 ? 'var(--tone-red-fg)' : undefined }}
 				>
 					<ClockSvg /> {fmtClock(remainingMs)}
 				</div>
