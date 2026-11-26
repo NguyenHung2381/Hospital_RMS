@@ -8,6 +8,13 @@ const roundCtrl = require('./roundController');
 const deadlineSvc = require('./deadlineService');
 const { requireModule } = require('../../middlewares/moduleGuard');
 
+// Giai đoạn mốc thời hạn trong URL: số nguyên 1–9, sai ⇒ null (route trả 400)
+const parsePhase = (raw) => {
+	const phase = Number(raw);
+	return Number.isInteger(phase) && phase >= 1 && phase <= 9 ? phase : null;
+};
+const BAD_PHASE = { success: false, message: 'Giai đoạn phải từ 1–9' };
+
 // ─── Research Rounds ──────────────────────────────────────────────────────────
 // Router gắn ở gốc API (không có tiền tố) nên công tắc module gắn theo đường dẫn.
 router.use('/research-rounds', requireModule('RESEARCH'));
@@ -100,9 +107,8 @@ router.post(
 	],
 	validate,
 	asyncHandler(async (req, res) => {
-		const phase = parseInt(req.params.phase, 10);
-		if (isNaN(phase) || phase < 1 || phase > 9)
-			return res.status(400).json({ success: false, message: 'Giai đoạn phải từ 1–9' });
+		const phase = parsePhase(req.params.phase);
+		if (!phase) return res.status(400).json(BAD_PHASE);
 		const item = await deadlineSvc.upsert(req.params.id, phase, req.body, req.user.id);
 		return created(res, item, 'Lưu hạn nộp thành công');
 	}),
@@ -113,7 +119,8 @@ router.delete(
 	authenticate,
 	authorizePermission(['rounds', 'update']),
 	asyncHandler(async (req, res) => {
-		const phase = parseInt(req.params.phase, 10);
+		const phase = parsePhase(req.params.phase);
+		if (!phase) return res.status(400).json(BAD_PHASE);
 		await deadlineSvc.remove(req.params.id, phase, req.user.id);
 		return success(res, null, 'Xóa hạn nộp thành công');
 	}),
