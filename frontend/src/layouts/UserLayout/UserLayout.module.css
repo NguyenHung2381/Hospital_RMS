@@ -689,23 +689,28 @@ a.trailItem:hover {
 	min-width: 0;
 }
 
+/* Không đủ chỗ cho tiêu đề + nhóm nút thì nhóm nút xuống dòng, không ép tiêu đề /
+   mô tả thành cột chữ hẹp (như AdminLayout) */
 .pageHeader {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-end;
 	justify-content: space-between;
-	gap: var(--space-4);
+	gap: var(--space-3) var(--space-4);
 }
 
 .pageHeaderLeft {
-	flex: 1;
-	min-width: 0;
+	flex: 1 1 320px;
+	min-width: min(100%, 280px);
 }
 
 .pageHeaderRight {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--space-3);
 	flex-shrink: 0;
+	max-width: 100%;
 }
 
 .pageTitle {
@@ -850,6 +855,11 @@ a.trailItem:hover {
 		flex-direction: column;
 		align-items: stretch;
 		gap: var(--space-3);
+	}
+
+	/* Xếp cột: flex-basis 320px sẽ thành chiều cao */
+	.pageHeaderLeft {
+		flex: none;
 	}
 
 	.pageHeaderRight {
