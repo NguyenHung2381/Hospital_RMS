@@ -1,0 +1,86 @@
+/* Ô chọn vai trò dạng viên thuốc — màu theo vai trò qua --tone-*.
+   Vòng focus dùng luật :focus-visible chung trong styles/global.css (không tắt outline). */
+.wrap {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+}
+
+.select {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 26px 4px 12px;
+	border-radius: var(--radius-full);
+	border: 1px solid var(--pill-border);
+	background: var(--pill-bg);
+	color: var(--pill-fg);
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-semibold);
+	line-height: 1.3;
+	cursor: pointer;
+	transition:
+		background-color var(--transition-fast),
+		border-color var(--transition-fast);
+}
+
+.select:hover:not(:disabled) {
+	border-color: var(--pill-fg);
+}
+
+.select:disabled {
+	cursor: not-allowed;
+}
+
+.select option {
+	background: var(--color-white);
+	color: var(--color-gray-800);
+	font-weight: var(--font-weight-medium);
+}
+
+.md {
+	height: 38px;
+}
+
+.md .select {
+	height: 38px;
+	padding: 0 32px 0 14px;
+	font-size: var(--font-size-compact);
+	line-height: 36px;
+}
+
+.chevron {
+	position: absolute;
+	right: 8px;
+	width: 12px;
+	height: 12px;
+	pointer-events: none;
+	color: var(--pill-fg);
+}
+
+.md .chevron {
+	right: 10px;
+	width: 14px;
+	height: 14px;
+}
+
+.leader {
+	--pill-bg: var(--tone-green-bg);
+	--pill-fg: var(--tone-green-fg);
+	--pill-border: var(--tone-green-border);
+}
+
+.secretary {
+	--pill-bg: var(--tone-blue-bg);
+	--pill-fg: var(--tone-blue-fg);
+	--pill-border: var(--tone-blue-border);
+}
+
+.member {
+	--pill-bg: var(--tone-gray-bg);
+	--pill-fg: var(--tone-gray-fg);
+	--pill-border: var(--color-gray-300);
+}

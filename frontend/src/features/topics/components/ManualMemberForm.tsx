@@ -222,14 +222,14 @@ export function ManualMemberForm({
 									transition: 'all 0.15s',
 									border:
 										manualRole === r
-											? '2px solid var(--color-primary)'
+											? '2px solid var(--color-primary-dark)'
 											: '2px solid var(--color-gray-200)',
 									background:
 										manualRole === r
-											? 'var(--color-primary)'
+											? 'var(--color-primary-dark)'
 											: 'var(--color-white)',
 									color:
-										manualRole === r ? '#fff' : 'var(--color-gray-600)',
+										manualRole === r ? 'var(--color-white)' : 'var(--color-gray-600)',
 								}}
 							>
 								<span
@@ -258,11 +258,11 @@ export function ManualMemberForm({
 							alignItems: 'center',
 							gap: 7,
 							padding: '8px 12px',
-							background: '#fef2f2',
-							border: '1px solid #fecaca',
+							background: 'var(--tone-red-bg)',
+							border: '1px solid var(--tone-red-border)',
 							borderRadius: 8,
 							fontSize: 12,
-							color: '#991b1b',
+							color: 'var(--tone-red-fg)',
 						}}
 					>
 						<AlertSvg /> {manualError}

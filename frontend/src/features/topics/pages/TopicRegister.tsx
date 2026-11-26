@@ -163,7 +163,7 @@ export default function TopicRegister() {
 				<div className={styles.emptyCard}>
 					<div
 						className={styles.emptyCardIcon}
-						style={{ background: '#fee2e2', color: '#ef4444' }}
+						style={{ background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' }}
 					>
 						<AlertSvg />
 					</div>
@@ -191,7 +191,7 @@ export default function TopicRegister() {
 				<div className={styles.emptyCard}>
 					<div
 						className={styles.emptyCardIcon}
-						style={{ background: '#fef3c7', color: '#b45309' }}
+						style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }}
 					>
 						<AlertSvg />
 					</div>
