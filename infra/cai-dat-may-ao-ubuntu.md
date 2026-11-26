@@ -118,13 +118,42 @@ Quy ước trong tài liệu:
 | RAM | 8 GB | 12–16 GB |
 | Ổ 1 | 50 GB | |
 | Ổ 2 | 50 GB, **chưa phân vùng** | |
-| Mạng | 1 card, IP tĩnh trong LAN, ra được Internet (để tải gói) | |
+| Mạng | 1 card, IP tĩnh trong LAN, ra được Internet (để tải gói, xem 1.1) | |
 
 RAM ước tính: PostgreSQL ~3–4 GB (`shared_buffers` + cache, bước 6), ClamAV (quét virus file upload) ~1,5 GB, backend ~300 MB mỗi worker, Redis + Nginx < 250 MB, hệ điều hành ~1 GB. Máy 8 GB thì để `WEB_CONCURRENCY=2` (bước 11.3) và chép `infra/postgresql/rms-ram-8gb.conf` (PostgreSQL ~2,5–3 GB, bước 6.3), RAM ít hơn nữa thì tắt ClamAV.
 
 Lúc chuyển dữ liệu cũ từ file `.bak` (bước 12.2), máy cần thêm ~2 GB RAM trống cho SQL Server tạm trong Docker: tạm dừng ClamAV trong lúc chuyển nếu máy chỉ có 8 GB.
 
 Trên hypervisor (VMware, Hyper-V, Proxmox…), gắn **cả 2 ổ trước khi cài Ubuntu**, để trình cài đặt thấy cả hai và bạn chọn đúng ổ 1.
+
+### 1.1. Kết nối ra Internet cần mở
+
+Máy ảo chỉ cần kết nối **ra** (không mở cổng vào từ Internet). Firewall của viện lọc theo tên miền thì phải cho các tên sau (HTTPS 443, riêng DNS là 53). Nên mở theo **tên miền**, không theo IP: IP của GitHub / Docker đổi thường xuyên.
+
+| Dùng cho | Tên miền |
+|---|---|
+| Gói Ubuntu, bản vá | `archive.ubuntu.com`, `security.ubuntu.com` (hoặc mirror của viện) |
+| PostgreSQL (bước 6) | `apt.postgresql.org` |
+| Docker Engine (bước 8) | `download.docker.com` |
+| Image nền khi build trên máy (bước 12) | `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com` |
+| Lấy code (bước 10) | `github.com` (SSH 22 hoặc HTTPS 443) |
+| Runner CI/CD nhận việc, tự cập nhật (bước 15) | `github.com`, `api.github.com`, `*.actions.githubusercontent.com`, `codeload.github.com`, `results-receiver.actions.githubusercontent.com`, `objects.githubusercontent.com`, `github-releases.githubusercontent.com`, `*.blob.core.windows.net` — danh sách đầy đủ: GitHub Docs, mục *Communication between self-hosted runners and GitHub* |
+| Tải image đã build khi deploy (bước 15) | `ghcr.io`, `pkg-containers.githubusercontent.com` |
+| Let's Encrypt (nếu chọn `letsencrypt`, bước 13.3) | `acme-v02.api.letsencrypt.org` |
+
+Thiếu `ghcr.io` / `pkg-containers.githubusercontent.com` thì runner vẫn nhận job (qua `github.com`) nhưng deploy hỏng ở bước *Đăng nhập registry* hoặc lúc tải image (mục 16). Kiểm tra từ máy ảo — phải ra mã HTTP (`401`, `400`…), không phải `000`:
+
+```bash
+for u in https://ghcr.io/v2/ https://pkg-containers.githubusercontent.com/ https://github.com https://download.docker.com; do
+  printf '%-48s %s\n' "$u" "$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 "$u")"
+done
+```
+
+### 1.2. Dải IP của LAN
+
+Docker tự cấp dải `172.17.0.0/16` (`docker0`) và `172.18–172.31.x` cho mạng của compose. PostgreSQL (UFW + `pg_hba`) và nginx (`TRUSTED_PROXIES` mặc định) chỉ tin đúng dải đó: **172.17.0.0 → 172.31.255.255**. LAN `172.16.x` (vd máy chủ `172.16.25.21`), `10.x`, `192.168.x` không bị ảnh hưởng.
+
+LAN của viện nằm trong `172.17–172.31` thì phải đổi dải Docker trước khi cài (mục 8.2), nếu không máy chủ mất đường tới phần LAN trùng và máy trong LAN đó vào được `5432`. Hỏi IT dải nào đang dùng; `scripts/firewall-ports.sh` cảnh báo khi phát hiện trùng.
 
 ---
 
@@ -544,10 +573,15 @@ Phải thấy `3GB` (máy 8 GB: `2GB`), `Asia/Ho_Chi_Minh`, `pg_stat_statements,
 `rms.conf` cho PostgreSQL nghe mọi địa chỉ (cổng `docker0` có thể chưa có lúc PostgreSQL khởi động). Việc chặn do `pg_hba.conf` và firewall:
 
 ```bash
-# Chỉ mạng Docker (172.16.0.0/12) được vào 5432; máy khác trong LAN thì không
-sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp
+# Chỉ mạng Docker (172.17.0.0 → 172.31.255.255) được vào 5432; máy khác trong LAN thì không.
+# insert 1: allow phải đứng TRƯỚC deny
+for n in 172.17.0.0/16 172.18.0.0/15 172.20.0.0/14 172.24.0.0/13; do
+  sudo ufw insert 1 allow from $n to any port 5432 proto tcp
+done
 sudo ufw deny 5432/tcp
 ```
+
+> **Không dùng `172.16.0.0/12`** (bản hướng dẫn cũ): dải đó chứa cả `172.16.x` — LAN bệnh viện hay dùng — nên mọi máy trong LAN vào được `5432`. Máy đã cài theo bản cũ: chạy `bash ~/setup-server.sh firewall postgres` (chép bản `setup-server.sh` mới lên trước). Bước `firewall` gỡ rule cũ, bước `postgres` thay khối quy tắc trong `pg_hba.conf` và chỉ `reload` (không ngắt kết nối). Làm tay thì xem mục 13.1.
 
 Kiểm tra từ container backend (khi đã chạy): `docker compose -f docker-compose.prod.yml exec backend node -e "require('net').connect(5432,'host.docker.internal').on('connect',()=>{console.log('OK');process.exit()}).on('error',e=>{console.log(e.message);process.exit(1)})"`.
 
@@ -682,6 +716,15 @@ EOF
 ```
 
 `log-opts` giới hạn log mỗi container ở 5 file × 20 MB, tránh log làm đầy ổ.
+
+**LAN của viện nằm trong `172.17–172.31`** (mục 1.2): thêm vào `daemon.json` một dải LAN không dùng (hỏi IT), vd `10.250.0.0/16`:
+
+```json
+  "bip": "10.250.0.1/24",
+  "default-address-pools": [{ "base": "10.250.0.0/16", "size": 24 }]
+```
+
+Khi đó thay 4 dải `172.17…172.24` bằng `10.250.0.0/16` ở UFW (6.4), `pg_hba.conf` và `TRUSTED_PROXIES` (11.3). Máy đang chạy thì phải `docker compose down` rồi `up` lại để mạng được tạo theo dải mới.
 
 ### 8.3. Cài từ kho chính thức của Docker
 
@@ -861,7 +904,7 @@ Các biến khác của file `.env` này (đều có mặc định):
 
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
-| `TRUSTED_PROXIES` | `127.0.0.1/32 172.16.0.0/12` | IP/CIDR của reverse proxy HTTPS. Chỉ request từ đây mới được tin `X-Forwarded-For` / `X-Forwarded-Proto`. Proxy ở máy khác thì **bắt buộc** khai (13.3) |
+| `TRUSTED_PROXIES` | `127.0.0.1/32` + dải Docker `172.17.0.0/16 172.18.0.0/15 172.20.0.0/14 172.24.0.0/13` | IP/CIDR của reverse proxy HTTPS (proxy cùng máy đi vào qua gateway Docker nên mặc định đã đúng). Chỉ request từ đây mới được tin `X-Forwarded-For` / `X-Forwarded-Proto`. Proxy ở máy khác thì **bắt buộc** khai (13.3) |
 | `ONLY_TRUSTED_PROXIES` | `auto` | `auto`: đã khai `TRUSTED_PROXIES` thì chỉ proxy đó, `127.0.0.1` và máy chạy Docker được vào `8081`, nơi khác nhận **403**. `false`: cho truy cập thẳng. `true`: luôn chặn |
 | `CSP_REPORT_ONLY` | `false` | `true` = CSP chỉ báo cáo, không chặn — chỉ để gỡ nhanh khi CSP chặn nhầm (13.4) |
 | `FRONTEND_BIND` | `8081` | Địa chỉ publish cổng frontend |
@@ -997,15 +1040,33 @@ Mọi container có `restart: unless-stopped` nên tự chạy lại cùng Docke
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow OpenSSH
-# Cho container Docker gọi PostgreSQL trên host (dải mạng nội bộ của Docker).
-# Đã làm ở bước 6.4 thì bỏ qua 2 dòng này.
-sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp
+# Cho container Docker gọi PostgreSQL trên host (172.17.0.0 → 172.31.255.255, mục 1.2).
+# Đã làm ở bước 6.4 thì bỏ qua 4 dòng này.
+for n in 172.17.0.0/16 172.18.0.0/15 172.20.0.0/14 172.24.0.0/13; do
+  sudo ufw insert 1 allow from $n to any port 5432 proto tcp
+done
 sudo ufw deny 5432/tcp
 sudo ufw reload
 sudo ufw status verbose
 ```
 
 - **Không** mở cổng `5432` ra LAN. Quản trị DB thì dùng SSH tunnel (cuối bước 6).
+
+**Máy cài theo bản hướng dẫn cũ** (UFW có rule `5432 ALLOW IN 172.16.0.0/12`): dải đó chứa cả LAN `172.16.x`. Cách nhanh là `bash ~/setup-server.sh firewall postgres`. Làm tay — thêm rule mới trước, gỡ rule cũ sau (container không lúc nào mất kết nối), rồi sửa `pg_hba.conf` và `reload`:
+
+```bash
+for n in 172.24.0.0/13 172.20.0.0/14 172.18.0.0/15 172.17.0.0/16; do sudo ufw insert 1 allow from $n to any port 5432 proto tcp; done
+sudo ufw delete allow from 172.16.0.0/12 to any port 5432 proto tcp
+sudo ufw status numbered | grep 5432                # 4 dòng ALLOW đứng trước DENY
+
+F=/etc/postgresql/18/main/pg_hba.conf
+sudo cp $F $F.bak-$(date +%F)
+sudo sed -i -E '/^host\s.*172\.16\.0\.0\/12/{s#172\.16\.0\.0/12#172.17.0.0/16#;p;s#172\.17\.0\.0/16#172.18.0.0/15#;p;s#172\.18\.0\.0/15#172.20.0.0/14#;p;s#172\.20\.0\.0/14#172.24.0.0/13#}' $F
+sudo systemctl reload postgresql@18-main
+sudo -u postgres psql -c "select line_number, address, netmask, error from pg_hba_file_rules where address like '172.%' or error is not null"
+```
+
+Cột `error` phải trống. Sai thì chép bản `.bak-<ngày>` đè lại rồi `reload`. Đặt `TRUSTED_PROXIES` trong `.env` (13.3) hoặc cập nhật image frontend (mặc định mới đã bỏ `172.16.x`). Từ máy khác trong LAN, `nc -zv <IP-VM> 5432` phải bị từ chối / timeout.
 - Chỉ cho SSH từ dải mạng quản trị (tuỳ chọn, chặt hơn): `sudo ufw allow from 192.168.1.0/24 to any port 22 proto tcp`, rồi `sudo ufw delete allow OpenSSH`.
 
 ### 13.2. Docker mở cổng không qua UFW — chặn bằng `scripts/firewall-ports.sh`
@@ -1022,7 +1083,7 @@ sudo bash scripts/firewall-ports.sh remove                            # gỡ, tr
 ```
 
 - Cấu hình lưu ở `/etc/rms/docker-ports.conf`; service `rms-firewall-ports` nạp lại rule mỗi lần Docker khởi động (reboot không mất).
-- Lệnh xem (`status`) trả mã `2` khi có cảnh báo: cổng Docker mở cho mọi máy, UFW tắt, dịch vụ lạ lắng nghe trên mạng, LAN trùng dải `172.16.0.0/12` của Docker (khi đó máy trong LAN tới được `5432`).
+- Lệnh xem (`status`) trả mã `2` khi có cảnh báo: cổng Docker mở cho mọi máy, UFW tắt, dịch vụ lạ lắng nghe trên mạng, UFW / `pg_hba.conf` còn rule cũ `172.16.0.0/12`, LAN trùng dải Docker `172.17–172.31` (mục 1.2), mạng Docker nằm ngoài dải đó.
 - Vẫn nên giữ `TRUSTED_PROXIES=<IP proxy>` trong `.env` (nginx tự trả 403 cho máy khác) và `FRONTEND_BIND=127.0.0.1:8081` khi proxy ở cùng máy — nhiều lớp chặn.
 - Kiểm tra lại từ **máy khác** trong LAN: `nmap -Pn -p 1-65535 <IP-VM>` — chỉ nên thấy `22` (và `80/443` nếu dựng 13.3, `8081` từ máy proxy).
 
@@ -1345,8 +1406,10 @@ Script ghi secret mới vào đúng nơi đang giữ: `backend/.env.production`,
 | `Permission denied (publickey)` | Khoá chưa lên máy ảo hoặc sai file khoá. Vào bằng console, kiểm tra `~/.ssh/authorized_keys` (quyền thư mục `700`, file `600`). |
 | `/data` không có sau reboot | `cat /etc/fstab`, `sudo mount -a` xem lỗi. So UUID bằng `sudo blkid`. |
 | PostgreSQL không khởi động | `sudo journalctl -u postgresql@18-main -n 50 --no-pager`, `sudo tail -50 /var/log/postgresql/postgresql-18-main.log`. Thường do quyền thư mục (`/data/pgsql` phải thuộc `postgres`, quyền `700`) hoặc `shared_buffers` quá lớn so với RAM. |
-| Backend log `connect ECONNREFUSED ...:5432` / timeout | `sudo ss -ltnp \| grep 5432` (phải nghe `0.0.0.0:5432`); rule UFW cho `172.16.0.0/12` (13.1); `DB_SERVER=host.docker.internal` trong `backend/.env`. |
+| Backend log `connect ECONNREFUSED ...:5432` / timeout | `sudo ss -ltnp \| grep 5432` (phải nghe `0.0.0.0:5432`); rule UFW cho dải Docker `172.17–172.31` (13.1); `DB_SERVER=host.docker.internal` trong `backend/.env`. Mạng compose nằm ngoài dải này (`docker network inspect hospital_rms_default`, vd `192.168.x` khi Docker hết dải 172) thì UFW / `pg_hba` chặn: xem 8.2. |
 | Backend log `no pg_hba.conf entry for host "172.x.x.x"` | Chưa chép `infra/postgresql/pg_hba.rms.conf` lên đầu `pg_hba.conf`, hoặc chưa `systemctl reload postgresql@18-main`. |
+| Deploy hỏng ở *Đăng nhập registry*: `dial tcp …:443: connect: no route to host` / `i/o timeout` | Máy ảo không ra được `ghcr.io`. Chạy lệnh kiểm tra ở 1.1. Lúc thử lại mà ra `401` là mạng chập chờn đúng lúc deploy (log: `sudo journalctl -u docker --since "1 hour ago" \| grep -i route`) — bấm *Re-run failed jobs*; bước này đã tự thử lại 4 lần. Luôn ra `000` thì nhờ IT mở `ghcr.io`, `pkg-containers.githubusercontent.com`. Mạng viện bắt buộc qua proxy thì khai proxy cho dịch vụ Docker (`/etc/systemd/system/docker.service.d/http-proxy.conf`, `HTTPS_PROXY=…`) — Docker không dùng biến proxy của shell. |
+| Deploy treo / hỏng lúc tải image (`compose pull`) | Đăng nhập được mà không tải được lớp image: thiếu `pkg-containers.githubusercontent.com` (1.1). Image lớn, mạng chậm thì chỉ là lâu — xem tiến độ bằng `docker pull ghcr.io/<owner>/hospital_rms-backend:<SHA>`. |
 | Backend log `password authentication failed for user "rms_app"` | Sai mật khẩu trong `backend/.env.production`. Đặt lại: `sudo -u postgres psql -c "\password rms_app"`. |
 | `transfer-from-bak.sh` báo `Chưa có mạng Docker hospital_rms_default` | Chạy `docker compose -f docker-compose.prod.yml up -d redis` trước (bước 12.2 b). |
 | `transfer-from-bak.sh` báo DB nguồn chưa chạy migration | File `.bak` lấy từ bản code cũ: deploy commit `dd0f62e` lên SQL Server cũ, chạy hết migration, rồi backup lại (bước 7). |

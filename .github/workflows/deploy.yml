@@ -56,7 +56,19 @@ jobs:
       - name: Đăng nhập registry
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        # Mạng bệnh viện có lúc chập chờn (lỗi "no route to host" tới ghcr.io vài giây)
+        # — thử lại 4 lần, cách 15 giây, như bước pull trong deploy.sh
+        run: |
+          for i in 1 2 3 4; do
+            if printf '%s' "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin; then
+              exit 0
+            fi
+            [ "$i" -lt 4 ] || break
+            echo "::warning::docker login ghcr.io lỗi (lần $i/4) — thử lại sau 15 giây"
+            sleep 15
+          done
+          echo "::error::Không đăng nhập được ghcr.io — kiểm tra mạng máy chủ ra ghcr.io (infra/cai-dat-may-ao-ubuntu.md mục 1.1)"
+          exit 1
       - name: Triển khai + smoke test (tự rollback khi hỏng)
         env:
           TAG: ${{ inputs.tag }}

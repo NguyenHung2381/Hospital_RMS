@@ -236,10 +236,19 @@ cmd_status() {
 		sshd:tcp/* | ssh:tcp/*) ok "SSH — chặt hơn: chỉ cho dải mạng quản trị (mục 13.1 tài liệu)" ;;
 		nginx:tcp/80 | nginx:tcp/443) ok "nginx reverse proxy HTTPS" ;;
 		postgres:tcp/5432)
-			if ufw status 2>/dev/null | grep -E '^5432/tcp +DENY' >/dev/null; then
-				ok "PostgreSQL — UFW chỉ cho mạng Docker 172.16.0.0/12"
-			else
+			if ! ufw status 2>/dev/null | grep -E '^5432/tcp +DENY' >/dev/null; then
 				warn "PostgreSQL 5432 thiếu rule 'ufw deny 5432/tcp' — có thể lộ ra LAN"
+			elif ufw status 2>/dev/null | grep -F '172.16.0.0/12' >/dev/null; then
+				warn "PostgreSQL — UFW còn rule cũ 172.16.0.0/12 (chứa cả LAN 172.16.x)"
+				info "→ bash ~/setup-server.sh firewall   (mục 13.1 tài liệu)"
+			else
+				ok "PostgreSQL — UFW chỉ cho mạng Docker (172.17–172.31)"
+			fi
+			local hba_old
+			hba_old="$(grep -lE '^[[:space:]]*host.*172\.16\.0\.0/12' /etc/postgresql/*/main/pg_hba.conf 2>/dev/null || true)"
+			if [ -n "$hba_old" ]; then
+				warn "pg_hba.conf còn dòng 172.16.0.0/12: $hba_old"
+				info "→ bash ~/setup-server.sh postgres   (mục 6.4 tài liệu)"
 			fi
 			;;
 		docker-proxy:tcp/*) info "→ cổng Docker, xem mục bên dưới" ;;
@@ -280,20 +289,33 @@ cmd_status() {
 	fi
 
 	head1 "Trùng dải mạng"
-	# 5432 mở cho cả 172.16.0.0/12 (pg_hba + UFW). Nếu LAN bệnh viện nằm trong dải
-	# này thì máy trong LAN cũng tới được PostgreSQL (vẫn cần mật khẩu).
+	# 5432 (UFW + pg_hba) và TRUSTED_PROXIES mặc định mở cho dải Docker 172.17–172.31.
+	# LAN nằm trong dải này thì máy trong LAN cũng tới được PostgreSQL và được tin như
+	# proxy; Docker còn có thể cấp trùng subnet của LAN ⇒ máy chủ mất đường tới LAN đó.
 	local lan
 	lan="$(ip -4 -o addr show 2>/dev/null |
 		awk '$2 !~ /^(lo|docker0|br-|veth)/ {
 			split($4, ip, ".")
-			if (ip[1] == 172 && ip[2] >= 16 && ip[2] <= 31) printf "%s %s; ", $2, $4
+			if (ip[1] == 172 && ip[2] >= 17 && ip[2] <= 31) printf "%s %s; ", $2, $4
 		}' || true)"
 	if [ -n "$lan" ]; then
-		warn "Card mạng thật nằm trong 172.16.0.0/12: $lan"
-		info "→ máy trong LAN đó vào được 5432. Thu hẹp rule UFW + pg_hba về dải Docker thực tế:"
-		info "  docker network inspect hospital_rms_default -f '{{(index .IPAM.Config 0).Subnet}}'"
+		warn "Card mạng thật nằm trong dải Docker 172.17–172.31: $lan"
+		info "→ đổi dải Docker sang dải LAN không dùng (default-address-pools, mục 8.2 tài liệu)"
 	else
-		ok "LAN không trùng dải Docker 172.16.0.0/12"
+		ok "LAN không trùng dải Docker 172.17–172.31"
+	fi
+	# Mạng Docker ngoài 172.17–172.31 (Docker hết dải 172 thì cấp 192.168.x) — container
+	# trong đó không vào được 5432 và không được tin như proxy
+	if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+		local odd
+		odd="$(docker network ls -q --filter driver=bridge | xargs -r docker network inspect \
+			-f '{{.Name}} {{range .IPAM.Config}}{{.Subnet}} {{end}}' 2>/dev/null |
+			awk '{ for (i = 2; i <= NF; i++) { split($i, ip, ".")
+				if ($i ~ /\./ && !(ip[1] == 172 && ip[2] >= 17 && ip[2] <= 31)) printf "%s %s; ", $1, $i } }' || true)"
+		if [ -n "$odd" ]; then
+			warn "Mạng Docker ngoài dải 172.17–172.31: $odd"
+			info "→ container trong mạng đó không vào được PostgreSQL (UFW + pg_hba)"
+		fi
 	fi
 
 	head1 "Kết quả"

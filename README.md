@@ -123,7 +123,7 @@ Chạy riêng: `npm run server` / `npm run client`. Port `3001` bận thì backe
 | Biến môi trường | `backend/.env` mount vào container | `backend/.env` + `backend/.env.production` qua `env_file` |
 | Upload | `backend/uploads/` trên host | volume `server_uploads` |
 
-Hai file đặt tên project riêng nên chạy song song được trên cùng máy (container, network, volume, JWT secret tách biệt). Yêu cầu Docker Compose ≥ v2.24 (cú pháp `env_file` với `path`/`required`) và BuildKit. **PostgreSQL không chạy trong container**: chạy trên host hoặc máy riêng, `pg_hba.conf` + firewall phải cho dải Docker `172.16.0.0/12`.
+Hai file đặt tên project riêng nên chạy song song được trên cùng máy (container, network, volume, JWT secret tách biệt). Yêu cầu Docker Compose ≥ v2.24 (cú pháp `env_file` với `path`/`required`) và BuildKit. **PostgreSQL không chạy trong container**: chạy trên host hoặc máy riêng, `pg_hba.conf` + firewall phải cho dải Docker. Máy chủ Linux: `172.17.0.0 → 172.31.255.255` (4 dòng như `infra/postgresql/pg_hba.rms.conf`), **không** dùng `172.16.0.0/12` vì dải đó chứa cả LAN `172.16.x`. Máy dev Windows (Docker Desktop / WSL) thì giữ `172.16.0.0/12` (WSL có thể nhận địa chỉ `172.16.x`).
 
 **Production**: dựng từ đầu trên máy ảo Ubuntu (1 lệnh `scripts/setup-server.sh`), cấu hình, HTTPS, sao lưu, cập nhật phiên bản — xem [infra/cai-dat-may-ao-ubuntu.md](infra/cai-dat-may-ao-ubuntu.md). Bình thường CI/CD tự triển khai (`scripts/deploy.sh`: backup DB, migration, smoke test, tự rollback — [.github/CICD.md](.github/CICD.md)). ⚠️ Không bao giờ chạy `docker compose -f docker-compose.prod.yml down -v` (xoá volume: mất file upload, nhật ký, khoá 2FA).
 

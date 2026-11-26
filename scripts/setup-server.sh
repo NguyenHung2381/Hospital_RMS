@@ -103,6 +103,12 @@ PG_DATA="/data/pgsql/$PG_VER/main"
 DEFAULT_REPO_URL="git@github.com:NguyenHung2381/Hospital_RMS.git"
 HBA_MARK_BEGIN="# >>> Hospital RMS (scripts/setup-server.sh)"
 HBA_MARK_END="# <<< Hospital RMS"
+# Dải Docker tự cấp cho mạng (docker0 172.17, mạng compose 172.18–172.31) = 172.17.0.0 →
+# 172.31.255.255. KHÔNG dùng 172.16.0.0/12: dải đó chứa cả 172.16.x — LAN bệnh viện
+# hay dùng (máy chủ 172.16.25.x) ⇒ cả LAN vào được 5432 và được tin như reverse proxy.
+# Giữ khớp infra/postgresql/pg_hba.rms.conf, frontend/docker/40-trusted-proxies.sh,
+# scripts/firewall-ports.sh.
+DOCKER_NETS="172.17.0.0/16 172.18.0.0/15 172.20.0.0/14 172.24.0.0/13"
 
 RESOLVED_DROPIN="/etc/systemd/resolved.conf.d/rms-dns.conf"
 DNS_TEST_HOST="archive.ubuntu.com"
@@ -509,12 +515,21 @@ step_firewall() {
 	sudo ufw default deny incoming >/dev/null
 	sudo ufw default allow outgoing >/dev/null
 	sudo ufw allow OpenSSH >/dev/null
-	# Container Docker (172.16.0.0/12) gọi PostgreSQL trên host; máy khác thì không.
-	# Thứ tự quan trọng: allow trước deny.
-	sudo ufw allow from 172.16.0.0/12 to any port 5432 proto tcp >/dev/null
+	# Container Docker ($DOCKER_NETS) gọi PostgreSQL trên host; máy khác thì không.
+	# Thứ tự quan trọng: allow phải đứng TRƯỚC deny — dùng insert 1 để chạy lại trên máy
+	# đã có rule deny vẫn đúng (allow thêm sau deny thì vô tác dụng).
+	local net
+	for net in $DOCKER_NETS; do
+		sudo ufw insert 1 allow from "$net" to any port 5432 proto tcp >/dev/null
+	done
+	# Máy cài theo bản cũ: rule 172.16.0.0/12 cho cả LAN 172.16.x vào 5432
+	if sudo ufw status | grep -qF '172.16.0.0/12'; then
+		sudo ufw delete allow from 172.16.0.0/12 to any port 5432 proto tcp >/dev/null
+		info "Đã gỡ rule cũ 5432 ← 172.16.0.0/12 (chứa cả LAN 172.16.x)"
+	fi
 	sudo ufw deny 5432/tcp >/dev/null
 	sudo ufw --force enable >/dev/null
-	ok "Mở SSH, chỉ cho mạng Docker vào 5432"
+	ok "Mở SSH, chỉ cho mạng Docker (172.17–172.31) vào 5432"
 	info "Cổng web ${WEB_PORT} do Docker mở, không qua UFW — bước 'ports' giới hạn riêng"
 }
 
@@ -712,7 +727,7 @@ step_config() {
 # ─── 7. PostgreSQL 18 ────────────────────────────────────────────────────────
 step_postgres() {
 	log "PostgreSQL $PG_VER (cài thẳng trên Ubuntu, dữ liệu ở /data/pgsql)"
-	local changed=0 tmp
+	local changed=0 hba_changed=0 tmp
 	if ! pkg_installed "postgresql-$PG_VER"; then
 		apt_get install postgresql-common
 		sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
@@ -754,22 +769,31 @@ step_postgres() {
 	fi
 	rm -f "$tmp"
 
-	# pg_hba.rms.conf lên ĐẦU phần quy tắc (dòng khớp đầu tiên được dùng)
+	# pg_hba.rms.conf lên ĐẦU phần quy tắc (dòng khớp đầu tiên được dùng). Đã có khối
+	# (máy cài trước) thì thay nội dung khối bằng bản mới nếu khác — vd bỏ 172.16.0.0/12.
 	local hba="$PG_CONF_DIR/pg_hba.conf"
+	tmp="$(mktemp)"
 	if ! sudo grep -qF "$HBA_MARK_BEGIN" "$hba"; then
-		tmp="$(mktemp)"
 		sudo cat "$hba" | awk -v f="$APP_DIR/infra/postgresql/pg_hba.rms.conf" \
 			-v b="$HBA_MARK_BEGIN" -v e="$HBA_MARK_END" '
 			function block(  l) { print b; while ((getline l < f) > 0) print l; print e; done = 1 }
 			!done && /^[[:space:]]*(local|host)/ { block() }
 			{ print }
 			END { if (!done) block() }' >"$tmp"
+	else
+		sudo cat "$hba" | awk -v f="$APP_DIR/infra/postgresql/pg_hba.rms.conf" \
+			-v b="$HBA_MARK_BEGIN" -v e="$HBA_MARK_END" '
+			$0 == b { print b; while ((getline l < f) > 0) print l; print e; skip = 1; next }
+			skip && $0 == e { skip = 0; next }
+			!skip { print }' >"$tmp"
+	fi
+	if ! sudo cmp -s "$tmp" "$hba"; then
 		sudo cp -p "$hba" "$hba.bak.$(date +%Y%m%d%H%M%S)"
 		sudo install -m 640 -o postgres -g postgres "$tmp" "$hba"
-		rm -f "$tmp"
-		changed=1
-		ok "Thêm quy tắc Hospital RMS vào đầu pg_hba.conf (bản cũ: $hba.bak.*)"
+		hba_changed=1
+		ok "Cập nhật quy tắc Hospital RMS ở đầu pg_hba.conf (bản cũ: $hba.bak.*)"
 	fi
+	rm -f "$tmp"
 
 	# Khởi động SAU khi /data đã mount
 	sudo mkdir -p "/etc/systemd/system/postgresql@$PG_VER-main.service.d"
@@ -779,6 +803,9 @@ step_postgres() {
 	sudo systemctl enable "postgresql@$PG_VER-main" >/dev/null 2>&1
 	if [ "$changed" = 1 ] || ! systemctl is-active -q "postgresql@$PG_VER-main"; then
 		sudo systemctl restart "postgresql@$PG_VER-main"
+	elif [ "$hba_changed" = 1 ]; then
+		# pg_hba chỉ cần nạp lại, không ngắt kết nối đang có
+		sudo systemctl reload "postgresql@$PG_VER-main"
 	fi
 	wait_pg
 
