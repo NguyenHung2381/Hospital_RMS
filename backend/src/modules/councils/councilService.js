@@ -161,8 +161,10 @@ const getById = async (id) => {
 	return council;
 };
 
-const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, async (tx) =>
+// opts.tx: chạy trong transaction của người gọi (đã gắn người thao tác) — khi đó chỉ
+// trả { id }, không đọc lại / broadcast (người gọi làm sau khi commit).
+const create = async (data, actorId, { tx = null } = {}) => {
+	const write = async (tx) =>
 		queryBatch(
 			tx
 				.request()
@@ -178,8 +180,9 @@ const create = async (data, actorId) => {
       VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
-		),
-	);
+		);
+	if (tx) return { id: (await write(tx)).recordset[0].id };
+	const result = await withActorTransaction(actorId, write);
 	const council = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'council' });
 	return council;
@@ -244,8 +247,9 @@ const getMemberById = async (memberId) => {
 
 // Ghế nhận đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id
 // (ngoài viện) — ràng buộc bởi CK_council_members_seat_owner ở DB.
-const addMember = async (councilId, data, actorId) => {
-	const result = await withActorTransaction(actorId, async (tx) =>
+// opts.tx: như create — trong transaction của người gọi chỉ trả { id }.
+const addMember = async (councilId, data, actorId, { tx = null } = {}) => {
+	const write = async (tx) =>
 		queryBatch(
 			tx
 				.request()
@@ -260,8 +264,9 @@ const addMember = async (councilId, data, actorId) => {
       VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
-		),
-	);
+		);
+	if (tx) return { id: (await write(tx)).recordset[0].id };
+	const result = await withActorTransaction(actorId, write);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(result.recordset[0].id);
 };
