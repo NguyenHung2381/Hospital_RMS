@@ -117,7 +117,10 @@ function verifyField(f, { trust, dss, dssCerts }) {
 	const dssRev = { ocsps: dss?.ocsps ?? [], crls: dss?.crls ?? [] };
 
 	if (timestamp) {
-		const ts = cms.verifyTimeStampToken(cms.parseDer(f.contents), f.signedData);
+		const ts = cms.verifyTimeStampToken(cms.parseDer(f.contents), f.signedData, [
+			...dssX509,
+			...trust.intermediates,
+		]);
 		if (!ts.signerCert) {
 			w.push(ts.reason ?? 'timestamp_malformed');
 			return sig;
@@ -177,7 +180,10 @@ function verifyField(f, { trust, dss, dssCerts }) {
 	const pool = [...certs.map((c) => c.x509), ...dssX509];
 	const token = cms.attrValue(si.unsignedAttrs, cms.OID.timeStampToken);
 	if (token) {
-		const ts = cms.verifyTimeStampToken(token, cms.octets(si.signature));
+		const ts = cms.verifyTimeStampToken(token, cms.octets(si.signature), [
+			...pool,
+			...trust.intermediates,
+		]);
 		if (!ts.ok) w.push(ts.reason);
 		else if (
 			buildChain(ts.signerCert, [...ts.certs, ...pool], trust).status === 'trusted' &&

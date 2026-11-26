@@ -206,9 +206,11 @@ function signingTime(/** @type {pkijs.SignerInfo} */ si) {
  * @param {any} contentInfoSchema asn1js của ContentInfo
  * @param {Buffer | null} imprintData dữ liệu mà dấu thời gian phải đóng (giá trị chữ ký, hoặc vùng
  *   ByteRange với dấu thời gian tài liệu)
+ * @param {crypto.X509Certificate[]} [extraCerts] nơi tìm thêm chứng thư TSA khi token không nhúng
+ *   (chứng thư trong file, bộ CA)
  * @returns {{ ok: boolean, reason: string | null, genTime: Date | null, signerCert: crypto.X509Certificate | null, certs: crypto.X509Certificate[], sd: pkijs.SignedData | null }}
  */
-function verifyTimeStampToken(contentInfoSchema, imprintData) {
+function verifyTimeStampToken(contentInfoSchema, imprintData, extraCerts = []) {
 	const fail = (reason, extra = {}) => ({
 		ok: false,
 		reason,
@@ -241,7 +243,15 @@ function verifyTimeStampToken(contentInfoSchema, imprintData) {
 		)
 			return fail('timestamp_imprint_mismatch', base);
 		const si = sd.signerInfos[0];
-		const signer = si && findSignerCert(si, certs);
+		const extra = () =>
+			extraCerts.flatMap((x) => {
+				try {
+					return [{ pki: toPki(x), x509: x }];
+				} catch {
+					return [];
+				}
+			});
+		const signer = si && (findSignerCert(si, certs) ?? findSignerCert(si, extra()));
 		if (!signer) return fail('timestamp_signer_missing', base);
 		const v = verifySignerInfo(si, eContent, signer.x509);
 		if (!v.ok) return fail('timestamp_invalid', { ...base, signerCert: signer.x509 });
