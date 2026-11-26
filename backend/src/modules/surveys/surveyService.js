@@ -1,4 +1,4 @@
-const { getPool, sql, queryAll, nowSql, ilike } = require('../../config/db');
+const { getPool, sql, queryAll, nowSql, ilike, withActorTransaction } = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
@@ -247,48 +247,47 @@ const submitResponse = async (surveyId, answers, actor) => {
 	// trước khi ghi — tránh race giữa lúc mở form và lúc bấm nộp.
 	const survey = await getForRespond(surveyId, actor);
 	if (!survey) throw httpError(404, 'Không tìm thấy khảo sát.');
-	const questionMap = new Map(survey.questions.map((q) => [q.id, q]));
-
-	const pool = await getPool();
-	const newId = randomId('PH', 18);
-	await pool
-		.request()
-		.input('survey_id', sql.VarChar(20), surveyId)
-		.input('user_id', sql.VarChar(20), actor.id)
-		.input('new_id', sql.VarChar(20), newId)
-		.query(
-			`
+	const responseId = randomId('PH', 18);
+	// Phản hồi + mọi câu trả lời trong 1 transaction có người thao tác: lỗi giữa
+	// chừng không để lại phản hồi thiếu câu trả lời (UNIQUE sẽ chặn nộp lại).
+	await withActorTransaction(actor.id, async (tx) => {
+		await tx
+			.request()
+			.input('survey_id', sql.VarChar(20), surveyId)
+			.input('user_id', sql.VarChar(20), actor.id)
+			.input('new_id', sql.VarChar(20), responseId)
+			.query(
+				`
       INSERT INTO survey_responses (id, survey_id, respondent_user_id, created_by)
       VALUES (@new_id, @survey_id, @user_id, @user_id);
     `,
-		)
-		.catch((err) => {
-			if (isUniqueViolation(err)) {
-				throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
-			}
-			throw err;
-		});
-	const responseId = newId;
-
-	for (const [questionId, question] of questionMap) {
-		const ans = (answers || []).find((a) => a.question_id === questionId);
-		const isText = question.question_type === 'text';
-		const answerId = randomId('DA', 18);
-		await pool
-			.request()
-			.input('response_id', sql.VarChar(20), responseId)
-			.input('question_id', sql.VarChar(20), questionId)
-			.input('answer_text', sql.NVarChar(sql.MAX), isText ? ans?.answer_text || null : null)
-			.input(
-				'answer_options',
-				sql.NVarChar(sql.MAX),
-				!isText && ans?.answer_options ? JSON.stringify(ans.answer_options) : null,
 			)
-			.input('new_id', sql.VarChar(20), answerId).query(`
+			.catch((err) => {
+				if (isUniqueViolation(err)) {
+					throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
+				}
+				throw err;
+			});
+
+		for (const question of survey.questions) {
+			const ans = (answers || []).find((a) => a.question_id === question.id);
+			const isText = question.question_type === 'text';
+			await tx
+				.request()
+				.input('response_id', sql.VarChar(20), responseId)
+				.input('question_id', sql.VarChar(20), question.id)
+				.input('answer_text', sql.NVarChar(sql.MAX), isText ? ans?.answer_text || null : null)
+				.input(
+					'answer_options',
+					sql.NVarChar(sql.MAX),
+					!isText && ans?.answer_options ? JSON.stringify(ans.answer_options) : null,
+				)
+				.input('new_id', sql.VarChar(20), randomId('DA', 18)).query(`
         INSERT INTO survey_answers (id, response_id, question_id, answer_text, answer_options)
         VALUES (@new_id, @response_id, @question_id, @answer_text, @answer_options);
       `);
-	}
+		}
+	});
 	broadcast('update', { entity: 'survey' });
 	return { response_id: responseId };
 };

@@ -32,9 +32,24 @@ const log = fakeDb.install(async (text) => {
 
 const svc = require('../../src/modules/surveys/surveyService');
 const actor = { id: 'U1', role_id: 'R1' };
-const _inserts = (re) => log.filter((l) => re.test(l.text));
+const inserts = (re) => log.filter((l) => re.test(l.text));
 
 test('#1 nộp khảo sát không tồn tại ⇒ 404, không phải TypeError (500)', async () => {
 	reset({ survey: null });
 	await assert.rejects(svc.submitResponse('KHONGCO', [], actor), (e) => e.statusCode === 404);
+});
+
+test('#2/S-08 phản hồi + câu trả lời trong 1 transaction có người thao tác; lỗi giữa chừng ⇒ ROLLBACK', async () => {
+	reset({ failAnswer: true });
+	log.length = 0;
+	await assert.rejects(svc.submitResponse('KS1', [], actor), /DB rớt/);
+	const texts = log.map((l) => l.text);
+	const iResp = texts.findIndex((t) => /INSERT INTO survey_responses/.test(t));
+	assert.ok(iResp > 0, 'có ghi phản hồi');
+	assert.ok(
+		texts.slice(0, iResp).some((t) => /set_config\('app.current_user_id'/.test(t)),
+		'gắn người thao tác trước khi ghi',
+	);
+	assert.equal(texts.at(-1), 'ROLLBACK');
+	assert.equal(inserts(/COMMIT/).length, 0);
 });
