@@ -132,7 +132,7 @@ async function makeUnsignedPdf({ withSignatureField = true, docTimeStamp = false
 const attr = (type, value) => new pkijs.Attribute({ type, values: [value] });
 
 /** TimeStampToken (ContentInfo asn1js) đóng dấu `data` lúc genTime. */
-async function makeTimeStampToken(data, tsa, genTime) {
+async function makeTimeStampToken(data, tsa, genTime, { embedCert = true } = {}) {
 	const tst = new pkijs.TSTInfo({
 		version: 1,
 		policy: '1.3.6.1.4.1.99999.1',
@@ -172,7 +172,7 @@ async function makeTimeStampToken(data, tsa, genTime) {
 				}),
 			}),
 		],
-		certificates: [tsa.cert],
+		certificates: embedCert ? [tsa.cert] : [],
 	});
 	await sd.sign(tsa.keys.privateKey, 0, 'SHA-256');
 	return new pkijs.ContentInfo({
@@ -282,7 +282,9 @@ async function signPdf(
 	await sd.sign(signer.keys.privateKey, 0, 'SHA-256', ab(data));
 	if (tsa) {
 		const sigValue = Buffer.from(sd.signerInfos[0].signature.valueBlock.valueHexView);
-		const token = await makeTimeStampToken(sigValue, tsa, tsa.genTime);
+		const token = await makeTimeStampToken(sigValue, tsa, tsa.genTime, {
+			embedCert: tsa.embedCert !== false,
+		});
 		sd.signerInfos[0].unsignedAttrs = new pkijs.SignedAndUnsignedAttributes({
 			type: 1,
 			attributes: [attr('1.2.840.113549.1.9.16.2.14', token)],

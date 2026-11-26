@@ -182,6 +182,23 @@ test('dấu thời gian RFC 3161 của TSA tin cậy: chứng thư nay đã hế
 	assert.equal(r.signatures[0].cert_valid_at_signing, true);
 });
 
+test('token không nhúng chứng thư TSA: tìm trong bộ CA, không có thì cảnh báo', async () => {
+	const genTime = new Date('2019-06-01T03:00:00Z');
+	const buf = await sign({
+		signer: pki.old,
+		signingTime: null,
+		tsa: { ...pki.tsa, genTime, embedCert: false },
+	});
+	const r = await verify(buf);
+	assert.ok(r.warnings.includes('timestamp_signer_missing'), JSON.stringify(r.warnings));
+	assert.equal(r.signatures[0].time_source, 'claimed'); // rơi về /M của PDF
+
+	const trust = createTrustStore({ roots: [pki.root.pem], intermediates: [pki.tsa.pem] });
+	const r2 = await verifyPdfSignatures(buf, { trust });
+	assert.equal(r2.verdict, 'valid', JSON.stringify(r2.warnings));
+	assert.equal(r2.signatures[0].time_source, 'tsa');
+});
+
 test('dấu thời gian của TSA lạ ⇒ không tin, dùng signingTime (claimed)', async () => {
 	const r = await verify(await sign({ tsa: { ...pki.strangerTsa, genTime: new Date() } }));
 	assert.equal(r.verdict, 'valid');
@@ -282,11 +299,11 @@ test('matchSignerOrganization: so mờ tên tổ chức người ký với tên 
 	assert.equal(matchSignerOrganization(null, 'Bệnh viện Bạch Mai'), null);
 });
 
-test('bộ CA mặc định: đủ 9 gốc + 6 trung gian, README ghi đúng vân tay, nạp một lần', () => {
+test('bộ CA mặc định: đủ 9 gốc + 34 trung gian, README ghi đúng vân tay, nạp một lần', () => {
 	const store = loadTrustStore();
 	assert.equal(store, loadTrustStore());
 	assert.equal(store.roots.length, 9);
-	assert.equal(store.intermediates.length, 6);
+	assert.equal(store.intermediates.length, 34);
 	const readme = fs.readFileSync(path.join(DEFAULT_DIR, 'README.md'), 'utf8');
 	for (const sub of ['roots', 'intermediates']) {
 		for (const f of fs.readdirSync(path.join(DEFAULT_DIR, sub))) {
