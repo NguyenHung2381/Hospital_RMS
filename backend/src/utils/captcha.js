@@ -213,10 +213,6 @@ const verifyCaptcha = async (token, answer, ip = null) => {
 module.exports = {
 	generateCaptcha,
 	verifyCaptcha,
-	turnstileEnabled,
-	recaptchaEnabled,
 	captchaProvider,
 	validateSetting,
-	POW_BITS,
-	TURNSTILE_ACTION,
 };

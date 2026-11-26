@@ -150,8 +150,6 @@ async function assertRegistrationOpen(roundId) {
 
 module.exports = {
 	assertTopicActionWindow,
-	isTopicActionAllowed,
-	isRegistrationOpen,
 	isRegistrationPassed,
 	assertRegistrationOpen,
 };

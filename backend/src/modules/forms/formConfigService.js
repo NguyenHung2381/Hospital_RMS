@@ -102,4 +102,4 @@ const reset = async (formKey) => {
 	return (await listForAdmin()).find((f) => f.key === formKey);
 };
 
-module.exports = { getResolved, getOverride, listForAdmin, save, reset };
+module.exports = { getResolved, listForAdmin, save, reset };

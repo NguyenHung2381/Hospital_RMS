@@ -121,6 +121,4 @@ module.exports = {
 	evaluate,
 	ipAllowed,
 	distanceM,
-	parseLocation,
-	DEFAULT_RADIUS_M,
 };

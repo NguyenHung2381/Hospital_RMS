@@ -6,7 +6,7 @@ const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const uploadExcel = require('../../middlewares/uploadExcel');
 const staffLicenseImportService = require('./staffLicenseImportService');
-const { success } = require('../../utils/response');
+const { success, notFound } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { formFlag } = require('../../utils/formFlag');
 
@@ -28,7 +28,6 @@ router.get(
 	'/by-user/:userId',
 	authorizePermission(['staff_licenses', 'read']),
 	asyncHandler(async (req, res) => {
-		const { success, notFound } = require('../../utils/response');
 		const item = await staffLicenseService.getByUserId(req.params.userId);
 		if (!item) return notFound(res);
 		return success(res, item);

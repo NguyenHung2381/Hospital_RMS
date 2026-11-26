@@ -68,7 +68,6 @@ const isAllowedOrigin = (req) => {
 };
 
 module.exports = {
-	REFRESH_COOKIE,
 	setRefreshCookie,
 	clearRefreshCookie,
 	readRefreshCookie,

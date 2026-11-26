@@ -525,7 +525,6 @@ module.exports = {
 	generateCheckInQrToken,
 	checkInSelf,
 	remove,
-	PART_TYPES,
 	SOURCES,
 	ensureSeminar,
 	staffOfDepartment,

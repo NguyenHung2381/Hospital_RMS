@@ -141,4 +141,4 @@ const getExportData = async (q) => {
 	return { from: q.from, to: q.to, device, days: sheet.rows, punches };
 };
 
-module.exports = { getTimesheet, getExportData, summarize, MAX_DAYS };
+module.exports = { getTimesheet, getExportData, summarize };

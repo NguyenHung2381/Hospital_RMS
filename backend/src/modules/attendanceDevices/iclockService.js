@@ -201,4 +201,4 @@ const deviceCmd = async (sn, body, ip) => {
 	return 'OK';
 };
 
-module.exports = { handshake, receive, getRequest, deviceCmd, DeviceRejected, MAX_PENDING };
+module.exports = { handshake, receive, getRequest, deviceCmd, DeviceRejected };

@@ -502,5 +502,5 @@ module.exports = {
 	peopleFromParticipants,
 	peopleFromExcel,
 	streamZip,
-	_test: { fmtDob, fmtSo, prefixOf, fileNameOf },
+	_test: { fmtDob, fileNameOf },
 };

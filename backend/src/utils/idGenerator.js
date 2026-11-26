@@ -395,7 +395,6 @@ module.exports = {
 	genSeq2Id,
 	randomHex32,
 	nextId,
-	maxSeq,
 	isIdLockTimeout,
 	todayCompactVN,
 	genClassSessionId,

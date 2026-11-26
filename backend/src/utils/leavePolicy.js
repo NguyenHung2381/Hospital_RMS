@@ -51,4 +51,4 @@ const publicPolicy = (p) => ({
 	max_span_days: p.maxSpanDays,
 });
 
-module.exports = { getPolicy, publicPolicy, validateSetting, LIMITS };
+module.exports = { getPolicy, publicPolicy, validateSetting };

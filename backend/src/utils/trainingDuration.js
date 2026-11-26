@@ -45,4 +45,4 @@ const formatDuration = (value, unit) => {
 const toDays = (value, unit) =>
 	value == null || !DAYS_PER_UNIT[unit] ? null : Number(value) * DAYS_PER_UNIT[unit];
 
-module.exports = { UNITS, UNIT_LABEL, parseDuration, formatDuration, toDays };
+module.exports = { UNITS, parseDuration, formatDuration, toDays };

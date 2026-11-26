@@ -528,4 +528,4 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 	return { dry_run: false, summary, inserted, failures };
 };
 
-module.exports = { exportWorkbook, templateWorkbook, importExcel, parseRows };
+module.exports = { exportWorkbook, templateWorkbook, importExcel };

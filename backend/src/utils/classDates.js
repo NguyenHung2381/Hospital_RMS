@@ -100,4 +100,4 @@ const suggestClassDates = ({
 	};
 };
 
-module.exports = { suggestClassDates, parseHolidays, HOURS_PER_DAY };
+module.exports = { suggestClassDates, parseHolidays };

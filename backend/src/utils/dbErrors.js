@@ -71,7 +71,6 @@ const appErrorCode = (err) => {
 };
 
 module.exports = {
-	pgErrorCode,
 	dbErrorCode,
 	isDbError,
 	isUniqueViolation,

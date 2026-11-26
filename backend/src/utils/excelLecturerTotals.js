@@ -230,10 +230,7 @@ const addLecturerTotals = (wb, ws, opts) => {
 const isLecturerTotalsRow = (row) => norm(cellText(row.getCell(1))).startsWith(TOTALS_KEY);
 
 module.exports = {
-	TOTALS_TITLE,
-	HELPER_SHEET,
 	fmtHours,
-	computeTotals,
 	addLecturerTotals,
 	isLecturerTotalsRow,
 };

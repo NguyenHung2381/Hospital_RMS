@@ -127,7 +127,6 @@ const stripUploadSignatures = (html) =>
 
 module.exports = {
 	signDeep,
-	signPath,
 	signUploadUrlsInJson,
 	verifyUploadSignature,
 	stripUploadSignatures,

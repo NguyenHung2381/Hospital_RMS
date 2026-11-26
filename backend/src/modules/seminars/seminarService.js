@@ -19,7 +19,7 @@ const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
-const { httpError } = require('../../utils/httpError');
+const { httpError, badRequest } = require('../../utils/httpError');
 const {
 	UPLOADS_ROOT,
 	SAFE_ID,
@@ -28,7 +28,6 @@ const {
 } = require('../../utils/uploadPaths');
 const { normalizeTime, normalizeAgenda } = require('../../utils/seminarSchedule');
 const { maxScore } = require('../../utils/seminarTest');
-const { badRequest } = require('../../utils/httpError');
 const ht = require('./hospitalTraining');
 const {
 	countSelect,
@@ -425,6 +424,4 @@ module.exports = {
 	statsCme,
 	cmeRegister,
 	updateRegisterSeq,
-	EVENT_TYPES,
-	SCOPES,
 };
