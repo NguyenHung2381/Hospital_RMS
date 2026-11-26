@@ -11,6 +11,7 @@ const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
 const { computeAllowedActions, topicScope, inDepartmentScope } = require('./topicPolicy');
 const formCustomValueService = require('../forms/formCustomValueService');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -364,18 +365,11 @@ const update = async (id, data, actorId, actor = null) => {
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.title !== undefined) {
-		sets.push('title = @title');
-		req.input('title', sql.NVarChar(500), data.title);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description);
-	}
-	if (data.category_id !== undefined) {
-		sets.push('category_id = @cat');
-		req.input('cat', sql.VarChar(6), data.category_id);
-	}
+	addSets(req, sets, data, {
+		title: sql.NVarChar(500),
+		description: sql.NVarChar(sql.MAX),
+		category_id: [sql.VarChar(6), { param: 'cat' }],
+	});
 	// level_id từ client bị bỏ qua: cấp độ theo đợt, tính lại khi đổi đợt / loại bài
 	const roundChanged = data.round_id !== undefined && data.round_id !== current.round_id;
 	const typeChanged = data.article_type !== undefined && data.article_type !== current.article_type;
@@ -390,62 +384,22 @@ const update = async (id, data, actorId, actor = null) => {
 			),
 		);
 	}
-	if (data.department_id !== undefined) {
-		sets.push('department_id = @dept');
-		req.input('dept', sql.VarChar(20), data.department_id);
-	}
-	if (data.round_id !== undefined) {
-		sets.push('round_id = @round_id');
-		req.input('round_id', sql.VarChar(10), data.round_id);
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(15), data.status);
-	}
-	if (data.article_type !== undefined) {
-		sets.push('article_type = @article_type');
-		req.input('article_type', sql.VarChar(20), data.article_type);
-	}
-	if (data.journal_name !== undefined) {
-		sets.push('journal_name = @journal_name');
-		req.input('journal_name', sql.NVarChar(255), data.journal_name || null);
-	}
-	if (data.doi !== undefined) {
-		sets.push('doi = @doi');
-		req.input('doi', sql.VarChar(100), data.doi || null);
-	}
-	if (data.publish_date !== undefined) {
-		sets.push('publish_date = @publish_date');
-		req.input('publish_date', sql.Date, data.publish_date || null);
-	}
-	if (data.budget_estimated !== undefined) {
-		sets.push('budget_estimated = @budget_estimated');
-		req.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated);
-	}
-	if (data.budget_actual !== undefined) {
-		sets.push('budget_actual = @budget_actual');
-		req.input('budget_actual', sql.Decimal(18, 2), data.budget_actual);
-	}
-	if (data.approval_decision_no !== undefined) {
-		sets.push('approval_decision_no = @approval_decision_no');
-		req.input('approval_decision_no', sql.NVarChar(100), data.approval_decision_no || null);
-	}
-	if (data.approval_decision_date !== undefined) {
-		sets.push('approval_decision_date = @approval_decision_date');
-		req.input('approval_decision_date', sql.Date, data.approval_decision_date || null);
-	}
-	if (data.recognition_decision_no !== undefined) {
-		sets.push('recognition_decision_no = @recognition_decision_no');
-		req.input('recognition_decision_no', sql.NVarChar(100), data.recognition_decision_no || null);
-	}
-	if (data.recognition_decision_date !== undefined) {
-		sets.push('recognition_decision_date = @recognition_decision_date');
-		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
-	}
-	if (data.acceptance_rating !== undefined) {
-		sets.push('acceptance_rating = @acceptance_rating');
-		req.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null);
-	}
+	addSets(req, sets, data, {
+		department_id: [sql.VarChar(20), { param: 'dept' }],
+		round_id: sql.VarChar(10),
+		status: sql.VarChar(15),
+		article_type: sql.VarChar(20),
+		journal_name: [sql.NVarChar(255), { orNull: true }],
+		doi: [sql.VarChar(100), { orNull: true }],
+		publish_date: [sql.Date, { orNull: true }],
+		budget_estimated: sql.Decimal(18, 2),
+		budget_actual: sql.Decimal(18, 2),
+		approval_decision_no: [sql.NVarChar(100), { orNull: true }],
+		approval_decision_date: [sql.Date, { orNull: true }],
+		recognition_decision_no: [sql.NVarChar(100), { orNull: true }],
+		recognition_decision_date: [sql.Date, { orNull: true }],
+		acceptance_rating: [sql.VarChar(20), { orNull: true }],
+	});
 	if (data.acceptance_score !== undefined) {
 		sets.push('acceptance_score = @acceptance_score');
 		req.input(

@@ -2,6 +2,7 @@ const { getPool, sql, withTransaction, nowSql, ilike } = require('../../config/d
 const { genExternalReviewerId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const getAll = async ({
 	search = undefined,
@@ -70,30 +71,14 @@ const update = async (id, data, actorId) => {
 	const sets = [];
 	const req = pool.request().input('id', sql.VarChar(20), id);
 
-	if (data.full_name !== undefined) {
-		sets.push('full_name = @full_name');
-		req.input('full_name', sql.NVarChar(150), data.full_name);
-	}
-	if (data.organization !== undefined) {
-		sets.push('organization = @organization');
-		req.input('organization', sql.NVarChar(200), data.organization || null);
-	}
-	if (data.specialty_group !== undefined) {
-		sets.push('specialty_group = @specialty_group');
-		req.input('specialty_group', sql.NVarChar(100), data.specialty_group || null);
-	}
-	if (data.phone !== undefined) {
-		sets.push('phone = @phone');
-		req.input('phone', sql.VarChar(20), data.phone || null);
-	}
-	if (data.email !== undefined) {
-		sets.push('email = @email');
-		req.input('email', sql.VarChar(100), data.email || null);
-	}
-	if (data.note !== undefined) {
-		sets.push('note = @note');
-		req.input('note', sql.NVarChar(500), data.note || null);
-	}
+	addSets(req, sets, data, {
+		full_name: sql.NVarChar(150),
+		organization: [sql.NVarChar(200), { orNull: true }],
+		specialty_group: [sql.NVarChar(100), { orNull: true }],
+		phone: [sql.VarChar(20), { orNull: true }],
+		email: [sql.VarChar(100), { orNull: true }],
+		note: [sql.NVarChar(500), { orNull: true }],
+	});
 	if (data.is_active !== undefined) {
 		sets.push('is_active = @is_active');
 		req.input('is_active', sql.Bit, !!data.is_active);

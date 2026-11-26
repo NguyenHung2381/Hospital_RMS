@@ -18,6 +18,7 @@ const deadlineService = require('./deadlineService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 const { httpError } = require('../../utils/httpError');
 const { inClause } = require('../../utils/sqlFilters');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };
@@ -284,22 +285,12 @@ const update = async (id, data, actorId) => {
 		.input('id', sql.VarChar(10), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.name !== undefined) {
-		sets.push('name = @name');
-		req.input('name', sql.NVarChar(200), data.name);
-	}
-	if (data.year !== undefined) {
-		sets.push('year = @year');
-		req.input('year', sql.Int, data.year);
-	}
-	if (data.round_number !== undefined) {
-		sets.push('round_number = @round_number');
-		req.input('round_number', sql.TinyInt, data.round_number);
-	}
-	if (data.round_type_id !== undefined) {
-		sets.push('round_type_id = @round_type_id');
-		req.input('round_type_id', sql.VarChar(6), data.round_type_id || null);
-	}
+	addSets(req, sets, data, {
+		name: sql.NVarChar(200),
+		year: sql.Int,
+		round_number: sql.TinyInt,
+		round_type_id: [sql.VarChar(6), { orNull: true }],
+	});
 	if (data.start_date !== undefined) {
 		sets.push('start_date = @start_date');
 		req.input('start_date', sql.Date, new Date(data.start_date));

@@ -5,6 +5,7 @@ const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { httpError } = require('../../utils/httpError');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const QUESTION_TYPES = ['single_choice', 'multi_choice', 'text'];
 
@@ -133,22 +134,12 @@ const update = async (id, data, actorId) => {
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.title !== undefined) {
-		sets.push('title = @title');
-		req.input('title', sql.NVarChar(255), data.title);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description || null);
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(20), data.status);
-	}
-	if (data.target_role !== undefined) {
-		sets.push('target_role = @target_role');
-		req.input('target_role', sql.VarChar(20), data.target_role || null);
-	}
+	addSets(req, sets, data, {
+		title: sql.NVarChar(255),
+		description: [sql.NVarChar(sql.MAX), { orNull: true }],
+		status: sql.VarChar(20),
+		target_role: [sql.VarChar(20), { orNull: true }],
+	});
 
 	if (sets.length > 2) await req.query(`UPDATE surveys SET ${sets.join(', ')} WHERE id = @id`);
 	if (Array.isArray(data.questions)) await setQuestions(id, data.questions, actorId);

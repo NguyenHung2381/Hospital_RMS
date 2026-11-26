@@ -12,6 +12,7 @@ const { genDeptId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { remember, invalidate } = require('../../utils/cache');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const CACHE_PREFIX = 'lookup:departments:';
 
@@ -117,42 +118,17 @@ const update = async (id, data, actorId) => {
 		.input('id', sql.VarChar(20), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.name !== undefined) {
-		sets.push('name = @name');
-		req.input('name', sql.NVarChar(255), data.name);
-	}
-	if (data.code !== undefined) {
-		sets.push('code = @code');
-		req.input('code', sql.VarChar(20), data.code);
-	}
-	if (data.abbreviation !== undefined) {
-		sets.push('abbreviation = @abbreviation');
-		req.input('abbreviation', sql.VarChar(20), data.abbreviation);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description);
-	}
-	if (data.specialty_group !== undefined) {
-		sets.push('specialty_group = @specialty_group');
-		req.input('specialty_group', sql.NVarChar(100), data.specialty_group || null);
-	}
-	if (data.unit_type !== undefined) {
-		sets.push('unit_type = @unit_type');
-		req.input('unit_type', sql.VarChar(20), data.unit_type);
-	}
-	if (data.head_user_id !== undefined) {
-		sets.push('head_user_id = @head_user_id');
-		req.input('head_user_id', sql.VarChar(20), data.head_user_id || null);
-	}
-	if (data.phone !== undefined) {
-		sets.push('phone = @phone');
-		req.input('phone', sql.VarChar(20), data.phone || null);
-	}
-	if (data.email !== undefined) {
-		sets.push('email = @email');
-		req.input('email', sql.VarChar(100), data.email || null);
-	}
+	addSets(req, sets, data, {
+		name: sql.NVarChar(255),
+		code: sql.VarChar(20),
+		abbreviation: sql.VarChar(20),
+		description: sql.NVarChar(sql.MAX),
+		specialty_group: [sql.NVarChar(100), { orNull: true }],
+		unit_type: sql.VarChar(20),
+		head_user_id: [sql.VarChar(20), { orNull: true }],
+		phone: [sql.VarChar(20), { orNull: true }],
+		email: [sql.VarChar(100), { orNull: true }],
+	});
 	if (data.bed_count !== undefined) {
 		sets.push('bed_count = @bed_count');
 		req.input('bed_count', sql.Int, data.bed_count ?? null);
