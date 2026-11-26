@@ -850,31 +850,6 @@
 	margin-top: 2px;
 }
 
-.modalCloseBtn {
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-lg);
-	border: 1px solid var(--color-gray-200);
-	background: var(--color-white);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: var(--color-gray-500);
-	transition: all var(--transition-fast);
-	flex-shrink: 0;
-}
-
-.modalCloseBtn:hover {
-	background: var(--color-gray-50);
-	color: var(--color-gray-800);
-	border-color: var(--color-gray-300);
-}
-.modalCloseBtn svg {
-	width: 14px;
-	height: 14px;
-}
-
 .modalBody {
 	padding: var(--space-6);
 	display: flex;
