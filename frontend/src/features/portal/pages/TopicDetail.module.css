@@ -527,7 +527,7 @@
 }
 
 .pendingClearBtn:hover {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	background: var(--tone-red-bg);
 }
 
@@ -612,7 +612,7 @@
 }
 
 .pendingRemove:hover {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	background: var(--tone-red-bg);
 	transform: scale(1.05);
 }

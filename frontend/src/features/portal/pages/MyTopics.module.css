@@ -1030,7 +1030,7 @@
 }
 
 .pendingRemove:hover {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	background: var(--tone-red-bg);
 	transform: scale(1.05);
 }
@@ -1093,7 +1093,7 @@
 
 .uploadError {
 	font-size: var(--font-size-xs);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	margin: 0;
 	padding: 8px 12px;
 	background: var(--tone-red-bg);
