@@ -24,6 +24,7 @@ const { isPdfOrImage } = require('../trainees/traineeProfilePdf');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { getBankInfo } = require('./tuitionSettings');
+const { courseScope, ASSIGNED_EXISTS_SQL } = require('../courses/coursePolicy');
 
 const changed = () => broadcast('update', { entity: 'tuition' });
 const money = (n) => `${Number(n).toLocaleString('vi-VN')} đ`;
@@ -293,12 +294,16 @@ const cancelMine = async (userId, paymentId) => {
         WHERE p.id = @id AND p.status <> 'confirmed' AND ${TRAINEE_OF_USER_SQL('t')}`)
 	).recordset[0];
 	if (!p) throw notFound('Không tìm thấy khoản nộp chưa xác nhận của bạn.');
-	await withActorTransaction(userId, (tx) =>
+	// Điều kiện trạng thái phải nằm ngay trong câu DELETE: phòng Đào tạo xác nhận (cấp biên
+	// lai) xen giữa SELECT ở trên và câu này thì 0 dòng ⇒ 409, khoản đã xác nhận không bị xóa.
+	const del = await withActorTransaction(userId, (tx) =>
 		tx
 			.request()
 			.input('id', sql.VarChar(20), paymentId)
-			.query('DELETE FROM tuition_payments WHERE id = @id'),
+			.query("DELETE FROM tuition_payments WHERE id = @id AND status <> 'confirmed'"),
 	);
+	if (!del.rowsAffected?.[0])
+		throw conflict('Khoản nộp này vừa được xác nhận, không rút lại được.');
 	if (p.proof_file_id) await trainingFileService.softDelete(p.proof_file_id, userId);
 	changed();
 	return listMine(userId);
@@ -536,18 +541,25 @@ const rejectPayment = async (courseId, paymentId, reviewNote, actorId) => {
 	return (await summaryOf(pool, p.enrollment_id)).item;
 };
 
-/** Khoản chờ xác nhận ở mọi khóa — việc cần làm của phòng Đào tạo. */
-const listPending = async () => {
+/**
+ * Khoản chờ xác nhận ở mọi khóa — việc cần làm của phòng Đào tạo. Phạm vi courses:approve
+ * 'assigned' chỉ thấy khóa mình được phân công (route theo khóa kiểm ở router.param;
+ * danh sách gộp này không có :id nên phải tự lọc).
+ */
+const listPending = async (actor) => {
 	const pool = await getPool();
+	const assigned = courseScope(actor, 'approve') === 'assigned';
+	const req = pool.request();
+	if (assigned) req.input('actor_id', sql.VarChar(20), actor.id);
 	return (
-		await pool.request().query(`
+		await req.query(`
       SELECT p.id, p.amount, p.paid_date, p.created_at, e.id AS enrollment_id, c.id AS course_id,
              c.name AS course_name, t.full_name AS trainee_name
       FROM tuition_payments p
       JOIN course_enrollments e ON e.id = p.enrollment_id
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
-      WHERE p.status = 'pending'
+      WHERE p.status = 'pending'${assigned ? ` AND ${ASSIGNED_EXISTS_SQL}` : ''}
       ORDER BY p.created_at`)
 	).recordset;
 };

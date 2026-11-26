@@ -22,8 +22,8 @@ const listForCourse = asyncHandler(async (req, res) =>
 	success(res, await tuitionService.listForCourse(req.params.id, req.query.program_id || null)),
 );
 
-const listPending = asyncHandler(async (_req, res) =>
-	success(res, await tuitionService.listPending()),
+const listPending = asyncHandler(async (req, res) =>
+	success(res, await tuitionService.listPending(req.user)),
 );
 
 const setFee = asyncHandler(async (req, res) =>

@@ -292,6 +292,9 @@ const update = async (id, data, actorId) => {
 const HAS_CERT_SQL = `EXISTS (SELECT 1 FROM certificates ce JOIN course_enrollments e ON e.id = ce.enrollment_id
                       WHERE e.course_id = @id)`;
 const HAS_CME_SQL = `EXISTS (SELECT 1 FROM cme_records WHERE source_type IS NOT NULL AND source_id = @id)`;
+// Khoản học phí đã xác nhận (có số biên lai): CASCADE qua course_enrollments sẽ xóa chứng từ tài chính.
+const HAS_TUITION_SQL = `EXISTS (SELECT 1 FROM tuition_payments p JOIN course_enrollments e ON e.id = p.enrollment_id
+                         WHERE e.course_id = @id AND p.status = 'confirmed')`;
 const remove = async (id, actorId) => {
 	await withActorTransaction(actorId, async (tx) => {
 		const run = (text) =>
@@ -301,12 +304,13 @@ const remove = async (id, actorId) => {
 				.input('actor_id', sql.VarChar(20), actorId)
 				.query(text);
 		const del = await run(
-			`DELETE FROM courses WHERE id = @id AND NOT ${HAS_CERT_SQL} AND NOT ${HAS_CME_SQL}`,
+			`DELETE FROM courses WHERE id = @id AND NOT ${HAS_CERT_SQL} AND NOT ${HAS_CME_SQL} AND NOT ${HAS_TUITION_SQL}`,
 		);
 		if (del.rowsAffected[0]) return;
 		const used = (
 			await run(`SELECT CASE WHEN ${HAS_CERT_SQL} THEN 1 ELSE 0 END AS has_cert,
-                      CASE WHEN ${HAS_CME_SQL} THEN 1 ELSE 0 END AS has_cme`)
+                      CASE WHEN ${HAS_CME_SQL} THEN 1 ELSE 0 END AS has_cme,
+                      CASE WHEN ${HAS_TUITION_SQL} THEN 1 ELSE 0 END AS has_tuition`)
 		).recordset[0];
 		if (used?.has_cert)
 			throw httpError(
@@ -317,6 +321,11 @@ const remove = async (id, actorId) => {
 			throw httpError(
 				409,
 				'Khóa học đã có tín chỉ CME tự động ghi nhận cho học viên / giảng viên, không thể xóa.',
+			);
+		if (used?.has_tuition)
+			throw httpError(
+				409,
+				'Khóa học đã có khoản học phí được xác nhận (đã cấp biên lai), không thể xóa. Hãy đóng khóa thay vì xóa.',
 			);
 	});
 	broadcast('update', { entity: 'course' });

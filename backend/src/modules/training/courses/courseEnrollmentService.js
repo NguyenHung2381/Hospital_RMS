@@ -403,14 +403,25 @@ const removeEnrollment = async (enrollmentId, actorId = null) => {
 	await withTransaction(async (tx) => {
 		const run = (text) => tx.request().input('id', sql.VarChar(20), enrollmentId).query(text);
 		await run('DELETE FROM attendance WHERE enrollment_id = @id');
+		// Khoản học phí đã xác nhận (có số biên lai) cũng chặn xóa: FK CASCADE sẽ xóa chứng từ
+		// tài chính và số biên lai MAX+1 có thể bị cấp lại cho khoản khác.
 		const del = await run(`DELETE FROM course_enrollments WHERE id = @id
-      AND NOT EXISTS (SELECT 1 FROM certificates ce WHERE ce.enrollment_id = @id)`);
+      AND NOT EXISTS (SELECT 1 FROM certificates ce WHERE ce.enrollment_id = @id)
+      AND NOT EXISTS (SELECT 1 FROM tuition_payments p WHERE p.enrollment_id = @id AND p.status = 'confirmed')`);
 		if (del.rowsAffected[0]) return;
 		const cert = await run('SELECT 1 AS x FROM certificates WHERE enrollment_id = @id');
 		if (cert.recordset[0])
 			throw httpError(
 				409,
 				'Học viên đã được cấp giấy chứng nhận, không thể xóa lượt ghi danh. Hãy thu hồi giấy chứng nhận thay vì xóa.',
+			);
+		const paid = await run(
+			"SELECT 1 AS x FROM tuition_payments WHERE enrollment_id = @id AND status = 'confirmed'",
+		);
+		if (paid.recordset[0])
+			throw httpError(
+				409,
+				'Học viên đã có khoản học phí được xác nhận (đã cấp biên lai), không thể xóa lượt ghi danh.',
 			);
 	});
 	await formCustomValueService.remove('course_registration', enrollmentId);
