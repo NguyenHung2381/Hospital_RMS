@@ -11,7 +11,13 @@ import {
 	updateTrainee,
 	type GrantedTraineeAccount,
 } from '../api/traineeApi';
-import { EMPTY_FORM, type ModalType, type Trainee, type TraineeFormData } from '../types/trainee.type';
+import {
+	EMPTY_FORM,
+	type ModalType,
+	type Trainee,
+	type TraineeFormData,
+	type TraineeListQuery,
+} from '../types/trainee.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import type { TraineeDocState } from '../api/traineeRecordApi';
 
@@ -20,9 +26,14 @@ export interface SimpleItem {
 	name: string;
 }
 
-/** trainingTypeId: lọc học viên theo loại khóa đã ghi danh (trang Học viên của 1 loại), '' = tất cả. */
-export function useTrainees(trainingTypeId = '') {
+/**
+ * query: bộ lọc gửi server (loại hình, đợt/khóa, năm, trạng thái, đối tượng, khoa — xem
+ * useTraineeFilters). Tìm kiếm và trạng thái hồ sơ PDF lọc tại chỗ trên danh sách đã tải.
+ */
+export function useTrainees(query: TraineeListQuery = {}) {
+	const queryKey = JSON.stringify(query);
 	const [trainees, setTrainees] = useState<Trainee[]>([]);
+	const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
 	const [traineeTypes, setTraineeTypes] = useState<SimpleItem[]>([]);
 	const [departments, setDepartments] = useState<SimpleItem[]>([]);
 	const [isLoadingData, setIsLoadingData] = useState(true);
@@ -44,14 +55,22 @@ export function useTrainees(trainingTypeId = '') {
 	// Nộp / duyệt / xóa file hồ sơ đổi màu trạng thái ở danh sách
 	useRealtimeUpdate('trainee_document', refreshData);
 
+	// Đổi bộ lọc thì về trang 1 (làm mới do realtime thì giữ trang đang xem)
+	const [pageQueryKey, setPageQueryKey] = useState(queryKey);
+	if (pageQueryKey !== queryKey) {
+		setPageQueryKey(queryKey);
+		setPage(1);
+	}
+
 	useEffect(() => {
 		let stale = false;
 		void (async () => {
 			setIsLoadingData(true);
 			try {
-				const res = await getTrainees(trainingTypeId || undefined);
+				const res = await getTrainees(JSON.parse(queryKey) as TraineeListQuery);
 				if (stale) return;
 				setTrainees(res.data);
+				setTypeCounts(res.type_counts ?? {});
 			} catch {
 				if (!stale) showToast('error', 'Không thể tải danh sách học viên');
 			} finally {
@@ -61,7 +80,7 @@ export function useTrainees(trainingTypeId = '') {
 		return () => {
 			stale = true;
 		};
-	}, [trainingTypeId, refreshKey]);
+	}, [queryKey, refreshKey]);
 
 	useEffect(() => {
 		apiClient
@@ -220,6 +239,8 @@ export function useTrainees(trainingTypeId = '') {
 
 	return {
 		trainees,
+		/** Số học viên theo loại hình (key '' = tất cả) cho tab loại hình */
+		typeCounts,
 		traineeTypes,
 		departments,
 		isLoadingData,

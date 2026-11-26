@@ -16,9 +16,11 @@ import { TraineeFormModal } from '../components/TraineeFormModal';
 import { TraineeImportModal } from '../components/TraineeImportModal';
 import { QuickAddExternalTraineeModal } from '../components/QuickAddExternalTraineeModal';
 import { TraineeDocStateBadge } from '../components/TraineeDocState';
-import { DOC_STATE_META, DOC_STATE_ORDER } from '../utils/docState';
-import type { TraineeDocState } from '../api/traineeRecordApi';
+import { TraineeRefineFilters, TraineeScopeFilters, TraineeTypeTabs } from '../components/TraineeFilters';
+import { DOC_STATE_META } from '../utils/docState';
+import { enrollmentStatusOf } from '../utils/enrollmentStatus';
 import { useTrainees } from '../hooks/useTrainees';
+import { useTraineeFilters } from '../hooks/useTraineeFilters';
 import { formatDate } from '../../../shared/utils/formatDate';
 import styles from './Trainees.module.css';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
@@ -51,6 +53,22 @@ const EXCEL_COLS: ExcelColumn<Trainee>[] = [
 	{ header: 'Hồ sơ PDF', value: (x) => DOC_STATE_META[x.doc_state ?? 'missing'].label },
 ];
 
+// Thêm khi đang lọc theo khóa: lượt ghi danh khớp bộ lọc của từng học viên
+const ENROLLMENT_EXCEL_COLS: ExcelColumn<Trainee>[] = [
+	{ header: 'Khóa / đợt', value: (x) => x.course_name },
+	{ header: 'Chương trình', value: (x) => x.program_name },
+	{ header: 'Mã thực hành', value: (x) => x.practice_code },
+	{ header: 'Bắt đầu', value: (x) => formatDateVN(x.enrollment_start_date) },
+	{ header: 'Kết thúc', value: (x) => formatDateVN(x.enrollment_end_date) },
+	{ header: 'Trạng thái', value: (x) => enrollmentStatusOf(x)?.label },
+	{ header: 'Số khóa khớp bộ lọc', value: (x) => x.matched_enrollment_count },
+];
+
+function EnrollmentStatusBadge({ t }: { t: Trainee }) {
+	const s = enrollmentStatusOf(t);
+	return s ? <Badge tone={s.tone}>{s.label}</Badge> : <>—</>;
+}
+
 const TYPE_NAME: Record<string, string> = {
 	[TRAINING_TYPE.DTLT]: 'khóa đào tạo liên tục',
 	[TRAINING_TYPE.GPHN]: 'đợt thực hành GPHN',
@@ -58,34 +76,47 @@ const TYPE_NAME: Record<string, string> = {
 };
 
 /**
- * typeId bỏ trống = "Tất cả học viên" (danh bạ chung, thêm / nhập học viên ở đây);
- * có typeId = tab Học viên của 1 loại đào tạo: chỉ người đã ghi danh loại đó.
+ * typeId bỏ trống = "Tất cả học viên" (danh bạ chung, thêm / nhập học viên ở đây; lọc theo
+ * loại hình bằng tab, theo đợt/khóa, năm, trạng thái... bằng thanh lọc — lưu trên URL);
+ * có typeId = tab Học viên của 1 loại đào tạo: loại hình cố định, chỉ người đã ghi danh loại đó.
  */
-export default function Trainees({ typeId = '' }: { typeId?: string }) {
+export default function Trainees({ typeId: lockedTypeId = '' }: { typeId?: string }) {
 	const customCfg = useFormConfig('trainee', 'admin');
-	const d = useTrainees(typeId);
+	const f = useTraineeFilters(lockedTypeId);
+	const typeId = f.typeId;
+	const d = useTrainees(f.query);
 	const navigate = useNavigate();
 	const openDetail = (t: Trainee, tab = 'info') => navigate(`/admin/trainees/${t.id}?tab=${tab}`);
 	const isGphn = typeId === TRAINING_TYPE.GPHN;
-	// Tab theo loại: thay cột Liên hệ / Đối tượng / Khoa bằng thông tin lượt ghi danh của loại đó.
-	const colCount = typeId ? 8 : 9;
+	// Lọc theo khóa: thay cột Liên hệ / Đối tượng / Khoa bằng lượt ghi danh khớp bộ lọc.
+	const byEnrollment = f.byEnrollment;
+	const colCount = 9;
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 	// Đẩy tay học viên xuống máy chấm công vân tay
 	const devices = usePushToDevices();
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [showImport, setShowImport] = useState(false);
 	const [showQuickAdd, setShowQuickAdd] = useState(false);
+	const [refineOpen, setRefineOpen] = useState(false);
+	const refineCount = f.refineCount + (d.docFilter ? 1 : 0);
+	const showRefine = refineOpen || refineCount > 0;
+	const hasFilters = f.hasFilters || !!d.docFilter || !!d.search.trim();
+	const clearFilters = () => {
+		f.clearFilters();
+		d.setDocFilter('');
+		d.setPage(1);
+	};
 
 	const headerActions = (
 		<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 			<ExcelActions
 				fileName='hoc-vien'
 				itemLabel='học viên'
-				columns={EXCEL_COLS}
+				columns={byEnrollment ? [...EXCEL_COLS, ...ENROLLMENT_EXCEL_COLS] : EXCEL_COLS}
 				getRows={() => d.filtered}
 			/>
 			{/* Thêm mới ở danh bạ chung — tab theo loại chỉ hiện người đã ghi danh nên thêm ở đó sẽ không thấy */}
-			{!typeId && (
+			{!lockedTypeId && (
 				<>
 					<button type='button'
 						className={styles.btnAddHeader}
@@ -113,11 +144,11 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 
 	return (
 		<AdminLayout
-			pageTitle={typeId ? 'Học viên' : 'Tất cả học viên'}
+			pageTitle={lockedTypeId ? 'Học viên' : 'Tất cả học viên'}
 			pageSubtitle={
-				typeId
-					? `Học viên đã ghi danh ${TYPE_NAME[typeId] ?? 'loại đào tạo này'} — ghi danh thêm trong trang của từng khóa`
-					: 'Danh bạ học viên chung của mọi loại đào tạo — thêm, nhập Excel và cấp tài khoản tại đây'
+				lockedTypeId
+					? `Học viên đã ghi danh ${TYPE_NAME[lockedTypeId] ?? 'loại đào tạo này'} — lọc theo đợt / khóa, năm; ghi danh thêm trong trang của từng khóa`
+					: 'Danh bạ học viên chung — lọc theo loại hình, đợt / khóa, năm; thêm, nhập Excel và cấp tài khoản tại đây'
 			}
 			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={headerActions}
@@ -166,33 +197,42 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 						)}
 					</div>
 					<div className={styles.tableControls}>
-						<select
-							className={styles.filterSelect}
-							value={d.docFilter}
-							onChange={(e) => {
-								d.setDocFilter(e.target.value as TraineeDocState | '');
-								d.setPage(1);
-							}}
-							aria-label='Lọc theo hồ sơ PDF'
-							title='Lọc theo trạng thái file hồ sơ PDF'
-						>
-							<option value=''>Hồ sơ: tất cả ({d.trainees.length})</option>
-							{DOC_STATE_ORDER.map((st) => (
-								<option
-									key={st}
-									value={st}
-								>
-									{DOC_STATE_META[st].label} ({d.docCounts[st]})
-								</option>
-							))}
-						</select>
 						<SearchInput
 							value={d.search}
 							onChange={d.handleSearch}
 							placeholder='Tìm theo tên, CCCD, điện thoại, email...'
 						/>
+						<TraineeScopeFilters
+							f={f}
+							refineOpen={showRefine}
+							refineCount={refineCount}
+							onToggleRefine={() => setRefineOpen((o) => !o)}
+						/>
 					</div>
 				</div>
+
+				{showRefine && (
+					<TraineeRefineFilters
+						f={f}
+						traineeTypes={d.traineeTypes}
+						departments={d.departments}
+						docFilter={d.docFilter}
+						onDocFilter={(v) => {
+							d.setDocFilter(v);
+							d.setPage(1);
+						}}
+						docCounts={d.docCounts}
+						docTotal={d.trainees.length}
+						onClear={clearFilters}
+					/>
+				)}
+
+				{!lockedTypeId && (
+					<TraineeTypeTabs
+						f={f}
+						counts={d.typeCounts}
+					/>
+				)}
 
 				<div className={styles.tableWrap}>
 				<table className={styles.table}>
@@ -215,10 +255,16 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 									<th className={styles.th}>Chương trình · Thời gian</th>
 									<th className={styles.th}>Khoa đang học</th>
 								</>
-							) : typeId ? (
+							) : byEnrollment ? (
 								<>
-									<th className={styles.th}>Khóa gần nhất</th>
-									<th className={styles.th}>Số khóa đã học</th>
+									<th className={styles.th}>Khóa / đợt</th>
+									<th className={styles.th}>Trạng thái</th>
+									<th
+										className={styles.th}
+										title='Số lượt ghi danh của học viên khớp bộ lọc'
+									>
+										Số khóa
+									</th>
 								</>
 							) : (
 								<>
@@ -241,7 +287,7 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 							<TableEmpty
 								colSpan={colCount}
 								title='Không tìm thấy học viên'
-								desc={d.search ? 'Thử thay đổi từ khóa tìm kiếm' : 'Chưa có học viên nào'}
+								desc={hasFilters ? 'Thử đổi từ khóa hoặc bộ lọc' : 'Chưa có học viên nào'}
 							/>
 						) : (
 							d.paged.map((t, i) => {
@@ -313,7 +359,10 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 										{isGphn ? (
 											<>
 												<td className={styles.td}>
-													<span className={`${styles.descText} ${styles.mono}`}>{t.practice_code ?? '—'}</span>
+													<div className={`${styles.descText} ${styles.mono}`}>{t.practice_code ?? '—'}</div>
+													<div style={{ marginTop: 4 }}>
+														<EnrollmentStatusBadge t={t} />
+													</div>
 												</td>
 												<td className={styles.td}>
 													<div className={styles.descText}>{t.program_name ?? t.course_name ?? '—'}</div>
@@ -327,14 +376,17 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 													<span className={styles.descText}>{t.current_department ?? '—'}</span>
 												</td>
 											</>
-										) : typeId ? (
+										) : byEnrollment ? (
 											<>
 												<td className={styles.td}>
 													<div className={styles.descText}>{t.course_name ?? '—'}</div>
 													{t.program_name && <div className={styles.personSub}>{t.program_name}</div>}
 												</td>
 												<td className={styles.td}>
-													<span className={styles.descText}>{t.type_enrollment_count ?? 0}</span>
+													<EnrollmentStatusBadge t={t} />
+												</td>
+												<td className={styles.td}>
+													<span className={styles.descText}>{t.matched_enrollment_count ?? 0}</span>
 												</td>
 											</>
 										) : (

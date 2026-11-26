@@ -13,10 +13,40 @@
  * /trainees:
  *   get:
  *     summary: Danh sách học viên
+ *     description: |
+ *       Mỗi dòng 1 học viên. Các bộ lọc theo khóa (training_type_id, course_id, year,
+ *       training_form_id, enrollment_status, progress_status) cùng khớp trên 1 lượt ghi danh
+ *       (bỏ lượt bị từ chối); khi có ít nhất 1 bộ lọc này, mỗi dòng kèm lượt ghi danh gần nhất
+ *       khớp bộ lọc (course_name, enrollment_status, enrollment_progress_status,
+ *       matched_enrollment_count...).
  *     tags: [Trainees]
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string } }
+ *       - { in: query, name: trainee_type_id, schema: { type: string }, description: Đối tượng học viên }
+ *       - { in: query, name: department_id, schema: { type: string } }
+ *       - { in: query, name: doc_state, schema: { type: string, enum: [done, pending, missing] } }
+ *       - { in: query, name: training_type_id, schema: { type: string }, description: Loại hình đào tạo }
+ *       - { in: query, name: course_id, schema: { type: string }, description: Khóa / đợt }
+ *       - { in: query, name: year, schema: { type: integer }, description: "Năm của lượt ghi danh (ngày bắt đầu thực hành → khai giảng → đăng ký)" }
+ *       - { in: query, name: training_form_id, schema: { type: string }, description: Hình thức học }
+ *       - { in: query, name: enrollment_status, schema: { type: string, enum: [pending, approved, waitlisted] } }
+ *       - { in: query, name: progress_status, schema: { type: string, enum: [in_progress, completed, dropped] } }
  *     responses:
  *       200:
- *         description: Danh sách học viên (CCCD bị che nếu không có quyền trainees:read_sensitive)
+ *         description: "{ data[], pagination, type_counts } — CCCD bị che nếu không có quyền trainees:read_sensitive; type_counts đếm theo loại hình với mọi bộ lọc trừ loại hình"
+ */
+
+/**
+ * @swagger
+ * /trainees/filter-options:
+ *   get:
+ *     summary: Lựa chọn cho thanh lọc danh sách học viên
+ *     tags: [Trainees]
+ *     parameters:
+ *       - { in: query, name: training_type_id, schema: { type: string }, description: Chỉ khóa / năm của loại hình này }
+ *     responses:
+ *       200:
+ *         description: "{ courses[] (khóa có học viên, kèm trainee_count), years[], training_forms[] }"
  */
 
 /**

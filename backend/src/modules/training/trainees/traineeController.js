@@ -1,4 +1,5 @@
 const traineeService = require('./traineeService');
+const traineeListService = require('./traineeListService');
 const traineeAccountService = require('./traineeAccountService');
 const traineeRecordService = require('./traineeRecordService');
 const traineeImportService = require('./traineeImportService');
@@ -13,6 +14,11 @@ const getAll = asyncHandler(async (req, res) => {
 	// custom = trường tùy chỉnh (Cấu hình form 'trainee') — form sửa mở từ danh sách
 	return success(res, await formCustomValueService.attachResult('trainee', result));
 });
+
+// Lựa chọn cho thanh lọc danh sách học viên (khóa/đợt, năm, hình thức học)
+const getFilterOptions = asyncHandler(async (req, res) =>
+	success(res, await traineeListService.getFilterOptions(req.query)),
+);
 
 const getById = asyncHandler(async (req, res) => {
 	const item = await traineeService.getById(req.params.id, req.user);
@@ -129,6 +135,7 @@ const importExcel = asyncHandler(async (req, res) => {
 
 module.exports = {
 	getAll,
+	getFilterOptions,
 	getById,
 	createOne,
 	updateOne,

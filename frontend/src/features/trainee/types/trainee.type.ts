@@ -40,14 +40,21 @@ export interface Trainee {
 	/** Tài khoản học viên cấp riêng (mã 'HV…'), không thuộc tài khoản nội viện. */
 	account_username?: string | null;
 	account_active?: boolean | null;
-	// Có khi lọc theo loại khóa: lượt ghi danh gần nhất thuộc loại đó.
+	// Có khi lọc theo khóa (loại hình, đợt, năm, trạng thái...): lượt ghi danh gần nhất khớp bộ lọc.
+	enrollment_id?: string | null;
+	enrollment_course_id?: string | null;
+	enrollment_status?: EnrollmentStatus | null;
+	enrollment_progress_status?: 'in_progress' | 'completed' | 'dropped' | null;
+	enrollment_training_type_id?: string | null;
+	course_batch_no?: number | null;
 	practice_code?: string | null;
 	program_name?: string | null;
 	course_name?: string | null;
 	enrollment_start_date?: string | null;
 	enrollment_end_date?: string | null;
 	current_department?: string | null;
-	type_enrollment_count?: number;
+	/** Số lượt ghi danh của học viên khớp bộ lọc. */
+	matched_enrollment_count?: number;
 	/** Hồ sơ PDF: đã nộp (đã duyệt) / chờ duyệt / chưa nộp */
 	doc_state?: TraineeDocState;
 	/** Chỉ có ở GET /trainees/:id — số lượt ghi danh (trừ bị từ chối). */
@@ -111,8 +118,39 @@ export interface TraineeEnrollment {
 export interface TraineeListResponse {
 	data: Trainee[];
 	pagination: { page: number; limit: number; total: number };
-	/** Số học viên theo loại khóa đã ghi danh (key '' = tất cả). */
+	/** Số học viên theo loại hình đã ghi danh (key '' = tất cả), tính với mọi bộ lọc trừ loại hình. */
 	type_counts?: Record<string, number>;
+}
+
+/** Bộ lọc gửi lên GET /trainees (bộ lọc theo khóa cùng khớp trên 1 lượt ghi danh). */
+export interface TraineeListQuery {
+	training_type_id?: string;
+	course_id?: string;
+	year?: string;
+	training_form_id?: string;
+	enrollment_status?: string;
+	progress_status?: string;
+	trainee_type_id?: string;
+	department_id?: string;
+}
+
+export interface TraineeFilterCourse {
+	id: string;
+	name: string;
+	training_type_id: string | null;
+	batch_no: number | null;
+	start_date: string | null;
+	end_date: string | null;
+	status: string;
+	is_rolling: boolean;
+	trainee_count: number;
+}
+
+/** GET /trainees/filter-options */
+export interface TraineeFilterOptions {
+	courses: TraineeFilterCourse[];
+	years: number[];
+	training_forms: { id: string; name: string }[];
 }
 
 export const EMPTY_FORM: TraineeFormData = {

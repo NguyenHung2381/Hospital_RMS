@@ -3,21 +3,15 @@ const {
 	sql,
 	withActorTransaction,
 	actorRequest,
-	queryAll,
 	nowSql,
-	outerApply,
-	ilike,
-	likeCi,
 	queryBatch,
 } = require('../../../config/db');
 const { genTraineeId, randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
-const { paging } = require('../../../utils/paging');
 const trainingFileService = require('../trainingFileService');
 const personService = require('../../persons/personService');
 const { normalizeGender } = require('../../../utils/gender');
-const { hasPermission } = require('../../../permissions/authz');
-const { DOC_STATE_SQL, DOC_STATE_WHERE } = require('./traineeDocumentSql');
+const { DOC_STATE_SQL } = require('./traineeDocumentSql');
 const {
 	PROFILE_DOC_TYPE,
 	REGISTRATION_DOC_TYPES,
@@ -25,134 +19,12 @@ const {
 	assertPdfOrImage,
 } = require('./traineeProfilePdf');
 const { lockAccountOf } = require('./traineeAccountService');
-
-// extraCols/extraJoins: cột & outerApply thêm cho danh sách lọc theo loại khóa.
-const traineeSelectWith = (extraCols = '', extraJoins = '') => `
-  SELECT t.*, tt.name AS trainee_type_name, d.name AS department_name,
-         au.username AS account_username, au.is_active AS account_active${extraCols}
-  FROM trainees t
-  LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
-  LEFT JOIN departments d ON d.id = t.department_id
-  LEFT JOIN users au ON au.id = t.user_id
-  ${extraJoins}
-`;
-
-// Che bớt CCCD (chỉ hiện 4 số cuối) cho người không có quyền xem dữ liệu
-// nhạy cảm — actor=null hoặc thiếu quyền 'trainees:read_sensitive'/system:manage
-// đều bị che.
-const maskSensitive = (row, canSeeSensitive) => {
-	if (canSeeSensitive || !row.national_id) return row;
-	const id = String(row.national_id);
-	return { ...row, national_id: id.length > 4 ? `••••${id.slice(-4)}` : '••••' };
-};
-
-const canReadSensitive = (actor) => hasPermission(actor, 'trainees', 'read_sensitive');
-
-const getAll = async (
-	{
-		page = 1,
-		limit = 20,
-		search = undefined,
-		trainee_type_id = undefined,
-		department_id = undefined,
-		training_type_id = undefined,
-		doc_state = undefined,
-		missing_docs = undefined,
-	} = {},
-	actor = null,
-) => {
-	const pool = await getPool();
-	const pg = paging(page, limit, 100);
-	const where = ['t.hidden_at IS NULL'];
-	const req = pool.request().input('offset', sql.Int, pg.offset).input('limit', sql.Int, pg.limit);
-
-	if (search) {
-		// CCCD bị che với người thiếu quyền read_sensitive ⇒ cũng không cho tìm theo
-		// CCCD, nếu không thì dò từng chữ số qua kết quả lọc là ra số đầy đủ.
-		const byNationalId = canReadSensitive(actor) ? ` OR ${ilike('t.national_id', '@search')}` : '';
-		where.push(
-			`(${ilike('t.full_name', '@search')}${byNationalId} OR ${ilike('t.phone', '@search')} OR ${likeCi('t.email', '@search')})`,
-		);
-		req.input('search', sql.NVarChar, `%${search}%`);
-	}
-	if (trainee_type_id) {
-		where.push('t.trainee_type_id = @trainee_type_id');
-		req.input('trainee_type_id', sql.VarChar(20), trainee_type_id);
-	}
-	if (department_id) {
-		where.push('t.department_id = @department_id');
-		req.input('department_id', sql.VarChar(20), department_id);
-	}
-	// Loại học viên (GPHN / ĐTLT / CTCV) suy ra từ khóa đã ghi danh — 1 người có
-	// thể thuộc nhiều loại. Đếm cho tab dùng mọi bộ lọc trừ chính loại này.
-	// Trạng thái hồ sơ PDF: done | pending | missing (missing_docs=1 — tham số cũ = missing)
-	const docState = missing_docs === '1' || missing_docs === true ? 'missing' : doc_state;
-	if (Object.hasOwn(DOC_STATE_WHERE, docState ?? '')) where.push(DOC_STATE_WHERE[docState]('t'));
-	const countWhereSql = `WHERE ${where.join(' AND ')}`;
-	if (training_type_id) {
-		where.push(`EXISTS (SELECT 1 FROM course_enrollments e JOIN courses c ON c.id = e.course_id
-		  WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id)`);
-		req.input('training_type_id', sql.VarChar(20), training_type_id);
-	}
-	const whereSql = `WHERE ${where.join(' AND ')}`;
-
-	// Lượt ghi danh gần nhất thuộc loại đang lọc — cột riêng của từng tab.
-	const latestEnrollment = training_type_id
-		? `${outerApply(
-				`
-		    SELECT e.id AS enrollment_id, e.practice_code, e.start_date AS enrollment_start_date,
-		           e.end_date AS enrollment_end_date, e.status AS enrollment_status,
-		           c.name AS course_name, tp.name AS program_name,
-		           (SELECT r.department_name FROM enrollment_rotations r
-		            WHERE r.enrollment_id = e.id AND CAST(${nowSql} AS DATE) BETWEEN r.start_date AND r.end_date
-		            ORDER BY r.seq OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS current_department,
-		           (SELECT COUNT(*) FROM course_enrollments e2 JOIN courses c2 ON c2.id = e2.course_id
-		            WHERE e2.trainee_id = t.id AND e2.status <> 'rejected' AND c2.training_type_id = @training_type_id) AS type_enrollment_count
-		    FROM course_enrollments e
-		    JOIN courses c ON c.id = e.course_id
-		    LEFT JOIN training_programs tp ON tp.id = e.program_id
-		    WHERE e.trainee_id = t.id AND e.status <> 'rejected' AND c.training_type_id = @training_type_id
-		    ORDER BY e.created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY
-		  `,
-				'le',
-			)}`
-		: '';
-
-	const sets = await queryAll(req, [
-		`
-    ${traineeSelectWith(
-			`, ${DOC_STATE_SQL('t')} AS doc_state${training_type_id ? ', le.*' : ''}`,
-			latestEnrollment,
-		)} ${whereSql}
-    ORDER BY t.created_at DESC
-    ${pg.fetchClause}
-		`,
-		`
-    SELECT COUNT(*) AS total FROM trainees t ${whereSql}
-		`,
-		`
-    SELECT c.training_type_id, COUNT(DISTINCT t.id) AS total
-    FROM trainees t
-    JOIN course_enrollments e ON e.trainee_id = t.id AND e.status <> 'rejected'
-    JOIN courses c ON c.id = e.course_id
-    ${countWhereSql} AND c.training_type_id IS NOT NULL
-    GROUP BY c.training_type_id
-		`,
-		`
-    SELECT COUNT(*) AS total FROM trainees t ${countWhereSql}
-		`,
-	]);
-
-	const canSeeSensitive = canReadSensitive(actor);
-	return {
-		data: sets[0].map((r) => maskSensitive(r, canSeeSensitive)),
-		pagination: { page: pg.page, limit: pg.limit, total: sets[1][0].total },
-		type_counts: {
-			'': sets[3][0].total,
-			...Object.fromEntries(sets[2].map((r) => [r.training_type_id, r.total])),
-		},
-	};
-};
+const {
+	traineeSelectWith,
+	maskSensitive,
+	canReadSensitive,
+	getAll,
+} = require('./traineeListService');
 
 const getById = async (id, actor = null) => {
 	const pool = await getPool();

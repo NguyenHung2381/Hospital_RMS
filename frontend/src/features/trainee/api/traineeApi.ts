@@ -3,15 +3,24 @@ import type {
 	Trainee,
 	TraineeEnrollment,
 	TraineeFormData,
+	TraineeFilterOptions,
 	TraineeImportResult,
+	TraineeListQuery,
 	TraineeListResponse,
 	TraineeProgress,
 } from '../types/trainee.type';
 import { seg } from '../../../shared/api/path';
 
-export const getTrainees = (trainingTypeId?: string) =>
-	apiClient.get<TraineeListResponse>(
-		`/trainees?limit=0${trainingTypeId ? `&training_type_id=${encodeURIComponent(trainingTypeId)}` : ''}`,
+export const getTrainees = (query: TraineeListQuery = {}) => {
+	const qs = new URLSearchParams({ limit: '0' });
+	for (const [k, v] of Object.entries(query)) if (v) qs.set(k, v);
+	return apiClient.get<TraineeListResponse>(`/trainees?${qs.toString()}`);
+};
+
+/** Lựa chọn cho thanh lọc: khóa/đợt có học viên, năm, hình thức học (theo loại hình nếu có). */
+export const getTraineeFilterOptions = (trainingTypeId?: string) =>
+	apiClient.get<TraineeFilterOptions>(
+		`/trainees/filter-options${trainingTypeId ? `?training_type_id=${encodeURIComponent(trainingTypeId)}` : ''}`,
 	);
 
 export const getTrainee = (traineeId: string) => apiClient.get<Trainee>(`/trainees/${seg(traineeId)}`);

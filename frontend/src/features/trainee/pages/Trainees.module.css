@@ -24,6 +24,70 @@
 	composes: filterSelect from '../../../shared/components/Table/Table.module.css';
 }
 
+/* ── LỌC THEO LOẠI HÌNH / ĐỢT ───────────────── */
+.tabsRow {
+	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
+}
+.tab {
+	composes: tab from '../../../shared/components/Table/Table.module.css';
+}
+.tabActive {
+	composes: tabActive from '../../../shared/components/Table/Table.module.css';
+}
+.tabBadge {
+	composes: tabBadge from '../../../shared/components/Table/Table.module.css';
+}
+/* Tên khóa dài ("Đào tạo liên tục đợt 68 · 12/2026 (40)") — không đẩy ô tìm kiếm xuống dòng */
+.courseSelect {
+	max-width: 280px;
+	text-overflow: ellipsis;
+}
+.moreFiltersBtn {
+	composes: btn secondary from '../../../shared/components/Button/Button.module.css';
+}
+.moreFiltersBtn svg {
+	width: 14px;
+	height: 14px;
+}
+.moreFiltersBtnActive {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+	color: var(--color-primary-dark);
+}
+/* Tầng 2 của thanh lọc: ngay dưới hàng tìm kiếm, cùng lề trong của thẻ */
+.refineRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--space-2) var(--space-3);
+	padding: var(--space-3) var(--space-6);
+	border-bottom: 1px solid var(--color-gray-100);
+	background: var(--color-gray-50);
+}
+/* Ô chọn rộng theo lựa chọn dài nhất (tên khoa, hình thức học) — giới hạn để cả hàng gọn */
+.refineRow select {
+	max-width: 220px;
+	text-overflow: ellipsis;
+}
+.clearFiltersBtn {
+	composes: btn ghost sm from '../../../shared/components/Button/Button.module.css';
+}
+@media (max-width: 640px) {
+	.refineRow {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		padding: var(--space-3) var(--space-4);
+	}
+	.courseSelect,
+	.refineRow select {
+		max-width: none;
+	}
+	.moreFiltersBtn {
+		width: 100%;
+	}
+}
+
 /* ── TABLE ───────────────────────────────── */
 .tableWrap {
 	overflow-x: auto;

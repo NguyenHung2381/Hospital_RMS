@@ -14,6 +14,7 @@ const uploadExcel = require('../../../middlewares/uploadExcel');
 router.use(authenticate);
 
 router.get('/', authorizePermission(['trainees', 'read']), ctrl.getAll);
+router.get('/filter-options', authorizePermission(['trainees', 'read']), ctrl.getFilterOptions);
 
 router.post(
 	'/import-excel',
