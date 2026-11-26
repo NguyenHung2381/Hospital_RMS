@@ -613,13 +613,6 @@
 	flex-direction: column;
 	gap: var(--space-4);
 }
-.overviewHead {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: var(--space-3);
-	flex-wrap: wrap;
-}
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .chip {
 	padding: 2px 10px;
@@ -675,58 +668,6 @@
 .statNum { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-gray-800); }
 .statNum sup { color: var(--color-gray-400); font-weight: normal; margin-left: 2px; }
 .statText { font-size: var(--font-size-xs); color: var(--color-gray-500); }
-
-/* ── Chi tiết hội nghị: công cụ tổ chức ───────────────────────────────────── */
-.orgGrid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-	gap: var(--space-3);
-	margin-bottom: var(--space-4);
-}
-.orgTile {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	padding: var(--space-4);
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-100);
-	border-radius: var(--radius-xl);
-	text-align: left;
-	font-family: var(--font-body);
-	cursor: pointer;
-	transition: border-color 0.15s, box-shadow 0.15s;
-}
-.orgTile:hover { border-color: var(--color-primary-light); box-shadow: var(--shadow-sm); }
-.orgTile:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.orgHead { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
-.orgIcon {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-lg);
-	background: var(--color-primary-pale);
-	color: var(--color-primary-dark);
-	flex-shrink: 0;
-}
-.orgIcon svg { width: 16px; height: 16px; }
-.orgTitle { flex: 1; font-weight: var(--font-weight-semibold); color: var(--color-gray-800); font-size: var(--font-size-sm); }
-.orgCount { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-gray-800); line-height: 1; }
-.orgCount small { font-size: var(--font-size-sm); font-weight: normal; color: var(--color-gray-400); }
-.orgDesc { font-size: var(--font-size-sm); color: var(--color-gray-600); }
-.orgHint { font-size: var(--font-size-xs); color: var(--color-gray-400); }
-.orgAction {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	margin-top: auto;
-	padding-top: var(--space-2);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-primary-dark);
-}
-.orgAction svg { width: 14px; height: 14px; }
 
 /* ── Bảng người tham dự ───────────────────────────────────────────────────── */
 .tabsRow {

@@ -79,12 +79,6 @@
 	color: var(--tone-teal-fg);
 	font-weight: var(--font-weight-semibold);
 }
-.loc svg {
-	width: 11px;
-	height: 11px;
-	margin-right: 3px;
-	vertical-align: -1px;
-}
 
 /* ── Ô "Thời gian" / "Tham dự": dòng chính + dòng phụ ── */
 .main {
