@@ -181,11 +181,6 @@
 	color: var(--tone-green-fg);
 	background: var(--tone-green-bg);
 }
-.chipPending {
-	composes: chip;
-	color: var(--tone-amber-fg);
-	background: var(--tone-amber-bg);
-}
 .chipMissing {
 	composes: chip;
 	color: var(--tone-red-fg);
@@ -224,12 +219,6 @@
 	font-size: var(--font-size-compact);
 	background: var(--color-white);
 	color: var(--color-gray-700);
-}
-.files {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	margin-top: 6px;
 }
 .fileRow {
 	display: flex;
