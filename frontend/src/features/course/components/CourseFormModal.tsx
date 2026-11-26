@@ -399,7 +399,7 @@ export function CourseFormModal({
 								checked={form.status === 'cancelled'}
 								onChange={(e) => setForm((f) => ({ ...f, status: e.target.checked ? 'cancelled' : 'draft' }))}
 							/>
-							<span style={{ color: form.status === 'cancelled' ? '#791f1f' : undefined }}>Hủy khóa học này</span>
+							<span style={{ color: form.status === 'cancelled' ? 'var(--tone-red-fg)' : undefined }}>Hủy khóa học này</span>
 						</label>
 					</FormField>
 				)}

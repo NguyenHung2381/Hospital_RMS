@@ -285,7 +285,7 @@ export function GradingPanel({
 							<div style={{ fontSize: 13 }}>
 								Học viên chọn: <strong>{a.selected_option ?? '—'}</strong> · Đáp án đúng:{' '}
 								<strong>{a.correct_option}</strong> ·{' '}
-								<span style={{ color: a.score_awarded ? '#0a9b4a' : '#e24b4a' }}>
+								<span style={{ color: a.score_awarded ? 'var(--color-primary-dark)' : 'var(--tone-red-fg)' }}>
 									{a.score_awarded ?? 0} điểm (tự động)
 								</span>
 							</div>
@@ -313,7 +313,7 @@ export function GradingPanel({
 										{a.score_awarded != null ? 'Sửa điểm' : 'Chấm điểm'}
 									</button>
 									{a.score_awarded != null && (
-										<span style={{ fontSize: 12, color: '#0a9b4a' }}>Đã chấm: {a.score_awarded}</span>
+										<span style={{ fontSize: 12, color: 'var(--color-primary-dark)' }}>Đã chấm: {a.score_awarded}</span>
 									)}
 								</div>
 							</>

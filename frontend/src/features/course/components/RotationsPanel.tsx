@@ -464,7 +464,7 @@ export function RotationsPanel({
 							</div>
 
 							{r.warnings.length > 0 && (
-								<div style={{ color: '#b42318', fontSize: 'var(--font-size-xs)' }}>
+								<div style={{ color: 'var(--tone-red-fg)', fontSize: 'var(--font-size-xs)' }}>
 									{r.warnings.join(' · ')}
 								</div>
 							)}

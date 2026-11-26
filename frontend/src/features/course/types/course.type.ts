@@ -109,18 +109,18 @@ export const DISPLAY_STATUS_CFG: Record<
 	CourseDisplayStatus,
 	{ label: string; color: string; bg: string; tone: BadgeTone }
 > = {
-	upcoming: { label: 'Sắp khai giảng', color: '#633806', bg: '#faeeda', tone: 'amber' },
-	enrolling: { label: 'Đang mở đăng ký', color: '#085028', bg: '#e1f5ea', tone: 'green' },
-	in_progress: { label: 'Đang trong quá trình học', color: '#0c447c', bg: '#e6f1fb', tone: 'purple' },
-	completed: { label: 'Hoàn thành', color: '#0c447c', bg: '#e6f1fb', tone: 'blue' },
-	cancelled: { label: 'Đã hủy', color: '#791f1f', bg: '#fcebeb', tone: 'red' },
+	upcoming: { label: 'Sắp khai giảng', color: 'var(--tone-amber-fg)', bg: 'var(--tone-amber-bg)', tone: 'amber' },
+	enrolling: { label: 'Đang mở đăng ký', color: 'var(--tone-green-fg)', bg: 'var(--tone-green-bg)', tone: 'green' },
+	in_progress: { label: 'Đang trong quá trình học', color: 'var(--tone-blue-fg)', bg: 'var(--tone-blue-bg)', tone: 'purple' },
+	completed: { label: 'Hoàn thành', color: 'var(--tone-blue-fg)', bg: 'var(--tone-blue-bg)', tone: 'blue' },
+	cancelled: { label: 'Đã hủy', color: 'var(--tone-red-fg)', bg: 'var(--tone-red-bg)', tone: 'red' },
 };
 
 export const ENROLLMENT_STATUS_CFG: Record<EnrollmentStatus, { label: string; color: string; bg: string }> = {
-	pending: { label: 'Chờ duyệt', color: '#633806', bg: '#faeeda' },
-	approved: { label: 'Đã duyệt', color: '#085028', bg: '#e1f5ea' },
-	rejected: { label: 'Từ chối', color: '#791f1f', bg: '#fcebeb' },
-	waitlisted: { label: 'Danh sách chờ', color: '#0c447c', bg: '#e6f1fb' },
+	pending: { label: 'Chờ duyệt', color: 'var(--tone-amber-fg)', bg: 'var(--tone-amber-bg)' },
+	approved: { label: 'Đã duyệt', color: 'var(--tone-green-fg)', bg: 'var(--tone-green-bg)' },
+	rejected: { label: 'Từ chối', color: 'var(--tone-red-fg)', bg: 'var(--tone-red-bg)' },
+	waitlisted: { label: 'Danh sách chờ', color: 'var(--tone-blue-fg)', bg: 'var(--tone-blue-bg)' },
 };
 
 export interface Enrollment {

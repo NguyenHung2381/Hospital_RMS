@@ -239,7 +239,7 @@ export function ResultsTab({
 					<>
 						<span
 							className={styles.certBadge}
-							style={cert.status === 'revoked' ? { background: '#fcebeb', color: '#791f1f' } : undefined}
+							style={cert.status === 'revoked' ? { background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' } : undefined}
 							title={`Cấp ngày ${formatDateVN(cert.issue_date)}${cert.expiry_date ? ` · Hạn ${formatDateVN(cert.expiry_date)}` : ''}`}
 						>
 							{cert.cert_no} · {cert.status === 'revoked' ? 'Đã thu hồi' : 'Đã cấp'}
