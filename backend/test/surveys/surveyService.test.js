@@ -82,3 +82,47 @@ test('#4 toàn lựa chọn lạ ⇒ answer_options NULL', async () => {
 	const q1 = inserts(/INSERT INTO survey_answers/).find((l) => l.inputs.question_id === 'Q1');
 	assert.equal(q1.inputs.answer_options, null);
 });
+
+const sameAsStored = () =>
+	state.questions.map((q) => ({
+		question_text: q.question_text,
+		question_type: q.question_type,
+		options: q.options ? JSON.parse(q.options) : undefined,
+	}));
+
+test('#3 setQuestions: đổi câu hỏi khi đã có phản hồi ⇒ 409, không DELETE', async () => {
+	reset({ responses: 2 });
+	log.length = 0;
+	await assert.rejects(
+		svc.setQuestions('KS1', [{ question_text: 'Mới', question_type: 'text' }], 'ADMIN'),
+		(e) => e.statusCode === 409,
+	);
+	assert.equal(inserts(/DELETE FROM survey_questions/).length, 0);
+});
+
+test('#3 setQuestions: câu hỏi không đổi (form sửa gửi kèm) ⇒ không ghi, không 409', async () => {
+	reset({ responses: 2 });
+	log.length = 0;
+	await svc.setQuestions('KS1', sameAsStored(), 'ADMIN');
+	assert.equal(inserts(/DELETE FROM survey_questions|INSERT INTO survey_questions/).length, 0);
+});
+
+test('#3 setQuestions: chưa có phản hồi ⇒ ghi lại trong 1 transaction có người thao tác', async () => {
+	reset({ responses: 0 });
+	log.length = 0;
+	await svc.setQuestions(
+		'KS1',
+		[
+			{ question_text: 'Mới', question_type: 'single_choice', options: ['A', '', 'B'] },
+			{ question_text: '', question_type: 'text' },
+		],
+		'ADMIN',
+	);
+	const texts = log.map((l) => l.text);
+	const iDel = texts.findIndex((t) => /DELETE FROM survey_questions/.test(t));
+	assert.ok(texts.slice(0, iDel).some((t) => /set_config/.test(t)));
+	const ins = inserts(/INSERT INTO survey_questions/);
+	assert.equal(ins.length, 1);
+	assert.equal(ins[0].inputs.options, '["A","B"]');
+	assert.ok(texts.includes('COMMIT'));
+});

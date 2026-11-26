@@ -75,19 +75,62 @@ const getById = async (id) => {
 	return row;
 };
 
-const setQuestions = async (surveyId, questions, actorId) => {
-	const pool = await getPool();
-	await pool
+// Câu hỏi hợp lệ theo đúng thứ tự sẽ ghi (bỏ câu thiếu nội dung / sai loại);
+// options là chuỗi JSON như cột lưu (câu tự luận: null).
+const normalizeQuestions = (questions) =>
+	(questions || [])
+		.filter((q) => q && q.question_text && QUESTION_TYPES.includes(q.question_type))
+		.map((q) => ({
+			question_text: q.question_text,
+			question_type: q.question_type,
+			options:
+				q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean)),
+		}));
+
+const sameQuestions = (a, b) =>
+	a.length === b.length &&
+	a.every(
+		(q, i) =>
+			q.question_text === b[i].question_text &&
+			q.question_type === b[i].question_type &&
+			(q.options ?? '[]') === (b[i].options ?? '[]'),
+	);
+
+// Ghi lại toàn bộ câu hỏi trong transaction `tx` (đã gắn người thao tác). Bộ câu hỏi
+// không đổi ⇒ không ghi gì (form sửa luôn gửi kèm câu hỏi, kể cả khi chỉ đổi tiêu đề /
+// trạng thái). Đã có phản hồi mà đổi câu hỏi ⇒ 409: survey_answers tham chiếu câu hỏi
+// (fk_survans_question, không cascade) nên DELETE sẽ lỗi.
+const writeQuestions = async (tx, surveyId, questions, actorId) => {
+	const wanted = normalizeQuestions(questions);
+	const cur = await tx
+		.request()
+		.input('survey_id', sql.VarChar(20), surveyId)
+		.query(
+			'SELECT question_text, question_type, options FROM survey_questions WHERE survey_id = @survey_id ORDER BY sort_order ASC, created_at ASC',
+		);
+	const existing = cur.recordset.map((q) => ({
+		...q,
+		options: q.question_type === 'text' ? null : JSON.stringify(parseJsonArray(q.options)),
+	}));
+	if (sameQuestions(wanted, existing)) return;
+	const answered = await tx
+		.request()
+		.input('survey_id', sql.VarChar(20), surveyId)
+		.query('SELECT COUNT(*) AS n FROM survey_responses WHERE survey_id = @survey_id');
+	if (Number(answered.recordset[0]?.n) > 0) {
+		throw httpError(
+			409,
+			'Khảo sát đã có người trả lời nên không sửa được câu hỏi. Hãy tạo khảo sát mới nếu cần đổi câu hỏi.',
+		);
+	}
+	await tx
 		.request()
 		.input('survey_id', sql.VarChar(20), surveyId)
 		.query('DELETE FROM survey_questions WHERE survey_id = @survey_id');
-	let order = 0;
-	for (const q of questions || []) {
-		if (!q || !q.question_text || !QUESTION_TYPES.includes(q.question_type)) continue;
-		const options =
-			q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean));
+	for (const [order, q] of wanted.entries()) {
+		const { options } = q;
 		const newId = randomId('CH', 18);
-		await pool
+		await tx
 			.request()
 			.input('survey_id', sql.VarChar(20), surveyId)
 			.input('question_text', sql.NVarChar(500), q.question_text)
@@ -99,50 +142,54 @@ const setQuestions = async (surveyId, questions, actorId) => {
         INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, sort_order, created_by)
         VALUES (@new_id, @survey_id, @question_text, @question_type, @options, @sort_order, @actor_id);
       `);
-		order += 1;
 	}
+};
+
+const setQuestions = async (surveyId, questions, actorId) => {
+	await withActorTransaction(actorId, (tx) => writeQuestions(tx, surveyId, questions, actorId));
 	broadcast('update', { entity: 'survey' });
 	return listQuestions(surveyId);
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
 	const newId = randomId('KS', 18);
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('title', sql.NVarChar(255), data.title)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('status', sql.VarChar(20), data.status || 'draft')
-		.input('target_role', sql.VarChar(20), data.target_role || null)
-		.input('new_id', sql.VarChar(20), newId).query(`
-      INSERT INTO surveys (id, title, description, status, target_role, created_by)
-      VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
-    `);
-	const id = newId;
-	if (Array.isArray(data.questions) && data.questions.length)
-		await setQuestions(id, data.questions, actorId);
+	// Khảo sát + câu hỏi trong 1 transaction có người thao tác
+	await withActorTransaction(actorId, async (tx) => {
+		await tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('title', sql.NVarChar(255), data.title)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.input('status', sql.VarChar(20), data.status || 'draft')
+			.input('target_role', sql.VarChar(20), data.target_role || null)
+			.input('new_id', sql.VarChar(20), newId).query(`
+        INSERT INTO surveys (id, title, description, status, target_role, created_by)
+        VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
+      `);
+		if (Array.isArray(data.questions) && data.questions.length)
+			await writeQuestions(tx, newId, data.questions, actorId);
+	});
 	broadcast('update', { entity: 'survey' });
-	return getById(id);
+	return getById(newId);
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
-	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
-	const req = pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId);
-
-	addSets(req, sets, data, {
-		title: sql.NVarChar(255),
-		description: [sql.NVarChar(sql.MAX), { orNull: true }],
-		status: sql.VarChar(20),
-		target_role: [sql.VarChar(20), { orNull: true }],
+	// Thông tin + câu hỏi trong 1 transaction: 409 ở câu hỏi không để lại nửa thay đổi
+	await withActorTransaction(actorId, async (tx) => {
+		const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
+		const req = tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId);
+		addSets(req, sets, data, {
+			title: sql.NVarChar(255),
+			description: [sql.NVarChar(sql.MAX), { orNull: true }],
+			status: sql.VarChar(20),
+			target_role: [sql.VarChar(20), { orNull: true }],
+		});
+		if (sets.length > 2) await req.query(`UPDATE surveys SET ${sets.join(', ')} WHERE id = @id`);
+		if (Array.isArray(data.questions)) await writeQuestions(tx, id, data.questions, actorId);
 	});
-
-	if (sets.length > 2) await req.query(`UPDATE surveys SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.questions)) await setQuestions(id, data.questions, actorId);
 	broadcast('update', { entity: 'survey' });
 	return getById(id);
 };
