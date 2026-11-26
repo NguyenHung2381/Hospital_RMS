@@ -2,7 +2,7 @@ import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpenSvg, FileTextSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg, UserPlusSvg } from '@/assets/icons';
+import { BookOpenSvg, FileTextSvg, FingerprintSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg, UserPlusSvg } from '@/assets/icons';
 import { Badge, TableEmpty } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { SkeletonTable } from '../../../shared/components/Loading';
@@ -28,6 +28,7 @@ import type { Trainee } from '../types/trainee.type';
 import { TRAINING_TYPE } from '../../course/types/course.type';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
+import { usePushToDevices } from '../../attendance-device/hooks/usePushToDevices';
 
 // Tiêu đề trùng cột nhận diện của "Nhập từ Excel" để file xuất ra nhập lại được.
 const EXCEL_COLS: ExcelColumn<Trainee>[] = [
@@ -69,6 +70,8 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 	// Tab theo loại: thay cột Liên hệ / Đối tượng / Khoa bằng thông tin lượt ghi danh của loại đó.
 	const colCount = typeId ? 8 : 9;
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
+	// Đẩy tay học viên xuống máy chấm công vân tay
+	const devices = usePushToDevices();
 	const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 	const [showImport, setShowImport] = useState(false);
 	const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -132,6 +135,16 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 								>
 									<KeySvg /> Cấp tài khoản
 								</BulkButton>
+								{devices.canPush && (
+									<BulkButton
+										disabled={devices.pushing}
+										onClick={async () => {
+											if (await devices.push([...rowSel.selectedIds])) rowSel.clearSelection();
+										}}
+									>
+										<FingerprintSvg /> Đẩy xuống máy chấm công
+									</BulkButton>
+								)}
 								<BulkButton
 									danger
 									onClick={() => setConfirmBulkDelete(true)}
@@ -366,6 +379,14 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 												>
 													<BookOpenSvg />
 												</RowAction>
+												{devices.canPush && (
+													<RowAction
+														title='Đẩy xuống máy chấm công (để học viên đăng ký vân tay)'
+														onClick={() => devices.push([t.id])}
+													>
+														<FingerprintSvg />
+													</RowAction>
+												)}
 											</RowActions>
 										</td>
 									</tr>

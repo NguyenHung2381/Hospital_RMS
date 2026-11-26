@@ -95,13 +95,14 @@ const handshake = async (sn, query, ip) => {
 	return protocol.formatOptions(device);
 };
 
+// stamp = null ⇒ xóa (máy gửi lại từ đầu)
 const setStamp = async (deviceId, column, stamp) => {
-	if (!stamp || !/^\d{1,20}$/.test(String(stamp))) return;
+	if (stamp !== null && (!stamp || !/^\d{1,20}$/.test(String(stamp)))) return;
 	const pool = await getPool();
 	await pool
 		.request()
 		.input('id', sql.Int, deviceId)
-		.input('stamp', sql.VarChar(20), String(stamp))
+		.input('stamp', sql.VarChar(20), stamp === null ? null : String(stamp))
 		.query(`UPDATE attendance_devices SET ${column} = @stamp WHERE id = @id`);
 };
 
@@ -176,6 +177,11 @@ const getRequest = async (sn, query, ip) => {
 	if (device.status !== 'active') return 'OK';
 	const cmds = await commands.takePending(device.id);
 	if (cmds.length) logger.info(`[iclock] ${sn}: gửi ${cmds.length} lệnh`);
+	// CHECK: máy hỏi lại cấu hình — trả OPERLOGStamp=None để máy gửi lại toàn bộ người dùng
+	// + vân tay (lấy vân tay đăng ký từ trước). Xóa stamp đúng lúc giao lệnh, không lúc xếp
+	// lệnh: lượt gửi OPERLOG thường xen giữa sẽ ghi stamp mới đè mất.
+	if (cmds.some((c) => c.command === protocol.CHECK_COMMAND))
+		await setStamp(device.id, 'operlog_stamp', null);
 	return protocol.formatCommands(cmds);
 };
 

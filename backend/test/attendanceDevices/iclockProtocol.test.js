@@ -89,20 +89,32 @@ test('deviceName: có dấu, không dấu, cắt 24 ký tự, bỏ ký tự phá
 });
 
 test('formatUserUpsert / Delete theo phiên bản PUSH', () => {
+	// Chỉ mã + tên — không gửi mật khẩu / thẻ / quyền để máy giữ nguyên của người đã có
 	assert.equal(
 		p.formatUserUpsert({ pin: '20270001', name: 'Lê Văn B', pushVersion: '2.4.1' }),
-		'DATA UPDATE USERINFO PIN=20270001\tName=Lê Văn B\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000100000000\tVerify=0',
+		'DATA UPDATE USERINFO PIN=20270001	Name=Lê Văn B',
 	);
-	assert.match(
+	assert.equal(
 		p.formatUserUpsert({ pin: '1', name: 'X', pushVersion: null }),
-		/^DATA USER PIN=1\t/,
+		'DATA USER PIN=1	Name=X',
+	);
+	assert.doesNotMatch(
+		p.formatUserUpsert({ pin: '1', name: 'X', pushVersion: '2.4.1' }),
+		/Passwd|Card|Pri/,
 	);
 	assert.equal(
 		p.formatUserDelete({ pin: '20270001', pushVersion: '2.4.1' }),
 		'DATA DELETE USERINFO PIN=20270001',
 	);
 	assert.equal(p.formatUserDelete({ pin: '20270001' }), 'DATA DEL_USER PIN=20270001');
-	assert.throws(() => p.formatUserDelete({ pin: '1\tX=2' }));
+	assert.throws(() => p.formatUserDelete({ pin: '1	X=2' }));
+});
+
+test('parseOperlog: dòng FINGERTMP (firmware gửi lại toàn bộ)', () => {
+	const tmp = 'TUNTUzIxAAAD'.repeat(4);
+	const r = p.parseOperlog(`FINGERTMP PIN=20270001	FingerID=2	Size=48	Valid=1	TMP=${tmp}`);
+	assert.equal(r.fingers.length, 1);
+	assert.equal(r.fingers[0].fingerIndex, 2);
 });
 
 test('formatFingerUpsert', () => {

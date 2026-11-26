@@ -33,6 +33,17 @@ export const attendanceDeviceApi = {
 	pullAttlog: (id: number, from: string, to: string) =>
 		apiClient.post<null>(`/attendance-devices/${id}/pull-attlog`, { from, to }),
 
+	/** Máy gửi lại toàn bộ người dùng + vân tay đang có (lấy vân tay đăng ký từ trước) */
+	pullFingerprints: (id: number) =>
+		apiClient.post<{ queued: boolean }>(`/attendance-devices/${id}/pull-fingerprints`, {}),
+
+	/** Đẩy tay học viên xuống mọi máy (giữ trên máy theo cài đặt "Dọn học viên khỏi máy sau") */
+	pushTrainees: (traineeIds: string[]) =>
+		apiClient.post<{ pushed: number; skipped: { id: string; reason: string }[]; queued: number }>(
+			'/attendance-devices/push-trainees',
+			{ trainee_ids: traineeIds },
+		),
+
 	syncAll: () => apiClient.post<{ queued: number }>('/attendance-devices/sync', {}),
 
 	punches: (q: { status?: PunchFilter; from?: string; to?: string; device_id?: number | '' }) =>

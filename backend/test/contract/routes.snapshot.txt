@@ -4,10 +4,12 @@ GET    /api/v1/attendance-devices/  attendance_devices:read | attendance_devices
 PATCH  /api/v1/attendance-devices/:id  attendance_devices:manage
 DELETE /api/v1/attendance-devices/:id  attendance_devices:manage
 POST   /api/v1/attendance-devices/:id/pull-attlog  attendance_devices:manage
+POST   /api/v1/attendance-devices/:id/pull-fingerprints  attendance_devices:manage
 POST   /api/v1/attendance-devices/:id/resync  attendance_devices:manage
 GET    /api/v1/attendance-devices/commands  attendance_devices:read | attendance_devices:manage
 GET    /api/v1/attendance-devices/punches  attendance_devices:read | attendance_devices:manage
 POST   /api/v1/attendance-devices/punches/rematch  attendance_devices:manage
+POST   /api/v1/attendance-devices/push-trainees  attendance_devices:manage
 POST   /api/v1/attendance-devices/sync  attendance_devices:manage
 POST   /api/v1/auth/2fa/backup-codes  authOnly
 POST   /api/v1/auth/2fa/disable  authOnly

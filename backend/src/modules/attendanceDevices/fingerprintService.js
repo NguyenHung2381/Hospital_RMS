@@ -29,12 +29,15 @@ const saveFromDevice = async (device, fingers) => {
 	const settings = await getDeviceSettings();
 	if (!fingers.length || !settings.fpSync) return 0;
 	const pool = await getPool();
+	// Chỉ giữ vân tay của học viên đang cần có trên máy — không lưu của người khác trên máy
+	// (máy gửi lại toàn bộ sau lệnh CHECK: cả nhân viên, học viên cũ)
+	const wanted = new Set(
+		(await desiredTrainees(pool, settings.cleanupDays)).map((d) => d.trainee_id),
+	);
 	let changed = 0;
 	for (const f of fingers) {
 		const traineeId = traineeIdFromPin(f.pin);
-		if (!traineeId) continue;
-		// Chỉ giữ vân tay của học viên đang cần có trên máy (không lưu của người khác trên máy)
-		if (!(await desiredTrainees(pool, settings.cleanupDays, traineeId)).length) continue;
+		if (!traineeId || !wanted.has(traineeId)) continue;
 		const hash = templateHash(f.template);
 		const req = () =>
 			pool

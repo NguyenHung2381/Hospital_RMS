@@ -22,7 +22,8 @@ const limiter = rateLimit({
 
 router.use(limiter);
 router.use(requireModule('TRAINING'));
-router.use(express.text({ type: () => true, limit: '2mb' }));
+// Máy gửi lại toàn bộ vân tay sau lệnh CHECK: ~1–2 KB/ngón × vài nghìn ngón
+router.use(express.text({ type: () => true, limit: '10mb' }));
 
 const sn = (req) => String(req.query.SN || req.query.sn || '');
 const text = (req) => (typeof req.body === 'string' ? req.body : '');

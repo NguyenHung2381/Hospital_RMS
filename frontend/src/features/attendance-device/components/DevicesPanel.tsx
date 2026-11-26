@@ -73,6 +73,13 @@ export function DevicesPanel({
 			'Không gửi lại được',
 		);
 
+	const pullFingerprints = (d: AttendanceDevice) =>
+		run(
+			() => attendanceDeviceApi.pullFingerprints(d.id),
+			'Đã gửi lệnh — máy sẽ gửi lại vân tay trong ít phút, hệ thống tự chép sang máy khác',
+			'Không gửi được lệnh',
+		);
+
 	const colCount = canManage ? 6 : 5;
 
 	return (
@@ -199,6 +206,13 @@ export function DevicesPanel({
 																	onClick={() => setPulling(d)}
 																>
 																	<DownloadSvg />
+																</div>
+																<div
+																	className={base.actionBtn}
+																	title='Lấy vân tay có sẵn trên máy (học viên đã đăng ký từ trước) để chép sang máy khác'
+																	onClick={() => !busy && pullFingerprints(d)}
+																>
+																	<FingerprintSvg />
 																</div>
 															</>
 														)}

@@ -103,14 +103,16 @@ const parseOperlog = (body) => {
 		const pin = String(pick(kv, 'pin') || '').trim();
 		if (head === 'USER' && pin) {
 			users.push({ pin, name: pick(kv, 'name') ?? null });
-		} else if ((head === 'FP' || head === 'BIODATA') && pin) {
+		} else if ((head === 'FP' || head === 'FINGERTMP' || head === 'BIODATA') && pin) {
 			// BIODATA: Type=1 là vân tay; chỉ số ngón ở Index (FP dùng FID)
 			const type = toInt(pick(kv, 'type'));
 			if (head === 'BIODATA' && type !== null && type !== 1) {
 				other += 1;
 				continue;
 			}
-			const fingerIndex = toInt(head === 'FP' ? pick(kv, 'fid') : pick(kv, 'index', 'no'));
+			const fingerIndex = toInt(
+				head === 'BIODATA' ? pick(kv, 'index', 'no') : pick(kv, 'fid', 'fingerid'),
+			);
 			const template = String(pick(kv, 'tmp') || '').trim();
 			if (fingerIndex === null || fingerIndex < 0 || fingerIndex > 9 || !TMP_RE.test(template)) {
 				other += 1;
@@ -197,13 +199,18 @@ const assertPin = (pin) => {
 	if (!/^[0-9A-Za-z]{1,24}$/.test(String(pin))) throw new Error(`PIN không hợp lệ: ${pin}`);
 };
 
+// Chỉ gửi mã + tên: người dùng đã có trên máy giữ nguyên mật khẩu, số thẻ từ, quyền (quản
+// trị máy), nhóm, múi giờ; người dùng mới thì máy tự lấy mặc định (người dùng thường).
 const formatUserUpsert = ({ pin, name, ascii = false, pushVersion }) => {
 	assertPin(pin);
-	const fields = `PIN=${pin}\tName=${deviceName(name, ascii)}\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000100000000`;
-	return isModernPush(pushVersion)
-		? `DATA UPDATE USERINFO ${fields}\tVerify=0`
-		: `DATA USER ${fields}`;
+	const fields = `PIN=${pin}\tName=${deviceName(name, ascii)}`;
+	return isModernPush(pushVersion) ? `DATA UPDATE USERINFO ${fields}` : `DATA USER ${fields}`;
 };
+
+// Máy hỏi lại cấu hình (stamp) rồi gửi lên dữ liệu mới hơn stamp. Gửi kèm OPERLOGStamp=None
+// (iclockService) ⇒ máy gửi lại TOÀN BỘ người dùng + mẫu vân tay đang có — dùng để lấy vân
+// tay học viên đã đăng ký trên máy từ trước khi nối với hệ thống.
+const CHECK_COMMAND = 'CHECK';
 
 const formatUserDelete = ({ pin, pushVersion }) => {
 	assertPin(pin);
@@ -249,6 +256,7 @@ module.exports = {
 	formatFingerUpsert,
 	formatQueryAttlog,
 	formatCommands,
+	CHECK_COMMAND,
 	traineeIdFromPin,
 	pinFromTraineeId,
 };

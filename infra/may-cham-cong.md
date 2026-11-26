@@ -29,7 +29,7 @@ Các file thuộc tính năng này:
 
 | Nhóm | File |
 |---|---|
-| CSDL | `backend/database/migrations/2027-01-05_may_cham_cong.sql` |
+| CSDL | `backend/database/migrations/2027-01-05_may_cham_cong.sql`, `2027-01-06_may_cham_cong_day_tay.sql` |
 | Backend mới | `backend/src/modules/attendanceDevices/*`, `backend/src/jobs/attendanceDeviceJob.js`, `backend/test/attendanceDevices/*` |
 | Backend sửa | `backend/src/app.js`, `backend/src/jobs/index.js`, `backend/src/permissions/catalogAdmin.js`, `backend/src/permissions/routePolicy.js`, `backend/src/modules/settings/systemSettingService.js`, `backend/src/modules/training/courses/courseAttendanceService.js`, `backend/src/modules/training/courses/courseEnrollmentService.js`, `backend/test/contract/routes.snapshot.txt` (chỉ các dòng `attendance-devices` / `iclock`) |
 | Frontend mới | `frontend/src/features/attendance-device/*`, `frontend/src/assets/svg/fingerprint.svg` |
@@ -153,6 +153,17 @@ Lấy giá trị của mạng khác từ một máy tính cùng mạng bằng `i
 
 Mã người dùng (PIN) = **mã học viên bỏ chữ HV**: `HV20260123` → `20260123`. Học viên đang học được hệ thống **tự gửi xuống máy**, không cần nhập tay. Chỉ cần đăng ký vân tay cho học viên trên máy.
 
+**Đẩy tay:** ở trang **Tất cả học viên**, chọn học viên → **Đẩy xuống máy chấm công** (hoặc biểu tượng vân tay trên từng dòng). Dùng khi học viên chưa thuộc khoá đang học mà cần có trên máy sớm (vd. đăng ký vân tay trước ngày khai giảng hơn 7 ngày). Học viên được giữ trên máy theo cài đặt *Dọn học viên khỏi máy sau* (mặc định 30 ngày) kể từ lúc đẩy; hết hạn mà vẫn không có khoá đang học thì tự được dọn. Cần quyền *Quản lý máy chấm công*.
+
+Học viên **đã có sẵn trên máy** (nhập tay từ trước):
+
+| Trường hợp | Hệ thống làm gì |
+|---|---|
+| Đúng mã (vd. `20260123`) | Chỉ cập nhật **tên**. Vân tay, mật khẩu, thẻ từ, quyền trên máy giữ nguyên. Vân tay đã đăng ký được lấy về khi duyệt máy (mục 5.1) để chép sang máy kia. |
+| Khác mã (vd. `123`) | Máy có 2 người dùng; lượt chấm bằng mã `123` hiện ở *Lượt chấm → Chưa khớp*. Hệ thống không xoá mã `123` (chỉ xoá người do nó tạo) — xoá tay trên máy, học viên đăng ký vân tay lại. |
+
+Nên xoá các học viên nhập tay sai quy ước mã **trước** khi duyệt máy.
+
 ---
 
 ## 5. Duyệt máy, cấp quyền, kiểm tra từng luồng
@@ -163,7 +174,9 @@ Mã người dùng (PIN) = **mã học viên bỏ chữ HV**: `HV20260123` → `
 2. Trên web: **Máy chấm công** → máy hiện nhãn hồng **Chờ duyệt** kèm số serial.
 3. Đối chiếu số serial với máy (*Menu → Thông tin hệ thống → Thông tin thiết bị*). Đúng máy của viện thì bấm **Duyệt máy**, đặt tên và vị trí.
 
-Sau khi duyệt, server bắt đầu nhận lượt chấm và gửi học viên đang học xuống máy. Làm lại với máy thứ 2.
+Sau khi duyệt, server bắt đầu nhận lượt chấm, gửi học viên đang học xuống máy, và gửi lệnh **lấy vân tay có sẵn** (máy gửi lại toàn bộ người dùng + vân tay; server chỉ giữ vân tay của học viên đang học, bỏ qua người khác). Vân tay học viên đã đăng ký trên máy từ trước nhờ đó được chép sang máy kia. Làm lại với máy thứ 2.
+
+Cần lấy lại vân tay sau này (vd. học viên đăng ký vân tay trước khi được duyệt vào khoá): bấm nút **Lấy vân tay có sẵn trên máy** (biểu tượng vân tay) ở dòng của máy.
 
 > Thấy máy lạ (số serial không phải của viện) ở trạng thái Chờ duyệt thì **không duyệt**, xoá đi. Server không nhận dữ liệu của máy chưa duyệt.
 
@@ -251,6 +264,8 @@ docker compose -p hospital_rms -f docker-compose.prod.yml up -d backend
 | Mất lượt chấm khi máy mất mạng lâu | Trang Máy chấm công → nút **Kéo lại lượt chấm** (biểu tượng tải xuống), chọn khoảng ngày. Lượt đã có tự bỏ qua. |
 | Thay máy mới / máy bị xoá dữ liệu | Duyệt máy mới; với máy cũ bị xoá dữ liệu thì bấm **Gửi lại toàn bộ học viên** (biểu tượng làm mới). |
 | Vân tay không chép sang máy kia | Kiểm tra *Chép vân tay giữa các máy* đang bật; hai máy phải cùng phiên bản thuật toán vân tay (log `INFO`). |
+| Học viên đăng ký vân tay trước khi được duyệt vào khoá, máy kia không có | Lúc đăng ký, học viên chưa thuộc danh sách cần có nên server không giữ vân tay. Bấm **Lấy vân tay có sẵn trên máy** ở máy học viên đã đăng ký. |
+| Lấy vân tay có sẵn không về | Log có `POST OPERLOG` với dòng `FP …` / `FINGERTMP …` sau lệnh `CHECK` không. Không có thì firmware không gửi lại theo cách này — gửi log mục 6. |
 
 ## 8. Lưu ý vận hành
 

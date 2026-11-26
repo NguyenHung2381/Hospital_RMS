@@ -79,6 +79,27 @@ router.post(
 	}),
 );
 
+// Đẩy tay học viên xuống máy (trang Tất cả học viên). Body: { trainee_ids: string[] }
+router.post(
+	'/push-trainees',
+	canManage,
+	[
+		body('trainee_ids').isArray({ min: 1, max: 500 }),
+		body('trainee_ids.*').isString().isLength({ min: 1, max: 20 }),
+	],
+	validate,
+	asyncHandler(async (req, res) => {
+		const r = await service.pushTrainees(req.body.trainee_ids, req.user.id);
+		return success(
+			res,
+			r,
+			r.pushed
+				? `Đã đẩy ${r.pushed} học viên xuống máy chấm công${r.skipped.length ? `, bỏ qua ${r.skipped.length}` : ''}`
+				: 'Không có học viên nào đẩy được',
+		);
+	}),
+);
+
 // Body: { name?, location?, status?: 'active'|'disabled'|'pending', name_ascii? }
 router.patch(
 	'/:id',
@@ -117,6 +138,25 @@ router.post(
 	asyncHandler(async (req, res) => {
 		const r = await service.resync(req.params.id, req.user.id);
 		return success(res, r, `Đã xếp ${r.queued} lệnh gửi lại xuống máy`);
+	}),
+);
+
+// Máy gửi lại toàn bộ người dùng + vân tay đang có ⇒ lấy vân tay học viên đã đăng ký trên
+// máy từ trước để chép sang máy khác (tự làm khi duyệt máy lần đầu)
+router.post(
+	'/:id/pull-fingerprints',
+	canManage,
+	[idParam],
+	validate,
+	asyncHandler(async (req, res) => {
+		const queued = await service.pullFingerprints(req.params.id, req.user.id);
+		return success(
+			res,
+			{ queued },
+			queued
+				? 'Đã gửi lệnh, máy sẽ gửi lại vân tay trong ít phút'
+				: 'Lệnh lấy vân tay đang chờ máy nhận',
+		);
 	}),
 );
 

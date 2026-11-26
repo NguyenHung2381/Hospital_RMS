@@ -1,11 +1,12 @@
 // Trang quản trị Máy chấm công: danh sách máy, duyệt máy, lượt chấm, lệnh đồng bộ.
-const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { getPool, sql, withActorTransaction, jsonValues } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 const { broadcast } = require('../events/eventService');
 const protocol = require('./iclockProtocol');
 const commands = require('./deviceCommandService');
 const sync = require('./deviceSyncService');
 const matcher = require('./punchMatcher');
+const { getDeviceSettings } = require('./deviceSettings');
 
 const listDevices = async () => {
 	const pool = await getPool();
@@ -44,6 +45,23 @@ const getDevice = async (id) => {
 };
 
 /** @param {{ name?: string|null, location?: string|null, status?: string, name_ascii?: boolean }} data */
+/** Xếp lệnh CHECK (máy gửi lại toàn bộ người dùng + vân tay) nếu chưa có lệnh đang chờ */
+const queuePullFingerprints = async (id, actorId) => {
+	const pool = await getPool();
+	const busy = (
+		await pool
+			.request()
+			.input('id', sql.Int, id)
+			.input('cmd', sql.VarChar(20), protocol.CHECK_COMMAND)
+			.query(
+				"SELECT 1 AS x FROM attendance_device_commands WHERE device_id = @id AND command = @cmd AND status IN ('pending', 'sent')",
+			)
+	).recordset.length;
+	if (busy) return false;
+	await commands.enqueue(id, [{ kind: 'other', command: protocol.CHECK_COMMAND }], actorId);
+	return true;
+};
+
 const updateDevice = async (id, data, actorId) => {
 	const before = await getDevice(id);
 	const sets = [];
@@ -65,8 +83,13 @@ const updateDevice = async (id, data, actorId) => {
 	});
 	broadcast('update', { entity: 'attendance_device' });
 	// Vừa duyệt / bật lại, hoặc đổi cách ghi tên ⇒ đồng bộ học viên xuống máy
-	if (data.status === 'active' && before.status !== 'active') sync.requestSync();
-	else if (data.name_ascii !== undefined) sync.requestSync();
+	if (data.status === 'active' && before.status !== 'active') {
+		sync.requestSync();
+		// Lần đầu nối với hệ thống: lấy vân tay học viên đã đăng ký trên máy từ trước để
+		// chép sang máy khác (học viên không phải quét lại)
+		if (before.status === 'pending' && (await getDeviceSettings()).fpSync)
+			await queuePullFingerprints(id, actorId);
+	} else if (data.name_ascii !== undefined) sync.requestSync();
 };
 
 const deleteDevice = async (id) => {
@@ -136,7 +159,9 @@ const commandSummary = (c) => {
 		case 'query_attlog':
 			return `Kéo lại lượt chấm ${c.command.replace(/^DATA QUERY ATTLOG\s*/, '').replace(/\t/g, ' → ')}`;
 		default:
-			return c.command.slice(0, 80);
+			return c.command === protocol.CHECK_COMMAND
+				? 'Lấy lại người dùng và vân tay có sẵn trên máy'
+				: c.command.slice(0, 80);
 	}
 };
 
@@ -190,6 +215,63 @@ const pullAttlog = async (id, from, to, actorId) => {
 	);
 };
 
+/** Nút "Lấy vân tay có sẵn trên máy" */
+const pullFingerprints = async (id, actorId) => {
+	await requireActive(id);
+	return queuePullFingerprints(id, actorId);
+};
+
+/**
+ * Đẩy tay học viên xuống mọi máy đang hoạt động (trang Tất cả học viên): giữ trên máy
+ * DEVICE_CLEANUP_DAYS ngày kể từ hôm nay dù chưa có khóa đang học, rồi đồng bộ ngay.
+ * @param {string[]} traineeIds
+ */
+const pushTrainees = async (traineeIds, actorId) => {
+	const pool = await getPool();
+	const active = (
+		await pool
+			.request()
+			.query("SELECT COUNT(*) AS n FROM attendance_devices WHERE status = 'active'")
+	).recordset[0].n;
+	if (!Number(active)) throw httpError(409, 'Chưa có máy chấm công nào đang hoạt động');
+	const ids = [...new Set(traineeIds)];
+	const rows = (
+		await pool
+			.request()
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+			.query(
+				`SELECT id, full_name, is_active FROM trainees WHERE id IN ${jsonValues('@ids', { type: 'VARCHAR(20)' })}`,
+			)
+	).recordset;
+	const found = new Map(rows.map((r) => [r.id, r]));
+	const skipped = [];
+	const valid = [];
+	for (const id of ids) {
+		const t = found.get(id);
+		if (!t) skipped.push({ id, reason: 'Không tìm thấy học viên' });
+		else if (!t.is_active) skipped.push({ id, reason: `${t.full_name}: học viên đang bị khóa` });
+		else if (!protocol.pinFromTraineeId(id))
+			skipped.push({ id, reason: `${t.full_name}: mã không đúng dạng HV + 8 số` });
+		else valid.push(id);
+	}
+	if (valid.length) {
+		const { cleanupDays } = await getDeviceSettings();
+		await pool
+			.request()
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(valid))
+			.input('days', sql.Int, Math.max(cleanupDays, 1))
+			.input('actor_id', sql.VarChar(20), actorId).query(`
+        INSERT INTO attendance_device_manual AS tgt (trainee_id, until_date, created_by)
+        SELECT j.value, CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE) + @days, @actor_id
+        FROM ${jsonValues('@ids', { type: 'VARCHAR(20)' })} j
+        ON CONFLICT (trainee_id) DO UPDATE SET
+          until_date = GREATEST(tgt.until_date, EXCLUDED.until_date),
+          updated_at = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh'), updated_by = @actor_id`);
+	}
+	const { queued } = valid.length ? await sync.reconcile({ actorId }) : { queued: 0 };
+	return { pushed: valid.length, skipped, queued };
+};
+
 const syncAll = (actorId) => sync.reconcile({ actorId });
 const rematch = (days) => matcher.rematchRecent(days);
 
@@ -201,6 +283,8 @@ module.exports = {
 	listCommands,
 	resync,
 	pullAttlog,
+	pullFingerprints,
+	pushTrainees,
 	syncAll,
 	rematch,
 	commandSummary,
