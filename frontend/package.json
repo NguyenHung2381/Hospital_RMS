@@ -48,6 +48,10 @@
   "overrides": {
     "@vercel/cli-config": {
       "zod": "^4.6.6"
+    },
+    "@rolldown/binding-wasm32-wasi": {
+      "@emnapi/core": "^1.11.3",
+      "@emnapi/runtime": "^1.11.3"
     }
   }
 }
