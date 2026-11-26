@@ -1,34 +1,3 @@
-/* ── Hero trang chủ ─────────────────────── */
-.hero {
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-between;
-	gap: var(--space-5);
-	flex-wrap: wrap;
-	padding: var(--space-6);
-	border-radius: var(--radius-2xl);
-	color: #fff;
-	background:
-		radial-gradient(circle at 92% -20%, rgba(255, 255, 255, 0.22), transparent 45%),
-		linear-gradient(120deg, var(--color-primary-dark) 0%, var(--color-primary) 60%, #19a85a 100%);
-}
-
-.heroTitle {
-	margin-top: 2px;
-	color: #fff;
-	font-size: var(--font-size-2xl);
-	font-weight: var(--font-weight-extrabold);
-	line-height: 1.25;
-	letter-spacing: -0.02em;
-}
-
-.heroSub {
-	margin-top: var(--space-2);
-	font-size: var(--font-size-sm);
-	color: rgba(255, 255, 255, 0.92);
-	line-height: var(--line-height-base);
-}
-
 .heroActions {
 	display: flex;
 	gap: var(--space-2);
@@ -357,13 +326,6 @@
 }
 
 @media (max-width: 639px) {
-	.hero {
-		padding: var(--space-5);
-	}
-
-	.heroTitle {
-		font-size: var(--font-size-xl);
-	}
 
 	.heroActions,
 	.heroBtn {
