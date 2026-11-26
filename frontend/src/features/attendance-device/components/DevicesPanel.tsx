@@ -7,9 +7,10 @@ import tbl from '@/shared/components/Table/Table.module.css';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateTimeVN, relativeTime, toIsoDate } from '@/shared/utils/formatDate';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { attendanceDeviceApi } from '../api/attendanceDeviceApi';
 import type { AttendanceDevice, DeviceFormData } from '../types/attendanceDevice.type';
-import { DEVICE_STATUS, deviceLabel, isOnline } from '../utils/labels';
+import { DEVICE_STATUS, deviceLabel, isOnline, timesheetHref } from '../utils/labels';
 import { DeviceFormModal } from './DeviceFormModal';
 import styles from '../pages/AttendanceDevices.module.css';
 
@@ -32,6 +33,7 @@ export function DevicesPanel({
 	const today = toIsoDate(new Date());
 	const [range, setRange] = useState({ from: today, to: today });
 	const [busy, setBusy] = useState(false);
+	const navigate = useNavigate();
 
 	const run = async (fn: () => Promise<unknown>, ok: string, fail: string) => {
 		setBusy(true);
@@ -267,19 +269,31 @@ export function DevicesPanel({
 							loading={busy}
 							confirmLabel='Gửi lệnh'
 							onConfirm={async () => {
-								const ok = await run(
-									() => attendanceDeviceApi.pullAttlog(pulling.id, range.from, range.to),
-									'Đã gửi lệnh — máy sẽ gửi lại lượt chấm trong ít phút',
-									'Không gửi được lệnh',
-								);
-								if (ok) setPulling(null);
+								const target = pulling;
+								setBusy(true);
+								try {
+									await attendanceDeviceApi.pullAttlog(target.id, range.from, range.to);
+									setPulling(null);
+									onChanged();
+									// Máy gửi lại qua kết nối riêng, không trả kết quả về đây ⇒ dẫn sang bảng công
+									// (tự cập nhật khi lượt chấm về) và tab Lệnh đồng bộ (đếm lượt đã nhận)
+									showToast('success', 'Đã gửi lệnh — máy sẽ gửi lại lượt chấm trong ít phút', {
+										label: 'Xem bảng công',
+										onClick: () => navigate(timesheetHref(range.from, range.to, target.id)),
+									});
+								} catch (e) {
+									showToast('error', errMsg(e, 'Không gửi được lệnh'));
+								} finally {
+									setBusy(false);
+								}
 							}}
 						/>
 					}
 				>
 					<p className={styles.modalNote}>
 						Dùng khi máy mất kết nối lâu hoặc nghi thiếu lượt chấm. Lượt đã nhận sẽ tự bỏ qua, không
-						bị trùng.
+						bị trùng. Lượt máy gửi về hiện ở tab <strong>Bảng công</strong> (xuất Excel được); số lượt
+						đã nhận xem ở tab <strong>Lệnh đồng bộ</strong>.
 					</p>
 					<div className={styles.formRow}>
 						<FormField label='Từ ngày'>

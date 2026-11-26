@@ -6,10 +6,44 @@ import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateTimeVN } from '@/shared/utils/formatDate';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { attendanceDeviceApi } from '../api/attendanceDeviceApi';
 import type { AttendanceDevice, CommandStatus, DeviceCommand } from '../types/attendanceDevice.type';
+import { timesheetHref } from '../utils/labels';
 import { COMMAND_STATUS, deviceLabel } from '../utils/labels';
 import styles from '../pages/AttendanceDevices.module.css';
+
+/** Kết quả lệnh "Kéo lại lượt chấm": máy đã gửi về bao nhiêu lượt + mở bảng công đúng khoảng ngày */
+function AttlogResultLine({ cmd }: { cmd: DeviceCommand }) {
+	const a = cmd.attlog!;
+	const text =
+		cmd.status === 'pending' || cmd.status === 'sent'
+			? `Hệ thống đang có ${a.in_range} lượt của máy trong khoảng này`
+			: cmd.status === 'done'
+				? a.received
+					? `Máy đã gửi về ${a.received} lượt mới · tổng ${a.in_range} lượt trong khoảng`
+					: a.in_range
+						? `Không có lượt mới (máy gửi lại lượt đã có) · tổng ${a.in_range} lượt trong khoảng`
+						: 'Máy báo xong nhưng chưa gửi lượt nào — khoảng ngày không có lượt chấm, hoặc máy chưa gửi xong'
+				: null;
+	if (!text) return null;
+	return (
+		<div className={tbl.cellSub}>
+			{text}
+			{a.in_range > 0 && (
+				<>
+					{' · '}
+					<Link
+						to={timesheetHref(a.from, a.to, cmd.device_id)}
+						className={styles.link}
+					>
+						Xem bảng công
+					</Link>
+				</>
+			)}
+		</div>
+	);
+}
 
 export function CommandsPanel({ devices }: { devices: AttendanceDevice[] }) {
 	const [deviceId, setDeviceId] = useState<number | ''>('');
@@ -110,6 +144,7 @@ export function CommandsPanel({ devices }: { devices: AttendanceDevice[] }) {
 										<td className={base.td}>
 											<div>{c.summary}</div>
 											{c.trainee_name && <div className={tbl.cellSub}>{c.trainee_name}</div>}
+											{c.attlog && <AttlogResultLine cmd={c} />}
 										</td>
 										<td className={base.td}>
 											<span className={base.descText}>{c.device_name}</span>

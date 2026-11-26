@@ -153,6 +153,27 @@
 	border-top: 1px solid var(--color-gray-100);
 }
 
+/* ── Bảng công ─────────────────────────────── */
+.timesheetSearch {
+	width: 240px;
+	max-width: 100%;
+}
+.personCell {
+	min-width: 180px;
+}
+.timesheetSummary {
+	margin: 0;
+	padding: var(--space-2) var(--space-4);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-600, var(--color-gray-700));
+	border-bottom: 1px solid var(--color-gray-100);
+	font-variant-numeric: tabular-nums;
+}
+.timesheetSummary strong {
+	color: var(--color-gray-800, var(--color-gray-700));
+	font-weight: var(--font-weight-semibold);
+}
+
 /* ── Modal ─────────────────────────────── */
 .modalNote {
 	margin: 0 0 var(--space-4);

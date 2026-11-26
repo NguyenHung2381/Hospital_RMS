@@ -76,4 +76,40 @@ export interface DeviceCommand {
 	created_at: string;
 	sent_at: string | null;
 	done_at: string | null;
+	/** Lệnh kéo lại lượt chấm: khoảng ngày (giờ VN) và số lượt hệ thống đã có / mới nhận */
+	attlog?: AttlogResult | null;
+}
+
+export interface AttlogResult {
+	from: string;
+	to: string;
+	/** Lượt của máy trong khoảng đang có trên hệ thống */
+	in_range: number;
+	/** Lượt mới nhận từ lúc tạo lệnh (lượt trùng máy gửi lại không tính) */
+	received: number;
+}
+
+/** Bảng công: mỗi người (mã trên máy) mỗi ngày một dòng — giờ đã là giờ Việt Nam */
+export interface TimesheetRow {
+	/** YYYY-MM-DD */
+	work_date: string;
+	pin: string;
+	trainee_id: string | null;
+	trainee_name: string | null;
+	/** HH:MM:SS */
+	first_time: string;
+	last_time: string;
+	span_minutes: number;
+	punch_count: number;
+	matched_count: number;
+	/** "07:31 · 11:30 · 16:45" */
+	times: string;
+	devices: string;
+	courses: string | null;
+}
+
+export interface Timesheet {
+	rows: TimesheetRow[];
+	truncated: boolean;
+	summary: { punches: number; people: number; days: number; unknown_pins: number };
 }

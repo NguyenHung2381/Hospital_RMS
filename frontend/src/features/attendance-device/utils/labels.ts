@@ -50,3 +50,12 @@ export const isOnline = (d: AttendanceDevice) =>
 	!!d.last_seen_at && Date.now() - new Date(d.last_seen_at).getTime() < ONLINE_MS;
 
 export const deviceLabel = (d: AttendanceDevice) => d.name || `Máy ${d.serial_no}`;
+
+/** Mở tab Bảng công đúng khoảng ngày (và máy) */
+export const timesheetHref = (from: string, to: string, deviceId?: number) =>
+	`/admin/attendance-devices?${new URLSearchParams({
+		tab: 'timesheet',
+		from,
+		to,
+		...(deviceId ? { device: String(deviceId) } : {}),
+	})}`;

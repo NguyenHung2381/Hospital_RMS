@@ -156,12 +156,69 @@ const commandSummary = (c) => {
 			return `Xóa ${pin} khỏi máy`;
 		case 'fp_upsert':
 			return `Chép vân tay ngón ${/\bFID=(\d+)/.exec(c.command)?.[1] ?? '?'} của ${pin}`;
-		case 'query_attlog':
-			return `Kéo lại lượt chấm ${c.command.replace(/^DATA QUERY ATTLOG\s*/, '').replace(/\t/g, ' → ')}`;
+		case 'query_attlog': {
+			const r = attlogRange(c.command);
+			if (!r) return `Kéo lại lượt chấm ${c.command.replace(/^DATA QUERY ATTLOG\s*/, '')}`;
+			const vi = (d) => d.split('-').reverse().join('/');
+			return r.from === r.to
+				? `Kéo lại lượt chấm ngày ${vi(r.from)}`
+				: `Kéo lại lượt chấm từ ${vi(r.from)} đến ${vi(r.to)}`;
+		}
 		default:
 			return c.command === protocol.CHECK_COMMAND
 				? 'Lấy lại người dùng và vân tay có sẵn trên máy'
 				: c.command.slice(0, 80);
+	}
+};
+
+// "DATA QUERY ATTLOG StartTime=2026-11-26 00:00:00	EndTime=2026-11-26 23:59:59" (giờ VN)
+const ATTLOG_RANGE_RE =
+	/StartTime=(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\s+EndTime=(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})/;
+const attlogRange = (command) => {
+	const m = ATTLOG_RANGE_RE.exec(command || '');
+	if (!m) return null;
+	return {
+		from: m[1],
+		to: m[3],
+		start: new Date(`${m[1]}T${m[2]}+07:00`),
+		end: new Date(`${m[3]}T${m[4]}+07:00`),
+	};
+};
+
+/**
+ * Kết quả lệnh kéo lại lượt chấm: số lượt của máy trong khoảng đã có trên hệ thống, và số
+ * lượt mới nhận kể từ lúc tạo lệnh (lượt trùng máy gửi lại bị bỏ qua nên không đếm).
+ * @param {{ device_id: number, created_at: Date, sent_at: Date|null, attlog: any }[]} cmds
+ */
+const addAttlogResults = async (cmds) => {
+	if (!cmds.length) return;
+	const pool = await getPool();
+	const r = await pool.request().input(
+		'rows',
+		sql.NVarChar(sql.MAX),
+		JSON.stringify(
+			cmds.map((c, i) => ({
+				i,
+				device_id: c.device_id,
+				start: c.attlog.start.toISOString(),
+				end: c.attlog.end.toISOString(),
+				// Mốc tạo lệnh (không phải sent_at: lệnh gửi lại sẽ dời sent_at). Chưa giao ⇒ chưa đếm.
+				since: c.sent_at ? new Date(c.created_at).toISOString() : null,
+			})),
+		),
+	).query(`
+      SELECT j.i,
+             COUNT(p.id) AS in_range,
+             COUNT(p.id) FILTER (WHERE j.since IS NOT NULL AND p.received_at >= (j.since AT TIME ZONE 'UTC')) AS received
+      FROM jsonb_to_recordset(CAST(@rows AS jsonb))
+           AS j(i integer, device_id integer, start timestamptz, "end" timestamptz, since timestamptz)
+      LEFT JOIN attendance_punches p ON p.device_id = j.device_id
+        AND p.punched_at >= (j.start AT TIME ZONE 'UTC') AND p.punched_at <= (j."end" AT TIME ZONE 'UTC')
+      GROUP BY j.i`);
+	for (const x of r.recordset) {
+		const c = cmds[x.i];
+		const { from, to } = c.attlog;
+		c.attlog = { from, to, in_range: Number(x.in_range), received: Number(x.received) };
 	}
 };
 
@@ -178,7 +235,7 @@ const listCommands = async (q) => {
 		req.input('status', sql.VarChar(10), q.status);
 		where.push('c.status = @status');
 	}
-	return (
+	const rows = (
 		await req.query(`
       SELECT c.id, c.device_id, COALESCE(d.name, d.serial_no) AS device_name, c.kind, c.trainee_id,
              t.full_name AS trainee_name, c.command, c.status, c.return_code, c.attempts,
@@ -189,7 +246,13 @@ const listCommands = async (q) => {
       WHERE ${where.join(' AND ')}
       ORDER BY c.id DESC
       LIMIT 300`)
-	).recordset.map(({ command, ...c }) => ({ ...c, summary: commandSummary({ ...c, command }) }));
+	).recordset.map(({ command, ...c }) => ({
+		...c,
+		summary: commandSummary({ ...c, command }),
+		...(c.kind === 'query_attlog' ? { attlog: attlogRange(command) } : {}),
+	}));
+	await addAttlogResults(rows.filter((c) => c.attlog));
+	return rows;
 };
 
 const requireActive = async (id) => {

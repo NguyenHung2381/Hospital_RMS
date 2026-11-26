@@ -3,9 +3,11 @@
 const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const service = require('./deviceAdminService');
+const timesheet = require('./timesheetService');
+const { buildTimesheetWorkbook, fileNameOf } = require('./exports/timesheetWorkbook');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
-const { success } = require('../../utils/response');
+const { success, sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 
 router.use(authenticate);
@@ -36,6 +38,33 @@ router.get(
 	],
 	validate,
 	asyncHandler(async (req, res) => success(res, await service.listPunches(req.query))),
+);
+
+// Bảng công: mỗi người mỗi ngày một dòng (giờ vào / giờ ra theo lượt đầu / cuối)
+// GET /timesheet?from=YYYY-MM-DD&to=YYYY-MM-DD&device_id=
+const timesheetQuery = (src) => [
+	src('from').isISO8601({ strict: true }).withMessage('Chọn ngày bắt đầu'),
+	src('to').isISO8601({ strict: true }).withMessage('Chọn ngày kết thúc'),
+	src('device_id').optional({ values: 'falsy' }).isInt({ min: 1 }).toInt(),
+];
+router.get(
+	'/timesheet',
+	canRead,
+	timesheetQuery(query),
+	validate,
+	asyncHandler(async (req, res) => success(res, await timesheet.getTimesheet(req.query))),
+);
+
+// Xuất bảng công ra Excel (Tổng hợp · Bảng công · Lượt chấm). Body: { from, to, device_id? }
+router.post(
+	'/timesheet/export-excel',
+	canRead,
+	timesheetQuery(body),
+	validate,
+	asyncHandler(async (req, res) => {
+		const data = await timesheet.getExportData(req.body);
+		return sendWorkbook(res, buildTimesheetWorkbook(data), fileNameOf(data.from, data.to));
+	}),
 );
 
 // Ghép lại lượt chấm chưa khớp trong N ngày gần nhất (mặc định 7)

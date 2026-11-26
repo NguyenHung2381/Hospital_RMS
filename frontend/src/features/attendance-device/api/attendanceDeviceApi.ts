@@ -7,6 +7,7 @@ import type {
 	DevicePunch,
 	DeviceStatus,
 	PunchFilter,
+	Timesheet,
 } from '../types/attendanceDevice.type';
 
 const qs = (params: Record<string, string | number | undefined | null>) => {
@@ -51,6 +52,18 @@ export const attendanceDeviceApi = {
 
 	rematch: (days = 7) =>
 		apiClient.post<{ matched: number; total: number }>('/attendance-devices/punches/rematch', { days }),
+
+	/** Bảng công trong khoảng ngày (tối đa 93 ngày) */
+	timesheet: (q: { from: string; to: string; device_id?: number | '' }) =>
+		apiClient.get<Timesheet>(`/attendance-devices/timesheet${qs(q)}`),
+
+	/** File Excel: Tổng hợp · Bảng công · Lượt chấm */
+	exportTimesheet: (q: { from: string; to: string; device_id?: number | '' }) =>
+		apiClient.postBlob('/attendance-devices/timesheet/export-excel', {
+			from: q.from,
+			to: q.to,
+			...(q.device_id ? { device_id: q.device_id } : {}),
+		}),
 
 	commands: (q: { device_id?: number | ''; status?: CommandStatus | '' }) =>
 		apiClient.get<DeviceCommand[]>(`/attendance-devices/commands${qs(q)}`),

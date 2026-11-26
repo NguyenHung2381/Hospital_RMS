@@ -11,12 +11,14 @@ import { attendanceDeviceApi } from '../api/attendanceDeviceApi';
 import { CommandsPanel } from '../components/CommandsPanel';
 import { DevicesPanel } from '../components/DevicesPanel';
 import { PunchesPanel } from '../components/PunchesPanel';
+import { TimesheetPanel } from '../components/TimesheetPanel';
 import type { AttendanceDevice } from '../types/attendanceDevice.type';
 import styles from './AttendanceDevices.module.css';
 
-type Tab = 'devices' | 'punches' | 'commands';
+type Tab = 'devices' | 'timesheet' | 'punches' | 'commands';
 const TABS: { key: Tab; label: string }[] = [
 	{ key: 'devices', label: 'Máy chấm công' },
+	{ key: 'timesheet', label: 'Bảng công' },
 	{ key: 'punches', label: 'Lượt chấm' },
 	{ key: 'commands', label: 'Lệnh đồng bộ' },
 ];
@@ -157,6 +159,7 @@ export default function AttendanceDevices() {
 						onChanged={reload}
 					/>
 				)}
+				{tab === 'timesheet' && <TimesheetPanel devices={devices} />}
 				{tab === 'punches' && (
 					<PunchesPanel
 						devices={devices}

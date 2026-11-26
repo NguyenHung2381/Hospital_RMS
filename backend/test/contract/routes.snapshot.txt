@@ -11,6 +11,8 @@ GET    /api/v1/attendance-devices/punches  attendance_devices:read | attendance_
 POST   /api/v1/attendance-devices/punches/rematch  attendance_devices:manage
 POST   /api/v1/attendance-devices/push-trainees  attendance_devices:manage
 POST   /api/v1/attendance-devices/sync  attendance_devices:manage
+GET    /api/v1/attendance-devices/timesheet  attendance_devices:read | attendance_devices:manage
+POST   /api/v1/attendance-devices/timesheet/export-excel  attendance_devices:read | attendance_devices:manage
 POST   /api/v1/auth/2fa/backup-codes  authOnly
 POST   /api/v1/auth/2fa/disable  authOnly
 POST   /api/v1/auth/2fa/setup  authOnly
