@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import { CheckSvg, EditSvg, EyeOffSvg, EyeSvg, LayersSvg, PlusSvg, RefreshSvg } from '@/assets/icons';
-import { Modal } from '@/shared/components';
+import { Modal, confirmDialog } from '@/shared/components';
 import { InlineLoading } from '@/shared/components/Loading';
 import { BASE_URL } from '@/shared/api/endpoints';
 import { showToast } from '@/shared/utils/feedback';
@@ -210,7 +210,13 @@ export function CertificateLayoutEditor({
 	};
 
 	const reset = async () => {
-		if (!window.confirm('Bỏ mọi chỉnh sửa (vị trí ô và chữ đã sửa), quay về mẫu như lúc tải lên?')) return;
+		const ok = await confirmDialog({
+			title: 'Khôi phục mẫu gốc?',
+			message: 'Bỏ mọi chỉnh sửa (vị trí ô và chữ đã sửa), quay về mẫu như lúc tải lên?',
+			confirmLabel: 'Khôi phục',
+			tone: 'danger',
+		});
+		if (!ok) return;
 		setBusy('reset');
 		try {
 			apply(await resetCertificateLayout(seminarId));
@@ -223,8 +229,17 @@ export function CertificateLayoutEditor({
 		}
 	};
 
-	const close = () => {
-		if (dirty && !window.confirm('Các thay đổi chưa được lưu. Đóng mà không lưu?')) return;
+	const close = async () => {
+		if (
+			dirty &&
+			!(await confirmDialog({
+				title: 'Đóng mà không lưu?',
+				message: 'Các thay đổi chưa được lưu. Đóng mà không lưu?',
+				confirmLabel: 'Đóng không lưu',
+				tone: 'danger',
+			}))
+		)
+			return;
 		onClose();
 	};
 
@@ -257,6 +272,7 @@ export function CertificateLayoutEditor({
 			footer={
 				<>
 					<button
+						type='button'
 						className={`${styles.btnGhost} ${css.resetBtn}`}
 						onClick={() => void reset()}
 						disabled={!layout || !!busy}
@@ -264,6 +280,7 @@ export function CertificateLayoutEditor({
 						{busy === 'reset' ? <span className={styles.spinner} /> : <RefreshSvg />} Khôi phục mẫu gốc
 					</button>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={close}
 						disabled={!!busy}
@@ -271,6 +288,7 @@ export function CertificateLayoutEditor({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => void save()}
 						disabled={!dirty || !!busy}
@@ -532,6 +550,7 @@ export function CertificateLayoutEditor({
 												</button>
 												<input
 													type='number'
+													aria-label='Cỡ chữ'
 													min={6}
 													max={40}
 													step={0.5}
@@ -555,6 +574,7 @@ export function CertificateLayoutEditor({
 											<div
 												className={css.segment}
 												role='radiogroup'
+												aria-label='Căn lề'
 											>
 												{(['left', 'center'] as const).map((a) => (
 													<button

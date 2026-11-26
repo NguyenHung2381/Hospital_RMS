@@ -177,12 +177,14 @@ export default function CmeCreditCatalog() {
 				canCreate && (
 					<div className={styles.headerActions}>
 						<button
+							type='button'
 							className={styles.btnOutline}
 							onClick={() => setEditingGroup('new')}
 						>
 							<LayersSvg /> Thêm nhóm
 						</button>
 						<button
+							type='button'
 							className={base.btnAddHeader}
 							onClick={() => setEditingCategory({ newIn: groupFilter === UNGROUPED ? '' : groupFilter })}
 						>
@@ -206,13 +208,16 @@ export default function CmeCreditCatalog() {
 							<SearchSvg className={base.searchIcon} />
 							<input
 								className={base.searchInput}
+								aria-label='Tìm loại hình'
 								placeholder='Tìm theo mã, tên loại hình...'
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 							/>
 							{search && (
 								<button
+									type='button'
 									className={base.searchClear}
+									aria-label='Xóa từ khóa tìm kiếm'
 									onClick={() => setSearch('')}
 								>
 									<XSvg />
@@ -221,6 +226,7 @@ export default function CmeCreditCatalog() {
 						</div>
 						<select
 							className={base.pageSizeSelect}
+							aria-label='Lọc theo nhóm hoạt động'
 							value={groupFilter}
 							onChange={(e) => setGroupFilter(e.target.value)}
 						>
@@ -280,6 +286,7 @@ export default function CmeCreditCatalog() {
 							<div className={base.actionBtns}>
 								{canCreate && group && (
 									<button
+										type='button'
 										className={styles.btnAddInline}
 										onClick={() => setEditingCategory({ newIn: group.id })}
 									>
@@ -287,22 +294,26 @@ export default function CmeCreditCatalog() {
 									</button>
 								)}
 								{canUpdate && group && (
-									<div
+									<button
+										type='button'
 										className={base.actionBtn}
 										title='Sửa nhóm'
+										aria-label={`Sửa nhóm ${group.name}`}
 										onClick={() => setEditingGroup(group)}
 									>
 										<EditSvg />
-									</div>
+									</button>
 								)}
 								{canDelete && group && (
-									<div
+									<button
+										type='button'
 										className={`${base.actionBtn} ${base.danger}`}
 										title='Xóa nhóm'
+										aria-label={`Xóa nhóm ${group.name}`}
 										onClick={() => setDeleting({ kind: 'group', item: group })}
 									>
 										<TrashSvg />
-									</div>
+									</button>
 								)}
 							</div>
 						</div>
@@ -359,22 +370,26 @@ export default function CmeCreditCatalog() {
 														<td className={`${base.td} ${base.tdActions}`}>
 															<div className={base.actionBtns}>
 																{canUpdate && (
-																	<div
+																	<button
+																		type='button'
 																		className={base.actionBtn}
 																		title='Chỉnh sửa'
+																		aria-label={`Chỉnh sửa loại hình ${c.name}`}
 																		onClick={() => setEditingCategory(c)}
 																	>
 																		<EditSvg />
-																	</div>
+																	</button>
 																)}
 																{canDelete && (
-																	<div
+																	<button
+																		type='button'
 																		className={`${base.actionBtn} ${base.danger}`}
 																		title='Xóa'
+																		aria-label={`Xóa loại hình ${c.name}`}
 																		onClick={() => setDeleting({ kind: 'category', item: c })}
 																	>
 																		<TrashSvg />
-																	</div>
+																	</button>
 																)}
 															</div>
 														</td>
@@ -431,6 +446,7 @@ export default function CmeCreditCatalog() {
 					footer={
 						<>
 							<button
+								type='button'
 								className={base.btnCancel}
 								onClick={() => setDeleting(null)}
 								disabled={loading}
@@ -438,6 +454,7 @@ export default function CmeCreditCatalog() {
 								Hủy
 							</button>
 							<button
+								type='button'
 								className={base.btnDanger}
 								onClick={handleDelete}
 								disabled={loading}

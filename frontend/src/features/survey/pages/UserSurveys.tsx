@@ -77,6 +77,7 @@ function RespondForm({
 									rows={3}
 									value={answers[q.id]?.answer_text ?? ''}
 									onChange={(e) => setText(q.id, e.target.value)}
+									aria-label={`Câu trả lời cho câu ${qi + 1}: ${q.question_text}`}
 									placeholder='Nhập câu trả lời...'
 								/>
 							)}
@@ -227,13 +228,18 @@ export default function UserSurveys() {
 					{surveys.map((s) => (
 						<div
 							key={s.id}
-							className={styles.questionCard}
-							style={{ cursor: 'pointer' }}
-							onClick={() => openSurvey(s.id)}
+							className={`${styles.questionCard} ${styles.cardLink}`}
 						>
 							<div className={styles.itemName}>
-								<ClipboardCheckSvg style={{ width: 16, height: 16, marginRight: 6 }} />
-								{s.title}
+								{/* Nút thật để bàn phím mở được khảo sát; ::after phủ cả thẻ nên bấm chuột đâu cũng mở */}
+								<button
+									type='button'
+									className={styles.cardLinkBtn}
+									onClick={() => openSurvey(s.id)}
+								>
+									<ClipboardCheckSvg style={{ width: 16, height: 16, marginRight: 6 }} />
+									{s.title}
+								</button>
 							</div>
 							{s.description && <div className={styles.descText}>{s.description}</div>}
 						</div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { BookOpenSvg, CheckSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { DatePicker, Modal, TimePicker } from '@/shared/components';
 import { updateSeminarAgenda } from '../api/seminarApi';
@@ -25,6 +25,8 @@ export function SeminarAgendaModal({
 		const list = parseAgenda(seminar.agenda);
 		return list.length ? list : [blank()];
 	});
+	const uid = useId();
+	const fid = (n: string, i: number) => `${uid}-${n}-${i}`;
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const multiDay = !!seminar.end_date && seminar.end_date.slice(0, 10) !== seminar.start_date?.slice(0, 10);
@@ -63,6 +65,7 @@ export function SeminarAgendaModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={saving}
@@ -70,6 +73,7 @@ export function SeminarAgendaModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => void save()}
 						disabled={saving}
@@ -91,53 +95,62 @@ export function SeminarAgendaModal({
 					<div className={styles.formGrid}>
 						<div className={`${styles.formGroup} ${styles.full}`}>
 							<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-								<label className={styles.formLabel}>
+								<label className={styles.formLabel} htmlFor={fid('title', i)}>
 									Bài {i + 1} <span className={styles.required}>*</span>
 								</label>
 								<button
 									type='button'
 									className={`${styles.actionBtn} ${styles.danger}`}
 									title='Xóa bài'
+									aria-label={`Xóa bài ${i + 1}`}
 									onClick={() => setItems((xs) => xs.filter((_, k) => k !== i))}
 								>
 									<TrashSvg />
 								</button>
 							</div>
 							<input
+								id={fid('title', i)}
 								className={styles.formInput}
 								value={a.title}
+								aria-required='true'
 								onChange={(e) => patch(i, { title: e.target.value })}
 								placeholder='Tên bài học / bài báo cáo'
 							/>
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Báo cáo viên</label>
+							<label className={styles.formLabel} htmlFor={fid('speaker', i)}>Báo cáo viên</label>
 							<input
+								id={fid('speaker', i)}
 								className={styles.formInput}
 								value={a.speaker ?? ''}
 								onChange={(e) => patch(i, { speaker: e.target.value })}
 							/>
 						</div>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>Thời gian</label>
-							<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+							<span className={styles.formLabel}>Thời gian</span>
+							<div
+								style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+								role='group'
+								aria-label={`Thời gian bài ${i + 1}`}
+							>
 								<TimePicker
 									value={a.start_time ?? ''}
 									onChange={(v) => patch(i, { start_time: v })}
-									aria-label='Giờ bắt đầu'
+									aria-label={`Giờ bắt đầu bài ${i + 1}`}
 								/>
 								<span>–</span>
 								<TimePicker
 									value={a.end_time ?? ''}
 									onChange={(v) => patch(i, { end_time: v })}
-									aria-label='Giờ kết thúc'
+									aria-label={`Giờ kết thúc bài ${i + 1}`}
 								/>
 							</div>
 						</div>
 						{(multiDay || a.date) && (
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Ngày</label>
+								<label className={styles.formLabel} htmlFor={fid('date', i)}>Ngày</label>
 								<DatePicker
+									id={fid('date', i)}
 									value={a.date ?? ''}
 									onChange={(v) => patch(i, { date: v || undefined })}
 									min={seminar.start_date?.slice(0, 10) || undefined}
@@ -146,8 +159,9 @@ export function SeminarAgendaModal({
 							</div>
 						)}
 						<div className={`${styles.formGroup} ${multiDay || a.date ? '' : styles.full}`}>
-							<label className={styles.formLabel}>Ghi chú</label>
+							<label className={styles.formLabel} htmlFor={fid('note', i)}>Ghi chú</label>
 							<input
+								id={fid('note', i)}
 								className={styles.formInput}
 								value={a.note ?? ''}
 								onChange={(e) => patch(i, { note: e.target.value })}

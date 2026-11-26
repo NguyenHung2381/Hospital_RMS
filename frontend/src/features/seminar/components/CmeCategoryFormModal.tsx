@@ -1,6 +1,6 @@
 import { Modal, ModalActions } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import base from '@/shared/components/Table/CrudPage.module.css';
 import styles from '../pages/CmeCreditCatalog.module.css';
 import type {
@@ -52,6 +52,7 @@ export function CmeCategoryFormModal({
 					description: '',
 				},
 	);
+	const unitId = useId();
 	const [errors, setErrors] = useState<Partial<Record<keyof CmeCategoryFormData, string>>>({});
 
 	const set =
@@ -155,13 +156,14 @@ export function CmeCategoryFormModal({
 			</FormField>
 
 			<div className={base.formGroup}>
-				<label className={base.formLabel}>Cách quy đổi</label>
-				<div className={styles.methodGroup}>
+				<span className={base.formLabel}>Cách quy đổi</span>
+				<div className={styles.methodGroup} role='group' aria-label='Cách quy đổi'>
 					{(Object.keys(CONVERSION_METHOD) as CmeConversionMethod[]).map((m) => (
 						<button
 							key={m}
 							type='button'
 							className={`${styles.methodBtn} ${form.conversion_method === m ? styles.methodBtnActive : ''}`}
+							aria-pressed={form.conversion_method === m}
 							onClick={() => setMethod(m)}
 						>
 							{CONVERSION_METHOD[m].label}
@@ -185,8 +187,9 @@ export function CmeCategoryFormModal({
 					/>
 				</FormField>
 				<div className={base.formGroup}>
-					<label className={base.formLabel}>Đơn vị tính (giờ / …)</label>
+					<label className={base.formLabel} htmlFor={unitId}>Đơn vị tính (giờ / …)</label>
 					<input
+						id={unitId}
 						className={base.formInput}
 						value={form.unit_label}
 						onChange={set('unit_label')}

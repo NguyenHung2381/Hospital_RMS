@@ -81,7 +81,7 @@ export function ShiftFormModal({
 		>
 			{!shift && (
 				<FormField label='Mẫu nhanh'>
-					<div className={styles.chips}>
+					<div className={styles.chips} role='group' aria-label='Mẫu nhanh'>
 						{PRESETS.map((p) => (
 							<button key={p.label} type='button' className={styles.pick} onClick={() => setF((x) => ({ ...x, ...p.v }))}>
 								{p.label}
@@ -117,7 +117,7 @@ export function ShiftFormModal({
 					<input {...num('grace_min')} />
 				</FormField>
 				<FormField label='Màu'>
-					<div className={styles.colors}>
+					<div className={styles.colors} role='group' aria-label='Màu của ca'>
 						{SHIFT_COLORS.map((c) => (
 							<button
 								key={c}

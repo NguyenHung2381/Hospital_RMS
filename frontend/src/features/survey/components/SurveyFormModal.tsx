@@ -1,6 +1,6 @@
 import { FormField } from '@/shared/components/Input/FormField';
 import { Modal, ModalActions } from '@/shared/components';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { PlusSvg, TrashSvg } from '@/assets/icons';
 import type { SimpleRole } from '../api/surveyApi';
 import type {
@@ -59,6 +59,7 @@ export function SurveyFormModal({
 	onSave: (d: SurveyFormData) => void;
 	loading: boolean;
 }) {
+	const questionsLabelId = useId();
 	const [form, setForm] = useState<SurveyFormData>(toForm(item));
 	const [errors, setErrors] = useState<Partial<Record<'title', string>>>({});
 
@@ -192,9 +193,9 @@ export function SurveyFormModal({
 				/>
 			</FormField>
 
-			<div className={styles.itemsSection}>
+			<div className={styles.itemsSection} role='group' aria-labelledby={questionsLabelId}>
 				<div className={styles.itemsSectionHeader}>
-					<label className={styles.formLabel}>Câu hỏi</label>
+					<span className={styles.formLabel} id={questionsLabelId}>Câu hỏi</span>
 				</div>
 				{form.questions.length === 0 && (
 					<div className={styles.emptyItems}>Chưa có câu hỏi nào</div>
@@ -203,16 +204,20 @@ export function SurveyFormModal({
 					<div
 						key={q.tempId}
 						className={styles.questionCard}
+						role='group'
+						aria-label={`Câu hỏi ${qi + 1}`}
 					>
 						<div className={styles.questionHeadRow}>
 							<input
 								className={styles.formInput}
+								aria-label={`Nội dung câu hỏi ${qi + 1}`}
 								placeholder={`Câu hỏi ${qi + 1}`}
 								value={q.question_text}
 								onChange={(e) => updateQuestion(q.tempId, { question_text: e.target.value })}
 							/>
 							<select
 								className={styles.formInput}
+								aria-label={`Loại câu hỏi ${qi + 1}`}
 								value={q.question_type}
 								onChange={(e) =>
 									updateQuestion(q.tempId, {
@@ -235,6 +240,7 @@ export function SurveyFormModal({
 								className={styles.itemRemoveBtn}
 								onClick={() => removeQuestion(q.tempId)}
 								title='Xóa câu hỏi'
+								aria-label={`Xóa câu hỏi ${qi + 1}`}
 							>
 								<TrashSvg />
 							</button>
@@ -249,6 +255,7 @@ export function SurveyFormModal({
 									>
 										<input
 											className={styles.formInput}
+											aria-label={`Lựa chọn ${oi + 1} của câu hỏi ${qi + 1}`}
 											placeholder={`Lựa chọn ${oi + 1}`}
 											value={opt}
 											onChange={(e) => setOption(q.tempId, oi, e.target.value)}
@@ -258,6 +265,7 @@ export function SurveyFormModal({
 											className={styles.itemRemoveBtn}
 											onClick={() => removeOption(q.tempId, oi)}
 											title='Xóa lựa chọn'
+											aria-label={`Xóa lựa chọn ${oi + 1} của câu hỏi ${qi + 1}`}
 										>
 											<TrashSvg />
 										</button>

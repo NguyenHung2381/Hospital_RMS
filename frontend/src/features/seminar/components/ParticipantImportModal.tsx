@@ -166,6 +166,7 @@ export function ParticipantImportModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -174,6 +175,7 @@ export function ParticipantImportModal({
 					</button>
 					{!result && (
 						<button
+							type='button'
 							className={styles.btnPrimary}
 							onClick={commit}
 							disabled={loading || !preview || rows.length === 0 || invalidCredit}

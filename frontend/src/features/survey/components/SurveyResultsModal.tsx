@@ -20,6 +20,7 @@ export function SurveyResultsModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 					>

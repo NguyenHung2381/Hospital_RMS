@@ -36,6 +36,7 @@ export function SeminarTicketQrModal({
 				size='sm'
 				footer={
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => qrImage.save()}
 						disabled={!qrImage.ready}

@@ -63,6 +63,7 @@ export function TestTab({ seminar: sm, participants, counts, perms, actions }: T
 					{perms.canUpdate && (
 						<div className={s.cardActions}>
 							<button
+								type='button'
 								className={has ? sem.btnGhost : sem.btnPrimary}
 								onClick={actions.openTest}
 							>

@@ -1,5 +1,5 @@
 import { DatePicker, Modal } from '@/shared/components';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { CheckSvg, UsersSvg } from '@/assets/icons';
 import { searchUsers, type UserSuggestion } from '../../topics/api/topicApi';
 import {
@@ -51,6 +51,8 @@ export function ParticipantFormModal({
 		participant ? toForm(participant) : EMPTY_PARTICIPANT_FORM,
 	);
 	const [err, setErr] = useState('');
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [q, setQ] = useState('');
 	const [sugs, setSugs] = useState<UserSuggestion[]>([]);
 	const [showSugs, setShowSugs] = useState(false);
@@ -122,6 +124,7 @@ export function ParticipantFormModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -129,6 +132,7 @@ export function ParticipantFormModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={submit}
 						disabled={loading}
@@ -141,8 +145,9 @@ export function ParticipantFormModal({
 		>
 			<div className={styles.formGrid}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Nguồn</label>
+					<label className={styles.formLabel} htmlFor={fid('source')}>Nguồn</label>
 					<select
+						id={fid('source')}
 						className={styles.formInput}
 						value={form.source}
 						onChange={(e) => {
@@ -162,8 +167,9 @@ export function ParticipantFormModal({
 					</select>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Vai trò</label>
+					<label className={styles.formLabel} htmlFor={fid('role')}>Vai trò</label>
 					<select
+						id={fid('role')}
 						className={styles.formInput}
 						value={form.participation_type}
 						onChange={set('participation_type')}
@@ -180,8 +186,9 @@ export function ParticipantFormModal({
 
 				{form.source === 'internal' && !form.user_id && mode === 'add' && (
 					<div className={`${styles.formGroup} ${styles.full} ${styles.acWrap}`}>
-						<label className={styles.formLabel}>Tìm cán bộ</label>
+						<label className={styles.formLabel} htmlFor={fid('search')}>Tìm cán bộ</label>
 						<input
+							id={fid('search')}
 							className={styles.formInput}
 							value={q}
 							onChange={(e) => setQ(e.target.value)}
@@ -189,9 +196,10 @@ export function ParticipantFormModal({
 							onFocus={() => sugs.length && setShowSugs(true)}
 						/>
 						{showSugs && sugs.length > 0 && (
-							<div className={styles.acList}>
+							<div className={styles.acList} role='group' aria-label='Gợi ý cán bộ'>
 								{sugs.map((u) => (
-									<div
+									<button
+										type='button'
 										key={u.id}
 										className={styles.acItem}
 										onClick={() => pickUser(u)}
@@ -200,7 +208,7 @@ export function ParticipantFormModal({
 										<span className={styles.acMeta}>
 											#{u.staff_number ?? '—'}
 										</span>
-									</div>
+									</button>
 								))}
 							</div>
 						)}
@@ -208,8 +216,10 @@ export function ParticipantFormModal({
 				)}
 
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>
-						Họ tên <span className={styles.required}>*</span>
+					<div className={styles.formLabel}>
+						<label htmlFor={fid('name')}>
+							Họ tên <span className={styles.required}>*</span>
+						</label>
 						{form.user_id && (
 							<button
 								type='button'
@@ -220,19 +230,32 @@ export function ParticipantFormModal({
 								(bỏ liên kết cán bộ)
 							</button>
 						)}
-					</label>
+					</div>
 					<input
+						id={fid('name')}
 						className={`${styles.formInput} ${err ? styles.inputError : ''}`}
 						value={form.full_name}
 						onChange={set('full_name')}
 						disabled={!!form.user_id}
+						aria-required='true'
+						aria-invalid={err ? true : undefined}
+						aria-describedby={err ? fid('name-err') : undefined}
 					/>
-					{err && <div className={styles.fieldError}>{err}</div>}
+					{err && (
+						<div
+							id={fid('name-err')}
+							className={styles.fieldError}
+							role='alert'
+						>
+							{err}
+						</div>
+					)}
 				</div>
 
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Danh xưng</label>
+					<label className={styles.formLabel} htmlFor={fid('prefix')}>Danh xưng</label>
 					<input
+						id={fid('prefix')}
 						className={styles.formInput}
 						value={form.title_prefix}
 						onChange={set('title_prefix')}
@@ -240,8 +263,9 @@ export function ParticipantFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Giới tính</label>
+					<label className={styles.formLabel} htmlFor={fid('gender')}>Giới tính</label>
 					<select
+						id={fid('gender')}
 						className={styles.formInput}
 						value={form.gender}
 						onChange={set('gender')}
@@ -259,12 +283,13 @@ export function ParticipantFormModal({
 				</div>
 
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngày sinh</label>
-					<DatePicker value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
+					<label className={styles.formLabel} htmlFor={fid('dob')}>Ngày sinh</label>
+					<DatePicker id={fid('dob')} value={form.dob} onChange={(v) => setForm((f) => ({ ...f, dob: v }))} />
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Ngày sinh (dạng chữ)</label>
+					<label className={styles.formLabel} htmlFor={fid('dobText')}>Ngày sinh (dạng chữ)</label>
 					<input
+						id={fid('dobText')}
 						className={styles.formInput}
 						value={form.dob_text}
 						onChange={set('dob_text')}
@@ -274,8 +299,9 @@ export function ParticipantFormModal({
 
 				{form.source === 'external' ? (
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>Đơn vị công tác</label>
+						<label className={styles.formLabel} htmlFor={fid('org')}>Đơn vị công tác</label>
 						<input
+							id={fid('org')}
 							className={styles.formInput}
 							value={form.organization}
 							onChange={set('organization')}
@@ -283,10 +309,11 @@ export function ParticipantFormModal({
 					</div>
 				) : (
 					<div className={`${styles.formGroup} ${styles.full}`}>
-						<label className={styles.formLabel}>
+						<label className={styles.formLabel} htmlFor={fid('dept')}>
 							Khoa/phòng (ghi trong danh sách)
 						</label>
 						<input
+							id={fid('dept')}
 							className={styles.formInput}
 							value={form.department_raw}
 							onChange={set('department_raw')}
@@ -295,8 +322,9 @@ export function ParticipantFormModal({
 				)}
 
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Mã nhân viên</label>
+					<label className={styles.formLabel} htmlFor={fid('staff')}>Mã nhân viên</label>
 					<input
+						id={fid('staff')}
 						className={styles.formInput}
 						value={form.staff_number}
 						onChange={set('staff_number')}
@@ -304,8 +332,9 @@ export function ParticipantFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Trình độ chuyên môn</label>
+					<label className={styles.formLabel} htmlFor={fid('qual')}>Trình độ chuyên môn</label>
 					<input
+						id={fid('qual')}
 						className={styles.formInput}
 						value={form.qualification_raw}
 						onChange={set('qualification_raw')}
@@ -323,8 +352,9 @@ export function ParticipantFormModal({
 					</label>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Tín chỉ CME</label>
+					<label className={styles.formLabel} htmlFor={fid('cme')}>Tín chỉ CME</label>
 					<input
+						id={fid('cme')}
 						className={styles.formInput}
 						value={form.cme_credits}
 						onChange={set('cme_credits')}
@@ -334,8 +364,9 @@ export function ParticipantFormModal({
 				</div>
 
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Ghi chú</label>
+					<label className={styles.formLabel} htmlFor={fid('notes')}>Ghi chú</label>
 					<input
+						id={fid('notes')}
 						className={styles.formInput}
 						value={form.notes}
 						onChange={set('notes')}

@@ -1,6 +1,6 @@
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { formatDateVN } from '../../../shared/utils/formatDate';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
 	CheckSvg,
 	ChevLSvg,
@@ -17,7 +17,8 @@ import {
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, DatePicker, FileDropzone, Modal, Pagination, SearchableSelect } from '@/shared/components';
+import { Badge, DatePicker, FileDropzone, Modal, Pagination, SearchableSelect, confirmDialog } from '@/shared/components';
+import { notify } from '@/shared/utils/feedback';
 import { InlineLoading } from '../../../shared/components/Loading';
 import sel from '@/shared/components/Table/RowSelect.module.css';
 import { BulkButton, BulkDeleteModal, SelectCheckbox, SelectionBar } from '@/shared/components/Table/RowSelect';
@@ -68,7 +69,7 @@ const MAX_YEAR = THIS_YEAR + 1;
 const NO_CATEGORY = '__none__';
 
 /** Chọn năm dạng ‹ 2026 › — bấm mũi tên, phím ↑/↓ hoặc gõ thẳng năm, thay cho dropdown dài. */
-function YearStepper({ value, onChange }: { value: number; onChange: (y: number) => void }) {
+function YearStepper({ value, onChange, label = 'Năm' }: { value: number; onChange: (y: number) => void; label?: string }) {
 	// null = không đang gõ → hiển thị theo value
 	const [draft, setDraft] = useState<string | null>(null);
 
@@ -84,12 +85,13 @@ function YearStepper({ value, onChange }: { value: number; onChange: (y: number)
 
 	return (
 		<div className={styles.yearStepper}>
-			<button type='button' title='Năm trước' disabled={value <= MIN_YEAR} onClick={() => go(value - 1)}>
+			<button type='button' title='Năm trước' aria-label={`${label}: giảm một năm`} disabled={value <= MIN_YEAR} onClick={() => go(value - 1)}>
 				<ChevLSvg />
 			</button>
 			<label className={styles.yearStepperValue} title='Gõ năm rồi nhấn Enter'>
 				<span>Năm</span>
 				<input
+					aria-label={label}
 					inputMode='numeric'
 					maxLength={4}
 					value={draft ?? String(value)}
@@ -102,7 +104,7 @@ function YearStepper({ value, onChange }: { value: number; onChange: (y: number)
 					}}
 				/>
 			</label>
-			<button type='button' title='Năm sau' disabled={value >= MAX_YEAR} onClick={() => go(value + 1)}>
+			<button type='button' title='Năm sau' aria-label={`${label}: tăng một năm`} disabled={value >= MAX_YEAR} onClick={() => go(value + 1)}>
 				<ChevRSvg />
 			</button>
 			{value !== THIS_YEAR && (
@@ -208,18 +210,18 @@ function ExportReportModal({
 			size='md'
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={busy}>
 						Hủy
 					</button>
-					<button className={styles.btnPrimary} onClick={run} disabled={busy}>
+					<button type='button' className={styles.btnPrimary} onClick={run} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <DownloadSvg />} Xuất Excel
 					</button>
 				</>
 			}
 		>
-			{error && <div className={styles.fieldError}>{error}</div>}
+			{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Phạm vi năm</label>
+				<span className={styles.formLabel}>Phạm vi năm</span>
 				<div className={styles.yearMode} role='group' aria-label='Phạm vi năm'>
 					{REPORT_PRESETS.map((p) => {
 						const active = !allYears && to === THIS_YEAR && span === p.years;
@@ -250,12 +252,12 @@ function ExportReportModal({
 			{!allYears && (
 				<div className={styles.formGrid} style={{ marginTop: 12 }}>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Từ năm</label>
-						<YearStepper value={from} onChange={pickFrom} />
+						<span className={styles.formLabel}>Từ năm</span>
+						<YearStepper label='Từ năm' value={from} onChange={pickFrom} />
 					</div>
 					<div className={styles.formGroup}>
-						<label className={styles.formLabel}>Đến năm</label>
-						<YearStepper value={to} onChange={pickTo} />
+						<span className={styles.formLabel}>Đến năm</span>
+						<YearStepper label='Đến năm' value={to} onChange={pickTo} />
 					</div>
 				</div>
 			)}
@@ -315,6 +317,8 @@ function RecordFormModal({
 	onClose: () => void;
 	onSaved: () => void;
 }) {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [form, setForm] = useState<CmeRecordFormData>(
 		record
 			? {
@@ -401,20 +405,21 @@ function RecordFormModal({
 			size='md'
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={busy}>
 						Hủy
 					</button>
-					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
+					<button type='button' className={styles.btnPrimary} onClick={save} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <CheckSvg />} Lưu
 					</button>
 				</>
 			}
 		>
-			{error && <div className={styles.fieldError}>{error}</div>}
+			{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 			<div className={styles.formGrid}>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Nhân viên *</label>
+					<label className={styles.formLabel} htmlFor={fid('l1')}>Nhân viên *</label>
 					<SearchableSelect
+						id={fid('l1')}
 						options={userOptions}
 						value={form.user_id}
 						onChange={(id) => setForm((f) => ({ ...f, user_id: id }))}
@@ -422,8 +427,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Nhóm hoạt động</label>
+					<label className={styles.formLabel} htmlFor={fid('l2')}>Nhóm hoạt động</label>
 					<select
+						id={fid('l2')}
 						className={styles.formInput}
 						value={group}
 						onChange={(e) => {
@@ -440,8 +446,9 @@ function RecordFormModal({
 					</select>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Hình thức / danh mục</label>
+					<label className={styles.formLabel} htmlFor={fid('l3')}>Hình thức / danh mục</label>
 					<select
+						id={fid('l3')}
 						className={styles.formInput}
 						value={form.category_id}
 						onChange={(e) => pickCategory(e.target.value)}
@@ -456,8 +463,9 @@ function RecordFormModal({
 					</select>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Tên hoạt động *</label>
+					<label className={styles.formLabel} htmlFor={fid('l4')}>Tên hoạt động *</label>
 					<input
+						id={fid('l4')}
 						className={styles.formInput}
 						value={form.title}
 						maxLength={255}
@@ -466,8 +474,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Vai trò</label>
+					<label className={styles.formLabel} htmlFor={fid('l5')}>Vai trò</label>
 					<input
+						id={fid('l5')}
 						className={styles.formInput}
 						value={form.role}
 						maxLength={100}
@@ -476,8 +485,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số buổi tham gia</label>
+					<label className={styles.formLabel} htmlFor={fid('l6')}>Số buổi tham gia</label>
 					<input
+						id={fid('l6')}
 						type='number'
 						step='0.1'
 						min='0'
@@ -487,8 +497,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Từ ngày</label>
+					<label className={styles.formLabel} htmlFor={fid('l7')}>Từ ngày</label>
 					<DatePicker
+						id={fid('l7')}
 						value={form.activity_date}
 						onChange={(v) =>
 							setForm((f) => ({
@@ -500,12 +511,13 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Đến ngày</label>
-					<DatePicker value={form.end_date} onChange={(v) => setForm((f) => ({ ...f, end_date: v }))} />
+					<label className={styles.formLabel} htmlFor={fid('l8')}>Đến ngày</label>
+					<DatePicker id={fid('l8')} value={form.end_date} onChange={(v) => setForm((f) => ({ ...f, end_date: v }))} />
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Năm *</label>
+					<label className={styles.formLabel} htmlFor={fid('l9')}>Năm *</label>
 					<input
+						id={fid('l9')}
 						type='number'
 						className={styles.formInput}
 						value={form.year}
@@ -513,8 +525,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số tín chỉ *</label>
+					<label className={styles.formLabel} htmlFor={fid('l10')}>Số tín chỉ *</label>
 					<input
+						id={fid('l10')}
 						type='number'
 						step='0.1'
 						min='0'
@@ -524,8 +537,9 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Ghi chú</label>
+					<label className={styles.formLabel} htmlFor={fid('l11')}>Ghi chú</label>
 					<input
+						id={fid('l11')}
 						className={styles.formInput}
 						value={form.note}
 						maxLength={500}
@@ -533,7 +547,7 @@ function RecordFormModal({
 					/>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Minh chứng đính kèm</label>
+					<span className={styles.formLabel}>Minh chứng đính kèm</span>
 					<FileDropzone
 						value={evidence}
 						onChange={setEvidence}
@@ -578,6 +592,8 @@ function BulkEditModal({
 	onClose: () => void;
 	onSaved: () => void;
 }) {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [f, setF] = useState(EMPTY_BULK);
 	const set = (patch: Partial<typeof EMPTY_BULK>) => setF((x) => ({ ...x, ...patch }));
 	const [busy, setBusy] = useState(false);
@@ -629,10 +645,10 @@ function BulkEditModal({
 			size='md'
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={busy}>
 						Hủy
 					</button>
-					<button className={styles.btnPrimary} onClick={save} disabled={busy || !hasChange}>
+					<button type='button' className={styles.btnPrimary} onClick={save} disabled={busy || !hasChange}>
 						{busy ? <span className={styles.spinner} /> : <CheckSvg />} Áp dụng cho {ids.length} ghi nhận
 					</button>
 				</>
@@ -642,11 +658,12 @@ function BulkEditModal({
 				<InfoSvg />
 				<span>Chỉ ô được nhập mới ghi đè; ô để trống giữ nguyên giá trị cũ của từng ghi nhận.</span>
 			</div>
-			{error && <div className={styles.fieldError}>{error}</div>}
+			{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 			<div className={styles.formGrid}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Nhóm hoạt động</label>
+					<label className={styles.formLabel} htmlFor={fid('l1')}>Nhóm hoạt động</label>
 					<select
+						id={fid('l1')}
 						className={styles.formInput}
 						value={f.group}
 						onChange={(e) => set({ group: e.target.value, category_id: '' })}
@@ -660,8 +677,9 @@ function BulkEditModal({
 					</select>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Hình thức / danh mục</label>
+					<label className={styles.formLabel} htmlFor={fid('l2')}>Hình thức / danh mục</label>
 					<select
+						id={fid('l2')}
 						className={styles.formInput}
 						value={f.category_id}
 						onChange={(e) => set({ category_id: e.target.value })}
@@ -676,8 +694,9 @@ function BulkEditModal({
 					</select>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Tên hoạt động</label>
+					<label className={styles.formLabel} htmlFor={fid('l3')}>Tên hoạt động</label>
 					<input
+						id={fid('l3')}
 						className={styles.formInput}
 						value={f.title}
 						maxLength={255}
@@ -686,8 +705,9 @@ function BulkEditModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Vai trò</label>
+					<label className={styles.formLabel} htmlFor={fid('l4')}>Vai trò</label>
 					<input
+						id={fid('l4')}
 						className={styles.formInput}
 						value={f.role}
 						maxLength={100}
@@ -696,8 +716,9 @@ function BulkEditModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số buổi tham gia</label>
+					<label className={styles.formLabel} htmlFor={fid('l5')}>Số buổi tham gia</label>
 					<input
+						id={fid('l5')}
 						type='number'
 						step='0.1'
 						min='0'
@@ -708,16 +729,17 @@ function BulkEditModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Từ ngày</label>
-					<DatePicker value={f.activity_date} onChange={(v) => set({ activity_date: v })} />
+					<label className={styles.formLabel} htmlFor={fid('l6')}>Từ ngày</label>
+					<DatePicker id={fid('l6')} value={f.activity_date} onChange={(v) => set({ activity_date: v })} />
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Đến ngày</label>
-					<DatePicker value={f.end_date} onChange={(v) => set({ end_date: v })} />
+					<label className={styles.formLabel} htmlFor={fid('l7')}>Đến ngày</label>
+					<DatePicker id={fid('l7')} value={f.end_date} onChange={(v) => set({ end_date: v })} />
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Năm</label>
+					<label className={styles.formLabel} htmlFor={fid('l8')}>Năm</label>
 					<input
+						id={fid('l8')}
 						type='number'
 						className={styles.formInput}
 						value={f.year}
@@ -726,8 +748,9 @@ function BulkEditModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Số tín chỉ</label>
+					<label className={styles.formLabel} htmlFor={fid('l9')}>Số tín chỉ</label>
 					<input
+						id={fid('l9')}
 						type='number'
 						step='0.1'
 						min='0'
@@ -738,8 +761,9 @@ function BulkEditModal({
 					/>
 				</div>
 				<div className={`${styles.formGroup} ${styles.full}`}>
-					<label className={styles.formLabel}>Ghi chú</label>
+					<label className={styles.formLabel} htmlFor={fid('l10')}>Ghi chú</label>
 					<input
+						id={fid('l10')}
 						className={styles.formInput}
 						value={f.note}
 						maxLength={500}
@@ -772,6 +796,8 @@ function AddStaffModal({
 	onClose: () => void;
 	onCreated: (staff: CmeImportCreatedStaff) => Promise<void> | void;
 }) {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [name, setName] = useState(fullName);
 	const [deptId, setDeptId] = useState('');
 	const [busy, setBusy] = useState(false);
@@ -803,31 +829,32 @@ function AddStaffModal({
 			size='sm'
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={busy}>
 						Hủy
 					</button>
-					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
+					<button type='button' className={styles.btnPrimary} onClick={save} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <PlusSvg />} Thêm nhân viên
 					</button>
 				</>
 			}
 		>
-			{error && <div className={styles.fieldError}>{error}</div>}
+			{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>Mã NV</label>
-				<input className={styles.formInput} value={staffNumber} disabled />
+				<label className={styles.formLabel} htmlFor={fid('l1')}>Mã NV</label>
+				<input id={fid('l1')} className={styles.formInput} value={staffNumber} disabled />
 			</div>
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>
+				<label className={styles.formLabel} htmlFor={fid('l2')}>
 					Họ và tên <span className={styles.required}>*</span>
 				</label>
-				<input className={styles.formInput} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+				<input id={fid('l2')} className={styles.formInput} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
 			</div>
 			<div className={styles.formGroup}>
-				<label className={styles.formLabel}>
+				<label className={styles.formLabel} htmlFor={fid('l3')}>
 					Khoa / Phòng <span className={styles.required}>*</span>
 				</label>
 				<SearchableSelect
+					id={fid('l3')}
 					options={departments}
 					value={deptId}
 					onChange={setDeptId}
@@ -910,10 +937,10 @@ function CompleteStaffModal({
 			size='lg'
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={busy}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={busy}>
 						Để sau
 					</button>
-					<button className={styles.btnPrimary} onClick={save} disabled={busy}>
+					<button type='button' className={styles.btnPrimary} onClick={save} disabled={busy}>
 						{busy ? <span className={styles.spinner} /> : <CheckSvg />} Lưu thông tin
 					</button>
 				</>
@@ -926,7 +953,7 @@ function CompleteStaffModal({
 					giữ nguyên (có thể bổ sung sau ở <b>Hệ thống → Người dùng</b>).
 				</span>
 			</div>
-			{error && <div className={styles.fieldError}>{error}</div>}
+			{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 			<div className={styles.importPreview}>
 				<table className={styles.table}>
 					<thead>
@@ -942,6 +969,7 @@ function CompleteStaffModal({
 								<td>{u.staff_number}</td>
 								<td>
 									<input
+										aria-label={`Họ và tên của nhân viên mã ${u.staff_number}`}
 										className={styles.formInput}
 										value={form[u.id].name}
 										onChange={(e) => set(u.id, { name: e.target.value })}
@@ -953,6 +981,7 @@ function CompleteStaffModal({
 								<td style={{ minWidth: 240 }}>
 									{u.missing_department ? (
 										<SearchableSelect
+											aria-label={`Khoa/phòng của nhân viên mã ${u.staff_number}`}
 											options={departments}
 											value={form[u.id].deptId}
 											onChange={(id) => set(u.id, { deptId: id })}
@@ -996,6 +1025,8 @@ function ImportModal({
 	onClose: () => void;
 	onDone: () => void;
 }) {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const [file, setFile] = useState<File | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
@@ -1251,11 +1282,12 @@ function ImportModal({
 				size='lg'
 				footer={
 					<>
-						<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+						<button type='button' className={styles.btnCancel} onClick={onClose} disabled={loading}>
 							{result ? 'Đóng' : 'Hủy'}
 						</button>
 						{!result && (
 							<button
+								type='button'
 								className={styles.btnPrimary}
 								onClick={requestCommit}
 								disabled={loading || !yearOk || !quantityOk || !creditsOk || !previewReady || validCount === 0}
@@ -1278,19 +1310,22 @@ function ImportModal({
 						</div>
 						<div className={styles.importDefaults}>
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>
+								<label className={styles.formLabel} htmlFor={fid('l1')}>
 									Năm (dòng không có Từ ngày) <span className={styles.required}>*</span>
 								</label>
 								<input
+									id={fid('l1')}
 									type='number'
 									className={`${styles.formInput} ${yearOk ? '' : styles.inputError}`}
+									aria-invalid={yearOk ? undefined : true}
 									value={year}
 									onChange={(e) => setYear(e.target.value)}
 								/>
 							</div>
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Nhóm hình thức (tùy chọn)</label>
+								<label className={styles.formLabel} htmlFor={fid('l2')}>Nhóm hình thức (tùy chọn)</label>
 								<select
+									id={fid('l2')}
 									className={styles.formInput}
 									value={group}
 									onChange={(e) => {
@@ -1307,8 +1342,8 @@ function ImportModal({
 								</select>
 							</div>
 							<div className={styles.formGroup}>
-								<label className={styles.formLabel}>Loại hình thức (tùy chọn)</label>
-								<select className={styles.formInput} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+								<label className={styles.formLabel} htmlFor={fid('l3')}>Loại hình thức (tùy chọn)</label>
+								<select id={fid('l3')} className={styles.formInput} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
 									<option value=''>-- Không chọn --</option>
 									{inGroup.map((c) => (
 										<option key={c.id} value={c.id}>
@@ -1327,15 +1362,17 @@ function ImportModal({
 							</div>
 							<div className={`${styles.full} ${styles.importDefaultsRow} ${hasConversion ? '' : styles.importDefaultsRow3}`}>
 								<div className={styles.formGroup}>
-									<label className={styles.formLabel}>
+									<label className={styles.formLabel} htmlFor={fid('l4')}>
 										Số lượng mặc định
 										{category?.unit_label ? ` (${category.unit_label})` : ''}
 									</label>
 									<input
+										id={fid('l4')}
 										type='number'
 										min='0'
 										step='0.5'
 										className={`${styles.formInput} ${quantityOk ? '' : styles.inputError}`}
+									aria-invalid={quantityOk ? undefined : true}
 										value={quantity}
 										onChange={(e) => setQuantity(e.target.value)}
 										placeholder='VD: 1'
@@ -1343,12 +1380,14 @@ function ImportModal({
 								</div>
 								{!hasConversion && (
 									<div className={styles.formGroup}>
-										<label className={styles.formLabel}>Giờ tín chỉ mặc định</label>
+										<label className={styles.formLabel} htmlFor={fid('l5')}>Giờ tín chỉ mặc định</label>
 										<input
+											id={fid('l5')}
 											type='number'
 											min='0'
 											step='0.5'
 											className={`${styles.formInput} ${creditsOk ? '' : styles.inputError}`}
+									aria-invalid={creditsOk ? undefined : true}
 											value={creditsDefault}
 											onChange={(e) => setCreditsDefault(e.target.value)}
 											placeholder='VD: 2'
@@ -1357,8 +1396,9 @@ function ImportModal({
 									</div>
 								)}
 								<div className={styles.formGroup}>
-									<label className={styles.formLabel}>Tên hoạt động mặc định</label>
+									<label className={styles.formLabel} htmlFor={fid('l6')}>Tên hoạt động mặc định</label>
 									<input
+										id={fid('l6')}
 										className={styles.formInput}
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
@@ -1390,7 +1430,7 @@ function ImportModal({
 							Tải file mẫu
 						</button>
 						<div className={styles.formGroup}>
-							<label className={styles.formLabel}>File Excel (.xlsx)</label>
+							<span className={styles.formLabel}>File Excel (.xlsx)</span>
 							<FileDropzone
 								value={file}
 								onChange={(f) => {
@@ -1404,7 +1444,7 @@ function ImportModal({
 							/>
 						</div>
 						{loading && <InlineLoading label='Đang đọc file…' />}
-						{error && <div className={styles.fieldError}>{error}</div>}
+						{error && <div className={styles.fieldError} role='alert'>{error}</div>}
 						{preview?.summary && (
 							<div className={`${styles.noticeBox} ${styles.noticeOk}`}>
 								<CheckSvg />
@@ -1459,6 +1499,8 @@ function ImportModal({
 													<td>
 														{nameEditable(st) ? (
 															<input
+																aria-label={`Họ và tên của nhân viên mã ${st.staff_number}`}
+																aria-required='true'
 																className={`${styles.formInput} ${staffNames[st.staff_number]?.trim() ? '' : styles.inputError}`}
 																value={staffNames[st.staff_number] ?? ''}
 																onChange={(e) =>
@@ -1476,6 +1518,7 @@ function ImportModal({
 													<td style={{ minWidth: 240 }}>
 														{deptEditable(st) ? (
 															<SearchableSelect
+																aria-label={`Khoa/phòng của nhân viên mã ${st.staff_number}`}
 																size='sm'
 																options={[{ id: '', name: 'Để trống, bổ sung sau' }, ...departments]}
 																value={staffDepts[st.staff_number] ?? ''}
@@ -1732,13 +1775,13 @@ function ImportModal({
 				size='md'
 				footer={
 					<>
-						<button className={styles.btnCancel} onClick={() => setConfirmDup(false)}>
+						<button type='button' className={styles.btnCancel} onClick={() => setConfirmDup(false)}>
 							Hủy
 						</button>
-						<button className={styles.btnGhost} onClick={() => commit(true)}>
+						<button type='button' className={styles.btnGhost} onClick={() => commit(true)}>
 							Nhập cả dòng trùng ({validCount})
 						</button>
-						<button className={styles.btnPrimary} onClick={() => commit(false)} disabled={validCount - duplicates === 0}>
+						<button type='button' className={styles.btnPrimary} onClick={() => commit(false)} disabled={validCount - duplicates === 0}>
 							<CheckSvg /> Bỏ qua dòng trùng ({validCount - duplicates})
 						</button>
 					</>
@@ -1776,6 +1819,8 @@ function ImportModal({
 }
 
 export default function CmeManualRecords() {
+	const uid = useId();
+	const fid = (n: string) => `${uid}-${n}`;
 	const perms = useSeminarPerms();
 	// Trường tùy chỉnh người dùng điền khi tự khai (Cấu hình form 'cme_record')
 	const cmeCfg = useFormConfig('cme_record', 'portal');
@@ -1891,17 +1936,24 @@ export default function CmeManualRecords() {
 		rowSel.clearSelection();
 		const failed = recs.filter((_, i) => results[i].status === 'rejected');
 		failed.forEach((r) => rowSel.toggleSelect(r.id));
-		if (failed.length) alert(`${failed.length}/${recs.length} bản ghi xử lý thất bại, đã giữ lại trong danh sách chọn.`);
+		if (failed.length) notify.error(`${failed.length}/${recs.length} bản ghi xử lý thất bại, đã giữ lại trong danh sách chọn.`);
 		refresh();
 	};
-	const handleBulkApprove = () => {
+	const handleBulkApprove = async () => {
 		const missing = toApprove.length - toApproveReady.length;
-		if (!toApproveReady.length)
-			return alert('Các ghi nhận đã chọn chưa có số tín chỉ — vui lòng duyệt từng ghi nhận để nhập tín chỉ.');
-		const note = missing ? `
-${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt từng ghi nhận để nhập tín chỉ).` : '';
-		if (window.confirm(`Duyệt ${toApproveReady.length} ghi nhận đã chọn?${note}`))
-			runBulk(toApproveReady, (id) => approveCmeRecord(id));
+		if (!toApproveReady.length) {
+			notify.error('Các ghi nhận đã chọn chưa có số tín chỉ — vui lòng duyệt từng ghi nhận để nhập tín chỉ.');
+			return;
+		}
+		const note = missing
+			? ` ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt từng ghi nhận để nhập tín chỉ).`
+			: '';
+		const ok = await confirmDialog({
+			title: 'Duyệt các ghi nhận đã chọn?',
+			message: `Duyệt ${toApproveReady.length} ghi nhận đã chọn?${note}`,
+			confirmLabel: 'Duyệt',
+		});
+		if (ok) await runBulk(toApproveReady, (id) => approveCmeRecord(id));
 	};
 	const handleBulkReject = async () => {
 		await runBulk(toReject, (id) => rejectCmeRecord(id, rejectReason));
@@ -1929,7 +1981,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 			setApproving(null);
 			refresh();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Duyệt thất bại');
+			notify.error(e instanceof Error ? e.message : 'Duyệt thất bại');
 		}
 	};
 	const handleReject = async () => {
@@ -1940,7 +1992,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 			setRejectReason('');
 			refresh();
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Từ chối thất bại');
+			notify.error(e instanceof Error ? e.message : 'Từ chối thất bại');
 		}
 	};
 
@@ -1959,23 +2011,24 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>
 						<button
+							type='button'
 							className={styles.btnGhost}
 							onClick={() => setShowExport(true)}
 							title='Báo cáo tín chỉ CME theo nhân sự, chọn từ năm – đến năm: BC tổng + BC chi tiết theo hình thức (gồm cả hội thảo đã cấp CME)'
 						>
 							<DownloadSvg /> Xuất báo cáo
 						</button>
-						<button className={styles.btnGhost} onClick={() => setShowImport(true)}>
+						<button type='button' className={styles.btnGhost} onClick={() => setShowImport(true)}>
 							<UploadSvg /> Nhập từ Excel
 						</button>
-						<button className={styles.btnPrimary} onClick={() => setEditing('new')}>
+						<button type='button' className={styles.btnPrimary} onClick={() => setEditing('new')}>
 							<PlusSvg /> Ghi nhận mới
 						</button>
 					</div>
 				) : undefined
 			}
 		>
-				<div className={styles.tabs}>
+				<div className={styles.tabs} role='group' aria-label='Trạng thái phê duyệt'>
 					{(
 						[
 							{ key: 'approved', label: `Đã phê duyệt (${approvedCount})` },
@@ -1986,6 +2039,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							key={t.key}
 							type='button'
 							className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+							aria-pressed={tab === t.key}
 							onClick={() => {
 								setTab(t.key);
 								setStatusFilter('');
@@ -2013,6 +2067,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 						/>
 						<select
 							className={`${styles.filterSelect} ${styles.cmeFilterWide}`}
+							aria-label='Lọc theo khoa/phòng'
 							value={deptFilter}
 							onChange={(e) => setDeptFilter(e.target.value)}
 						>
@@ -2025,6 +2080,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 						</select>
 						<select
 							className={`${styles.filterSelect} ${styles.cmeFilterWide}`}
+							aria-label='Lọc theo danh mục'
 							value={categoryFilter}
 							onChange={(e) => setCategoryFilter(e.target.value)}
 						>
@@ -2038,6 +2094,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 						</select>
 						<select
 							className={styles.filterSelect}
+							aria-label='Lọc theo minh chứng'
 							value={evidenceFilter}
 							onChange={(e) => setEvidenceFilter(e.target.value as '' | 'yes' | 'no')}
 						>
@@ -2048,6 +2105,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							{tab === 'open' && (
 								<select
 									className={styles.filterSelect}
+									aria-label='Lọc theo trạng thái duyệt'
 									value={statusFilter}
 									onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
 								>
@@ -2058,7 +2116,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							)}
 						<YearFilter value={year} onChange={setYear} />
 						{hasFilter && (
-							<button className={styles.clearSelectionBtn} onClick={clearFilters}>
+							<button type='button' className={styles.clearSelectionBtn} onClick={clearFilters}>
 								Xóa lọc
 							</button>
 						)}
@@ -2226,32 +2284,48 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 											{perms.canCme && (
 												<div className={styles.actionBtns}>
 		{r.approval_status !== 'approved' && (
-			<div className={styles.actionBtn} title='Duyệt và nhập tín chỉ' onClick={() => openApprove(r)}>
+			<button
+				type='button'
+				className={styles.actionBtn}
+				title='Duyệt và nhập tín chỉ'
+				aria-label={`Duyệt và nhập tín chỉ: ${r.title} (${r.user_name})`}
+				onClick={() => openApprove(r)}
+			>
 				<CheckSvg />
-			</div>
+			</button>
 		)}
 		{r.approval_status !== 'rejected' && (
-			<div
+			<button
+				type='button'
 				className={`${styles.actionBtn} ${styles.danger}`}
 				title='Từ chối'
+				aria-label={`Từ chối: ${r.title} (${r.user_name})`}
 				onClick={() => {
 					setRejecting(r);
 					setRejectReason('');
 				}}
 			>
 				<XSvg />
-			</div>
+			</button>
 		)}
-													<div className={styles.actionBtn} title='Sửa' onClick={() => setEditing(r)}>
+													<button
+														type='button'
+														className={styles.actionBtn}
+														title='Sửa'
+														aria-label={`Sửa ghi nhận: ${r.title} (${r.user_name})`}
+														onClick={() => setEditing(r)}
+													>
 														<EditSvg />
-													</div>
-													<div
+													</button>
+													<button
+														type='button'
 														className={`${styles.actionBtn} ${styles.danger}`}
 														title='Xóa'
+														aria-label={`Xóa ghi nhận: ${r.title} (${r.user_name})`}
 														onClick={() => setDeletingId(r.id)}
 													>
 														<TrashSvg />
-													</div>
+													</button>
 												</div>
 											)}
 										</td>
@@ -2321,6 +2395,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 	footer={
 		<>
 			<button
+				type='button'
 				className={styles.btnCancel}
 				onClick={() => {
 					setRejecting(null);
@@ -2330,6 +2405,7 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 				Hủy
 			</button>
 			<button
+				type='button'
 				className={styles.btnDanger}
 				onClick={bulkRejecting ? handleBulkReject : handleReject}
 				disabled={!rejectReason.trim() || bulkBusy}
@@ -2339,8 +2415,8 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 		</>
 	}
 >
-	<label className={styles.formLabel}>Lý do từ chối * (người dùng sẽ thấy để sửa và gửi lại)</label>
-	<input className={styles.formInput} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} autoFocus />
+	<label className={styles.formLabel} htmlFor={fid('l1')}>Lý do từ chối * (người dùng sẽ thấy để sửa và gửi lại)</label>
+	<input id={fid('l1')} className={styles.formInput} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} autoFocus />
 </Modal>
 
 			<Modal
@@ -2349,10 +2425,10 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 				title='Duyệt ghi nhận CME'
 				footer={
 					<>
-						<button className={styles.btnCancel} onClick={() => setApproving(null)}>
+						<button type='button' className={styles.btnCancel} onClick={() => setApproving(null)}>
 							Hủy
 						</button>
-						<button className={styles.btnPrimary} onClick={handleApprove} disabled={!approveCreditsOk}>
+						<button type='button' className={styles.btnPrimary} onClick={handleApprove} disabled={!approveCreditsOk}>
 							<CheckSvg /> Duyệt
 						</button>
 					</>
@@ -2365,8 +2441,9 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 							{approving.category_name && ` · ${approving.category_name}`}
 							{approving.quantity != null && ` · SL ${approving.quantity}`}
 						</div>
-						<label className={styles.formLabel}>Số tín chỉ *</label>
+						<label className={styles.formLabel} htmlFor={fid('l2')}>Số tín chỉ *</label>
 						<input
+							id={fid('l2')}
 							className={styles.formInput}
 							type='number'
 							step='0.1'
@@ -2402,10 +2479,10 @@ ${missing} ghi nhận chưa có tín chỉ sẽ được bỏ qua (cần duyệt
 				title='Xóa ghi nhận CME'
 				footer={
 					<>
-						<button className={styles.btnCancel} onClick={() => setDeletingId(null)}>
+						<button type='button' className={styles.btnCancel} onClick={() => setDeletingId(null)}>
 							Hủy
 						</button>
-						<button className={styles.btnDanger} onClick={() => deletingId && handleDelete(deletingId)}>
+						<button type='button' className={styles.btnDanger} onClick={() => deletingId && handleDelete(deletingId)}>
 							<TrashSvg /> Xóa
 						</button>
 					</>

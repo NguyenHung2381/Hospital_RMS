@@ -4,6 +4,7 @@ import { InlineLoading } from '@/shared/components/Loading';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { confirmDialog } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
 import { addRequiredStaff, getRequiredAbsentees } from '../api/seminarApi';
 import type { RequiredAbsentee } from '../types/seminar.type';
@@ -42,7 +43,12 @@ export function RequiredAbsenteesCard({
 	const notListed = rows.filter((x) => x.reason === 'not_listed').length;
 
 	const addAll = async () => {
-		if (!confirm(`Thêm ${notListed} nhân viên các khoa bắt buộc vào danh sách người tham dự (vai trò Học viên)?`)) return;
+		const ok = await confirmDialog({
+			title: 'Thêm nhân viên khoa bắt buộc?',
+			message: `Thêm ${notListed} nhân viên các khoa bắt buộc vào danh sách người tham dự (vai trò Học viên)?`,
+			confirmLabel: 'Thêm vào danh sách',
+		});
+		if (!ok) return;
 		setAdding(true);
 		try {
 			const r = await addRequiredStaff(seminarId);

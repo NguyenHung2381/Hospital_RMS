@@ -112,15 +112,17 @@ export function StaffLicenseFormModal({
 						/>
 					</FormField>
 				)}
-				{FORM_ORDER.map((f) => (
-					<FormField key={f} label={FIELD_LABELS[f]} style={WIDE_FIELDS.has(f) ? { gridColumn: '1 / -1' } : undefined}>
-						{DATE_FIELDS.has(f) ? (
+				{FORM_ORDER.map((f) =>
+					DATE_FIELDS.has(f) ? (
+						<FormField key={f} label={FIELD_LABELS[f]} style={WIDE_FIELDS.has(f) ? { gridColumn: '1 / -1' } : undefined}>
 							<DatePicker value={form[f]} onChange={(v) => set(f, v)} />
-						) : (
+						</FormField>
+					) : (
+						<FormField key={f} label={FIELD_LABELS[f]} style={WIDE_FIELDS.has(f) ? { gridColumn: '1 / -1' } : undefined}>
 							<input className={styles.formInput} value={form[f]} onChange={(e) => set(f, e.target.value)} />
-						)}
-					</FormField>
-				))}
+						</FormField>
+					),
+				)}
 			</div>
 		</Modal>
 	);

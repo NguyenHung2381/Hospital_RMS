@@ -58,12 +58,12 @@ export default function StaffLicenses() {
 				}}
 			/>
 			<Can permission='staff_licenses:update'>
-				<button className={styles.btnAddHeader} onClick={() => setShowImport(true)}>
+				<button type='button' className={styles.btnAddHeader} onClick={() => setShowImport(true)}>
 					<UploadSvg /> Cập nhật từ Excel
 				</button>
 			</Can>
 			<Can permission='staff_licenses:create'>
-				<button className={styles.btnAddHeader} onClick={() => setEditing(null)}>
+				<button type='button' className={styles.btnAddHeader} onClick={() => setEditing(null)}>
 					<PlusSvg /> Thêm CCHN
 				</button>
 			</Can>
@@ -91,11 +91,13 @@ export default function StaffLicenses() {
 								value={d.departmentId}
 								onChange={d.setDepartmentId}
 								placeholder='Tất cả khoa/phòng'
+								aria-label='Lọc theo khoa/phòng'
 								size='sm'
 							/>
 						</div>
 						<select
 							className={styles.filterSelect}
+							aria-label='Lọc theo tình trạng CCHN'
 							value={d.hasLicense}
 							onChange={(e) => d.setHasLicense(e.target.value)}
 						>

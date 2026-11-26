@@ -1,11 +1,11 @@
 import { SearchInput } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckSvg, TrashSvg, UsersSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
-import { Badge, Button, Modal, TableEmpty } from '@/shared/components';
+import { Badge, Button, Modal, TableEmpty, confirmDialog } from '@/shared/components';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
@@ -49,6 +49,8 @@ const fmtDate = (s: string | null) => {
 export default function CmeRegister() {
 	const perms = useSeminarPerms();
 	const navigate = useNavigate();
+	const yearId = useId();
+	const confirmId = useId();
 	const [year, setYear] = useState(THIS_YEAR);
 	const [reg, setReg] = useState<CmeRegisterT | null>(null);
 	const [stats, setStats] = useState<CmeStats | null>(null);
@@ -139,7 +141,13 @@ export default function CmeRegister() {
 	};
 
 	const handleRevoke = async (seminarId: string, pid: string, seq: number) => {
-		if (!window.confirm(`Thu hồi số quyết định ${seq}? Dòng này sẽ bị xóa khỏi sổ.`)) return;
+		const ok = await confirmDialog({
+			title: 'Thu hồi số quyết định?',
+			message: `Thu hồi số quyết định ${seq}? Dòng này sẽ bị xóa khỏi sổ.`,
+			confirmLabel: 'Thu hồi',
+			tone: 'danger',
+		});
+		if (!ok) return;
 		setRevokingId(pid);
 		try {
 			await revokeCme(seminarId, pid);
@@ -213,12 +221,13 @@ export default function CmeRegister() {
 		const targets = getSelectedEntries();
 		const n = targets.length;
 		if (n === 0) return;
-		if (
-			!window.confirm(
-				`Thu hồi số quyết định của ${n} lượt cấp đã chọn? Các dòng này sẽ bị xóa khỏi sổ.`,
-			)
-		)
-			return;
+		const ok = await confirmDialog({
+			title: 'Thu hồi số quyết định đã chọn?',
+			message: `Thu hồi số quyết định của ${n} lượt cấp đã chọn? Các dòng này sẽ bị xóa khỏi sổ.`,
+			confirmLabel: 'Thu hồi',
+			tone: 'danger',
+		});
+		if (!ok) return;
 		setBulkBusy(true);
 		try {
 			for (const [seminarId, list] of groupBySeminar(targets))
@@ -270,8 +279,9 @@ export default function CmeRegister() {
 		>
 			<div className={styles.regHead}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Năm chu trình</label>
+					<label className={styles.formLabel} htmlFor={yearId}>Năm chu trình</label>
 					<select
+						id={yearId}
 						className={styles.filterSelect}
 						value={year}
 						onChange={(e) => setYear(Number(e.target.value))}
@@ -290,10 +300,12 @@ export default function CmeRegister() {
 						<>
 							<input
 								className={styles.seqInput}
+								aria-label='Số cuối đã cấp'
 								value={seqDraft}
 								onChange={(e) => setSeqDraft(e.target.value.replace(/\D/g, ''))}
 							/>
 							<button
+								type='button'
 								className={styles.btnGhost}
 								onClick={saveSeq}
 								disabled={savingSeq || seqDraft === String(reg?.last_seq ?? '')}
@@ -450,16 +462,20 @@ export default function CmeRegister() {
 									<td className={styles.tdRight}>
 										<div className={styles.actionBtns}>
 											<button
+												type='button'
 												className={styles.actionBtn}
 												title='Mở hội nghị'
+												aria-label={`Mở hội nghị ${e.seminar_title}`}
 												onClick={() => navigate(`/admin/seminars/${e.seminar_id}`)}
 											>
 												<UsersSvg />
 											</button>
 											{perms.canCme && (
 												<button
+													type='button'
 													className={`${styles.actionBtn} ${styles.danger}`}
 													title='Thu hồi số CME'
+													aria-label={`Thu hồi số CME ${e.cme_certificate_no} của ${e.full_name}`}
 													disabled={revokingId !== null}
 													style={revokingId === e.id ? { opacity: 0.5 } : undefined}
 													onClick={() => handleRevoke(e.seminar_id, e.id, e.cme_seq)}
@@ -528,10 +544,11 @@ export default function CmeRegister() {
 					)}
 					. Các dòng này sẽ bị xóa khỏi sổ và <strong>không thể hoàn tác</strong>.
 				</p>
-				<label className={styles.formLabel} style={{ display: 'block', marginBottom: 6 }}>
+				<label className={styles.formLabel} htmlFor={confirmId} style={{ display: 'block', marginBottom: 6 }}>
 					Nhập số <strong>{total}</strong> để xác nhận
 				</label>
 				<input
+					id={confirmId}
 					className={styles.seqInput}
 					value={confirmText}
 					onChange={(e) => setConfirmText(e.target.value.replace(/\D/g, ''))}

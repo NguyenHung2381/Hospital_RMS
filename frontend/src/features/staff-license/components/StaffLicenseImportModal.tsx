@@ -77,11 +77,11 @@ export function StaffLicenseImportModal({ onClose, onDone }: { onClose: () => vo
 			bodyClassName={styles.modalBody}
 			footer={
 				<>
-					<button className={styles.btnCancel} onClick={onClose} disabled={loading}>
+					<button type='button' className={styles.btnCancel} onClick={onClose} disabled={loading}>
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
-						<button className={styles.btnConfirm} onClick={commit} disabled={loading || rows.length === 0}>
+						<button type='button' className={styles.btnConfirm} onClick={commit} disabled={loading || rows.length === 0}>
 							{loading ? <span className={styles.spinner} /> : <UploadSvg />}
 							Cập nhật {rows.length || ''} hồ sơ
 						</button>

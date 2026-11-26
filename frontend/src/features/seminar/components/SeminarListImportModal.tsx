@@ -101,6 +101,7 @@ export function SeminarListImportModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -109,6 +110,7 @@ export function SeminarListImportModal({
 					</button>
 					{!result && (
 						<button
+							type='button'
 							className={styles.btnPrimary}
 							onClick={commit}
 							disabled={loading || !s || s.importable === 0}

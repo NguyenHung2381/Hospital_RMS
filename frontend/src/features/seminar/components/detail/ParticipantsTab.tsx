@@ -114,6 +114,7 @@ export function ParticipantsTab({
 					<div className={sem.tableControls}>
 						{perms.canImport && (
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={actions.openImport}
 							>
@@ -122,6 +123,7 @@ export function ParticipantsTab({
 						)}
 						{perms.canUpdate && ht && (
 							<button
+								type='button'
 								className={sem.btnGhost}
 								onClick={actions.openStaff}
 							>
@@ -130,6 +132,7 @@ export function ParticipantsTab({
 						)}
 						{perms.canUpdate && (
 							<button
+								type='button'
 								className={sem.btnPrimary}
 								onClick={actions.addParticipant}
 							>
@@ -142,15 +145,14 @@ export function ParticipantsTab({
 				<div className={s.filterRow}>
 					<div
 						className={s.segment}
-						role='tablist'
+						role='group'
 						aria-label='Lọc theo vai trò'
 					>
 						{ROLES.map((r) => (
 							<button
 								key={r.key}
 								type='button'
-								role='tab'
-								aria-selected={role === r.key}
+								aria-pressed={role === r.key}
 								className={role === r.key ? s.segActive : undefined}
 								onClick={() => changeRole(r.key)}
 							>

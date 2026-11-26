@@ -18,6 +18,7 @@ export function AgendaTab({ agenda, perms, actions }: Pick<TabProps, 'perms' | '
 				{perms.canUpdate && (
 					<div className={sem.tableControls}>
 						<button
+							type='button'
 							className={agenda.length ? sem.btnGhost : sem.btnPrimary}
 							onClick={actions.openAgenda}
 						>

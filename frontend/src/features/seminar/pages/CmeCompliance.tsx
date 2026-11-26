@@ -388,7 +388,7 @@ export default function CmeCompliance() {
 
 			{view === 'year' && (
 				<>
-					<div className={styles.tabs}>
+					<div className={styles.tabs} role='group' aria-label='Nội dung CME'>
 						{(
 							[
 								{ key: 'compliance', label: `Nhân sự chưa đạt (${compliance.length})` },
@@ -399,6 +399,7 @@ export default function CmeCompliance() {
 								key={t.key}
 								type='button'
 								className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
+								aria-pressed={tab === t.key}
 								onClick={() => setTab(t.key)}
 							>
 								{t.label}
@@ -421,6 +422,7 @@ export default function CmeCompliance() {
 										value={compDept}
 										onChange={(e) => setCompDept(e.target.value)}
 										title='Khoa / Phòng'
+										aria-label='Lọc theo khoa/phòng'
 									>
 										<option value=''>Tất cả khoa/phòng</option>
 										{compDeptOptions.map((d) => (
@@ -484,6 +486,7 @@ export default function CmeCompliance() {
 															<button
 																className={styles.actionBtn}
 																title='Xuất phiếu CME cá nhân (Excel)'
+																aria-label={`Xuất phiếu CME cá nhân của ${row.full_name}`}
 																disabled={exportingId !== null}
 																onClick={() => exportPerson(row.id, row.full_name, year)}
 															>

@@ -13,7 +13,7 @@ import {
 	WarnSvg,
 	FileTextSvg,
 } from '@/assets/icons';
-import { Badge, FileDropzone, Modal } from '@/shared/components';
+import { Badge, FileDropzone, Modal, confirmDialog } from '@/shared/components';
 import { InlineLoading } from '@/shared/components/Loading';
 import { formatDateTimeVN } from '@/shared/utils/formatDate';
 import { showToast } from '@/shared/utils/feedback';
@@ -113,7 +113,13 @@ export function CertificateModal({
 	};
 
 	const remove = async () => {
-		if (!window.confirm('Xóa mẫu giấy chứng nhận của hội nghị này?')) return;
+		const ok = await confirmDialog({
+			title: 'Xóa mẫu giấy chứng nhận?',
+			message: 'Xóa mẫu giấy chứng nhận của hội nghị này?',
+			confirmLabel: 'Xóa mẫu',
+			tone: 'danger',
+		});
+		if (!ok) return;
 		setBusy('delete');
 		try {
 			await deleteCertificateTemplate(seminarId);
@@ -184,6 +190,7 @@ export function CertificateModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={busy === 'export'}
@@ -191,6 +198,7 @@ export function CertificateModal({
 						Đóng
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={() => void exportZip()}
 						disabled={!canExport || !!busy}
@@ -250,6 +258,7 @@ export function CertificateModal({
 								</div>
 								<div className={css.fileActions}>
 									<button
+										type='button'
 										className={css.iconBtn}
 										onClick={() => void preview()}
 										disabled={!!busy}
@@ -259,6 +268,7 @@ export function CertificateModal({
 										<span>Xem thử</span>
 									</button>
 									<button
+										type='button'
 										className={css.iconBtn}
 										onClick={() => setEditorOpen(true)}
 										disabled={!!busy}
@@ -268,6 +278,7 @@ export function CertificateModal({
 										<span>Chỉnh mẫu</span>
 									</button>
 									<button
+										type='button'
 										className={`${css.iconBtn} ${replacing ? css.iconBtnOn : ''}`}
 										onClick={() => setReplacing((v) => !v)}
 										disabled={!!busy}
@@ -278,6 +289,7 @@ export function CertificateModal({
 										<span>Đổi mẫu</span>
 									</button>
 									<button
+										type='button'
 										className={`${css.iconBtn} ${css.iconBtnDanger}`}
 										onClick={() => void remove()}
 										disabled={!!busy}
@@ -356,6 +368,7 @@ export function CertificateModal({
 								<div className={css.uploadActions}>
 									{replacing && (
 										<button
+											type='button'
 											className={styles.btnCancel}
 											onClick={() => {
 												setReplacing(false);
@@ -367,6 +380,7 @@ export function CertificateModal({
 										</button>
 									)}
 									<button
+										type='button'
 										className={styles.btnPrimary}
 										onClick={() => void upload()}
 										disabled={!pdfFile || !!busy}

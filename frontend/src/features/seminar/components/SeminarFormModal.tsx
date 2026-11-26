@@ -394,6 +394,7 @@ export function SeminarFormModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -401,6 +402,7 @@ export function SeminarFormModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnPrimary}
 						onClick={submit}
 						disabled={loading}

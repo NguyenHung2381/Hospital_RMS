@@ -28,6 +28,7 @@ export default function Survey() {
 
 	const headerActions = (
 		<button
+			type='button'
 			className={styles.btnAddHeader}
 			onClick={() => d.setModal('add')}
 		>
