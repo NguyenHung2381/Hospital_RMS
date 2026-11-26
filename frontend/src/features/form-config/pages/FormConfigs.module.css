@@ -362,10 +362,6 @@
 	background: var(--color-warning);
 	font-weight: 600;
 }
-.typeTagReq {
-	color: var(--tone-red-fg);
-	background: var(--tone-red-bg);
-}
 
 /* Nút mắt Hiện / Ẩn + nhãn khóa */
 .pill {
@@ -760,7 +756,6 @@
 }
 
 /* ── Ô sửa ràng buộc ── */
-.textRow,
 .rules {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -1062,13 +1057,6 @@
 .previewHow {
 	font-size: 11px;
 	color: var(--color-gray-500);
-}
-.previewSection {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	padding: var(--space-2) 8px 0;
-	border-top: 1px dashed var(--color-gray-200);
 }
 .previewFoot {
 	display: flex;
