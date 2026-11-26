@@ -14,8 +14,8 @@
 	align-items: center;
 	gap: 16px;
 	padding: 16px 32px;
-	background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-	color: #fff;
+	background: var(--color-primary-dark);
+	color: var(--color-white);
 	flex-shrink: 0;
 }
 
