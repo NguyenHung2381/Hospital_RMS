@@ -254,7 +254,7 @@ function DetailModal({
 				tabIndex={-1}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className={styles.detailHead} style={{ borderLeftColor: color }}>
+				<div className={styles.detailHead}>
 					<div>
 						<span className={styles.detailBadge} style={{ background: `${color}20`, color }}>
 							Buổi học
