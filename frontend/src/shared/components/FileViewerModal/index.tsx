@@ -104,7 +104,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 				{renderState === 'error' && (
 					<div
 						className={styles.viewerStatus}
-						style={{ color: '#b91c1c' }}
+						style={{ color: 'var(--tone-red-fg)' }}
 					>
 						Không thể tải tài liệu. Hãy thử tải về.
 					</div>

@@ -25,8 +25,8 @@ export default function TwoFactorReminder() {
 				marginBottom: 16,
 				borderRadius: 8,
 				border: '1px solid #fde68a',
-				background: '#fefce8',
-				color: '#92400e',
+				background: 'var(--tone-amber-bg)',
+				color: 'var(--tone-amber-fg)',
 				fontSize: 14,
 			}}
 		>
@@ -41,7 +41,7 @@ export default function TwoFactorReminder() {
 				)}
 				. Quá hạn, các chức năng sẽ bị tạm khóa cho tới khi bật.
 			</span>
-			<Link to='/bat-2fa' style={{ fontWeight: 600, color: '#92400e', textDecoration: 'underline' }}>
+			<Link to='/bat-2fa' style={{ fontWeight: 600, color: 'var(--tone-amber-fg)', textDecoration: 'underline' }}>
 				Bật ngay
 			</Link>
 		</div>
