@@ -811,7 +811,7 @@
 }
 
 .formRequired {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-base);
 	line-height: 1;
 }
@@ -1179,7 +1179,7 @@
 }
 
 .uploadClearAll:hover {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	background: var(--tone-red-bg);
 }
 
@@ -1267,7 +1267,7 @@
 
 .uploadPendingRemove:hover {
 	background: var(--tone-red-bg);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	transform: scale(1.05);
 }
 
@@ -1278,7 +1278,7 @@
 
 .uploadError {
 	font-size: var(--font-size-xs);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	margin: 0;
 	padding: 6px 10px;
 	background: var(--tone-red-bg);
