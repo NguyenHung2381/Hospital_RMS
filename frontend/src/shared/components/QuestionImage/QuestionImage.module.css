@@ -67,7 +67,7 @@
 }
 .danger:hover:not(:disabled) {
 	border-color: var(--color-error);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 .view {
@@ -94,7 +94,7 @@
 }
 
 .error {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-xs);
 }
 
