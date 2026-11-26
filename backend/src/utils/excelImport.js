@@ -188,9 +188,10 @@ const findHeader = (workbook, matchers, isValid) => {
 
 /**
  * Mở file + tìm header + duyệt từng dòng dữ liệu. `isEmpty(get, row)` đánh dấu
- * dòng trống; dừng sau 25 dòng trống liên tiếp. Trả { ws, cols, rows: [{ r, row, get }] }.
+ * dòng trống; dừng sau 25 dòng trống liên tiếp, hoặc tại dòng `isStop(row)` trả true (vd.
+ * khối tổng ghi dưới bảng). Trả { ws, cols, rows: [{ r, row, get }] }.
  */
-const readSheet = async (buffer, { matchers, isValid, headerError, isEmpty }) => {
+const readSheet = async (buffer, { matchers, isValid, headerError, isEmpty, isStop = null }) => {
 	const workbook = await loadWorkbook(buffer);
 	const header = findHeader(workbook, matchers, isValid);
 	if (!header) throw badRequest(headerError);
@@ -202,6 +203,7 @@ const readSheet = async (buffer, { matchers, isValid, headerError, isEmpty }) =>
 	const maxRow = ws.rowCount || headerRow;
 	for (let r = headerRow + 1; r <= maxRow && emptyStreak < 25; r++) {
 		const row = ws.getRow(r);
+		if (isStop?.(row)) break;
 		if (isEmpty(get, row)) {
 			emptyStreak++;
 			continue;

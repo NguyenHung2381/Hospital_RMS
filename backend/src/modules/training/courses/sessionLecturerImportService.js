@@ -29,6 +29,7 @@ const {
 	parseDateText,
 	parseStaffNumber,
 } = require('../../../utils/excelImport');
+const { isLecturerTotalsRow } = require('../../../utils/excelLecturerTotals');
 const { badRequest, httpError } = require('../../../utils/httpError');
 const { fmtDateVN } = require('../../../utils/vnDate');
 const lecturerAssignmentService = require('./lecturerAssignmentService');
@@ -51,8 +52,9 @@ const MATCHERS = [
 			h === 'bai hoc',
 	],
 	['kind', (h) => h === 'so tiet' || h === 'lt/th' || h === 'loai buoi' || h === 'phan'],
-	['main_code', (h) => h.startsWith('ma nv gv chinh') || h.startsWith('ma nv giang vien chinh')],
-	['main', (h) => h.startsWith('giang vien chinh') || h === 'gv chinh'],
+	// File mẫu mới ghi "Mã NV giảng viên" / "Giảng viên"; file cũ "… GV chính" / "Giảng viên chính"
+	['main_code', (h) => h.startsWith('ma nv gv chinh') || h.startsWith('ma nv giang vien')],
+	['main', (h) => h.startsWith('giang vien chinh') || h === 'gv chinh' || h === 'giang vien'],
 	['asst_code', (h) => h.startsWith('ma nv tro giang')],
 	['asst', (h) => h.startsWith('tro giang')],
 	['time', (h) => h.startsWith('thoi gian giang') || h === 'thoi gian'],
@@ -119,8 +121,9 @@ const parseWorkbook = async (buffer) => {
 		matchers: MATCHERS,
 		isValid: (c) => !!((c.code || c.title) && c.kind && (c.main || c.main_code)),
 		headerError:
-			'Không tìm thấy dòng tiêu đề — cần cột "Mã bài" / "Nội dung bài giảng", "Số tiết" (LT/TH) và "Giảng viên chính". Hãy dùng file mẫu.',
+			'Không tìm thấy dòng tiêu đề — cần cột "Mã bài" / "Nội dung bài giảng", "Số tiết" (LT/TH) và "Giảng viên". Hãy dùng file mẫu.',
 		isEmpty: (get, row) => ![...PEOPLE, 'kind', 'time', 'code', 'title'].some((f) => get(row, f)),
+		isStop: isLecturerTotalsRow,
 	});
 	const out = [];
 	let prev = { code: '', title: '' };

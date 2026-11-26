@@ -574,6 +574,34 @@
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
 }
+/* Dưới danh sách bài: tổng số tiết mỗi giảng viên trong chương trình */
+.lecturerTotals {
+	margin-top: var(--space-4);
+	padding: var(--space-3) var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+}
+.lecturerTotalsTitle {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	margin-bottom: var(--space-2);
+}
+.lecturerTotalsList {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--color-gray-600);
+}
+.lecturerTotalsList b {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.lecturerTotalsMeta {
+	color: var(--color-gray-400);
+}
 .subEmpty {
 	text-align: center;
 	padding: var(--space-6);

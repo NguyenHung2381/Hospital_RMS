@@ -2,9 +2,10 @@
  * programLessonLecturerImportService.js — Nhập giảng viên giảng dạy từng bài học
  * của 1 chương trình đào tạo từ Excel (tab "Bài học" của chương trình).
  *
- * File: mỗi dòng 1 bài học — Mã bài học | Tên bài học | Giảng viên chính |
- * Giảng viên phụ (nhiều người cách nhau bằng dấu ; , hoặc xuống dòng). "Tải file mẫu"
- * điền sẵn các bài của chương trình và giảng viên đang gán.
+ * File: mỗi dòng 1 bài học — Mã bài học | Tên bài học | Số tiết (chỉ để xem) | Giảng viên
+ * (file cũ: "Giảng viên chính") | Giảng viên phụ (nhiều người cách nhau bằng dấu ; , hoặc
+ * xuống dòng). "Tải file mẫu" điền sẵn các bài của chương trình, giảng viên đang gán và
+ * khối "Tổng số tiết theo giảng viên" dưới bảng (nhập lại thì dừng đọc ở khối này).
  *
  * Quy tắc:
  *  - Bài khớp theo MÃ, không có mã thì theo tên (chỉ trong các bài của chương trình;
@@ -25,11 +26,17 @@ const ExcelJS = lazyRequire('exceljs');
 const { getPool, sql } = require('../../../config/db');
 const { norm } = require('../../../utils/vietnameseText');
 const { readSheet } = require('../../../utils/excelImport');
+const {
+	addLecturerTotals,
+	fmtHours,
+	isLecturerTotalsRow,
+} = require('../../../utils/excelLecturerTotals');
 const { badRequest, httpError } = require('../../../utils/httpError');
 const { broadcast } = require('../../events/eventService');
 const { ROLE, roleIdOf } = require('../../access/roleCodes');
 const lecturerService = require('../lecturers/lecturerService');
 const lessonService = require('./programLessonService');
+const { lecturerCreditFactor } = require('../courses/courseCmeService');
 
 const MATCHERS = [
 	['code', (h) => h === 'ma bai hoc' || h === 'ma bai' || h === 'ma'],
@@ -44,7 +51,9 @@ const MATCHERS = [
 const HEADERS = {
 	code: 'Mã bài học',
 	title: 'Tên bài học',
-	main: 'Giảng viên chính',
+	hours: 'Số tiết',
+	// Cột người dạy chính ghi "Giảng viên"; file cũ ghi "Giảng viên chính" vẫn đọc được (MATCHERS)
+	main: 'Giảng viên',
 	assistants: 'Giảng viên phụ (nhiều người cách nhau bằng dấu ;)',
 };
 
@@ -115,8 +124,9 @@ const parseWorkbook = async (buffer) => {
 		matchers: MATCHERS,
 		isValid: (c) => !!((c.code || c.title) && (c.main || c.assistants)),
 		headerError:
-			'Không tìm thấy dòng tiêu đề — cần cột "Mã bài học" hoặc "Tên bài học" và cột "Giảng viên chính" / "Giảng viên phụ".',
+			'Không tìm thấy dòng tiêu đề — cần cột "Mã bài học" hoặc "Tên bài học" và cột "Giảng viên" / "Giảng viên phụ".',
 		isEmpty: (get, row) => !['code', 'title', 'main', 'assistants'].some((f) => get(row, f)),
+		isStop: isLecturerTotalsRow,
 	});
 	const raw = (row, f) => (cols[f] ? rawCellText(row.getCell(cols[f])) : '');
 	return rows.map(({ r, row, get }) => ({
@@ -425,25 +435,43 @@ const importExcel = async ({ programId, buffer, dry_run, canCreateLecturer = fal
 	return { dry_run: false, ...out, ...(await commit(programId, preview, actorId)) };
 };
 
-// File mẫu: các bài (không tính vòng thực hành) của chương trình + giảng viên đang gán.
+// File mẫu: các bài (không tính vòng thực hành) của chương trình + giảng viên đang gán,
+// dưới bảng là khối công thức tổng số tiết từng giảng viên (tự tính khi sửa bảng — nhập lại thì
+// bỏ qua khối này, xem excelLecturerTotals).
 const buildTemplate = async (programId) => {
 	const program = await loadProgram(programId);
-	const lessons = await lessonService.listLessons(programId);
+	const lessons = (await lessonService.listLessons(programId)).filter(
+		(l) => l.lesson_kind !== 'rotation',
+	);
 	const wb = new ExcelJS.Workbook();
 	const ws = wb.addWorksheet('Giảng viên');
-	ws.columns = [{ width: 6 }, { width: 18 }, { width: 52 }, { width: 30 }, { width: 46 }];
+	ws.columns = [
+		{ width: 6 },
+		{ width: 18 },
+		{ width: 52 },
+		{ width: 9 },
+		{ width: 30 },
+		{ width: 46 },
+	];
 	ws.addRow([
 		`Giảng viên giảng dạy — ${[program.code, program.name].filter(Boolean).join(' · ')}`,
 	]).font = { bold: true, size: 13 };
 	ws.addRow([
 		'Mỗi dòng 1 bài học. Ghi họ tên giảng viên (có thể kèm học vị: "ThS.BS Nguyễn Văn A"); nhiều giảng viên phụ cách nhau bằng dấu ; . Ô trống = bài không có giảng viên. Không đổi mã bài học.',
 	]).font = { italic: true, color: { argb: 'FF526574' } };
-	ws.mergeCells('A1:E1');
-	ws.mergeCells('A2:E2');
+	ws.mergeCells('A1:F1');
+	ws.mergeCells('A2:F2');
 	ws.getRow(2).alignment = { wrapText: true, vertical: 'top' };
 	ws.getRow(2).height = 32;
 	ws.addRow([]);
-	const header = ws.addRow(['STT', HEADERS.code, HEADERS.title, HEADERS.main, HEADERS.assistants]);
+	const header = ws.addRow([
+		'STT',
+		HEADERS.code,
+		HEADERS.title,
+		HEADERS.hours,
+		HEADERS.main,
+		HEADERS.assistants,
+	]);
 	header.font = { bold: true };
 	header.alignment = { vertical: 'middle', wrapText: true };
 	header.eachCell((cell) => {
@@ -452,27 +480,38 @@ const buildTemplate = async (programId) => {
 	});
 	// Chỉ ghi họ tên (không kèm học vị): nhập lại file phải khớp đúng giảng viên đang gán
 	const nameOf = (l) => l.full_name;
-	lessons
-		.filter((l) => l.lesson_kind !== 'rotation')
-		.forEach((l, i) => {
-			const people = l.lecturers || [];
-			const row = ws.addRow([
-				i + 1,
-				l.code || '',
-				l.title,
-				people
-					.filter((p) => p.role === 'main')
-					.map(nameOf)
-					.join('; '),
-				people
-					.filter((p) => p.role !== 'main')
-					.map(nameOf)
-					.join('; '),
-			]);
-			row.alignment = { vertical: 'top', wrapText: true };
-		});
+	lessons.forEach((l, i) => {
+		const people = l.lecturers || [];
+		const row = ws.addRow([
+			i + 1,
+			l.code || '',
+			l.title,
+			Number(l.total_hours) || 0,
+			people
+				.filter((p) => p.role === 'main')
+				.map(nameOf)
+				.join('; '),
+			people
+				.filter((p) => p.role !== 'main')
+				.map(nameOf)
+				.join('; '),
+		]);
+		row.alignment = { vertical: 'top', wrapText: true };
+	});
+	const factor = await lecturerCreditFactor();
+	addLecturerTotals(wb, ws, {
+		firstRow: 5,
+		cols: { hours: 'D', main: 'E', assistants: 'F' },
+		lastCol: 'F',
+		block: { name: ['B', 'C'], hours: ['D'], credits: 'E' },
+		// Chương trình chưa có buổi dạy ⇒ quy tắc CME của bài chưa có buổi: GV chính đủ số tiết, GV phụ 0
+		cme: { mode: 'main', factor },
+		creditLabel: 'Giờ tín chỉ CME dự kiến',
+		note: `tự tính theo bảng trên: gõ / sửa tên ở cột Giảng viên, Giảng viên phụ (nhiều người cách nhau dấu ;) hoặc số tiết thì tổng cập nhật ngay. Tổng số tiết tính riêng từng người (chính hay phụ đều đủ số tiết bài). Giờ tín chỉ CME dự kiến khi bài chưa có buổi dạy: giảng viên được đủ số tiết bài, giảng viên phụ 0, × ${fmtHours(factor)} (Thông tư 32/2023/TT-BYT); số ghi thật tính theo các buổi đã dạy của từng khóa.`,
+	});
 	ws.views = [{ state: 'frozen', ySplit: 4 }];
-	const slug = norm(program.code || program.name).replace(/\s+/g, '-') || 'chuong-trinh';
+	// Tên file theo tên chương trình (giao diện đặt lại tên có dấu khi lưu)
+	const slug = norm(program.name || program.code).replace(/\s+/g, '-') || 'chuong-trinh';
 	return { workbook: wb, fileName: `giang-vien-bai-hoc_${slug}.xlsx` };
 };
 

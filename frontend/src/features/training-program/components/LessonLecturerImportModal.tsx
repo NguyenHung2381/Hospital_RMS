@@ -3,7 +3,7 @@ import { CheckSvg, DownloadSvg, InfoSvg, UploadSvg } from '@/assets/icons';
 import { FileDropzone, Modal } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
 import { InlineLoading } from '@/shared/components/Loading';
-import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
+import { fileTitle, saveBlob } from '@/shared/utils/saveBlob';
 import {
 	downloadLessonLecturerTemplate,
 	importLessonLecturers,
@@ -87,7 +87,8 @@ export function LessonLecturerImportModal({
 		setError('');
 		try {
 			const blob = await downloadLessonLecturerTemplate(program.id);
-			saveBlob(blob, `giang-vien-bai-hoc_${fileSlug(program.code || program.name) || 'chuong-trinh'}.xlsx`);
+			// Tên file theo tên chương trình
+			saveBlob(blob, `Giảng viên bài học - ${fileTitle(program.name) || 'Chương trình'}.xlsx`);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : 'Không tải được file mẫu');
 		} finally {
@@ -166,7 +167,7 @@ export function LessonLecturerImportModal({
 					<div className={`${styles.noticeBox} ${m.templateRow}`}>
 						<InfoSvg />
 						<span>
-							Mỗi dòng 1 bài học: <b>Mã bài học</b> (hoặc <b>Tên bài học</b>), <b>Giảng viên chính</b>,{' '}
+							Mỗi dòng 1 bài học: <b>Mã bài học</b> (hoặc <b>Tên bài học</b>), <b>Giảng viên</b>,{' '}
 							<b>Giảng viên phụ</b> — nhiều người cách nhau bằng dấu chấm phẩy. Giảng viên của bài được đặt lại đúng
 							như trong file (ô trống = gỡ); bài không có trong file giữ nguyên. Tên chưa có trong danh mục Giảng viên
 							sẽ được tạo mới.
@@ -231,7 +232,7 @@ export function LessonLecturerImportModal({
 										<thead>
 											<tr>
 												<th>Bài học</th>
-												<th>Giảng viên chính</th>
+												<th>Giảng viên</th>
 												<th>Giảng viên phụ</th>
 												<th className={m.thStatus} />
 											</tr>

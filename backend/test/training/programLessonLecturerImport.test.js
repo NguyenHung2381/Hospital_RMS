@@ -222,3 +222,45 @@ test('parseWorkbook đọc file mẫu: dòng tiêu đề nằm dưới phần ch
 	);
 	assert.deepEqual([rows[1].main, rows[1].assistants], [[], []]);
 });
+
+test('parseWorkbook đọc file mẫu mới: cột "Giảng viên", cột "Số tiết", bỏ khối tổng số tiết dưới bảng', async () => {
+	const { addLecturerTotals } = require('../../src/utils/excelLecturerTotals');
+	const wb = new ExcelJS.Workbook();
+	const ws = wb.addWorksheet('Giảng viên');
+	ws.addRow(['Giảng viên giảng dạy — ĐTLT_1 · Chương trình 1']);
+	ws.addRow(['Mỗi dòng 1 bài học…']);
+	ws.addRow([]);
+	ws.addRow([
+		'STT',
+		'Mã bài học',
+		'Tên bài học',
+		'Số tiết',
+		'Giảng viên',
+		'Giảng viên phụ (nhiều người cách nhau bằng dấu ;)',
+	]);
+	ws.addRow([1, 'ĐTLT_1_01', 'Bài một', 30, 'Nguyễn Văn A', 'Trần Thị B']);
+	ws.addRow([2, 'ĐTLT_1_02', 'Bài hai', 12, 'Trần Thị B', null]);
+	addLecturerTotals(wb, ws, {
+		firstRow: 5,
+		cols: { hours: 'D', main: 'E', assistants: 'F' },
+		lastCol: 'F',
+		block: { name: ['B', 'C'], hours: ['D'], credits: 'E' },
+		cme: { mode: 'main', factor: 1.5 },
+		note: 'ghi chú',
+	});
+	// Dòng 7 trống, 8 tiêu đề khối, 9 tiêu đề cột, từ 10 mỗi người 1 dòng
+	assert.equal(ws.getCell('A8').value, 'Tổng số tiết theo giảng viên — ghi chú');
+	const block = (r) => ['B', 'D', 'E'].map((c) => ws.getCell(`${c}${r}`).value.result ?? '');
+	// Tính riêng: A 30, B 30 (phụ) + 12 (chính) = 42; CME khi chưa có buổi: chính đủ, phụ 0
+	assert.deepEqual(block(10), ['Nguyễn Văn A', 30, 45]);
+	assert.deepEqual(block(11), ['Trần Thị B', 42, 18]);
+	assert.ok(ws.getCell('E10').value.formula.includes("'Giảng viên'!$E$5:$E$7"));
+	const rows = await parseWorkbook(Buffer.from(await wb.xlsx.writeBuffer()));
+	assert.deepEqual(
+		rows.map((r) => [r.code, r.main.map((p) => p.name), r.assistants.map((p) => p.name)]),
+		[
+			['ĐTLT_1_01', ['Nguyễn Văn A'], ['Trần Thị B']],
+			['ĐTLT_1_02', ['Trần Thị B'], []],
+		],
+	);
+});

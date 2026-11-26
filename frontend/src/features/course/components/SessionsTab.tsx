@@ -1013,6 +1013,14 @@ export function SessionsTab({
 				<SessionLecturerImportModal
 					courseId={d.courseId}
 					courseName={courseName}
+					programName={
+						(programFilter
+							? d.programLinks.find((p) => p.program_id === programFilter)
+							: d.programLinks.length === 1
+							? d.programLinks[0]
+							: undefined
+						)?.program_name
+					}
 					programId={programFilter}
 					onClose={() => setImporting(false)}
 					onImported={() => {

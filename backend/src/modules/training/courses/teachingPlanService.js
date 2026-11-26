@@ -8,6 +8,7 @@ const { getPool, sql } = require('../../../config/db');
 const { norm } = require('../../../utils/vietnameseText');
 const { fmtDateVN } = require('../../../utils/vnDate');
 const { buildTeachingPlanTemplate } = require('./exports/teachingPlanTemplate');
+const { courseCmeApplies, lecturerCreditFactor } = require('./courseCmeService');
 const {
 	loadLookups,
 	ymdOf,
@@ -31,6 +32,16 @@ const comboOf = (s) =>
 		.map((a) => a.id)
 		.sort()
 		.join(',')}`;
+
+/**
+ * Số tiết của 1 dòng (1 đợt): phần chia nhiều đợt thì số tiết phần chia theo số buổi của đợt
+ * (phần 46 tiết, 4 buổi, đợt 1 buổi ⇒ 11,5) để cộng theo dòng ở khối tổng ra đúng tổng phần.
+ * Làm tròn 2 chữ số; phần không có số tiết ⇒ null.
+ */
+const rowHours = (hours, runSessions, partSessions) =>
+	hours == null || !partSessions
+		? hours
+		: Math.round((hours * runSessions * 100) / partSessions) / 100;
 
 /**
  * Buổi của 1 phần (đã sắp theo ngày, giờ) → các dòng: gom buổi liền nhau cùng người dạy.
@@ -99,15 +110,16 @@ const buildTemplate = async (courseId, { programId = null } = {}) => {
 		for (const kind of kindsOf(lesson, list)) {
 			const raw = kind === 'theory' ? lesson.theory_hours : lesson.practice_hours;
 			const hours = Number(raw) > 0 ? Number(raw) : null;
-			const runs = runsOf(list.filter((s) => kindOfSession(s) === kind));
+			const part = list.filter((s) => kindOfSession(s) === kind);
+			const runs = runsOf(part);
 			if (!runs.length) rows.push({ kind, hours, time: '' });
-			runs.forEach((run, i) => {
+			runs.forEach((run) => {
 				const s = run.items[0];
 				const assts = (s.assistants || []).map((a) => a.id);
 				const codes = assts.map(codeOf);
 				rows.push({
 					kind,
-					hours: i === 0 ? hours : null,
+					hours: rowHours(hours, run.items.length, part.length),
 					main_code: s.lecturer_id ? codeOf(s.lecturer_id) : '',
 					main: s.lecturer_name || '',
 					// Người không có mã ghi "-" để mã và họ tên khớp thứ tự
@@ -120,18 +132,21 @@ const buildTemplate = async (courseId, { programId = null } = {}) => {
 		return rows;
 	};
 
+	const [applies, factor] = await Promise.all([courseCmeApplies(courseId), lecturerCreditFactor()]);
+
 	const start = program?.start_date || course.start_date;
 	const end = program?.end_date || course.end_date;
 	const workbook = buildTeachingPlanTemplate({
 		title: `Lớp: ${program ? program.name : course.name}`,
 		period: `Thời gian đào tạo: từ ngày ${start ? fmtDateVN(start) : '…'} đến ngày ${end ? fmtDateVN(end) : '…'}`,
 		lessons: shown.map((l) => ({ code: l.code, title: l.title, rows: rowsOf(l) })),
+		cme: applies ? { factor } : null,
 	});
 	const slug =
-		norm(program ? program.code || program.name : course.name)
+		norm(program ? program.name || program.code : course.name)
 			.replace(/\s+/g, '-')
 			.slice(0, 60) || 'khoa-hoc';
 	return { workbook, fileName: `ke-hoach-giang-day_${slug}.xlsx` };
 };
 
-module.exports = { buildTemplate, runsOf, kindsOf };
+module.exports = { buildTemplate, runsOf, kindsOf, rowHours };

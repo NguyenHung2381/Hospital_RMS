@@ -20,10 +20,10 @@ import { LessonLecturerImportModal } from './LessonLecturerImportModal';
 import { LessonFormModal } from './LessonFormModal';
 import styles from '../pages/TrainingPrograms.module.css';
 
-// "GV chính: A" / "GV phụ: B, C" — nhóm nào không có người thì bỏ
+// "Giảng viên: A" / "GV phụ: B, C" — nhóm nào không có người thì bỏ
 const lecturerGroups = (lecturers: ProgramLessonLecturer[]) =>
 	[
-		{ label: 'GV chính', role: 'main' },
+		{ label: 'Giảng viên', role: 'main' },
 		{ label: 'GV phụ', role: 'assistant' },
 	]
 		.map((g) => ({
@@ -34,6 +34,27 @@ const lecturerGroups = (lecturers: ProgramLessonLecturer[]) =>
 				.join(', '),
 		}))
 		.filter((g) => g.names);
+
+// Tổng số tiết riêng của từng giảng viên trong chương trình: cộng tổng tiết mọi bài người đó
+// dạy, dù là giảng viên chính hay phụ (mỗi người tính đủ tiết của bài). Vòng thực hành không
+// có tiết nên bỏ qua.
+const lecturerHourTotals = (links: ProgramLessonLink[]) => {
+	const totals = new Map<string, { id: string; name: string; hours: number; lessons: number }>();
+	for (const link of links) {
+		if (link.lesson_kind === 'rotation') continue;
+		// 1 người ghi 2 lần ở cùng bài (chính lẫn phụ) vẫn chỉ tính 1 lần
+		const seen = new Set<string>();
+		for (const l of link.lecturers ?? []) {
+			if (seen.has(l.lecturer_id)) continue;
+			seen.add(l.lecturer_id);
+			const t = totals.get(l.lecturer_id) ?? { id: l.lecturer_id, name: l.full_name, hours: 0, lessons: 0 };
+			t.hours += Number(link.total_hours) || 0;
+			t.lessons += 1;
+			totals.set(l.lecturer_id, t);
+		}
+	}
+	return [...totals.values()].sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name, 'vi'));
+};
 
 function SortableLessonRow({
 	link,
@@ -166,6 +187,7 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 		[allLessons, links],
 	);
 	const pickSel = useRowSelection(attachableLessons.map((l) => l.id));
+	const hourTotals = useMemo(() => lecturerHourTotals(links), [links]);
 
 	// Tổng thời lượng các vòng thực hành so với thời lượng chương trình (≈ ngày, tháng = 30).
 	const rotationCheck = useMemo(() => {
@@ -325,6 +347,20 @@ export function ProgramLessonsPanel({ program, programs }: { program: TrainingPr
 						</div>
 					</SortableContext>
 				</DndContext>
+			)}
+
+			{!loading && hourTotals.length > 0 && (
+				<div className={styles.lecturerTotals}>
+					<div className={styles.lecturerTotalsTitle}>Tổng số tiết theo giảng viên</div>
+					<ul className={styles.lecturerTotalsList}>
+						{hourTotals.map((t) => (
+							<li key={t.id}>
+								<b>{t.name}</b> — tổng số tiết: <b>{t.hours.toLocaleString('vi-VN')}</b> tiết
+								<span className={styles.lecturerTotalsMeta}> ({t.lessons} bài)</span>
+							</li>
+						))}
+					</ul>
+				</div>
 			)}
 
 			{formModal && (

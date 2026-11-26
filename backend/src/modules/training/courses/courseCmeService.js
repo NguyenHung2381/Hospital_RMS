@@ -165,6 +165,22 @@ const upsertCmeSql = (sourceType, source, { approve = true, keepRejected = false
 		returning: 'tgt.approval_status',
 	});
 
+/**
+ * Hệ số quy đổi tiết giảng → giờ tín chỉ của giảng viên (danh mục DT_KHOAHOC; chưa có danh
+ * mục / chưa khai thì 1 — TT 32/2023: 1 tiết = 1 giờ tín chỉ). Dùng cho file Excel phân công.
+ */
+const lecturerCreditFactor = async () => {
+	const pool = await getPool();
+	const row = (
+		await pool
+			.request()
+			.input('id', sql.VarChar(50), CATEGORY)
+			.query('SELECT conversion_value FROM cme_credit_categories WHERE id = @id')
+	).recordset[0];
+	const v = Number(row?.conversion_value);
+	return row?.conversion_value != null && Number.isFinite(v) ? v : 1;
+};
+
 const conversionOf = (categoryId) =>
 	`COALESCE((SELECT conversion_value FROM cme_credit_categories WHERE id = '${categoryId}'), 1)`;
 
@@ -357,6 +373,18 @@ const lecturerHours = (rows) => {
 	return out;
 };
 
+/** Khóa thuộc loại tự cộng CME cho giảng viên (ĐTLT / CTCV) — file Excel mới có cột giờ tín chỉ. */
+const courseCmeApplies = async (courseId) => {
+	const pool = await getPool();
+	const r = await pool
+		.request()
+		.input('course_id', sql.VarChar(20), courseId)
+		.query(
+			`SELECT CASE WHEN training_type_id IN (${TYPES_SQL}) THEN 1 ELSE 0 END AS applies FROM courses WHERE id = @course_id`,
+		);
+	return Number(r.recordset?.[0]?.applies) === 1;
+};
+
 const LECTURER_ROWS = jsonRows('@rows', 'j', [
 	['user_id', 'VARCHAR(20)'],
 	['hours', 'DECIMAL(8, 2)'],
@@ -467,4 +495,6 @@ module.exports = {
 	syncCourse,
 	withdrawForCertificate,
 	lecturerHours,
+	courseCmeApplies,
+	lecturerCreditFactor,
 };

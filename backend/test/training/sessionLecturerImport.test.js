@@ -6,7 +6,11 @@ const {
 	parseTimeText,
 	parseKind,
 } = require('../../src/modules/training/courses/sessionLecturerImportService');
-const { runsOf, kindsOf } = require('../../src/modules/training/courses/teachingPlanService');
+const {
+	runsOf,
+	kindsOf,
+	rowHours,
+} = require('../../src/modules/training/courses/teachingPlanService');
 const {
 	buildTeachingPlanTemplate,
 } = require('../../src/modules/training/courses/exports/teachingPlanTemplate');
@@ -272,22 +276,48 @@ test('file mẫu đọc lại được: khối bài gộp ô, nhiều dòng TH, 
 					},
 					{
 						kind: 'practice',
-						hours: 16,
+						hours: 12,
 						main_code: '1003',
 						main: 'Lê Văn C',
 						asst_codes: '1001; -',
 						assts: 'Phạm Hồng Thái; Trần Thị B',
 						time: 'Từ ngày 20/11/2026 đến ngày 21/11/2026',
 					},
-					{ kind: 'practice', main: 'Lê Văn C', time: 'Ngày 22/11/2026 (07:30)' },
+					{ kind: 'practice', hours: 4, main: 'Lê Văn C', time: 'Ngày 22/11/2026 (07:30)' },
 				],
 			},
 			{ code: 'DTLT_23_02', title: 'Bài hai', rows: [{ kind: 'theory', hours: 8 }] },
 		],
+		cme: { factor: 1.5 },
 	});
 	const ws = wb.worksheets[0];
 	assert.equal(ws.getCell('C3').value, 'Nội dung bài giảng');
+	assert.equal(ws.getCell('G3').value, 'Giảng viên');
 	assert.ok(ws.getCell('C5').isMerged);
+	// Khối tổng: dòng 8 trống (cuối vùng tham chiếu), 9 tiêu đề, 10 tiêu đề cột, từ 11 mỗi người 1 dòng
+	assert.match(
+		String(ws.getCell('A9').value),
+		/^Tổng số tiết theo giảng viên — tự tính theo bảng trên/,
+	);
+	assert.equal(ws.getCell('F10').value, 'Giờ tín chỉ CME dự kiến');
+	const block = (r) => ['B', 'D', 'F'].map((c) => ws.getCell(`${c}${r}`).value.result ?? '');
+	// Tên gom theo thứ tự xuất hiện; tính riêng: Thái 4 + 12, Lê 12 + 4, B 12; CME chia đều người
+	// dạy dòng (dòng 5 có 3 người ⇒ mỗi người 4) × 1,5
+	assert.deepEqual(block(11), ['Phạm Hồng Thái', 16, 12]);
+	assert.deepEqual(block(12), ['Lê Văn C', 16, 12]);
+	assert.deepEqual(block(13), ['Trần Thị B', 12, 6]);
+	assert.deepEqual(block(14), ['', '', '']);
+	// Công thức tham chiếu bảng tới dòng trống 8 — chèn dòng trong bảng thì Excel tự nới vùng
+	const ref = "'Kế hoạch giảng dạy'!$G$4:$G$8";
+	assert.ok(ws.getCell('D11').value.formula.includes(ref));
+	assert.ok(ws.getCell('F11').value.formula.includes('*1.5,2)'));
+	const helper = wb.getWorksheet('TinhTiet');
+	assert.equal(helper.state, 'hidden');
+	assert.equal(helper.getCell('A2').value.result, 'Phạm Hồng Thái');
+	assert.equal(helper.getCell('B2').value.result, 1);
+	assert.ok(helper.getCell('A2').value.formula.startsWith('IFERROR(TRIM(INDEX('));
+	assert.equal(wb.calcProperties.fullCalcOnLoad, true);
+	// Nhập lại: dừng ở khối tổng, không đọc các dòng tổng thành bài học
 	const rows = await parseWorkbook(Buffer.from(await wb.xlsx.writeBuffer()));
 	assert.equal(rows.length, 4);
 	assert.deepEqual(
@@ -310,4 +340,24 @@ test('file mẫu đọc lại được: khối bài gộp ô, nhiều dòng TH, 
 			[6, 'update'],
 		],
 	);
+});
+
+test('rowHours: số tiết phần chia theo số buổi của từng đợt', () => {
+	assert.equal(rowHours(46, 1, 4), 11.5);
+	assert.equal(rowHours(10, 1, 3), 3.33);
+	assert.equal(rowHours(8, 2, 2), 8);
+	assert.equal(rowHours(null, 1, 2), null);
+});
+
+test('khóa không tự cộng CME: khối tổng không có cột giờ tín chỉ', () => {
+	const wb = buildTeachingPlanTemplate({
+		title: 'Lớp: A',
+		period: '',
+		lessons: [{ code: 'X1', title: 'Bài', rows: [{ kind: 'theory', hours: 4, main: 'An' }] }],
+	});
+	const ws = wb.worksheets[0];
+	assert.match(String(ws.getCell('A6').value), /không thuộc loại tự cộng CME/);
+	assert.equal(ws.getCell('F7').value, null);
+	assert.equal(ws.getCell('D8').value.result, 4);
+	assert.equal(ws.getCell('F8').value, null);
 });

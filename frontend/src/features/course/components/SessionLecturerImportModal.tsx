@@ -6,7 +6,7 @@ import { FormField } from '@/shared/components/Input/FormField';
 import { InlineLoading } from '@/shared/components/Loading';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { formatDateVN } from '@/shared/utils/formatDate';
-import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
+import { fileTitle, saveBlob } from '@/shared/utils/saveBlob';
 import {
 	downloadSessionLecturerTemplate,
 	importSessionLecturers,
@@ -97,6 +97,7 @@ export function SessionLecturerImportModal({
 	courseId,
 	courseName,
 	programId,
+	programName,
 	onClose,
 	onImported,
 }: {
@@ -104,6 +105,8 @@ export function SessionLecturerImportModal({
 	courseName?: string;
 	/** Đang làm việc trong 1 chương trình ⇒ file mẫu chỉ gồm bài của chương trình đó. */
 	programId?: string | null;
+	/** Tên chương trình đặt cho file tải về (chương trình đang lọc, hoặc chương trình duy nhất của khóa). */
+	programName?: string | null;
 	onClose: () => void;
 	onImported: () => void;
 }) {
@@ -119,7 +122,9 @@ export function SessionLecturerImportModal({
 		setError('');
 		try {
 			const blob = await downloadSessionLecturerTemplate(courseId, programId);
-			saveBlob(blob, `ke-hoach-giang-day_${fileSlug(courseName || '') || 'khoa-hoc'}.xlsx`);
+			// Tên file theo tên chương trình; khóa nhiều chương trình chưa chọn thì theo tên khóa
+			const name = fileTitle(programName || courseName || '') || 'Khóa học';
+			saveBlob(blob, `Kế hoạch giảng dạy - ${name}.xlsx`);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : 'Không tải được file mẫu');
 		} finally {
@@ -170,7 +175,7 @@ export function SessionLecturerImportModal({
 			size='xl'
 			icon={<UploadSvg />}
 			title='Nhập kế hoạch giảng dạy (Excel)'
-			subtitle='Giảng viên chính và trợ giảng từng phần LT / TH của mỗi bài'
+			subtitle='Giảng viên và trợ giảng từng phần LT / TH của mỗi bài'
 			bodyClassName={m.body}
 			footer={
 				result ? (
@@ -195,7 +200,7 @@ export function SessionLecturerImportModal({
 					<div className={`${styles.noticeBox} ${m.templateRow}`}>
 						<InfoSvg />
 						<span>
-							Mỗi bài 1 khối dòng, mỗi dòng 1 phần <b>LT</b> hoặc <b>TH</b>: <b>Giảng viên chính</b>,{' '}
+							Mỗi bài 1 khối dòng, mỗi dòng 1 phần <b>LT</b> hoặc <b>TH</b>: <b>Giảng viên</b>,{' '}
 							<b>Trợ giảng</b> (cùng dạy buổi đó; nhiều người cách nhau dấu ;) — ghi <b>Mã NV</b> để đối chiếu,
 							chuyên gia ngoài viện chỉ ghi họ tên — và <b>Thời gian giảng</b>. Hệ thống gán cho các buổi đã xếp
 							của phần đó trong khoảng ngày, <b>không tự tạo buổi</b>. Một phần nhiều người dạy ở các đợt khác
@@ -264,7 +269,7 @@ export function SessionLecturerImportModal({
 										<th className={m.tdRow}>Dòng</th>
 										<th>Bài học</th>
 										<th>Phần · thời gian</th>
-										<th>Giảng viên chính</th>
+										<th>Giảng viên</th>
 										<th>Trợ giảng</th>
 										<th className={m.thStatus} />
 									</tr>
