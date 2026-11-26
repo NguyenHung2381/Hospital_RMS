@@ -242,6 +242,16 @@ const getForRespond = async (id, actor) => {
 	return row;
 };
 
+// Lựa chọn hợp lệ của 1 câu chọn: chỉ giữ giá trị có trong question.options (bỏ
+// trùng, giữ thứ tự gửi); câu chọn 1 giữ tối đa 1 lựa chọn. Không còn gì ⇒ null.
+const pickOptions = (question, picked) => {
+	if (!Array.isArray(picked)) return null;
+	const allowed = new Set(question.options || []);
+	const out = [...new Set(picked.filter((o) => allowed.has(o)))];
+	const kept = question.question_type === 'single_choice' ? out.slice(0, 1) : out;
+	return kept.length ? JSON.stringify(kept) : null;
+};
+
 const submitResponse = async (surveyId, answers, actor) => {
 	// Validate lại toàn bộ điều kiện (trạng thái/vai trò/đã nộp chưa) ngay
 	// trước khi ghi — tránh race giữa lúc mở form và lúc bấm nộp.
@@ -280,7 +290,7 @@ const submitResponse = async (surveyId, answers, actor) => {
 				.input(
 					'answer_options',
 					sql.NVarChar(sql.MAX),
-					!isText && ans?.answer_options ? JSON.stringify(ans.answer_options) : null,
+					isText ? null : pickOptions(question, ans?.answer_options),
 				)
 				.input('new_id', sql.VarChar(20), randomId('DA', 18)).query(`
         INSERT INTO survey_answers (id, response_id, question_id, answer_text, answer_options)

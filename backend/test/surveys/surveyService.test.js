@@ -53,3 +53,32 @@ test('#2/S-08 phản hồi + câu trả lời trong 1 transaction có người t
 	assert.equal(texts.at(-1), 'ROLLBACK');
 	assert.equal(inserts(/COMMIT/).length, 0);
 });
+
+test('#4 answer_options chỉ giữ lựa chọn có trong câu hỏi; single_choice tối đa 1', async () => {
+	reset();
+	log.length = 0;
+	await svc.submitResponse(
+		'KS1',
+		[
+			{ question_id: 'Q1', answer_options: ['A', 'B', 'LẠ'] },
+			{ question_id: 'Q2', answer_options: ['Y', 'LẠ', 'Y', 'X'] },
+			{ question_id: 'Q3', answer_text: 'ok', answer_options: ['A'] },
+		],
+		actor,
+	);
+	const byQ = Object.fromEntries(
+		inserts(/INSERT INTO survey_answers/).map((l) => [l.inputs.question_id, l.inputs]),
+	);
+	assert.deepEqual(JSON.parse(byQ.Q1.answer_options), ['A']);
+	assert.deepEqual(JSON.parse(byQ.Q2.answer_options), ['Y', 'X']);
+	assert.equal(byQ.Q3.answer_options, null);
+	assert.equal(byQ.Q3.answer_text, 'ok');
+});
+
+test('#4 toàn lựa chọn lạ ⇒ answer_options NULL', async () => {
+	reset();
+	log.length = 0;
+	await svc.submitResponse('KS1', [{ question_id: 'Q1', answer_options: ['LẠ'] }], actor);
+	const q1 = inserts(/INSERT INTO survey_answers/).find((l) => l.inputs.question_id === 'Q1');
+	assert.equal(q1.inputs.answer_options, null);
+});
