@@ -9,6 +9,38 @@ export interface SettingRow {
 	effective?: string | null;
 }
 
+/** Loại giấy tờ cấu hình được kiểm chữ ký (backend signatureRules.CONFIG_KINDS) */
+export type SignatureKind = 'decision' | 'proposal_approved' | 'license' | 'degree' | 'trainee_document';
+
+/** Cấu hình kiểm chữ ký của 1 loại giấy tờ */
+export interface SignatureKindConfig {
+	/** Kiểm chữ ký loại này */
+	enabled: boolean;
+	/** Xác thực chữ ký số (PDF) */
+	digital: boolean;
+	/** Dò dấu đỏ */
+	seal: boolean;
+	/** Dò chữ ký tay */
+	hand: boolean;
+	/** Thiếu dấu / chữ ký thì: cảnh báo, hay chỉ ghi chú mờ */
+	on_missing: 'warn' | 'info';
+}
+
+/** Cấu hình chi tiết TRAINING_DOC_SIGNATURE_RULES (backend trả bản đã chuẩn hoá, đủ mọi trường) */
+export interface SignatureRules {
+	kinds: Record<SignatureKind, SignatureKindConfig>;
+	options: {
+		/** Cảnh báo chữ ký số do CA ngoài danh sách tin cậy cấp */
+		warn_untrusted: boolean;
+		/** So tổ chức người ký với đơn vị công tác đã khai */
+		org_match: boolean;
+		/** Cảnh báo "có hình dấu nhưng không có chữ ký số" */
+		reprint_warning: boolean;
+		/** Dùng OCR tìm dòng chức danh người ký */
+		ocr: boolean;
+	};
+}
+
 /** Trạng thái tự kiểm tra file hồ sơ đăng ký khóa ĐTLT (GET /system-settings/doc-check) */
 export interface DocCheckStatus {
 	/** Công tắc TRAINING_REGISTRATION_DOC_CHECK đang bật */
@@ -19,6 +51,8 @@ export interface DocCheckStatus {
 	ocr: boolean;
 	/** Công tắc TRAINING_DOC_SIGNATURE_CHECK (kiểm chữ ký) đang bật — chỉ chạy khi `enabled` cũng bật */
 	signature_enabled: boolean;
+	/** Cấu hình chi tiết kiểm chữ ký (đã chuẩn hoá) */
+	signature_rules: SignatureRules;
 	queue: {
 		pending: number;
 		running: number;
@@ -43,5 +77,7 @@ export const settingsApi = {
 	testMail: (to: string) => apiClient.post<null>('/system-settings/test-mail', { to }),
 	testClamav: () => apiClient.post<{ host: string; port: number; version: string | null }>('/system-settings/test-clamav', {}),
 	docCheckStatus: () => apiClient.get<DocCheckStatus>('/system-settings/doc-check'),
-	retryDocCheck: () => apiClient.post<{ requeued: number }>('/system-settings/doc-check/retry', {}),
+	/** Không tham số: thử lại file lỗi. 'signature': kiểm lại chữ ký mọi file (sau khi bật thêm mục kiểm). */
+	retryDocCheck: (what?: 'signature') =>
+		apiClient.post<{ requeued: number }>('/system-settings/doc-check/retry', what ? { what } : {}),
 };

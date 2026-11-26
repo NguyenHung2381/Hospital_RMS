@@ -1,0 +1,492 @@
+/* Học phí — dùng chung cổng học viên (TraineeTuition) và tab Học phí của khóa (TuitionTab) */
+
+.stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+}
+
+.item {
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background: var(--color-white);
+	overflow: hidden;
+}
+
+.itemHead {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-4) var(--space-5);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+
+.itemTitle {
+	margin: 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+
+.itemSub {
+	margin-top: 2px;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.itemBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+/* Số tiền: học phí · miễn giảm · đã nộp · còn lại — "còn lại" là số chính */
+.amounts {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+	gap: var(--space-3);
+}
+
+.amount {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.amount span {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.amount strong {
+	font-size: var(--font-size-lg);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+	font-variant-numeric: tabular-nums;
+}
+
+.amount.main strong {
+	font-size: var(--font-size-xl);
+	color: var(--tone-red-fg);
+}
+
+.amount.main.settled strong {
+	color: var(--tone-green-fg);
+}
+
+.amount small {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.note {
+	margin: 0;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-700);
+}
+
+/* Khung chuyển khoản: QR trái, thông tin phải */
+.transfer {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: var(--space-5);
+	align-items: start;
+	padding: var(--space-4);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-gray-50);
+}
+
+.qr {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-1-5);
+	padding: var(--space-2);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+}
+
+.qr span {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-600);
+}
+
+.fields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	min-width: 0;
+}
+
+.field {
+	display: grid;
+	grid-template-columns: 116px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+}
+
+.field > span:first-child {
+	color: var(--color-gray-600);
+	font-size: var(--font-size-xs);
+}
+
+.field strong {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+	overflow-wrap: anywhere;
+}
+
+.field code {
+	font-family: var(--font-mono);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+
+.copy {
+	padding: 2px var(--space-2);
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-sm);
+	background: var(--color-white);
+	font: inherit;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+
+.copy:hover {
+	border-color: var(--color-primary);
+	color: var(--color-primary-dark);
+}
+
+.copy:focus-visible {
+	outline: 2px solid var(--color-primary-dark);
+	outline-offset: 1px;
+}
+
+.transferActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-3);
+	margin-top: var(--space-2);
+}
+
+.hint {
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+/* Lịch sử nộp */
+.history {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+}
+
+.historyTitle {
+	margin: 0 0 var(--space-2);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.pay {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: var(--space-2) var(--space-4);
+	align-items: center;
+	padding: var(--space-3) var(--space-4);
+	background: var(--color-white);
+}
+
+.pay + .pay {
+	border-top: 1px solid var(--color-gray-200);
+}
+
+.payMain {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 0;
+}
+
+.payLine {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-900);
+}
+
+.payLine strong {
+	font-variant-numeric: tabular-nums;
+}
+
+.payMeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-1) var(--space-3);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.payMeta a {
+	color: var(--color-primary-dark);
+}
+
+.reject {
+	font-size: var(--font-size-xs);
+	color: var(--tone-red-fg);
+}
+
+.payActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--space-2);
+}
+
+/* Bảng học phí của khóa (cán bộ) */
+.toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+
+.totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2) var(--space-5);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+
+.totals b {
+	color: var(--color-gray-900);
+	font-variant-numeric: tabular-nums;
+}
+
+.filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+.filterBtn {
+	padding: var(--space-1-5) var(--space-3);
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-full);
+	background: var(--color-white);
+	font: inherit;
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+
+.filterBtn[aria-pressed='true'] {
+	border-color: var(--color-primary-dark);
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+}
+
+.count {
+	margin-left: 4px;
+	font-variant-numeric: tabular-nums;
+}
+
+.rows {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+	background: var(--color-white);
+}
+
+.row + .row {
+	border-top: 1px solid var(--color-gray-200);
+}
+
+.rowHead {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(90px, 0.7fr)) 130px 16px;
+	align-items: center;
+	gap: var(--space-3);
+	width: 100%;
+	padding: var(--space-3) var(--space-4);
+	border: 0;
+	background: none;
+	font: inherit;
+	font-size: var(--font-size-sm);
+	text-align: left;
+	color: var(--color-gray-900);
+	cursor: pointer;
+}
+
+.rowHead:hover {
+	background: var(--color-gray-50);
+}
+
+.rowHead:focus-visible {
+	outline: 2px solid var(--color-primary-dark);
+	outline-offset: -2px;
+}
+
+.headCells {
+	cursor: default;
+	padding-block: var(--space-2);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-xs);
+	color: var(--color-gray-600);
+}
+
+.headCells:hover {
+	background: var(--color-gray-50);
+}
+
+.num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.name {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+	font-weight: var(--font-weight-medium);
+}
+
+.name small {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-gray-600);
+}
+
+.pendingTag {
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--tone-amber-fg);
+}
+
+.mLabel {
+	display: none;
+}
+
+.chev {
+	width: 16px;
+	height: 16px;
+	color: var(--color-gray-500);
+	transition: transform 0.15s var(--ease-out);
+}
+
+.chevOpen {
+	transform: rotate(180deg);
+}
+
+.rowBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	padding: var(--space-2) var(--space-4) var(--space-4);
+	background: var(--color-gray-50);
+}
+
+.rowActions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+}
+
+.formGrid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3) var(--space-4);
+}
+
+.formGrid > .wide {
+	grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+	.transfer {
+		grid-template-columns: minmax(0, 1fr);
+		justify-items: center;
+	}
+
+	.fields {
+		width: 100%;
+	}
+
+	.field {
+		grid-template-columns: 96px minmax(0, 1fr) auto;
+	}
+
+	.headCells {
+		display: none;
+	}
+
+	.rowHead {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		grid-template-areas:
+			'name name state'
+			'due paid rest';
+		row-gap: var(--space-1-5);
+	}
+
+	.rowHead > .name {
+		grid-area: name;
+	}
+
+	.rowHead > .stateCell {
+		grid-area: state;
+		justify-self: end;
+	}
+
+	.rowHead > .chev {
+		display: none;
+	}
+
+	.rowHead > .cDue {
+		grid-area: due;
+	}
+
+	.rowHead > .cPaid {
+		grid-area: paid;
+	}
+
+	.rowHead > .cRest {
+		grid-area: rest;
+	}
+
+	.rowHead > .num {
+		text-align: left;
+		font-size: var(--font-size-xs);
+	}
+
+	.mLabel {
+		display: inline;
+		color: var(--color-gray-600);
+	}
+
+	.formGrid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chev {
+		transition: none;
+	}
+}

@@ -1,6 +1,6 @@
+import PortalHomeHeader from '@/shared/components/PortalHomeHeader';
 import {
 	ActivitySvg,
-	BadgeSvg,
 	BellSvg,
 	BookOpenSvg,
 	BuildingSvg,
@@ -52,66 +52,10 @@ export default function UserHome() {
 			userInitials={d.initials}
 		>
 			<div className={styles.homeContainer}>
-				{/* ── 1. WELCOME BANNER ── */}
-				<section
-					className={styles.welcomeBanner}
-					aria-label='Thông tin chào mừng'
-				>
-					<div
-						className={styles.bannerBgPattern}
-						aria-hidden='true'
-					>
-						<div className={styles.bannerOrb1} />
-						<div className={styles.bannerOrb2} />
-						<div className={styles.bannerMeshGrid} />
-					</div>
-
-					<div className={styles.welcomeLeft}>
-						<div className={styles.avatarWrapper}>
-							<div className={styles.welcomeAvatar}>{d.initials}</div>
-							<span
-								className={styles.onlineBadge}
-								title='Đang trực tuyến'
-							/>
-						</div>
-
-						<div className={styles.welcomeContent}>
-							<div className={styles.greetingTag}>
-								<ActivitySvg />
-								Cổng người dùng
-							</div>
-							<h2 className={styles.welcomeTitle}>
-								{d.greetingTime}, {d.fullName}!
-							</h2>
-							<div className={styles.welcomeMetaRow}>
-								<span className={styles.welcomeBadge}>
-									<BuildingSvg />
-									{d.dept || 'Bệnh viện Hữu nghị ĐK Nghệ An'}
-								</span>
-								<span className={styles.welcomeBadge}>
-									<BadgeSvg />
-									{d.roleName}
-								</span>
-							</div>
-						</div>
-					</div>
-
-					<div className={styles.welcomeRight}>
-						<div className={styles.roundCard}>
-							<div className={styles.roundStatusHeader}>
-								<span className={styles.roundLivePill}>
-									<span className={styles.roundDot} />
-									{d.activeRound
-										? 'Đợt NCKH đang mở'
-										: 'Đăng ký nghiên cứu'}
-								</span>
-							</div>
-
-							<div className={styles.roundName}>
-								{d.activeRound?.name ?? 'Hiện chưa có đợt nào mở đăng ký'}
-							</div>
-
-							{d.deadline && (
+				<PortalHomeHeader label='Cổng người dùng' title={d.fullName || 'Trang cá nhân'} detail={[d.dept, d.roleName].filter(Boolean).join(' · ')}>
+					<p>Đăng ký nghiên cứu khoa học</p>
+					<h2>{d.activeRound?.name ?? (d.loading ? 'Đang tải đợt đăng ký…' : 'Chưa có đợt mở đăng ký')}</h2>
+					{d.deadline && (
 								<div className={styles.roundDeadlineContainer}>
 									<span className={styles.roundDeadlineText}>
 										<CalendarSvg />
@@ -135,9 +79,7 @@ export default function UserHome() {
 									Đăng ký đề tài mới
 								</button>
 							)}
-						</div>
-					</div>
-				</section>
+				</PortalHomeHeader>
 
 				{/* ── 2. STATS ROW ── */}
 				<section

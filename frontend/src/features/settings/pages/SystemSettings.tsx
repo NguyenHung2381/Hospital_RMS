@@ -30,6 +30,7 @@ import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
 import RadiusMap from '../components/RadiusMap';
 import DocCheckPanel from '../components/DocCheckPanel';
+import { TUITION_BANKS } from '../../tuition/utils/banks';
 
 type Field = {
 	key: string;
@@ -632,6 +633,32 @@ const SECTIONS: Section[] = [
 						more: 'Mỗi dòng 1 ngày: DD/MM = lễ cố định hằng năm (01/01, 30/04…), DD/MM/YYYY = 1 ngày cụ thể (Tết âm lịch).',
 						type: 'textarea',
 						placeholder: '01/01, 30/04, 01/05, 02/09, 16/02/2026',
+					},
+				],
+			},
+			{
+				title: 'Học phí — chuyển khoản',
+				desc: 'Cổng học viên tạo mã VietQR có sẵn số tiền và nội dung chuyển khoản riêng từng học viên. Chưa khai thì học viên chỉ xem số phải nộp và nộp tại phòng Đào tạo.',
+				more: 'Học viên báo đã chuyển khoản kèm ảnh chứng từ; phòng Đào tạo đối chiếu sao kê rồi xác nhận ở tab Học phí của khóa — hệ thống cấp phiếu thu (nội bộ, không thay hóa đơn điện tử).',
+				layout: 'grid',
+				fields: [
+					{
+						key: 'TUITION_BANK_BIN',
+						label: 'Ngân hàng nhận',
+						type: 'select',
+						options: [['', '— Chưa chọn —'], ...TUITION_BANKS],
+					},
+					{ key: 'TUITION_ACCOUNT_NO', label: 'Số tài khoản', placeholder: '0011001234567' },
+					{
+						key: 'TUITION_ACCOUNT_NAME',
+						label: 'Chủ tài khoản',
+						hint: 'Viết như tên hiện trong app ngân hàng.',
+						placeholder: 'BENH VIEN HUU NGHI DA KHOA NGHE AN',
+					},
+					{
+						key: 'TUITION_RECEIPT_UNIT',
+						label: 'Đơn vị thu (in trên phiếu thu)',
+						placeholder: 'Trung tâm Đào tạo và Chỉ đạo tuyến',
 					},
 				],
 			},

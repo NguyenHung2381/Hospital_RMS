@@ -13,13 +13,13 @@ const TAB_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
 };
 
 // Thanh chuyển nhanh giữa 4 dashboard, đặt đầu mỗi trang dashboard.
-export function DashboardTabs() {
+export function DashboardTabs({ wrap = false }: { wrap?: boolean }) {
 	const modules = useModules();
 	const tabs = DASHBOARD_TABS.filter((t) => !t.module || modules[t.module] !== false);
 	if (tabs.length < 2) return null;
 	return (
 		<nav
-			className={s.tabs}
+			className={wrap ? `${s.tabs} ${s.tabsWrap}` : s.tabs}
 			aria-label='Chọn bảng điều khiển'
 		>
 			{tabs.map((t) => {

@@ -95,17 +95,20 @@ const presentKinds = (rows) =>
  * yêu cầu (vd đơn đã ký) và 'dossier' ở cuối nếu đơn cũ có file đó.
  * @param {string} source
  * @param {Array<Record<string, any>>} rows kết quả listFiles
- * @param {{ withUrl?: boolean, withChecks?: boolean, withSignature?: boolean }} [opts] withUrl =
- *   false ⇒ file_url luôn null; withChecks = false ⇒ check luôn null (công tắc tự kiểm tra đang
- *   tắt); withSignature = false ⇒ check.signature luôn null (công tắc kiểm chữ ký đang tắt)
+ * @param {{ withUrl?: boolean, withChecks?: boolean, withSignature?: boolean, sigConfig?: any }} [opts]
+ *   withUrl = false ⇒ file_url luôn null; withChecks = false ⇒ check luôn null (công tắc tự kiểm
+ *   tra đang tắt); withSignature = false ⇒ check.signature luôn null (công tắc kiểm chữ ký đang
+ *   tắt); sigConfig = cấu hình chi tiết kiểm chữ ký (null ⇒ bật hết)
  */
 const summarize = (
 	source,
 	rows,
-	{ withUrl = false, withChecks = true, withSignature = true } = {},
+	{ withUrl = false, withChecks = true, withSignature = true, sigConfig = null } = {},
 ) => {
 	const byKey = new Map(rows.map((r) => [r.kind, r]));
-	const checks = withChecks ? docCheckService.presentAll(rows, { withSignature }) : new Map();
+	const checks = withChecks
+		? docCheckService.presentAll(rows, { withSignature, sigConfig })
+		: new Map();
 	const item = (def, legacy) => {
 		const row = byKey.get(def.key);
 		return {
@@ -136,13 +139,14 @@ const summarize = (
  * @returns {Promise<{ files: ReturnType<typeof summarize>, files_missing: string[] }>}
  */
 const describe = async (reg, opts = {}) => {
-	const [rows, withChecks, withSignature] = await Promise.all([
+	const [rows, withChecks, withSignature, sigConfig] = await Promise.all([
 		listFiles(reg.enrollment_id),
 		docCheckService.isEnabled(),
 		docCheckService.isSignatureEnabled(),
+		docCheckService.getSignatureConfig(),
 	]);
 	return {
-		files: summarize(reg.source, rows, { ...opts, withChecks, withSignature }),
+		files: summarize(reg.source, rows, { ...opts, withChecks, withSignature, sigConfig }),
 		files_missing: missingKinds(reg.source, presentKinds(rows)),
 	};
 };

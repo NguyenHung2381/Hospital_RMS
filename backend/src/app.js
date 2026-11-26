@@ -260,6 +260,11 @@ app.use(
 	requireModule('TRAINING'),
 	require('./modules/portal/myTraineeDocuments.routes'),
 );
+app.use(
+	`${API}/me/tuition`,
+	requireModule('TRAINING'),
+	require('./modules/training/tuition/myTuition.routes'),
+);
 app.use(`${API}/me`, require('./modules/portal/me.routes'));
 app.use(
 	`${API}/exams`,

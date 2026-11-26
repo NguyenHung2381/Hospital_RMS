@@ -20,6 +20,7 @@ import { EnrollmentExportModal } from '../components/EnrollmentExportModal';
 import { ExamsTab } from '../components/ExamsTab';
 import { ResultsTab } from '../components/ResultsTab';
 import { SessionsTab } from '../components/SessionsTab';
+import { TuitionTab } from '../components/TuitionTab';
 import { useCourseDetail, type DetailTab } from '../hooks/useCourseDetail';
 import { DISPLAY_STATUS_CFG, TRAINING_TYPE, type Course, type CourseFormData } from '../types/course.type';
 import ProgramTags from '../components/ProgramTags';
@@ -31,13 +32,14 @@ type Step = DetailTab;
 // Thứ tự tab đi theo luồng làm việc: ghi danh → bài học & lịch → tài liệu → thi → kết quả.
 const STEPS: { key: Step; label: string }[] = [
 	{ key: 'enrollments', label: 'Học viên' },
+	{ key: 'tuition', label: 'Học phí' },
 	{ key: 'sessions', label: 'Bài học & lịch học' },
 	{ key: 'documents', label: 'Tài liệu' },
 	{ key: 'exams', label: 'Thi & kiểm tra' },
 	{ key: 'results', label: 'Kết quả & chứng chỉ' },
 ];
 // Khóa GPHN: mỗi học viên có lịch vòng riêng, kết quả theo vòng ⇒ không có lịch chung / thi / bảng điểm.
-const PRACTICE_STEPS = new Set<Step>(['enrollments', 'documents']);
+const PRACTICE_STEPS = new Set<Step>(['enrollments', 'tuition', 'documents']);
 const isPracticeCourse = (c: Course | null) => !!c && (c.is_rolling || c.training_type_id === TRAINING_TYPE.GPHN);
 
 const range = formatDateRange;
@@ -160,6 +162,7 @@ export default function CourseDetail() {
 				.filter(Boolean)
 				.join(' · '),
 		},
+		tuition: { title: 'Học phí: phải thu, đã thu, xác nhận khoản học viên báo đã chuyển khoản' },
 		sessions: {
 			count: String(lessonCount),
 			title: `${lessonCount} bài học · ${scoped.sessions} buổi · ${d.assignments.length} giảng viên`,
@@ -428,6 +431,12 @@ export default function CourseDetail() {
 									onDecide={d.decideEnrollment}
 									onDecideBulk={d.decideEnrollmentsBulk}
 									onRemove={d.removeEnrollment}
+								/>
+							) : tab === 'tuition' ? (
+								<TuitionTab
+									key={scope ?? '_all'}
+									courseId={id}
+									programId={scope}
 								/>
 							) : tab === 'sessions' ? (
 								<SessionsTab

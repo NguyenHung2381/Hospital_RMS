@@ -21,5 +21,12 @@ export function TraineeScheduleTab({ traineeId }: { traineeId?: string }) {
 		(courseId: string) => navigate(traineeId ? `/admin/courses/${courseId}?tab=sessions` : `${selfBase}/${courseId}`),
 		[navigate, traineeId, selfBase],
 	);
-	return <ClassScheduleBoard load={load} onOpenCourse={openCourse} courseFilterLabel='Tất cả lớp đang học' />;
+	return (
+		<ClassScheduleBoard
+			load={load}
+			onOpenCourse={openCourse}
+			courseFilterLabel='Tất cả lớp đang học'
+			exportName='Lịch học'
+		/>
+	);
 }

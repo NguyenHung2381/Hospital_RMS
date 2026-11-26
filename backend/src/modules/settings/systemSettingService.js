@@ -75,6 +75,8 @@ const KEYS = [
 	'TRAINING_REGISTRATION_DOC_CHECK',
 	// 'true' ⇒ kiểm thêm chữ ký số / dấu / chữ ký tay (mặc định TẮT) — docCheck/signature/
 	'TRAINING_DOC_SIGNATURE_CHECK',
+	// JSON: bật/tắt chi tiết theo loại giấy tờ × mục kiểm (signature/signatureRules.js) — rỗng = bật hết
+	'TRAINING_DOC_SIGNATURE_RULES',
 	// Chấm điểm Lý thuyết + Thực hành — mặc định ở training/courses/gradeRules.js
 	'GRADE_THEORY_PASS_PCT',
 	'GRADE_PRACTICE_PASS_PCT',
@@ -84,6 +86,11 @@ const KEYS = [
 	'GRADE_RANK_EXCELLENT',
 	'GRADE_RANK_GOOD',
 	'GRADE_RANK_AVERAGE',
+	// Học phí: tài khoản nhận chuyển khoản (mã VietQR) + tên đơn vị trên phiếu thu — training/tuition/tuitionSettings.js
+	'TUITION_BANK_BIN',
+	'TUITION_ACCOUNT_NO',
+	'TUITION_ACCOUNT_NAME',
+	'TUITION_RECEIPT_UNIT',
 	// Tự cộng tín chỉ CME từ khóa ĐTLT / CTCV — training/courses/courseCmeService.js
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
@@ -121,9 +128,21 @@ const ENUM_KEYS = {
 	CME_TRAINEE_APPROVAL: ['approved', 'pending'],
 	CME_LECTURER_APPROVAL: ['permission', 'approved', 'pending'],
 };
+// Khóa lưu JSON object (module nghiệp vụ tự chuẩn hoá khi đọc — ở đây chỉ chặn chuỗi hỏng / quá dài)
+const JSON_OBJECT_KEYS = new Set(['TRAINING_DOC_SIGNATURE_RULES']);
+const validateJsonObject = (value) => {
+	if (value.length > 10000) return 'Cấu hình quá dài';
+	try {
+		const v = JSON.parse(value);
+		return v && typeof v === 'object' && !Array.isArray(v) ? null : 'Giá trị phải là JSON object';
+	} catch {
+		return 'Giá trị phải là JSON hợp lệ';
+	}
+};
 // null = hợp lệ; ngược lại là thông báo lỗi (dùng khi admin lưu cấu hình)
 const validateSetting = (key, value) => {
 	if (value === null || value === '') return null;
+	if (JSON_OBJECT_KEYS.has(key)) return validateJsonObject(value);
 	if (ENUM_KEYS[key])
 		return ENUM_KEYS[key].includes(value) ? null : `Giá trị phải là ${ENUM_KEYS[key].join('/')}`;
 	if (!BOOLEAN_KEYS.has(key)) return null;

@@ -158,7 +158,7 @@ const toLecturerItem = (l: LecturerRow): LecturerItem => {
 };
 
 /** Các bước của trang chi tiết khóa học, theo đúng thứ tự công việc. */
-export type DetailTab = 'enrollments' | 'sessions' | 'documents' | 'exams' | 'results';
+export type DetailTab = 'enrollments' | 'tuition' | 'sessions' | 'documents' | 'exams' | 'results';
 
 /** Có chọn nhân viên CCHN (chưa là GV) làm GV chính / trợ giảng — sau khi lưu thì nạp lại danh sách GV. */
 const hasStaffOption = (d: { lecturer_id?: string; assistant_ids?: string[] }) =>

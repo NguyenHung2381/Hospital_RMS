@@ -1,0 +1,126 @@
+.search {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	max-width: 480px;
+	height: 40px;
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+}
+
+.search:focus-within {
+	border-color: var(--color-primary-dark);
+	outline: 2px solid color-mix(in srgb, var(--color-primary-dark) 25%, transparent);
+}
+
+.search svg {
+	width: 16px;
+	height: 16px;
+	flex: 0 0 16px;
+	color: var(--color-gray-500);
+}
+
+.search input {
+	flex: 1;
+	min-width: 0;
+	border: 0;
+	outline: 0;
+	background: none;
+	font: inherit;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-900);
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+
+.groupTitle {
+	margin: 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.list {
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	overflow: hidden;
+}
+
+.item + .item {
+	border-top: 1px solid var(--color-gray-200);
+}
+
+.item summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-900);
+	cursor: pointer;
+	list-style: none;
+}
+
+.item summary::-webkit-details-marker {
+	display: none;
+}
+
+.item summary::after {
+	content: '';
+	flex: 0 0 8px;
+	width: 8px;
+	height: 8px;
+	border-right: 2px solid var(--color-gray-500);
+	border-bottom: 2px solid var(--color-gray-500);
+	transform: rotate(45deg);
+	transition: transform 0.15s var(--ease-out);
+}
+
+.item[open] summary::after {
+	transform: rotate(-135deg);
+}
+
+.item summary:hover {
+	background: var(--color-gray-50);
+}
+
+.item summary:focus-visible {
+	outline: 2px solid var(--color-primary-dark);
+	outline-offset: -2px;
+}
+
+.answer {
+	padding: 0 var(--space-4) var(--space-4);
+	font-size: var(--font-size-sm);
+	line-height: 1.6;
+	color: var(--color-gray-700);
+}
+
+.answer p {
+	margin: 0;
+}
+
+.answer a {
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-medium);
+}
+
+.answer code {
+	font-family: var(--font-mono);
+	font-size: 0.92em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.item summary::after {
+		transition: none;
+	}
+}

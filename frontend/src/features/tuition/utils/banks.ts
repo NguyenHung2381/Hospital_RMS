@@ -1,0 +1,23 @@
+/** Mã BIN (NAPAS) dùng trong mã VietQR — khớp backend training/tuition/tuitionSettings.js BANKS. */
+export const TUITION_BANKS: [bin: string, name: string][] = [
+	['970436', 'Vietcombank'],
+	['970415', 'VietinBank'],
+	['970418', 'BIDV'],
+	['970405', 'Agribank'],
+	['970407', 'Techcombank'],
+	['970422', 'MB Bank'],
+	['970416', 'ACB'],
+	['970432', 'VPBank'],
+	['970403', 'Sacombank'],
+	['970423', 'TPBank'],
+	['970443', 'SHB'],
+	['970437', 'HDBank'],
+	['970441', 'VIB'],
+	['970448', 'OCB'],
+	['970440', 'SeABank'],
+	['970426', 'MSB'],
+	['970431', 'Eximbank'],
+	['970449', 'LPBank'],
+	['970428', 'Nam A Bank'],
+	['970409', 'Bac A Bank'],
+];

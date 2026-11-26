@@ -123,6 +123,12 @@ POST   /api/v1/courses/:id/sessions  courses:update
 POST   /api/v1/courses/:id/sessions/bulk  courses:update
 POST   /api/v1/courses/:id/sessions/lecturers/import  courses:update
 POST   /api/v1/courses/:id/sessions/lecturers/template  courses:read
+GET    /api/v1/courses/:id/tuition  courses:read
+PUT    /api/v1/courses/:id/tuition/enrollments/:enrollmentId/fee  courses:approve
+POST   /api/v1/courses/:id/tuition/enrollments/:enrollmentId/payments  courses:approve
+PATCH  /api/v1/courses/:id/tuition/payments/:paymentId/confirm  courses:approve
+POST   /api/v1/courses/:id/tuition/payments/:paymentId/receipt  courses:read
+PATCH  /api/v1/courses/:id/tuition/payments/:paymentId/reject  courses:approve
 GET    /api/v1/courses/:id/waitlist-candidates  courses:read
 POST   /api/v1/courses/:id/waitlist-transfer  courses:approve
 POST   /api/v1/courses/attendance/check-in  authOnly
@@ -171,6 +177,7 @@ PUT    /api/v1/courses/sessions/:sessionId/attendance  courses:update
 GET    /api/v1/courses/sessions/:sessionId/attendance-qr  courses:update
 GET    /api/v1/courses/sessions/calendar  courses:read
 GET    /api/v1/courses/staff-candidates  courses:create
+GET    /api/v1/courses/tuition-pending  courses:approve
 POST   /api/v1/csp-report/  public
 POST   /api/v1/dashboard/cme-report-export  reports:read
 POST   /api/v1/dashboard/export-stats  reports:read
@@ -274,7 +281,12 @@ DELETE /api/v1/me/trainee-documents/:docId  authOnly
 GET    /api/v1/me/training  authOnly
 GET    /api/v1/me/training/attendance  authOnly
 GET    /api/v1/me/training/grades  authOnly
+GET    /api/v1/me/training/profile  authOnly
 GET    /api/v1/me/training/schedule  authOnly
+GET    /api/v1/me/tuition/  authOnly
+POST   /api/v1/me/tuition/:id/payments  authOnly
+DELETE /api/v1/me/tuition/payments/:paymentId  authOnly
+POST   /api/v1/me/tuition/payments/:paymentId/receipt  authOnly
 GET    /api/v1/modules/  authOnly
 GET    /api/v1/modules/menus  authOnly
 GET    /api/v1/my-tasks/  authOnly

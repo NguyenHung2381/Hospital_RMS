@@ -106,6 +106,29 @@ const myTraineeId = async (userId) => {
 	return t.id;
 };
 
+// Hồ sơ học viên của chính mình — chỉ đọc (cổng /hoc-vien/ho-so). Không có hồ sơ
+// (nhân viên chưa từng ghi danh) ⇒ null thay vì 404, để trang Hồ sơ ẩn khối này.
+// Chỉ trả trường học viên cần đối chiếu; ghi chú nội bộ (notes) không trả.
+const myProfile = async (userId) => {
+	const pool = await getPool();
+	return (
+		(
+			await pool.request().input('uid', sql.VarChar(20), userId).query(`
+      SELECT t.id, t.full_name, t.dob, t.gender, t.birth_province, t.national_id,
+             t.national_id_issued_date, t.national_id_issued_place, t.phone, t.email,
+             t.address, t.permanent_address, t.qualification, t.graduated_school,
+             t.graduated_year, t.graduated_date, t.degree_issued_date, t.workplace,
+             t.position, t.avatar_url, tt.name AS trainee_type_name, d.name AS department_name
+      FROM trainees t
+      LEFT JOIN trainee_types tt ON tt.id = t.trainee_type_id
+      LEFT JOIN departments d ON d.id = t.department_id
+      WHERE ${TRAINEE_OF_USER_SQL('t')}
+      ORDER BY CASE WHEN t.user_id = @uid THEN 0 ELSE 1 END, t.created_at DESC
+      OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`)
+		).recordset[0] ?? null
+	);
+};
+
 const myChecklist = async (userId) =>
 	documentChecklist(await traineeOfUser(await getPool(), userId));
 
@@ -163,6 +186,21 @@ const removeMyDocument = async (userId, docId) => {
 // ─── Điểm danh theo từng khóa ──────────────────────────────────────────────
 const SESSION_KIND_SQL = `COALESCE(s.session_kind, CASE WHEN pl.lesson_kind = 'rotation' THEN 'practice' ELSE 'theory' END)`;
 
+// Đơn xin phép ĐÃ DUYỆT (attendance_leave_requests) phủ buổi học s của lượt ghi danh e:
+// đơn của tài khoản gắn hồ sơ học viên, trùng ngày, đúng khóa (đơn không ghi khóa thì
+// áp mọi khóa), cả ngày hoặc ca giao giờ buổi học. 'absent' = nghỉ có phép, 'late' =
+// muộn có phép; có cả 2 thì lấy 'absent'. Chỉ để hiển thị — không đổi attendance.status
+// (chuyên cần / điều kiện thi vẫn tính như cũ).
+const LEAVE_OF_SESSION_SQL = (s, e) => `(
+      SELECT MIN(lr.type) FROM attendance_leave_requests lr
+      JOIN trainees t_lr ON t_lr.id = ${e}.trainee_id
+      WHERE lr.status = 'approved' AND lr.user_id IN (t_lr.user_id, t_lr.staff_user_id)
+        AND ${s}.session_date BETWEEN lr.from_date AND lr.to_date
+        AND (lr.course_id IS NULL OR lr.course_id = ${e}.course_id)
+        AND (lr.shift_id IS NULL OR ${s}.start_time IS NULL OR EXISTS (
+          SELECT 1 FROM work_shifts w WHERE w.id = lr.shift_id
+            AND ${s}.start_time < w.end_time AND COALESCE(${s}.end_time, ${s}.start_time) > w.start_time)))`;
+
 const attendance = async (traineeId) => {
 	const pool = await getPool();
 	await assertTrainee(pool, traineeId);
@@ -181,7 +219,8 @@ const attendance = async (traineeId) => {
 		`
     -- Buổi đã diễn ra của chương trình đã ghi danh (kể cả buổi chưa điểm danh người này)
     SELECT e.id AS enrollment_id, s.id AS session_id, s.session_date, s.start_time, s.end_time,
-           pl.title AS lesson_title, ${SESSION_KIND_SQL} AS kind, a.status, a.method, a.note
+           pl.title AS lesson_title, ${SESSION_KIND_SQL} AS kind, a.status, a.method, a.note,
+           ${LEAVE_OF_SESSION_SQL('s', 'e')} AS leave_type
     FROM course_enrollments e
     JOIN class_sessions s ON s.course_id = e.course_id
     LEFT JOIN program_lessons pl ON pl.id = s.subject_id
@@ -210,6 +249,8 @@ const attendance = async (traineeId) => {
 				present: list.filter((s) => s.status === 'present').length,
 				late: list.filter((s) => s.status === 'late').length,
 				absent: list.filter((s) => s.status === 'absent').length,
+				// Trong số vắng: có đơn nghỉ đã duyệt
+				excused: list.filter((s) => s.status === 'absent' && s.leave_type === 'absent').length,
 				unmarked: list.filter((s) => !s.status).length,
 			};
 		};
@@ -304,6 +345,7 @@ module.exports = {
 	reviewDocument,
 	traineeIdOfUser,
 	myTraineeId,
+	myProfile,
 	myChecklist,
 	addMyDocument,
 	removeMyDocument,

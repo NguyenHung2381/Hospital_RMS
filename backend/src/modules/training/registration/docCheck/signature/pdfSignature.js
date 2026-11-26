@@ -1,7 +1,7 @@
 // Xác thực chữ ký số trong file PDF (PAdES / adbe.pkcs7) — module thuần, không gọi mạng, không
 // ghi đĩa. Chỉ để CẢNH BÁO người duyệt: kết quả không tự từ chối hồ sơ. Không lưu chữ trong file.
 //
-//   const { verifyPdfSignatures } = require('./signature/pdfSignature');
+//   Dùng (từ thư mục docCheck/): lấy verifyPdfSignatures từ module ./signature/pdfSignature
 //   const r = await verifyPdfSignatures(buffer);           // bộ CA mặc định (src/assets/trust)
 //   const r = await verifyPdfSignatures(buffer, { trust }); // bộ CA riêng (createTrustStore)
 //

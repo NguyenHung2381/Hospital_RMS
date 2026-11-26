@@ -141,6 +141,8 @@ const TraineeCourses = lazy(() => import('../../features/trainee-portal/pages/Tr
 const TraineeSchedule = lazy(() => import('../../features/trainee-portal/pages/TraineeSchedule'));
 const TraineeResults = lazy(() => import('../../features/trainee-portal/pages/TraineeResults'));
 const TraineeDocuments = lazy(() => import('../../features/trainee-portal/pages/TraineeDocuments'));
+const TraineeFaq = lazy(() => import('../../features/trainee-portal/pages/TraineeFaq'));
+const TraineeTuition = lazy(() => import('../../features/trainee-portal/pages/TraineeTuition'));
 const UserNotifications = lazy(
 	() => import('../../features/notifications/pages/UserNotifications'),
 );
@@ -682,6 +684,7 @@ export const traineeRoutes: RouteObject[] = [
 	{ path: '/hoc-vien/khoa-hoc/:id', element: user('Chi tiết khóa học', <UserMyCourseDetail />) },
 	{ path: '/hoc-vien/lich-hoc', element: user('Lịch học & điểm danh', <TraineeSchedule />) },
 	{ path: '/hoc-vien/ket-qua', element: user('Kết quả & chứng chỉ', <TraineeResults />) },
+	{ path: '/hoc-vien/hoc-phi', element: user('Học phí', <TraineeTuition />) },
 	{ path: '/hoc-vien/giay-to', element: user('Giấy tờ hồ sơ', <TraineeDocuments />) },
 	{ path: '/hoc-vien/diem-danh', element: user('Điểm danh QR', <AttendanceCheckIn />) },
 	{ path: '/hoc-vien/diem-danh-ca', element: user('Điểm danh & xin phép', <UserMyAttendance />) },
@@ -691,4 +694,5 @@ export const traineeRoutes: RouteObject[] = [
 	{ path: '/hoc-vien/khao-sat/:id', element: user('Trả lời khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/thong-bao', element: user('Thông báo', <UserNotifications />) },
 	{ path: '/hoc-vien/ho-so', element: user('Hồ sơ cá nhân', <UserProfile />) },
+	{ path: '/hoc-vien/hoi-dap', element: user('Câu hỏi thường gặp', <TraineeFaq />) },
 ];

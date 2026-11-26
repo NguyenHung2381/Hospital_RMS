@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { BookOpenSvg, CalendarSvg, ChevDSvg, ChevLSvg, ClipboardSvg, ClockSvg, DeptSvg, FileSvg, FileTextSvg, LinkSvg, QrSvg } from '@/assets/icons';
+import { BookOpenSvg, CalendarSvg, ChevLSvg, ClipboardSvg, ClockSvg, DeptSvg, FileSvg, FileTextSvg, LinkSvg, QrSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -16,11 +16,11 @@ import {
 	getMyCourse,
 	markDocumentOpened,
 	type MyCourseDetail as Data,
-	type MyLesson,
 	type MyLessonDocument,
 } from '../api/meApi';
 import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
 import { TraineeAttendanceTab } from '../../trainee/components/TraineeAttendanceTab';
+import { CurriculumPanel } from '../components/CurriculumPanel';
 import { MyPracticePanel } from '../components/MyPracticePanel';
 import { MyTraineeDocumentsCard } from '../components/MyTraineeDocumentsCard';
 import styles from './SelfService.module.css';
@@ -40,82 +40,6 @@ const docMeta = (doc: Pick<MyLessonDocument, 'source_type' | 'file_name' | 'file
 	doc.source_type === 'link'
 		? 'Liên kết ngoài'
 		: `${doc.file_name ?? ''}${doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ''}`;
-
-// Bài học theo chương trình đào tạo gắn với khóa — bấm để mở mô tả + tài liệu của bài.
-function LessonsPanel({ lessons, onOpen }: { lessons: MyLesson[]; onOpen: OpenDoc }) {
-	const [open, setOpen] = useState<string | null>(null);
-	const programs = [...new Set(lessons.map((l) => l.program_name))];
-	return (
-		<>
-			{lessons.length === 0 ? (
-				<EmptyState title='Khóa học chưa có bài học nào' />
-			) : (
-				programs.map((pg) => (
-					<div
-						key={pg}
-						className={styles.group}
-					>
-						{programs.length > 1 && <div className={styles.groupTitle}>{pg}</div>}
-						<div className={styles.list}>
-							{lessons
-								.filter((l) => l.program_name === pg)
-								.map((l, i) => {
-									const key = `${l.program_id}-${l.id}`;
-									const isOpen = open === key;
-									return (
-										<div
-											key={key}
-											className={styles.item}
-										>
-											<button
-												type='button'
-												className={styles.lessonHead}
-												aria-expanded={isOpen}
-												onClick={() => setOpen(isOpen ? null : key)}
-											>
-												<span className={styles.lessonNo}>{i + 1}</span>
-												<span className={styles.lessonMain}>
-													<span className={styles.itemTitle}>{l.title}</span>
-													<span className={styles.meta}>
-														<span>{l.code}</span>
-														<span>
-															LT {l.theory_hours} · TH {l.practice_hours} tiết
-														</span>
-														{l.credits > 0 && <span>{l.credits} tín chỉ</span>}
-													</span>
-												</span>
-												{l.documents.length > 0 && <Badge tone='blue'>{l.documents.length} tài liệu</Badge>}
-												<ChevDSvg className={`${styles.chev} ${isOpen ? styles.chevOpen : ''}`} />
-											</button>
-											{isOpen && (
-												<div className={styles.lessonBody}>
-													{l.description && <p className={styles.lessonDesc}>{l.description}</p>}
-													{l.documents.length === 0
-														? !l.description && <div className={styles.meta}>Bài học chưa có tài liệu.</div>
-														: l.documents.map((doc) => (
-																<button
-																	key={doc.id}
-																	type='button'
-																	className={styles.docLink}
-																	onClick={() => onOpen(doc, 'lesson')}
-																>
-																	{doc.source_type === 'link' ? <LinkSvg /> : <FileSvg />}
-																	<span>{doc.title}</span>
-																	<span className={styles.docMeta}>{docMeta(doc)}</span>
-																</button>
-															))}
-												</div>
-											)}
-										</div>
-									);
-								})}
-						</div>
-					</div>
-				))
-			)}
-		</>
-	);
-}
 
 // practice / records: chỉ khóa thực hành GPHN (mở liên tục) — lịch vòng thay bài học, giấy tờ hồ sơ.
 type Tab = 'practice' | 'lessons' | 'documents' | 'exams' | 'attendance' | 'records';
@@ -213,7 +137,7 @@ export default function MyCourseDetail() {
 
 	const status = data && DISPLAY_STATUS_CFG[data.display_status];
 	const approved = data?.enrollment_status === 'approved';
-	const totalHours = data?.lessons.reduce((t, l) => t + (l.total_hours || 0), 0) ?? 0;
+	const lessonsDone = data?.lessons.filter((l) => l.progress_status === 'done').length ?? 0;
 	const openExams = data?.papers.filter((p) => !p.attempt_status || p.attempt_status === 'in_progress').length ?? 0;
 	const allTabs: TabDef[] = data
 		? [
@@ -226,9 +150,9 @@ export default function MyCourseDetail() {
 						}
 					: {
 							key: 'lessons',
-							label: 'Bài học',
+							label: 'Chương trình',
 							icon: <BookOpenSvg />,
-							count: data.lessons.length,
+							count: `${lessonsDone}/${data.lessons.length}`,
 						},
 				{
 					key: 'documents',
@@ -325,8 +249,8 @@ export default function MyCourseDetail() {
 													}
 												: {
 														key: 'lessons' as Tab,
-														value: data.lessons.length,
-														label: `Bài học · ${totalHours} tiết`,
+														value: `${lessonsDone}/${data.lessons.length}`,
+														label: 'Bài đã hoàn thành',
 													},
 											{
 												key: 'documents' as Tab,
@@ -398,8 +322,9 @@ export default function MyCourseDetail() {
 									/>
 								)}
 								{tab === 'lessons' && (
-									<LessonsPanel
+									<CurriculumPanel
 										lessons={data.lessons}
+										grade={data.grade}
 										onOpen={openDoc}
 									/>
 								)}

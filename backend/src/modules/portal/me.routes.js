@@ -62,6 +62,12 @@ router.get(
 	}),
 );
 router.get(
+	'/training/profile',
+	asyncHandler(async (req, res) => {
+		return success(res, await traineeRecordService.myProfile(req.user.id));
+	}),
+);
+router.get(
 	'/training/grades',
 	asyncHandler(async (req, res) => {
 		const traineeId = await traineeRecordService.myTraineeId(req.user.id);

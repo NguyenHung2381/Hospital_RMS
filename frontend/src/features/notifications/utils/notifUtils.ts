@@ -24,6 +24,9 @@ export const NOTIF_TYPE_MAP: Record<string, NotifCategory> = {
 	account_granted: 'system',
 	leave_request_submitted: 'approval',
 	leave_request_reviewed: 'approval',
+	tuition_submitted: 'approval',
+	tuition_confirmed: 'approval',
+	tuition_rejected: 'warning',
 	broadcast: 'system',
 };
 

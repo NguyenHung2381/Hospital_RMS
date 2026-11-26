@@ -8,8 +8,10 @@ import {
 	ClockSvg,
 	DashboardSvg,
 	FileTextSvg,
+	HelpSvg,
 	QrSvg,
 	UserSvg,
+	WalletSvg,
 } from '@/assets/icons';
 import { TRAINEE_HOME } from '../../app/router/authHelpers';
 import type { MenuCatalog } from '../../shared/hooks/useMenuConfig';
@@ -40,6 +42,7 @@ export const NAV: NavItem[] = [
 	{ key: 'checkIn', to: `${base}/diem-danh`, label: 'Điểm danh QR', short: 'Quét QR', icon: <QrSvg /> },
 	// Điểm danh vào/ra theo ca + đơn xin nghỉ / đi muộn trong thời gian khóa học (module Điểm danh, mặc định tắt)
 	{ key: 'attendance', to: `${base}/diem-danh-ca`, label: 'Điểm danh & xin phép', short: 'Điểm danh ca', icon: <ClockSvg />, module: 'attendance' },
+	{ key: 'tuition', to: `${base}/hoc-phi`, label: 'Học phí', short: 'Học phí', icon: <WalletSvg /> },
 	{ key: 'documents', to: `${base}/giay-to`, label: 'Giấy tờ hồ sơ', short: 'Giấy tờ', icon: <FileTextSvg /> },
 	{ key: 'surveys', to: `${base}/khao-sat`, label: 'Khảo sát', short: 'Khảo sát', icon: <ClipboardSvg />, module: 'survey' },
 ];
@@ -47,6 +50,7 @@ export const NAV: NavItem[] = [
 export const ACCOUNT_NAV: NavItem[] = [
 	{ key: 'notifications', to: `${base}/thong-bao`, label: 'Thông báo', short: 'Thông báo', icon: <BellSvg /> },
 	{ key: 'profile', to: `${base}/ho-so`, label: 'Hồ sơ cá nhân', short: 'Hồ sơ', icon: <UserSvg /> },
+	{ key: 'help', to: `${base}/hoi-dap`, label: 'Câu hỏi thường gặp', short: 'Hỏi đáp', icon: <HelpSvg /> },
 ];
 
 // Thanh tab đáy trên điện thoại: 5 mục hay dùng nhất, Điểm danh QR ở giữa nổi bật.

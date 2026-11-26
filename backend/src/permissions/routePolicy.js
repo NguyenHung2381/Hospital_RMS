@@ -130,6 +130,16 @@ module.exports = {
 			'Lịch học của học viên đang đăng nhập (lọc theo userId = req.user.id, không nhận trainee_id từ client)',
 		[`GET ${API}/me/training/attendance`]:
 			'Điểm danh của học viên đang đăng nhập (myTraineeId(req.user.id))',
+		[`GET ${API}/me/tuition/`]:
+			'Học phí các khóa của chính mình (tuitionService.listMine — lọc user_id / staff_user_id)',
+		[`POST ${API}/me/tuition/:id/payments`]:
+			'Báo đã chuyển khoản học phí kèm chứng từ — kiểm lượt ghi danh là của mình + đã duyệt TRƯỚC khi multer ghi file (assertCanSubmit), khoản ở trạng thái chờ xác nhận',
+		[`DELETE ${API}/me/tuition/payments/:paymentId`]:
+			'Rút lại khoản mình báo, chỉ khi chưa xác nhận (cancelMine lọc theo hồ sơ của mình)',
+		[`POST ${API}/me/tuition/payments/:paymentId/receipt`]:
+			'Phiếu thu của khoản đã xác nhận — chỉ khoản thuộc hồ sơ của mình (receiptData userId)',
+		[`GET ${API}/me/training/profile`]:
+			'Hồ sơ học viên của chính mình, chỉ đọc (traineeRecordService.myProfile(req.user.id) — lọc user_id / staff_user_id)',
 		[`GET ${API}/me/training/grades`]:
 			'Kết quả & điểm của học viên đang đăng nhập (myTraineeId(req.user.id))',
 		[`GET ${API}/me/courses/:id`]:

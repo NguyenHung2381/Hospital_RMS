@@ -7,6 +7,7 @@ const cmeCtrl = require('./courseCmeController');
 const registrationCtrl = require('./registrationReviewController');
 const { updateRegistrationSettingsRules } = require('./registrationSettings.validators');
 const enrollmentExportCtrl = require('./enrollmentExportController');
+const { listPending: tuitionPending } = require('../tuition/tuitionController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
 const { validate } = require('../../../middlewares/errorHandler');
@@ -71,6 +72,8 @@ router.get(
 	authorizePermission(['courses', 'read']),
 	ctrl.listPendingEnrollments,
 );
+// Học phí chờ xác nhận ở mọi khóa — trước '/:id' (route theo khóa: courseTuitionRoutes.js)
+router.get('/tuition-pending', authorizePermission(['courses', 'approve']), tuitionPending);
 router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
 // Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
 // khai báo trước '/:id').
@@ -575,5 +578,8 @@ router.patch(
 );
 // Tự cộng CME (courseCmeService): ghi lại cho học viên đã có giấy + giảng viên khi điểm đã khóa.
 router.post('/:id/cme-sync', authorizePermission(['courses', 'approve']), cmeCtrl.sync);
+
+// Học phí (training/tuition/ — courseTuitionRoutes.js)
+require('./courseTuitionRoutes')(router);
 
 module.exports = router;

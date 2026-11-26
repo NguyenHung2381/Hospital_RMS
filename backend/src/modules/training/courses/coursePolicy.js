@@ -50,6 +50,8 @@ const CHILD_COURSE_SQL = {
 	          JOIN course_enrollments e ON e.id = g.enrollment_id WHERE g.id = @id`,
 	certId: `SELECT e.course_id FROM certificates c
 	         JOIN course_enrollments e ON e.id = c.enrollment_id WHERE c.id = @id`,
+	paymentId: `SELECT e.course_id FROM tuition_payments p
+	            JOIN course_enrollments e ON e.id = p.enrollment_id WHERE p.id = @id`,
 };
 
 const assertCourseChildInScope = async (paramName, childId, actor, action = 'read') => {

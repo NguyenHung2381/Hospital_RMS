@@ -12,7 +12,12 @@ const { UPLOADS_ROOT } = require('../../../../utils/uploadPaths');
 const logger = require('../../../../config/logger');
 const { labelOf } = require('../registrationFileKinds');
 const { CHECKABLE_KINDS, WARNING_MESSAGES } = require('./docCheckRules');
-const { presentSignature } = require('./signature/signatureRules');
+const {
+	presentSignature,
+	normalizeSignatureConfig,
+	kindConfig,
+	CONFIG_KINDS,
+} = require('./signature/signatureRules');
 const runner = require('./docCheckRunner');
 const systemSettingService = require('../../../settings/systemSettingService');
 
@@ -39,6 +44,14 @@ const isEnabled = async () =>
  */
 const isSignatureEnabled = async () =>
 	(await systemSettingService.getValue('TRAINING_DOC_SIGNATURE_CHECK')) === 'true';
+
+/**
+ * Cấu hình chi tiết kiểm chữ ký (TRAINING_DOC_SIGNATURE_RULES, JSON — bật/tắt theo loại giấy tờ ×
+ * mục kiểm + tuỳ chọn chung; signature/signatureRules.js). Chưa đặt / hỏng ⇒ bật hết.
+ * @returns {Promise<import('./signature/signatureRules').SignatureConfig>}
+ */
+const getSignatureConfig = async () =>
+	normalizeSignatureConfig(await systemSettingService.getValue('TRAINING_DOC_SIGNATURE_RULES'));
 
 /**
  * Xếp hàng kiểm tra 1 file hồ sơ đăng ký. Loại không có luật nhận diện ⇒ bỏ qua.
@@ -222,8 +235,11 @@ const finish = async (fileId, fields) => {
  * @returns {Promise<boolean>} false = hàng đợi trống
  */
 const processOne = async () => {
-	const signature = await isSignatureEnabled();
-	const job = await claimNext({ signature });
+	const [signature, sigConfig] = await Promise.all([isSignatureEnabled(), getSignatureConfig()]);
+	// Hồ sơ học viên chỉ kiểm chữ ký ⇒ loại này tắt trong cấu hình thì để nguyên trong hàng đợi
+	const job = await claimNext({
+		signature: signature && !!kindConfig(sigConfig, 'trainee_document'),
+	});
 	if (!job) return false;
 	try {
 		const input = await loadJob(job);
@@ -232,7 +248,7 @@ const processOne = async () => {
 			return true;
 		}
 		// Công tắc chữ ký truyền qua input của job (worker thread không đọc CSDL)
-		const res = await runner.run({ ...input, signature });
+		const res = await runner.run({ ...input, signature, sigConfig });
 		if (res.status === 'skipped') {
 			await finish(job.file_id, {
 				status: 'skipped',
@@ -296,6 +312,22 @@ const queueStats = async () => {
 };
 
 /**
+ * Kiểm lại chữ ký mọi file đã kiểm xong / bỏ qua thuộc loại có kiểm chữ ký — admin bấm sau khi BẬT
+ * thêm mục kiểm trong cấu hình chi tiết (mục mới bật chưa có dữ liệu ở lần kiểm cũ). File hồ sơ
+ * đăng ký được đoán loại lại luôn (cùng 1 lượt).
+ * @returns {Promise<number>} số file đưa lại hàng đợi
+ */
+const requeueSignatures = async () => {
+	const pool = await getPool();
+	const r = await pool.request().input('kinds', sql.NVarChar(sql.MAX), JSON.stringify(CONFIG_KINDS))
+		.query(`
+		UPDATE registration_file_checks SET status = 'pending', attempts = 0, error = NULL
+		WHERE status IN ('done', 'skipped')
+		  AND kind IN (SELECT jsonb_array_elements_text(CAST(@kinds AS jsonb)))`);
+	return r.rowsAffected?.[0] ?? 0;
+};
+
+/**
  * Thử lại các file đã hết lượt (lỗi MAX_ATTEMPTS lần) — admin bấm sau khi sửa nguyên nhân
  * (cài OCR, file bị khóa...). File đã có kết quả không bị kiểm lại.
  * @returns {Promise<number>} số file đưa lại hàng đợi
@@ -319,8 +351,10 @@ const SUMMARY = {
 /**
  * Kết quả kiểm tra của 1 dòng hồ sơ (cột check_* do listFiles JOIN sẵn).
  * @param {Record<string, any>} row
- * @param {{ duplicateOf?: string[], withSignature?: boolean }} [opts] duplicateOf = loại khác của
- *   cùng đơn có file trùng nội dung; withSignature = false ⇒ signature luôn null (công tắc tắt)
+ * @param {{ duplicateOf?: string[], withSignature?: boolean,
+ *   sigConfig?: import('./signature/signatureRules').SignatureConfig | null }} [opts] duplicateOf =
+ *   loại khác của cùng đơn có file trùng nội dung; withSignature = false ⇒ signature luôn null
+ *   (công tắc tắt); sigConfig = cấu hình chi tiết (null ⇒ bật hết)
  * @returns {null | {
  *   status: string, verdict: string | null, detected_kind: string | null,
  *   detected_label: string | null, level: 'ok' | 'warn' | 'info', message: string,
@@ -328,7 +362,7 @@ const SUMMARY = {
  *   signature: import('./signature/signatureRules').SignaturePresentation | null,
  * }}
  */
-const present = (row, { duplicateOf = [], withSignature = true } = {}) => {
+const present = (row, { duplicateOf = [], withSignature = true, sigConfig = null } = {}) => {
 	if (!row?.check_status) return null;
 	const status = row.check_status;
 	const verdict = status === 'done' ? (row.check_verdict ?? null) : null;
@@ -370,7 +404,7 @@ const present = (row, { duplicateOf = [], withSignature = true } = {}) => {
 		// Kiểm chữ ký (signature/signatureRules.js) — null = chưa kiểm / loại không kiểm
 		signature:
 			withSignature && status !== 'pending' && status !== 'running'
-				? presentSignature(row.check_sig_verdict, row.check_sig_details)
+				? presentSignature(row.check_sig_verdict, row.check_sig_details, { config: sigConfig })
 				: null,
 	};
 };
@@ -378,10 +412,11 @@ const present = (row, { duplicateOf = [], withSignature = true } = {}) => {
 /**
  * Gắn kết quả kiểm tra cho cả bộ hồ sơ — phát hiện thêm file trùng nội dung giữa các loại.
  * @param {Array<Record<string, any>>} rows kết quả listFiles
- * @param {{ withSignature?: boolean }} [opts]
+ * @param {{ withSignature?: boolean,
+ *   sigConfig?: import('./signature/signatureRules').SignatureConfig | null }} [opts]
  * @returns {Map<string, ReturnType<typeof present>>} theo kind
  */
-const presentAll = (rows, { withSignature = true } = {}) => {
+const presentAll = (rows, { withSignature = true, sigConfig = null } = {}) => {
 	const bySha = new Map();
 	for (const r of rows) {
 		if (!r.check_sha256) continue;
@@ -390,7 +425,7 @@ const presentAll = (rows, { withSignature = true } = {}) => {
 	const out = new Map();
 	for (const r of rows) {
 		const dup = r.check_sha256 ? (bySha.get(r.check_sha256) ?? []).filter((k) => k !== r.kind) : [];
-		out.set(r.kind, present(r, { duplicateOf: dup, withSignature }));
+		out.set(r.kind, present(r, { duplicateOf: dup, withSignature, sigConfig }));
 	}
 	return out;
 };
@@ -399,14 +434,18 @@ const presentAll = (rows, { withSignature = true } = {}) => {
  * Kết quả kiểm của 1 file hồ sơ học viên tự nộp (source 'trainee_document' — chỉ kiểm chữ ký).
  * Cùng dạng với present() để FE dùng chung; verdict / detected_* luôn null.
  * @param {Record<string, any>} row cột check_* (withTraineeDocumentChecks JOIN sẵn)
+ * @param {import('./signature/signatureRules').SignatureConfig | null} [sigConfig] null ⇒ bật hết
  * @returns {ReturnType<typeof present>}
  */
-const presentTraineeDocument = (row) => {
+const presentTraineeDocument = (row, sigConfig = null) => {
 	if (!row?.check_status) return null;
 	const status = row.check_status;
 	const signature =
 		status === 'done'
-			? presentSignature(row.check_sig_verdict, row.check_sig_details, { trainee: true })
+			? presentSignature(row.check_sig_verdict, row.check_sig_details, {
+					trainee: true,
+					config: sigConfig,
+				})
 			: null;
 	return {
 		status,
@@ -432,7 +471,11 @@ const presentTraineeDocument = (row) => {
  */
 const withTraineeDocumentChecks = async (traineeId, checklist) => {
 	const docs = checklist?.documents ?? [];
-	const [enabled, withSignature] = await Promise.all([isEnabled(), isSignatureEnabled()]);
+	const [enabled, withSignature, sigConfig] = await Promise.all([
+		isEnabled(),
+		isSignatureEnabled(),
+		getSignatureConfig(),
+	]);
 	/** @type {Map<string, Record<string, any>>} */
 	const byDoc = new Map();
 	if (enabled && docs.length) {
@@ -449,8 +492,8 @@ const withTraineeDocumentChecks = async (traineeId, checklist) => {
 	}
 	const checkOf = (row) => {
 		if (!row) return null;
-		if (row.check_source !== 'trainee_document') return present(row, { withSignature });
-		return withSignature ? presentTraineeDocument(row) : null;
+		if (row.check_source !== 'trainee_document') return present(row, { withSignature, sigConfig });
+		return withSignature ? presentTraineeDocument(row, sigConfig) : null;
 	};
 	return { ...checklist, documents: docs.map((d) => ({ ...d, check: checkOf(byDoc.get(d.id)) })) };
 };
@@ -460,6 +503,7 @@ module.exports = {
 	isCheckable,
 	isEnabled,
 	isSignatureEnabled,
+	getSignatureConfig,
 	enqueue,
 	enqueueTraineeDocument,
 	claimNext,
@@ -467,6 +511,7 @@ module.exports = {
 	requeueSkippedForOcr,
 	queueStats,
 	retryFailed,
+	requeueSignatures,
 	present,
 	presentAll,
 	presentTraineeDocument,

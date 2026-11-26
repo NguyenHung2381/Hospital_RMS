@@ -14,6 +14,9 @@ export const NOTIF_TYPES: { value: string; label: string; category: NotifCategor
 	{ value: 'account_granted', label: 'Cấp tài khoản', category: 'system' },
 	{ value: 'leave_request_submitted', label: 'Đơn xin phép', category: 'approval' },
 	{ value: 'leave_request_reviewed', label: 'Kết quả đơn xin phép', category: 'approval' },
+	{ value: 'tuition_submitted', label: 'Học viên báo đã nộp học phí', category: 'approval' },
+	{ value: 'tuition_confirmed', label: 'Xác nhận học phí', category: 'approval' },
+	{ value: 'tuition_rejected', label: 'Từ chối khoản học phí', category: 'warning' },
 ];
 
 export type TargetType = 'all' | 'department' | 'users';

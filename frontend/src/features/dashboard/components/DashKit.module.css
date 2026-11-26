@@ -768,15 +768,14 @@
 
 .seriesName {
 	max-width: 100%;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	overflow-wrap: anywhere;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-medium);
 	color: var(--color-gray-600);
 }
 
 .seriesTotal {
+	margin-top: auto;
 	font-size: var(--font-size-lg);
 	font-weight: var(--font-weight-semibold);
 	font-variant-numeric: tabular-nums;
@@ -950,11 +949,18 @@
 }
 
 .xAxis span {
+	justify-self: center;
 	font-size: var(--font-size-2xs);
 	font-variant-numeric: tabular-nums;
 	color: var(--color-gray-400);
 	text-align: center;
 	white-space: nowrap;
+}
+
+@container (max-width: 520px) {
+	.xAxis span:last-child:not(:only-child) {
+		justify-self: end;
+	}
 }
 
 .xAxis .xNow {
@@ -1389,9 +1395,7 @@ th.rankSorted .sortIcon {
 .rankBarsLabel {
 	min-width: 0;
 	color: var(--color-gray-700);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	overflow-wrap: anywhere;
 }
 
 .rankBarsTrack {
@@ -1582,4 +1586,31 @@ th.rankSorted .sortIcon {
 	color: var(--color-gray-700);
 	font-size: 0.8125rem;
 	font-weight: 600;
+}
+
+.tabs.tabsWrap {
+	flex-wrap: wrap;
+}
+
+.tabsWrap .tab {
+	white-space: normal;
+}
+
+@media (max-width: 620px) {
+	.tabs {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		width: 100%;
+	}
+
+	.tabs .tab {
+		min-width: 0;
+		min-height: 44px;
+		padding-inline: var(--space-2);
+		white-space: normal;
+	}
+
+	.tabs .tab svg {
+		flex-shrink: 0;
+	}
 }

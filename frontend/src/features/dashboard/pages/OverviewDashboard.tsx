@@ -71,9 +71,8 @@ export default function OverviewDashboard() {
 	return (
 		<AdminLayout
 			pageTitle='Tổng quan hệ thống'
-			pageSubtitle='Việc cần xử lý và số liệu chính của Nghiên cứu khoa học, Đào tạo, Hội nghị & CME'
 		>
-			<DashboardTabs />
+			<DashboardTabs wrap />
 
 			<AttentionStrip
 				compactWhenEmpty

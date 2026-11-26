@@ -36,10 +36,107 @@ const SIGNATURE_REQUIREMENTS = Object.freeze({
 	trainee_document: { rule: 'report_only', expect: { seal: true, signature: true } },
 });
 
-/** Loại có kiểm chữ ký (analyzer bỏ qua phần chữ ký với loại khác). */
-const needsSignatureCheck = (kind) => {
+// ─── Cấu hình chi tiết (Cấu hình hệ thống TRAINING_DOC_SIGNATURE_RULES, JSON) ─────────────
+// Bật/tắt theo từng loại giấy tờ × từng mục kiểm, cộng vài tuỳ chọn chung. Áp dụng 2 nơi:
+//   - lúc kiểm (analyzer): mục tắt thì không chạy (đỡ CPU) — sig_details.ran ghi mục đã chạy;
+//   - lúc hiển thị (presentSignature): kết luận tính lại từ sig_details theo cấu hình HIỆN TẠI,
+//     nên đổi cấu hình có hiệu lực ngay, không cần kiểm lại file.
+/** Loại giấy tờ có thể cấu hình (national_id không kiểm chữ ký). */
+const CONFIG_KINDS = Object.freeze(
+	/** @type {const} */ (['decision', 'proposal_approved', 'license', 'degree', 'trainee_document']),
+);
+
+/**
+ * @typedef {{ enabled: boolean, digital: boolean, seal: boolean, hand: boolean,
+ *   on_missing: 'warn' | 'info' }} KindSignatureConfig
+ *   enabled    kiểm chữ ký loại này không
+ *   digital    xác thực chữ ký số (PDF)
+ *   seal       dò dấu đỏ
+ *   hand       dò chữ ký tay
+ *   on_missing thiếu dấu / chữ ký thì: 'warn' = khung cảnh báo, 'info' = chỉ ghi chú mờ
+ * @typedef {{ warn_untrusted: boolean, org_match: boolean, reprint_warning: boolean, ocr: boolean }} SignatureOptions
+ *   warn_untrusted  cảnh báo chữ ký số do CA ngoài danh sách tin cậy cấp (tắt = coi như không có chữ ký số)
+ *   org_match       so tổ chức người ký với đơn vị công tác đã khai
+ *   reprint_warning cảnh báo "có hình dấu nhưng không có chữ ký số" (bản in lại từ file ký số)
+ *   ocr             dùng OCR tìm dòng chức danh người ký (tắt = chỉ dò mực xanh, nhanh hơn)
+ * @typedef {{ kinds: Record<string, KindSignatureConfig>, options: SignatureOptions }} SignatureConfig
+ */
+
+/** @type {SignatureConfig} */
+const DEFAULT_SIGNATURE_CONFIG = Object.freeze({
+	kinds: Object.freeze(
+		Object.fromEntries(
+			CONFIG_KINDS.map((k) => [
+				k,
+				Object.freeze({ enabled: true, digital: true, seal: true, hand: true, on_missing: 'warn' }),
+			]),
+		),
+	),
+	options: Object.freeze({
+		warn_untrusted: true,
+		org_match: true,
+		reprint_warning: true,
+		ocr: true,
+	}),
+});
+
+/**
+ * Cấu hình đã lưu (chuỗi JSON hoặc object; rỗng / hỏng ⇒ mặc định) ⇒ cấu hình đầy đủ. Trường
+ * thiếu hoặc sai kiểu lấy mặc định — không ném lỗi.
+ * @param {unknown} raw
+ * @returns {SignatureConfig}
+ */
+const normalizeSignatureConfig = (raw) => {
+	let src = raw;
+	if (typeof raw === 'string') {
+		try {
+			src = raw.trim() ? JSON.parse(raw) : null;
+		} catch {
+			src = null;
+		}
+	}
+	const o = /** @type {any} */ (src && typeof src === 'object' ? src : {});
+	const bool = (v, d) => (typeof v === 'boolean' ? v : d);
+	const def = DEFAULT_SIGNATURE_CONFIG;
+	return {
+		kinds: Object.fromEntries(
+			CONFIG_KINDS.map((k) => {
+				const s = o.kinds?.[k] ?? {};
+				const d = def.kinds[k];
+				return [
+					k,
+					{
+						enabled: bool(s.enabled, d.enabled),
+						digital: bool(s.digital, d.digital),
+						seal: bool(s.seal, d.seal),
+						hand: bool(s.hand, d.hand),
+						on_missing: s.on_missing === 'info' ? 'info' : 'warn',
+					},
+				];
+			}),
+		),
+		options: /** @type {SignatureOptions} */ (
+			Object.fromEntries(Object.entries(def.options).map(([k, d]) => [k, bool(o.options?.[k], d)]))
+		),
+	};
+};
+
+/**
+ * Cấu hình của 1 loại; null = loại này không kiểm chữ ký (tắt, hoặc tắt hết các mục kiểm).
+ * @param {SignatureConfig | null | undefined} config
+ * @param {string} kind
+ * @returns {KindSignatureConfig | null}
+ */
+const kindConfig = (config, kind) => {
+	const kc = (config ?? DEFAULT_SIGNATURE_CONFIG).kinds?.[kind];
+	if (!kc || !kc.enabled || !(kc.digital || kc.seal || kc.hand)) return null;
+	return kc;
+};
+
+/** Loại có kiểm chữ ký (analyzer bỏ qua phần chữ ký với loại khác / loại bị tắt trong cấu hình). */
+const needsSignatureCheck = (kind, config = null) => {
 	const r = SIGNATURE_REQUIREMENTS[kind]?.rule;
-	return !!r && r !== 'none';
+	return !!r && r !== 'none' && !!kindConfig(config, kind);
 };
 
 /** Lời nhắn cho người duyệt theo mã cảnh báo (sig_details.warnings). */
@@ -59,8 +156,11 @@ const SIG_WARNING_MESSAGES = Object.freeze({
 	seal_missing: 'Không thấy dấu đỏ ở trang đầu / trang cuối.',
 	hand_signature_missing: 'Thấy chức danh người ký nhưng vùng ký để trống.',
 	signature_missing: 'Không thấy chữ ký số hợp lệ, cũng không thấy đủ dấu đỏ + chữ ký tay.',
+	digital_missing: 'Không có chữ ký số hợp lệ.',
 	marks_unclear:
 		'Không kiểm được dấu / chữ ký tay tự động (bản đen trắng, ảnh mờ hoặc không đọc được chức danh).',
+	config_changed:
+		'Có mục kiểm vừa bật sau khi file được kiểm nên chưa có kết quả — bấm "Kiểm lại chữ ký" ở Cấu hình hệ thống.',
 });
 
 // Ưu tiên khi gộp: kết luận "xấu" hơn thắng
@@ -130,6 +230,7 @@ const summarizePage = (/** @type {VisualPage} */ { page, result }) =>
  * Gộp các trang đã dò: 'present' nếu trang nào cũng có; 'absent' nếu không trang nào có VÀ có
  * ít nhất 1 trang kết luận được là không có; còn lại 'unknown'.
  * @param {ReturnType<typeof summarizePage>[]} pages
+ * @returns {{ seal: 'present' | 'absent' | 'unknown', hand: 'present' | 'absent' | 'unknown' }}
  */
 const aggregateMarks = (pages) => {
 	const seal = pages.some((p) => p.seal === true)
@@ -147,31 +248,53 @@ const aggregateMarks = (pages) => {
 };
 
 /**
- * @param {string} kind loại giấy tờ (khóa của SIGNATURE_REQUIREMENTS)
- * @param {import('./pdfSignature').PdfSignatureResult | null} digital null = không phải PDF / không kiểm
- * @param {VisualPage[]} visualPages các trang đã dò dấu (thường trang đầu + trang cuối)
- * @param {{ unit?: string | null, textLayer?: boolean, pageCount?: number | null }} [opts]
- *   unit = đơn vị công tác đã khai (so mờ với tổ chức người ký); textLayer = PDF có lớp chữ
- *   (file xuất từ máy, không phải bản scan); pageCount = số trang của file
- * @returns {{ sig_verdict: SigVerdict, sig_details: Record<string, any> }}
+ * @typedef {'present' | 'absent' | 'unknown' | 'off'} MarkState  off = mục kiểm đang tắt
+ * @typedef {{
+ *   verdict: SigVerdict, warnings: string[], marks: { seal: MarkState, hand: MarkState },
+ *   needed: Array<'seal' | 'hand'>, digital_only: boolean, missing_only: boolean,
+ *   on_missing: 'warn' | 'info',
+ * }} SignatureEvaluation
+ *   needed       dấu / chữ ký tay mà loại này cần (đã bỏ mục tắt)
+ *   digital_only chỉ còn chữ ký số để kết luận (dấu + chữ ký tay đều tắt)
+ *   missing_only kết luận xấu CHỈ vì thiếu (không có chữ ký số hỏng / CA lạ / sai tổ chức...)
  */
-const combine = (kind, digital, visualPages = [], opts = {}) => {
-	const req = SIGNATURE_REQUIREMENTS[kind];
-	const rule = req?.rule ?? 'none';
-	if (rule === 'none') return { sig_verdict: 'n/a', sig_details: { kind, rule, warnings: [] } };
 
-	const dig = summarizeDigital(digital, opts.unit);
-	const pages = visualPages.map(summarizePage);
-	const marks = aggregateMarks(pages);
+/**
+ * Kết luận chữ ký từ dữ liệu đã tóm tắt (cột sig_details) theo cấu hình. Hàm thuần — gọi lúc kiểm
+ * (combine) và gọi lại lúc hiển thị (presentSignature) với cấu hình hiện tại.
+ * @param {Record<string, any>} d sig_details: kind, rule, digital, pages, text_layer?, ran?
+ * @param {SignatureConfig | null} [config] null ⇒ mặc định (bật hết)
+ * @returns {SignatureEvaluation | null} null = loại không kiểm / bị tắt trong cấu hình
+ */
+const evaluateDetails = (d, config = null) => {
+	const cfg = config ?? DEFAULT_SIGNATURE_CONFIG;
+	const kind = d?.kind;
+	const rule = d?.rule ?? SIGNATURE_REQUIREMENTS[kind]?.rule ?? 'none';
+	const kc = kindConfig(cfg, kind);
+	if (rule === 'none' || !kc) return null;
+	const opt = cfg.options;
+	// Dòng cũ (trước khi có cấu hình) không có `ran` ⇒ coi như đã chạy đủ
+	const ran = { digital: true, seal: true, hand: true, ...(d.ran ?? {}) };
+	const pages = Array.isArray(d.pages) ? d.pages : [];
+	const agg = aggregateMarks(pages);
+	const digitalChecked = kc.digital && ran.digital;
+	const dig = digitalChecked ? (d.digital ?? null) : null;
+	/** @type {MarkState} */
+	const seal = !kc.seal ? 'off' : ran.seal ? agg.seal : 'unknown';
+	/** @type {MarkState} */
+	const hand = !kc.hand ? 'off' : ran.hand ? agg.hand : 'unknown';
+	const stale = (kc.digital && !ran.digital) || (kc.seal && !ran.seal) || (kc.hand && !ran.hand);
+
 	/** @type {string[]} */
 	const warnings = [];
 	const warn = (code) => {
 		if (!warnings.includes(code)) warnings.push(code);
 	};
 
-	// ─ Chữ ký số
-	// Chỉ có dấu thời gian tài liệu (không ai ký) ⇒ coi như không có chữ ký số
-	const dv = !dig || (dig.verdict === 'valid' && !dig.signatures) ? 'none' : dig.verdict;
+	// ─ Chữ ký số. Chỉ có dấu thời gian tài liệu (không ai ký) ⇒ coi như không có chữ ký số.
+	const rawDv = !dig || (dig.verdict === 'valid' && !dig.signatures) ? 'none' : dig.verdict;
+	// Tắt cảnh báo CA lạ ⇒ chữ ký đó không tính (không cảnh báo, cũng không thay được dấu + chữ ký)
+	const dv = rawDv === 'untrusted' && !opt.warn_untrusted ? 'none' : rawDv;
 	/** @type {SigVerdict} */
 	let digitalVerdict = 'n/a'; // không có chữ ký số
 	if (dv === 'valid') digitalVerdict = 'ok';
@@ -180,65 +303,125 @@ const combine = (kind, digital, visualPages = [], opts = {}) => {
 		warn(`digital_${dv}`); // digital_invalid | digital_modified | digital_untrusted
 		if (
 			dv === 'untrusted' &&
-			(dig?.chain === 'incomplete' || dig?.warnings.includes('chain_incomplete'))
+			(dig?.chain === 'incomplete' || dig?.warnings?.includes('chain_incomplete'))
 		)
 			warn('chain_incomplete');
 	}
-	if (dig?.org_match === false && dv !== 'none') {
+	if (opt.org_match && dig?.org_match === false && dv !== 'none') {
 		warn('signer_org_mismatch');
 		digitalVerdict = worst(digitalVerdict, 'warn');
 	}
 
 	// ─ Dấu / chữ ký tay
-	const marksUnclear = !pages.length || (marks.seal === 'unknown' && marks.hand === 'unknown');
+	// Dòng cũ chưa lưu text_layer: cảnh báo bản in lại chỉ từng bật khi có lớp chữ
+	const textLayer =
+		d.text_layer ?? (Array.isArray(d.warnings) && d.warnings.includes('seal_image_no_digital'));
 	// PDF xuất từ máy (có lớp chữ), có hình dấu mà không chữ ký số ⇒ có thể là bản in lại
-	if (digital && dv === 'none' && opts.textLayer && marks.seal === 'present')
+	if (opt.reprint_warning && dig && rawDv === 'none' && textLayer && seal === 'present')
 		warn('seal_image_no_digital');
+
+	const state = (m) => (m === 'seal' ? seal : hand);
+	/** @type {Array<'seal' | 'hand'>} */
+	let needed = /** @type {Array<'seal' | 'hand'>} */ (
+		rule === 'report_only' ? [] : rule === 'hand_signature' ? ['hand'] : ['seal', 'hand']
+	).filter((m) => state(m) !== 'off');
+	// Loại chỉ cần chữ ký tay mà tắt chữ ký tay, còn bật dấu ⇒ kết luận theo dấu
+	if (rule === 'hand_signature' && hand === 'off' && seal !== 'off') needed = ['seal'];
+	const digitalOnly = rule !== 'report_only' && seal === 'off' && hand === 'off';
 
 	/** @type {SigVerdict} */
 	let verdict;
+	let missingOnly = false;
 	if (rule === 'report_only') {
 		// Hồ sơ học viên: chỉ báo, không kết luận thiếu
-		const anything = dv === 'valid' || marks.seal === 'present' || marks.hand === 'present';
+		const anything = dv === 'valid' || seal === 'present' || hand === 'present';
 		verdict = digitalVerdict === 'warn' ? 'warn' : anything ? 'ok' : 'unclear';
 		const i = warnings.indexOf('seal_image_no_digital');
 		if (i >= 0) warnings.splice(i, 1);
 	} else if (digitalVerdict === 'ok') {
 		verdict = 'ok'; // chữ ký số hợp lệ đáp ứng mọi yêu cầu
+	} else if (!needed.length) {
+		// Chỉ còn chữ ký số để kết luận (dấu / chữ ký tay đều tắt, hoặc loại chỉ cần chữ ký tay mà tắt)
+		if (digitalVerdict === 'warn') verdict = 'warn';
+		else if (digitalChecked && digitalOnly) {
+			verdict = 'missing';
+			missingOnly = true;
+			warn('digital_missing');
+		} else verdict = 'unclear';
 	} else {
+		const all = needed.every((m) => state(m) === 'present');
+		const absent = needed.some((m) => state(m) === 'absent');
 		/** @type {SigVerdict} */
-		let byMarks;
-		if (rule === 'hand_signature') {
-			byMarks = marks.hand === 'present' ? 'ok' : marks.hand === 'absent' ? 'missing' : 'unclear';
-			if (marks.hand === 'absent') warn('hand_signature_missing');
-		} else {
-			// digital_or_marks / marks_soft: cần cả dấu và chữ ký tay
-			const both = marks.seal === 'present' && marks.hand === 'present';
-			const absent = marks.seal === 'absent' || marks.hand === 'absent';
-			byMarks = both ? 'ok' : absent ? 'missing' : 'unclear';
-			if (marks.seal === 'absent') warn('seal_missing');
-			if (marks.hand === 'absent') warn('hand_signature_missing');
-			if (rule === 'digital_or_marks' && absent && digitalVerdict === 'n/a')
-				warn('signature_missing');
-			if (rule === 'marks_soft' && byMarks === 'missing') byMarks = 'warn';
-		}
+		let byMarks = all ? 'ok' : absent ? 'missing' : 'unclear';
+		if (needed.includes('seal') && seal === 'absent') warn('seal_missing');
+		if (needed.includes('hand') && hand === 'absent') warn('hand_signature_missing');
+		if (rule === 'digital_or_marks' && absent && digitalVerdict === 'n/a' && kc.digital)
+			warn('signature_missing');
+		if (rule === 'marks_soft' && byMarks === 'missing') byMarks = 'warn';
+		missingOnly = absent && digitalVerdict !== 'warn';
 		verdict = digitalVerdict === 'warn' ? worst('warn', byMarks) : byMarks;
 		if (verdict === 'ok' && warnings.includes('seal_image_no_digital')) verdict = 'warn';
 	}
-	if (verdict === 'unclear' && marksUnclear) warn('marks_unclear');
+	const marksUnclear =
+		(rule === 'report_only' || needed.length > 0) &&
+		(!pages.length ||
+			((seal === 'unknown' || seal === 'off') && (hand === 'unknown' || hand === 'off')));
+	if (verdict === 'unclear' && marksUnclear && (seal !== 'off' || hand !== 'off'))
+		warn('marks_unclear');
 	if (verdict === 'ok' && warnings.includes('signer_org_mismatch')) verdict = 'warn';
+	if (
+		warnings.some(
+			(w) =>
+				w !== 'seal_missing' &&
+				w !== 'hand_signature_missing' &&
+				w !== 'signature_missing' &&
+				w !== 'digital_missing' &&
+				w !== 'marks_unclear',
+		)
+	)
+		missingOnly = false;
+	if (stale) warn('config_changed');
 
 	return {
-		sig_verdict: verdict,
-		sig_details: {
-			kind,
-			rule,
-			digital: dig,
-			pages,
-			page_count: opts.pageCount ?? null,
-			marks,
-			warnings,
-		},
+		verdict,
+		warnings,
+		marks: { seal, hand },
+		needed,
+		digital_only: digitalOnly,
+		missing_only: missingOnly,
+		on_missing: kc.on_missing,
+	};
+};
+
+/**
+ * @param {string} kind loại giấy tờ (khóa của SIGNATURE_REQUIREMENTS)
+ * @param {import('./pdfSignature').PdfSignatureResult | null} digital null = không phải PDF / không kiểm
+ * @param {VisualPage[]} visualPages các trang đã dò dấu (thường trang đầu + trang cuối)
+ * @param {{ unit?: string | null, textLayer?: boolean, pageCount?: number | null,
+ *   ran?: { digital: boolean, seal: boolean, hand: boolean } }} [opts]
+ *   unit = đơn vị công tác đã khai (so mờ với tổ chức người ký); textLayer = PDF có lớp chữ
+ *   (file xuất từ máy, không phải bản scan); pageCount = số trang của file; ran = mục đã chạy
+ *   (mặc định: đủ cả 3)
+ * @param {SignatureConfig | null} [config] null ⇒ mặc định (bật hết)
+ * @returns {{ sig_verdict: SigVerdict, sig_details: Record<string, any> }}
+ */
+const combine = (kind, digital, visualPages = [], opts = {}, config = null) => {
+	const rule = SIGNATURE_REQUIREMENTS[kind]?.rule ?? 'none';
+	if (rule === 'none') return { sig_verdict: 'n/a', sig_details: { kind, rule, warnings: [] } };
+	const details = {
+		kind,
+		rule,
+		digital: summarizeDigital(digital, opts.unit),
+		pages: visualPages.map(summarizePage),
+		page_count: opts.pageCount ?? null,
+		text_layer: !!opts.textLayer,
+		ran: opts.ran ?? { digital: true, seal: true, hand: true },
+	};
+	const ev = evaluateDetails(details, config);
+	if (!ev) return { sig_verdict: 'n/a', sig_details: { kind, rule, warnings: [] } };
+	return {
+		sig_verdict: ev.verdict,
+		sig_details: { ...details, marks: ev.marks, warnings: ev.warnings },
 	};
 };
 
@@ -270,23 +453,35 @@ const pageList = (pages, key) => pages.filter((p) => p[key] === true).map((p) =>
  * }} SignaturePresentation
  */
 
+const MARK_LABEL = { seal: 'dấu đỏ', hand: 'chữ ký tay' };
+
 /**
  * Khối `signature` gửi FE (gắn trong `check` của từng file). null = chưa kiểm chữ ký / loại
- * giấy tờ không kiểm.
+ * giấy tờ không kiểm / bị tắt trong cấu hình. Kết luận tính lại từ sig_details theo `config`
+ * (cấu hình hiện tại) — cột sig_verdict chỉ dùng khi sig_details không đủ để tính lại.
  * @param {string | null | undefined} verdict cột sig_verdict
  * @param {string | Record<string, any> | null | undefined} detailsJson cột sig_details
- * @param {{ trainee?: boolean }} [opts] trainee = hồ sơ học viên (chỉ báo, không kết luận thiếu)
+ * @param {{ trainee?: boolean, config?: SignatureConfig | null }} [opts] trainee = hồ sơ học viên
+ *   (chỉ báo, không kết luận thiếu); config = cấu hình TRAINING_DOC_SIGNATURE_RULES (null ⇒ mặc định)
  * @returns {SignaturePresentation | null}
  */
-const presentSignature = (verdict, detailsJson, { trainee = false } = {}) => {
+const presentSignature = (verdict, detailsJson, { trainee = false, config = null } = {}) => {
 	if (!verdict || verdict === 'n/a') return null;
-	const v = /** @type {SigVerdict} */ (verdict);
 	const d = parseJson(detailsJson) ?? {};
-	const warnings = (Array.isArray(d.warnings) ? d.warnings : [])
+	const ev = d.kind ? evaluateDetails(d, config) : null;
+	if (d.kind && !ev) return null; // loại này đang tắt trong cấu hình
+	const v = /** @type {SigVerdict} */ (ev?.verdict ?? verdict);
+	const warnings = (ev ? ev.warnings : Array.isArray(d.warnings) ? d.warnings : [])
 		.filter((c) => SIG_WARNING_MESSAGES[c])
 		.map((c) => ({ code: c, message: SIG_WARNING_MESSAGES[c] }));
-	const dig = d.digital ?? null;
-	const pages = Array.isArray(d.pages) ? d.pages : [];
+	const kc = d.kind ? kindConfig(config, d.kind) : null;
+	const ran = { digital: true, seal: true, hand: true, ...(d.ran ?? {}) };
+	const dig = !kc || (kc.digital && ran.digital) ? (d.digital ?? null) : null;
+	const pages = (Array.isArray(d.pages) ? d.pages : []).map((p) => ({
+		...p,
+		seal: kc && !kc.seal ? null : p.seal,
+		hand_signature: kc && !kc.hand ? null : p.hand_signature,
+	}));
 	const hasSigner = !!(dig?.signatures && dig.signer);
 	const signer = hasSigner
 		? {
@@ -298,11 +493,14 @@ const presentSignature = (verdict, detailsJson, { trainee = false } = {}) => {
 			}
 		: undefined;
 	const who = signer ? [signer.cn, signer.o].filter(Boolean).join(' – ') : '';
-	const seal = TRI[d.marks?.seal] ?? null;
-	const hand = TRI[d.marks?.hand] ?? null;
+	const markState = ev?.marks ?? d.marks ?? {};
+	const seal = TRI[markState.seal] ?? null;
+	const hand = TRI[markState.hand] ?? null;
 
 	/** @type {'ok' | 'warn' | 'info'} */
 	let level = v === 'ok' ? 'ok' : v === 'unclear' ? 'info' : 'warn';
+	// Cấu hình "thiếu thì chỉ ghi chú": chỉ hạ mức khi xấu CHỈ vì thiếu (chữ ký số hỏng vẫn cảnh báo)
+	if (level === 'warn' && ev?.missing_only && ev.on_missing === 'info') level = 'info';
 	let message;
 	if (trainee) {
 		// Chỉ báo: có gì ở đâu
@@ -319,18 +517,22 @@ const presentSignature = (verdict, detailsJson, { trainee = false } = {}) => {
 			? `${parts.join('; ')}.`.replace(/^./, (c) => c.toUpperCase())
 			: 'Không thấy chữ ký số hay dấu đỏ ở trang đầu / trang cuối.';
 	} else if (v === 'ok') {
+		// Thứ tự: loại cần chữ ký tay ⇒ chữ ký tay trước
+		const order = d.rule === 'hand_signature' ? ['hand', 'seal'] : ['seal', 'hand'];
+		const have = order.filter((m) => (m === 'seal' ? seal : hand) === true);
 		if (dig?.verdict === 'valid' && dig.signatures)
 			message = `Có chữ ký số hợp lệ${who ? ` của ${who}` : ''}.`;
-		else if (d.rule === 'hand_signature')
-			message = seal ? 'Có chữ ký tay và dấu đỏ.' : 'Có chữ ký tay.';
-		else message = 'Có dấu đỏ và chữ ký tay.';
+		else
+			message = have.length
+				? `Có ${have.map((m) => MARK_LABEL[m]).join(' và ')}.`
+				: 'Đạt yêu cầu chữ ký.';
 	} else if (v === 'missing') {
-		message =
-			d.rule === 'hand_signature'
-				? 'Thiếu chữ ký tay.'
-				: d.rule === 'digital_or_marks'
-					? 'Thiếu chữ ký số hợp lệ hoặc dấu đỏ + chữ ký tay.'
-					: 'Thiếu dấu đỏ hoặc chữ ký tay.';
+		const needed = ev?.needed ?? (d.rule === 'hand_signature' ? ['hand'] : ['seal', 'hand']);
+		const labels = needed.map((m) => MARK_LABEL[m]);
+		if (ev?.digital_only) message = 'Thiếu chữ ký số hợp lệ.';
+		else if (d.rule === 'digital_or_marks' && (!kc || kc.digital))
+			message = `Thiếu chữ ký số hợp lệ hoặc ${labels.join(' + ')}.`;
+		else message = `Thiếu ${labels.join(' hoặc ')}.`;
 	} else if (v === 'warn') {
 		message = warnings[0]?.message ?? 'Chữ ký cần người duyệt kiểm tra lại.';
 	} else {
@@ -359,7 +561,12 @@ const presentSignature = (verdict, detailsJson, { trainee = false } = {}) => {
 module.exports = {
 	SIGNATURE_REQUIREMENTS,
 	SIG_WARNING_MESSAGES,
+	CONFIG_KINDS,
+	DEFAULT_SIGNATURE_CONFIG,
+	normalizeSignatureConfig,
+	kindConfig,
 	needsSignatureCheck,
+	evaluateDetails,
 	combine,
 	presentSignature,
 };

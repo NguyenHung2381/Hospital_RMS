@@ -5,6 +5,16 @@ import styles from '../pages/Trainees.module.css';
 import ds from '../pages/TraineeDetail.module.css';
 
 const STATUS_LABEL = { present: 'Có mặt', late: 'Muộn', absent: 'Vắng' } as const;
+
+type SessionRow = TraineeAttendanceCourse['sessions'][number];
+
+/** Nhãn điểm danh 1 buổi, kèm "có phép" khi có đơn xin phép đã duyệt phủ buổi đó. */
+const sessionStatusLabel = (s: SessionRow) => {
+	if (s.status === 'absent' && s.leave_type === 'absent') return 'Vắng có phép';
+	if (s.status === 'late' && s.leave_type) return 'Muộn có phép';
+	if (!s.status) return s.leave_type === 'absent' ? 'Chưa điểm danh · có đơn nghỉ' : 'Chưa điểm danh';
+	return STATUS_LABEL[s.status];
+};
 const ROTATION_RESULT: Record<string, { label: string; cls: string }> = {
 	pass: { label: 'Đạt', cls: ds.chipDone },
 	fail: { label: 'Không đạt', cls: ds.chipMissing },
@@ -20,7 +30,8 @@ function Summary({ label, s }: { label: string; s: TraineeAttendanceCourse['theo
 		<span>
 			{label}: có mặt <b>{s.present + s.late}</b>/{s.total} buổi
 			{s.late ? ` (muộn ${s.late})` : ''} · vắng{' '}
-			<b className={s.absent ? ds.bad : undefined}>{s.absent}</b> · tỉ lệ {pct(s.present + s.late, marked)}
+			<b className={s.absent > (s.excused ?? 0) ? ds.bad : undefined}>{s.absent}</b>
+			{s.excused ? ` (có phép ${s.excused})` : ''} · tỉ lệ {pct(s.present + s.late, marked)}
 			{s.unmarked ? ` · ${s.unmarked} buổi chưa điểm danh` : ''}
 		</span>
 	);
@@ -165,8 +176,8 @@ export function TraineeAttendanceTab({
 													<td>{s.start_time ? `${s.start_time}–${s.end_time ?? ''}` : '—'}</td>
 													<td>{s.lesson_title ?? '—'}</td>
 													<td>{s.kind === 'practice' ? 'Thực hành' : 'Lý thuyết'}</td>
-													<td className={s.status === 'absent' ? ds.bad : undefined}>
-														{s.status ? STATUS_LABEL[s.status] : 'Chưa điểm danh'}
+													<td className={s.status === 'absent' && s.leave_type !== 'absent' ? ds.bad : undefined}>
+														{sessionStatusLabel(s)}
 														{s.note ? ` · ${s.note}` : ''}
 													</td>
 												</tr>

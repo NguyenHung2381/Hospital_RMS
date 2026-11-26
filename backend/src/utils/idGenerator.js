@@ -129,6 +129,25 @@ const genLecturerAssignmentId = dated(
 );
 const genAttendanceId = dated('DD', 'attendance', 'attendance_id', 'mã điểm danh');
 const genCourseId = dated('KH', 'courses', 'course_id', 'mã khóa học');
+const genTuitionPaymentId = dated(
+	'NP',
+	'tuition_payments',
+	'tuition_payment_id',
+	'mã khoản nộp học phí',
+);
+
+// Số biên lai học phí: PT<năm VN>-<5 số>, đếm lại từ 00001 mỗi năm
+const genTuitionReceiptNo = (tx) => {
+	const prefix = `PT${yearVN()}-`;
+	return nextId(tx, {
+		table: 'tuition_payments',
+		column: 'receipt_no',
+		prefix,
+		digits: 5,
+		what: 'số biên lai học phí',
+		lockKey: `gen_tuition_receipt_${prefix}`,
+	});
+};
 
 // ── Mã theo đối tượng cha: XX + mã cha + '_' + 2 số ──────────────────────────
 const genCouncilId = (tx, roundId) =>
@@ -388,6 +407,8 @@ module.exports = {
 	genLecturerAssignmentId,
 	genAttendanceId,
 	genCourseId,
+	genTuitionPaymentId,
+	genTuitionReceiptNo,
 	genCouncilId,
 	genCouncilMemberId,
 	genMemberId,

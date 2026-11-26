@@ -57,8 +57,15 @@ const extensionFilter = (allowed, allowMedia) => (_req, file, cb) => {
  * Định dạng & dung lượng theo Cấu hình hệ thống (utils/uploadPolicy.js);
  * maxSizeMB ghi đè dung lượng (route video bài giảng), allowMedia cho thêm video/audio.
  */
-/** @param {{ idParam: string, dirParts: (id: string) => string[], maxSizeMB?: number, allowMedia?: boolean }} opts */
-const createDiskUpload = ({ idParam, dirParts, maxSizeMB = undefined, allowMedia = false }) =>
+/** extensions: thay danh sách đuôi của Cấu hình hệ thống cho riêng route này (vẫn phải nằm trong DOCUMENT_EXTENSIONS)
+ * @param {{ idParam: string, dirParts: (id: string) => string[], maxSizeMB?: number, allowMedia?: boolean, extensions?: string[] }} opts */
+const createDiskUpload = ({
+	idParam,
+	dirParts,
+	maxSizeMB = undefined,
+	allowMedia = false,
+	extensions = undefined,
+}) =>
 	secureUpload(
 		dynamicMulter((policy) => {
 			const limitMB = maxSizeMB ?? policy.maxSizeMB;
@@ -78,7 +85,7 @@ const createDiskUpload = ({ idParam, dirParts, maxSizeMB = undefined, allowMedia
 						filename: (_req, file, cb) => cb(null, uniqueFilename(file.originalname)),
 					}),
 					limits: { fileSize: limitMB * 1024 * 1024 },
-					fileFilter: extensionFilter(policy.extensions, allowMedia),
+					fileFilter: extensionFilter(extensions ?? policy.extensions, allowMedia),
 				},
 			};
 		}),

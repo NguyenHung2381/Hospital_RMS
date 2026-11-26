@@ -188,6 +188,19 @@
 	gap: var(--space-5);
 }
 
+/* Tiêu đề nhóm trong thẻ "Hồ sơ học viên" */
+.traineeSection {
+	margin: 0;
+	padding: var(--space-4) var(--space-6) 0;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--tone-green-fg);
+}
+
+.traineeSection + .detailGrid {
+	padding-top: var(--space-3);
+}
+
 .detailItem {
 	display: flex;
 	flex-direction: column;

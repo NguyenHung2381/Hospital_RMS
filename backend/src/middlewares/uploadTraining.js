@@ -7,12 +7,14 @@ const { createDiskUpload } = require('./upload');
 // course_document/lesson_document dùng giới hạn lớn hơn để nhận video bài giảng
 // — xem modules/training/courses/courses.routes.js, modules/training/programs/trainingPrograms.routes.js (TRAINING_MEDIA_MAX_MB).
 // options.allowMedia: cho phép thêm đuôi video/audio (chỉ bật ở 2 route trên).
+// options.extensions: danh sách đuôi riêng của route (vd chứng từ học phí: PDF + ảnh).
 const createTrainingUpload = (entityType, options = {}) =>
 	createDiskUpload({
 		idParam: 'id',
 		dirParts: (id) => ['training', entityType, id],
 		maxSizeMB: options.maxSizeMB,
 		allowMedia: options.allowMedia ?? false,
+		extensions: options.extensions,
 	});
 
 module.exports = { createTrainingUpload };

@@ -533,6 +533,45 @@ test('analyze: ảnh scan có dấu đỏ + chữ ký xanh ⇒ ok; thiếu dấu
 	assert.equal(tt.sig_verdict, 'ok', 'tờ trình chỉ cần chữ ký tay');
 });
 
+test('analyze: cấu hình chi tiết — mục tắt thì không chạy, loại tắt thì không kiểm chữ ký', async () => {
+	const file = write('qd-cfg.png', drawPage({ seal: false }));
+	const off = { kinds: { decision: { seal: false, hand: false } } };
+	const r = await analyze({ filePath: file, kind: 'decision', signature: true, sigConfig: off });
+	assert.deepEqual(r.sig_details?.ran, { digital: true, seal: false, hand: false });
+	assert.deepEqual(r.sig_details?.pages, [], 'không dò dấu / chữ ký tay');
+	assert.equal(r.sig_details?.ocr, false, 'không OCR khi không dò chữ ký tay');
+	assert.equal(r.sig_verdict, 'missing', 'chỉ còn chữ ký số mà ảnh thì không có');
+
+	const kindOff = await analyze({
+		filePath: file,
+		kind: 'decision',
+		signature: true,
+		sigConfig: JSON.stringify({ kinds: { decision: { enabled: false } } }),
+	});
+	assert.equal(kindOff.sig_verdict, undefined, 'loại tắt ⇒ không có kết quả chữ ký');
+	assert.equal(kindOff.sig_details, undefined);
+});
+
+test('analyze: ảnh quá nhỏ / trang trắng ⇒ không kết luận thiếu dấu hay có chữ ký', async () => {
+	const { createCanvas } = require('@napi-rs/canvas');
+	const png = (w, h, color) => {
+		const c = createCanvas(w, h);
+		const ctx = c.getContext('2d');
+		ctx.fillStyle = color;
+		ctx.fillRect(0, 0, w, h);
+		return c.toBuffer('image/png');
+	};
+	for (const [name, buf] of [
+		['tiny.png', png(8, 8, '#2244cc')], // ảnh vài điểm ảnh (màu xanh như mực ký)
+		['blank.png', png(1240, 1754, '#ffffff')], // trang trắng
+	]) {
+		const r = await analyze({ filePath: write(name, buf), kind: 'degree', signature: true });
+		assert.deepEqual(r.sig_details?.marks, { seal: 'unknown', hand: 'unknown' }, name);
+		assert.ok(!r.sig_details?.warnings.includes('seal_missing'), name);
+		assert.notEqual(r.sig_verdict, 'missing', name);
+	}
+});
+
 test('analyze: PDF nhiều trang — dò trang cuối + trang đầu; có hình dấu mà không ký số ⇒ cảnh báo bản in lại', async () => {
 	const png = drawPage({ seal: true });
 	const scan = write('scan3.pdf', await imagePdf({ pages: 3, marked: 3, png }));

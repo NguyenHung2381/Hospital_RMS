@@ -30,6 +30,7 @@ export { default as FileTextSvg } from '../svg/file-text.svg?react';
 export { default as FingerprintSvg } from '../svg/fingerprint.svg?react';
 export { default as FilterSvg } from '../svg/filter.svg?react';
 export { default as HelpSvg } from '../svg/help.svg?react';
+export { default as WalletSvg } from '../svg/wallet.svg?react';
 export { default as HistorySvg } from '../svg/history.svg?react';
 export { default as InfoSvg } from '../svg/info.svg?react';
 export { default as KeySvg } from '../svg/key.svg?react';

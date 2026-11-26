@@ -224,7 +224,29 @@ export interface MyLesson {
 	practice_hours: number;
 	total_hours: number;
 	credits: number;
+	lesson_kind: 'theory' | 'rotation';
+	/** Tiến độ của mình (enrollment_lessons, tính từ điểm danh). null = bài không có trong hồ sơ. */
+	progress_status: LessonProgressStatus | null;
+	completed_at: string | null;
+	/** Số buổi của bài trong lớp mình / số buổi đã có mặt (kể cả muộn). */
+	session_count: number;
+	attended_count: number;
 	documents: MyLessonDocument[];
+}
+
+export type LessonProgressStatus = 'not_started' | 'in_progress' | 'done';
+
+/** Kết quả cả khóa — 1 dòng / lượt ghi danh (điểm LT / TH thang 10). */
+export interface MyCourseGrade {
+	theory_score: number | string | null;
+	practice_score: number | string | null;
+	theory_flag: 'absent' | 'exempt' | null;
+	practice_flag: 'absent' | 'exempt' | null;
+	score: number | string | null;
+	result: 'pass' | 'fail' | null;
+	classification: string | null;
+	/** Đã khóa điểm — điểm chính thức. */
+	locked: boolean;
 }
 
 /** Vòng thực hành GPHN của hồ sơ mình (khóa mở liên tục) — tab "Thực hành" */
@@ -261,6 +283,8 @@ export interface MyCourseDetail {
 	attended_count: number;
 	documents: MyCourseDocument[];
 	lessons: MyLesson[];
+	/** null = chưa có dòng điểm (hoặc đăng ký chưa duyệt). */
+	grade: MyCourseGrade | null;
 	papers: AvailablePaper[];
 	/** Khóa mở liên tục (thực hành GPHN) — hiện tab "Thực hành" thay "Bài học" */
 	is_rolling: boolean;

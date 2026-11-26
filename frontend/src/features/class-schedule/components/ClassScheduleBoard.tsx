@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
-import { CalendarSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
+import { CalendarSvg, DownloadSvg } from '@/assets/icons';
+import { Button, InlineLoading } from '@/shared/components';
+import { fileTitle, saveBlob } from '@/shared/utils/saveBlob';
+import { buildSessionsIcs } from '../utils/sessionIcs';
 import { YearPicker } from '../../schedule/components/YearPicker';
 import { CAL_MODES, useCalendarNav } from '../../schedule/hooks/useCalendarNav';
 import styles from '../../schedule/pages/Schedule.module.css';
@@ -20,11 +22,14 @@ export function ClassScheduleBoard({
 	load = getClassCalendar,
 	onOpenCourse,
 	courseFilterLabel = 'Tất cả khóa học',
+	exportName,
 }: {
 	load?: (from: string, to: string) => Promise<ClassCalendarResponse>;
 	/** Không truyền = không mở được khóa (vd cổng học viên). */
 	onOpenCourse?: (courseId: string) => void;
 	courseFilterLabel?: string;
+	/** Có = hiện nút tải lịch .ics (các buổi của năm đang xem, theo bộ lọc khóa); là tên tệp / tên lịch. */
+	exportName?: string;
 }) {
 	const {
 		currentYear, minYear, maxYear,
@@ -60,6 +65,12 @@ export function ClassScheduleBoard({
 	);
 
 	const handleOpenCourse = useCallback((courseId: string) => onOpenCourse?.(courseId), [onOpenCourse]);
+
+	const exportIcs = () => {
+		const inYear = shownSessions.filter((s) => parseDate(s.session_date)?.getFullYear() === year);
+		const name = `${exportName} ${year}`;
+		saveBlob(new Blob([buildSessionsIcs(inYear, name)], { type: 'text/calendar;charset=utf-8' }), `${fileTitle(name)}.ics`);
+	};
 
 	return (
 			<div className={styles.page}>
@@ -99,6 +110,17 @@ export function ClassScheduleBoard({
 							<option key={id} value={id}>{id} — {name}</option>
 						))}
 					</select>
+					{exportName && (
+						<Button
+							variant='secondary'
+							icon={<DownloadSvg />}
+							onClick={exportIcs}
+							disabled={loading || yearSessionCount === 0}
+							title='Tải tệp .ics để thêm các buổi học vào Google Calendar hoặc lịch điện thoại'
+						>
+							Tải lịch (.ics)
+						</Button>
+					)}
 					{viewMode === 'calendar' && (
 						<div className={styles.actionGroup}>
 							<div className={styles.calViewGroup} role='tablist' aria-label='Chế độ xem lịch'>

@@ -20,6 +20,7 @@ import { InlineLoading } from '@/shared/components';
 import { PASSWORD_HINT, PASSWORD_MIN_LENGTH } from '@/shared/utils/password';
 import { fmtDate, useProfile } from '../hooks/useProfile';
 import ProfileExtraCard from '../components/ProfileExtraCard';
+import TraineeProfileCard from '../components/TraineeProfileCard';
 import { useFormConfig } from '@/shared/formConfig/useFormConfig';
 import styles from './Profile.module.css';
 
@@ -257,6 +258,8 @@ export default function Profile() {
 							</div>
 						</div>
 					)}
+
+					{!isAdmin && <TraineeProfileCard />}
 
 					{d.profile && (
 						<ProfileExtraCard

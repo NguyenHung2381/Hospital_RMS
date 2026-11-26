@@ -6,6 +6,7 @@ import { notify } from '../../../shared/utils/feedback';
 import { settingsApi, type DocCheckStatus } from '../api/settingsApi';
 import styles from '../pages/SystemSettings.module.css';
 import ps from './DocCheckPanel.module.css';
+import SignatureRulesEditor from './SignatureRulesEditor';
 
 const SIG_KEY = 'TRAINING_DOC_SIGNATURE_CHECK';
 
@@ -146,11 +147,15 @@ export default function DocCheckPanel() {
 						<summary>Xem thêm</summary>
 						<p>
 							Kiểm chữ ký số trong file PDF (còn nguyên vẹn, chứng thư do CA tin cậy cấp) và dò dấu đỏ, chữ ký tay trên bản scan — áp dụng cho hồ sơ đăng ký khóa ĐTLT và
-							hồ sơ học viên. Lưu ngay khi bấm, không cần nút Lưu. Hồ sơ đăng ký đã kiểm trong lúc tắt sẽ không tự kiểm lại chữ ký khi bật.
+							hồ sơ học viên. Lưu ngay khi bấm, không cần nút Lưu. Hồ sơ đăng ký đã kiểm trong lúc tắt sẽ không tự kiểm lại chữ ký khi bật — bấm
+							"Kiểm lại chữ ký" ở phần cấu hình bên dưới. Bật / tắt chi tiết từng loại giấy tờ và từng mục kiểm ở bảng bên dưới.
 						</p>
 					</details>
 				</div>
 			</div>
+			{status.signature_rules && (
+				<SignatureRulesEditor rules={status.signature_rules} active={sigOn && !sigLocked} onSaved={load} />
+			)}
 			<div className={styles.statusRow}>
 				<Badge tone={!status.enabled ? 'gray' : status.worker_disabled || stuck ? 'amber' : 'green'} dot>
 					{!status.enabled ? 'Đang tạm dừng' : status.worker_disabled ? 'Máy chủ tắt vòng xử lý' : stuck ? 'Hàng đợi bị kẹt' : 'Đang hoạt động'}

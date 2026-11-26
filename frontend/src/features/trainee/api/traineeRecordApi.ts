@@ -41,6 +41,8 @@ interface AttendanceSummary {
 	present: number;
 	late: number;
 	absent: number;
+	/** Trong số vắng: có đơn xin nghỉ đã duyệt (vắng có phép) */
+	excused: number;
 	unmarked: number;
 }
 
@@ -67,6 +69,8 @@ export interface TraineeAttendanceCourse {
 		status: 'present' | 'absent' | 'late' | null;
 		method: string | null;
 		note: string | null;
+		/** Đơn xin phép đã duyệt phủ buổi này: 'absent' = xin nghỉ, 'late' = xin đi muộn */
+		leave_type: 'absent' | 'late' | null;
 	}[];
 	rotations: TraineeRotation[];
 }
@@ -144,9 +148,37 @@ export const traineeRecordApi = {
 	// Học viên tự xem ở cổng /me (theo tài khoản đăng nhập)
 	myAttendance: () => apiClient.get<TraineeAttendanceCourse[]>('/me/training/attendance'),
 	myGrades: () => apiClient.get<TraineeCourseResult[]>('/me/training/grades'),
+	/** Hồ sơ học viên của chính mình (chỉ đọc); null = tài khoản chưa có hồ sơ học viên. */
+	myProfile: () => apiClient.get<TraineeSelfProfile | null>('/me/training/profile'),
 	mySchedule: (from: string, to: string) =>
 		apiClient.get<ClassCalendarResponse>(`/me/training/schedule?${new URLSearchParams({ from, to })}`),
 };
+
+/** Hồ sơ học viên học viên tự xem ở cổng (traineeRecordService.myProfile) */
+export interface TraineeSelfProfile {
+	id: string;
+	full_name: string;
+	dob: string | null;
+	gender: string | null;
+	birth_province: string | null;
+	national_id: string | null;
+	national_id_issued_date: string | null;
+	national_id_issued_place: string | null;
+	phone: string | null;
+	email: string | null;
+	address: string | null;
+	permanent_address: string | null;
+	qualification: string | null;
+	graduated_school: string | null;
+	graduated_year: number | null;
+	graduated_date: string | null;
+	degree_issued_date: string | null;
+	workplace: string | null;
+	position: string | null;
+	avatar_url: string | null;
+	trainee_type_name: string | null;
+	department_name: string | null;
+}
 
 // Học viên tự nộp ở cổng /me
 export const myTraineeDocumentsApi = {

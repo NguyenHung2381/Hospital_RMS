@@ -150,6 +150,59 @@ const APPROVED_IN_COURSE = (courseCol, programCol) => `EXISTS (
 			programCol ? ` AND (e.program_id IS NULL OR e.program_id = ${programCol})` : ''
 		})`;
 
+// Tiến độ từng bài của 1 lượt ghi danh (enrollment_lessons — tính từ điểm danh,
+// lessonProgressService) + số buổi của bài trong lớp mình / số buổi có mặt, và
+// kết quả cả khóa. Chỉ gọi sau khi đã chắc lượt ghi danh là của actor.
+const getEnrollmentProgress = async (enrollmentId) => {
+	const pool = await getPool();
+	const [progress, grades] = await queryAll(
+		pool.request().input('eid', sql.VarChar(20), enrollmentId),
+		[
+			`
+    SELECT el.lesson_id, el.status, el.completed_at,
+           (SELECT COUNT(*) FROM class_sessions s
+            WHERE s.course_id = e.course_id AND s.subject_id = el.lesson_id
+              AND ${SESSION_IN_PROGRAM_SQL('s', 'e')}) AS session_count,
+           (SELECT COUNT(*) FROM attendance a JOIN class_sessions s ON s.id = a.session_id
+            WHERE a.enrollment_id = e.id AND s.subject_id = el.lesson_id
+              AND a.status IN ('present', 'late')) AS attended_count
+    FROM enrollment_lessons el
+    JOIN course_enrollments e ON e.id = el.enrollment_id
+    WHERE el.enrollment_id = @eid
+		`,
+			`
+    SELECT g.theory_score, g.practice_score, g.theory_flag, g.practice_flag,
+           g.score, g.result, g.classification,
+           CASE WHEN g.locked_at IS NULL THEN 0 ELSE 1 END AS locked
+    FROM grades g WHERE g.enrollment_id = @eid AND g.subject_id IS NULL
+		`,
+		],
+	);
+	const g = grades[0];
+	return { progress, grade: g ? { ...g, locked: Number(g.locked) === 1 } : null };
+};
+
+/**
+ * Gắn tiến độ vào bài của chương trình. Bài không có trong hồ sơ (vòng thực hành,
+ * hoặc chương trình thêm bài sau khi ghi danh) ⇒ progress_status null.
+ * @param {Record<string, any>[]} lessons
+ * @param {Record<string, any>[]} progress
+ * @returns {Record<string, any>[]}
+ */
+const mergeLessonProgress = (lessons, progress) => {
+	const byLesson = new Map(progress.map((p) => [p.lesson_id, p]));
+	return lessons.map((l) => {
+		const p = byLesson.get(l.id);
+		return {
+			...l,
+			progress_status: p ? p.status : null,
+			completed_at: p ? p.completed_at : null,
+			session_count: p ? Number(p.session_count) : 0,
+			attended_count: p ? Number(p.attended_count) : 0,
+		};
+	});
+};
+
 // Chi tiết 1 khóa mình đang học: tài liệu học viên được xem (is_public) + đề thi.
 // Chỉ học viên đã được duyệt mới thấy nội dung; đang chờ duyệt thì chỉ thấy thông tin khóa.
 const getMyCourse = async (courseId, actor) => {
@@ -187,7 +240,7 @@ const getMyCourse = async (courseId, actor) => {
 			`
     -- Bài học: khóa → chương trình học viên đã chọn khi ghi danh → bài học theo thứ tự trong chương trình.
     SELECT tp.id AS program_id, tp.name AS program_name, pl.id, pl.code, pl.title, pl.description,
-           pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits
+           pl.theory_hours, pl.practice_hours, pl.total_hours, pl.credits, pl.lesson_kind
     FROM course_programs cp
     JOIN training_programs tp ON tp.id = cp.program_id
     JOIN lesson_programs lp ON lp.program_id = cp.program_id
@@ -212,12 +265,20 @@ const getMyCourse = async (courseId, actor) => {
 	const course = sets[0][0];
 	if (!course) throw httpError(404, 'Bạn không tham gia khóa học này.');
 	const approved = course.enrollment_status === 'approved';
+	const { progress, grade } = approved
+		? await getEnrollmentProgress(course.enrollment_id)
+		: { progress: [], grade: null };
 	return {
 		...withStatus(course),
 		documents: approved ? sets[1] : [],
 		lessons: approved
-			? lessons.map((l) => ({ ...l, documents: lessonDocs.filter((d) => d.lesson_id === l.id) }))
+			? mergeLessonProgress(lessons, progress).map((l) => ({
+					...l,
+					documents: lessonDocs.filter((d) => d.lesson_id === l.id),
+				}))
 			: [],
+		// Kết quả cả khóa (1 dòng grades / lượt ghi danh — gradebookService) — tab "Chương trình"
+		grade,
 		papers: approved
 			? (await examService.listAvailablePapersForUser(actor)).filter(
 					(p) => p.course_id === courseId,
@@ -300,6 +361,7 @@ const getCmeCategories = async () => {
 module.exports = {
 	getMyTraining,
 	getMyCourse,
+	mergeLessonProgress,
 	openDocument,
 	registerCourse,
 	getMyCme,

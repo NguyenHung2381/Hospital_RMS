@@ -1,5 +1,7 @@
+import PortalHomeHeader from '@/shared/components/PortalHomeHeader';
 import { Link } from 'react-router-dom';
-import { AlertSvg, ArrowRSvg, BadgeSvg, BookOpenSvg, CalendarSvg, DocPlusSvg, FileTextSvg, QrSvg } from '@/assets/icons';
+import { useEffect, useState } from 'react';
+import { AlertSvg, ArrowRSvg, BadgeSvg, BookOpenSvg, CalendarSvg, DocPlusSvg, FileTextSvg, QrSvg, WalletSvg } from '@/assets/icons';
 import { Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { getStoredUser, type StoredUser } from '@/shared/utils/storage';
@@ -8,16 +10,21 @@ import { TRAINEE_HOME } from '../../../app/router/authHelpers';
 import { CourseCard, SessionItem } from '../components/TraineeCards';
 import { useMyTraining } from '../hooks/useMyTraining';
 import { coursePath } from '../utils/traineePaths';
+import { myTuitionApi } from '../../tuition/api/tuitionApi';
+import { formatVnd, type TuitionItem } from '../../tuition/types/tuition.type';
 import styles from './TraineePortal.module.css';
-
-const greeting = () => {
-	const h = new Date().getHours();
-	return h < 11 ? 'Chào buổi sáng' : h < 14 ? 'Chào buổi trưa' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
-};
 
 /** Trang chủ cổng học viên: việc cần làm hôm nay + khóa đang học + lịch sắp tới. */
 export default function TraineeHome() {
 	const { data, error } = useMyTraining();
+	// Học phí còn phải nộp (chưa tính khoản đang chờ xác nhận) — nhắc ở "Việc cần chú ý"
+	const [unpaid, setUnpaid] = useState<TuitionItem[]>([]);
+	useEffect(() => {
+		myTuitionApi
+			.get()
+			.then((t) => setUnpaid(t.items.filter((i) => i.remaining - i.pending > 0)))
+			.catch(() => setUnpaid([]));
+	}, []);
 	const name = getStoredUser<StoredUser>()?.full_name ?? '';
 
 	const enrolled = data?.enrolled ?? [];
@@ -45,20 +52,12 @@ export default function TraineeHome() {
 
 	return (
 		<TraineeLayout>
-			{/* Lời chào + buổi học kế tiếp */}
-			<section className={styles.hero}>
-				<div className={styles.heroText}>
-					<span className={styles.heroDate}>{formatDateVN(new Date())}</span>
-					<h1 className={styles.heroTitle}>
-						{greeting()}
-						{name ? `, ${name}` : ''}
-					</h1>
-					<p className={styles.heroSub}>
-						{next
-							? `Buổi học tiếp theo: ${formatDateVN(next.session_date)}${next.start_time ? ` lúc ${next.start_time.slice(0, 5)}` : ''} — ${next.subject_name ?? next.course_name}${next.room ? ` · Phòng ${next.room}` : ''}`
-							: 'Bạn không có buổi học nào trong 30 ngày tới.'}
-					</p>
-				</div>
+			<PortalHomeHeader label={name ? 'Cổng học viên · ' + name : 'Cổng học viên'} title='Lịch học của tôi' detail={formatDateVN(new Date())}>
+				{data && <>
+					<p>Buổi học tiếp theo</p>
+					<h2>{next ? next.subject_name || next.course_name : 'Chưa có lịch trong 30 ngày tới'}</h2>
+					{next && <p>{[formatDateVN(next.session_date), next.start_time?.slice(0, 5), next.room].filter(Boolean).join(' · ')}</p>}
+				</>}
 				<div className={styles.heroActions}>
 					<Link
 						to={`${TRAINEE_HOME}/diem-danh`}
@@ -73,7 +72,7 @@ export default function TraineeHome() {
 						<CalendarSvg /> Lịch học
 					</Link>
 				</div>
-			</section>
+			</PortalHomeHeader>
 
 			{error && (
 				<EmptyState
@@ -85,24 +84,8 @@ export default function TraineeHome() {
 
 			{data && (
 				<>
-					<div className={styles.stats}>
-						{stats.map((s) => (
-							<Link
-								key={s.label}
-								to={s.to}
-								className={`${styles.stat} ${s.alert ? styles.statAlert : ''}`}
-							>
-								<span className={styles.statIcon}>{s.icon}</span>
-								<span className={styles.statText}>
-									<strong>{s.value}</strong>
-									<span>{s.label}</span>
-								</span>
-							</Link>
-						))}
-					</div>
-
 					{/* Việc cần làm — chỉ hiện khi có */}
-					{(examCourses.length > 0 || pending.length > 0 || openCourses > 0) && (
+					{(examCourses.length > 0 || unpaid.length > 0 || pending.length > 0 || openCourses > 0) && (
 						<Card>
 							<Card.Header
 								icon={<AlertSvg />}
@@ -118,6 +101,20 @@ export default function TraineeHome() {
 										<FileTextSvg />
 										<span>
 											<b>{c.open_exam_count} bài kiểm tra</b> đang mở ở khóa {c.name}
+										</span>
+										<ArrowRSvg />
+									</Link>
+								))}
+								{unpaid.map((t) => (
+									<Link
+										key={`tuition-${t.enrollment_id}`}
+										to={`${TRAINEE_HOME}/hoc-phi`}
+										className={`${styles.todo} ${styles.todoAmber}`}
+									>
+										<WalletSvg />
+										<span>
+											Học phí khóa {t.course_name}: còn <b>{formatVnd(t.remaining - t.pending)}</b>
+											{t.start_date ? `, hạn nộp ngày khai giảng ${formatDateVN(t.start_date)}` : ''}
 										</span>
 										<ArrowRSvg />
 									</Link>
@@ -152,6 +149,22 @@ export default function TraineeHome() {
 							</Card.Body>
 						</Card>
 					)}
+
+					<div className={styles.stats}>
+						{stats.map((s) => (
+							<Link
+								key={s.label}
+								to={s.to}
+								className={`${styles.stat} ${s.alert ? styles.statAlert : ''}`}
+							>
+								<span className={styles.statIcon}>{s.icon}</span>
+								<span className={styles.statText}>
+									<strong>{s.value}</strong>
+									<span>{s.label}</span>
+								</span>
+							</Link>
+						))}
+					</div>
 
 					<div className={styles.twoCol}>
 						<Card>

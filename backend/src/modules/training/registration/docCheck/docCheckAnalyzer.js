@@ -175,6 +175,32 @@ const pixmapImage = (pix) => ({
 	stride: pix.getStride(),
 });
 
+const SIG_MIN_SIDE = 300; // ảnh dựng ra nhỏ hơn ⇒ quá ít điểm ảnh để dò dấu / chữ ký tay
+
+/**
+ * Trang không đáng dò dấu / chữ ký tay: ảnh quá nhỏ (file ảnh vài chục byte...) hoặc gần như
+ * một màu (trang trắng) — dò trên đó dễ ra "thiếu dấu" / "có chữ ký" sai. Lấy mẫu thưa cho nhanh.
+ * @param {ReturnType<typeof pixmapImage>} img
+ */
+const unfitForMarks = ({ pixels, width, height, channels, stride }) => {
+	if (Math.min(width, height) < SIG_MIN_SIDE) return true;
+	const step = 4;
+	let n = 0;
+	let sum = 0;
+	let sq = 0;
+	for (let y = 0; y < height; y += step) {
+		for (let x = 0; x < width; x += step) {
+			const i = y * stride + x * channels;
+			const v = channels >= 3 ? (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3 : pixels[i];
+			sum += v;
+			sq += v * v;
+			n++;
+		}
+	}
+	const mean = sum / (n || 1);
+	return Math.sqrt(Math.max(0, sq / (n || 1) - mean * mean)) < 6;
+};
+
 /** Ảnh xám phần đầu trang (tiêu đề). */
 const renderHeader = (mupdf, page, maxDim) => {
 	const [x0, y0, x1, y1] = page.getBounds();
@@ -338,9 +364,11 @@ const checkKind = async (mupdf, doc, { kind, identity, sha256, started, lowResIm
 /**
  * Chữ ký số (chỉ PDF) + dấu đỏ / chữ ký tay ở trang cuối và trang đầu (nếu khác trang cuối),
  * gộp theo signatureRules. OCR (tìm chức danh người ký) chỉ khi có Tesseract và còn đủ thời gian
- * trước `deadline`. Không trả chữ đọc được.
+ * trước `deadline`. Không trả chữ đọc được. Mục bị tắt trong `config` (TRAINING_DOC_SIGNATURE_RULES)
+ * thì không chạy; sig_details.ran ghi mục đã chạy.
  * @param {{ mupdf: any, doc: any, buf: Buffer, magic: string, kind: string,
- *   unit?: string | null, trust?: any, deadline: number }} o
+ *   unit?: string | null, trust?: any, deadline: number,
+ *   config?: import('./signature/signatureRules').SignatureConfig | null }} o
  * @returns {Promise<{ sig_verdict: string, sig_details: Record<string, any> }>}
  */
 const analyzeSignatures = async ({
@@ -352,24 +380,39 @@ const analyzeSignatures = async ({
 	unit = null,
 	trust,
 	deadline,
+	config = null,
 }) => {
 	const t0 = Date.now();
-	const expect = sigRules.SIGNATURE_REQUIREMENTS[kind]?.expect ?? undefined;
+	const kc = sigRules.kindConfig(config, kind) ?? { digital: true, seal: true, hand: true };
+	const opts = (config ?? sigRules.DEFAULT_SIGNATURE_CONFIG).options;
+	const ran = { digital: kc.digital, seal: kc.seal, hand: kc.hand };
+	const base = sigRules.SIGNATURE_REQUIREMENTS[kind]?.expect ?? undefined;
+	const expect = base
+		? { seal: base.seal && kc.seal, signature: base.signature && kc.hand }
+		: undefined;
 	const isPdf = magic === 'application/pdf';
-	const digital = isPdf ? await verifyPdfSignatures(buf, trust ? { trust } : {}) : null;
+	const digital =
+		isPdf && kc.digital ? await verifyPdfSignatures(buf, trust ? { trust } : {}) : null;
 	const total = doc.countPages();
-	const canOcr = await tesseractAvailable();
+	// OCR chỉ để tìm chức danh người ký ⇒ chỉ khi dò chữ ký tay và cấu hình cho dùng OCR
+	const canOcr = kc.hand && opts.ocr && (await tesseractAvailable());
 	let textLayer = false;
 	/** @type {Array<{ page: number, result: any }>} */
 	const visualPages = [];
+	const pagesToScan = kc.seal || kc.hand ? (total > 0 ? [...new Set([total - 1, 0])] : []) : [];
 	// Trang cuối trước (chỗ ký của văn bản), rồi trang đầu
-	for (const i of total > 0 ? [...new Set([total - 1, 0])] : []) {
+	for (const i of pagesToScan) {
 		let page = null;
 		try {
 			page = doc.loadPage(i);
 			if (isPdf && !textLayer) textLayer = pageText(page).replace(/\s+/g, '').length >= 50;
 			const pix = renderRgb(mupdf, page, SIG_DIM);
 			try {
+				// Trang trắng / ảnh quá nhỏ ⇒ không kết luận (null = không dò được)
+				if (unfitForMarks(pixmapImage(pix))) {
+					visualPages.push({ page: i + 1, result: null });
+					continue;
+				}
 				let words = null;
 				if (canOcr && deadline - Date.now() > SIG_OCR_MIN_LEFT_MS) {
 					try {
@@ -391,7 +434,13 @@ const analyzeSignatures = async ({
 		}
 	}
 	visualPages.sort((a, b) => a.page - b.page);
-	const out = sigRules.combine(kind, digital, visualPages, { unit, textLayer, pageCount: total });
+	const out = sigRules.combine(
+		kind,
+		digital,
+		visualPages,
+		{ unit, textLayer, pageCount: total, ran },
+		config,
+	);
 	out.sig_details.ocr = canOcr;
 	out.sig_details.ms = Date.now() - t0;
 	return out;
@@ -406,9 +455,11 @@ const analyzeSignatures = async ({
  *   identity?: Record<string, string | null | undefined>,
  *   source?: 'registration' | 'trainee_document',
  *   signature?: boolean,
+ *   sigConfig?: unknown,
  *   unit?: string | null,
- * }} input signature = kiểm chữ ký (công tắc TRAINING_DOC_SIGNATURE_CHECK); unit = đơn vị công
- *   tác đã khai (so mờ với tổ chức người ký số)
+ * }} input signature = kiểm chữ ký (công tắc TRAINING_DOC_SIGNATURE_CHECK); sigConfig = cấu hình
+ *   chi tiết TRAINING_DOC_SIGNATURE_RULES (chuỗi JSON / object; thiếu ⇒ bật hết); unit = đơn vị
+ *   công tác đã khai (so mờ với tổ chức người ký số)
  * @param {{ trust?: any }} [opts] bộ CA riêng (test) — mặc định src/assets/trust
  * @returns {Promise<{
  *   status: 'done' | 'skipped',
@@ -433,7 +484,8 @@ const analyze = async (input, { trust } = {}) => {
 	const mupdf = await loadMupdf();
 	const magic = magicOf(filePath, mime);
 	const sigKind = source === 'trainee_document' ? 'trainee_document' : kind;
-	const wantSig = !!input.signature && sigRules.needsSignatureCheck(sigKind);
+	const config = sigRules.normalizeSignatureConfig(input.sigConfig ?? null);
+	const wantSig = !!input.signature && sigRules.needsSignatureCheck(sigKind, config);
 	if (source === 'trainee_document' && !wantSig)
 		return { status: 'skipped', reason: 'signature_disabled', sha256 };
 
@@ -442,11 +494,13 @@ const analyze = async (input, { trust } = {}) => {
 		doc = mupdf.Document.openDocument(buf, magic);
 	} catch {
 		// mupdf không mở được ⇒ không dò dấu; vẫn thử chữ ký số (bộ đọc PDF riêng)
+		const kc = sigRules.kindConfig(config, sigKind);
 		const digital =
-			wantSig && magic === 'application/pdf'
+			wantSig && kc?.digital && magic === 'application/pdf'
 				? await verifyPdfSignatures(buf, trust ? { trust } : {})
 				: null;
-		const sig = wantSig ? sigRules.combine(sigKind, digital, []) : {};
+		const ran = { digital: !!kc?.digital, seal: !!kc?.seal, hand: !!kc?.hand };
+		const sig = wantSig ? sigRules.combine(sigKind, digital, [], { ran }, config) : {};
 		if (source === 'trainee_document') return { status: 'done', sha256, verdict: null, ...sig };
 		return {
 			status: 'done',
@@ -479,7 +533,17 @@ const analyze = async (input, { trust } = {}) => {
 		if (wantSig)
 			Object.assign(
 				res,
-				await analyzeSignatures({ mupdf, doc, buf, magic, kind: sigKind, unit, trust, deadline }),
+				await analyzeSignatures({
+					mupdf,
+					doc,
+					buf,
+					magic,
+					kind: sigKind,
+					unit,
+					trust,
+					deadline,
+					config,
+				}),
 			);
 		return /** @type {any} */ (res);
 	} finally {
