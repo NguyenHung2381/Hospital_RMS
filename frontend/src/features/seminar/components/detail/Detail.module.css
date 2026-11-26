@@ -295,7 +295,7 @@ button.kpi:focus-visible {
 	height: 16px;
 }
 .rowClick:hover .chev {
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .nowrap {
 	white-space: nowrap;

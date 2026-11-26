@@ -532,7 +532,7 @@
 	height: 44px;
 	border-radius: 12px;
 	background: var(--color-primary-pale);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .itemIcon svg {
 	width: 24px;
