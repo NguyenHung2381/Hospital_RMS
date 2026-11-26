@@ -11,51 +11,6 @@
 	width: 100%;
 }
 
-.avatarWrapper {
-	position: relative;
-	flex-shrink: 0;
-}
-
-.roundCard {
-	/* Phủ tối, không kính mờ: chữ trắng bên trong giữ ≥5:1 */
-	background: rgba(0, 0, 0, 0.16);
-	border: 1px solid rgba(255, 255, 255, 0.24);
-	border-radius: var(--radius-xl, 16px);
-	padding: 16px 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.roundDot {
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
-	background: var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary);
-	animation: pulseGlow 1.8s ease-in-out infinite;
-	flex-shrink: 0;
-}
-
-@keyframes pulseGlow {
-	0%,
-	100% {
-		opacity: 1;
-		transform: scale(1);
-	}
-	50% {
-		opacity: 0.5;
-		transform: scale(1.35);
-	}
-}
-
-.roundName {
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-bold, 700);
-	color: #fff;
-	line-height: 1.35;
-}
-
 .roundDeadlineContainer {
 	display: flex;
 	align-items: center;
@@ -604,15 +559,6 @@
 	line-height: 1.3;
 }
 
-.actionBadge {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-extrabold, 800);
-	color: var(--tone-green-fg);
-	background: var(--tone-green-border);
-	padding: 1px 6px;
-	border-radius: var(--radius-full, 9999px);
-}
-
 .actionDesc {
 	font-size: var(--font-size-2xs);
 	color: var(--color-gray-500);
@@ -754,10 +700,6 @@
 
 @media (max-width: 768px) {
 
-	.roundCard {
-		padding: 12px 14px;
-	}
-
 	.statsGrid {
 		grid-template-columns: repeat(2, 1fr);
 		gap: 12px;
@@ -808,12 +750,6 @@
 	}
 
 	.statArrow {
-		display: none;
-	}
-
-	/* Avatar đã có trên thanh trên cùng — bỏ ở banner cho gọn (ẩn cả khối bọc,
-	   không thì chấm "online" còn sót lại lơ lửng) */
-	.avatarWrapper {
 		display: none;
 	}
 }
