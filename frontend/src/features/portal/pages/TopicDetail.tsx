@@ -28,7 +28,7 @@ export default function TopicDetail() {
 			<UserLayout {...layoutProps}>
 				<div
 					className={styles.stateBox}
-					style={{ color: '#ef4444' }}
+					style={{ color: 'var(--tone-red-fg)' }}
 				>
 					{d.error || 'Không tìm thấy đề tài.'}
 				</div>

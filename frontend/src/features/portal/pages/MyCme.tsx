@@ -375,7 +375,7 @@ export default function MyCme() {
 														<td>
 															<Badge tone={APPROVAL_TONE[r.approval_status]}>{APPROVAL_LABEL[r.approval_status]}</Badge>
 															{r.approval_status === 'rejected' && r.reject_reason && (
-																<div className={tbl.dateText} style={{ color: '#b91c1c' }}>{r.reject_reason}</div>
+																<div className={tbl.dateText} style={{ color: 'var(--tone-red-fg)' }}>{r.reject_reason}</div>
 															)}
 														</td>
 														<td>

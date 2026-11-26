@@ -60,7 +60,7 @@ export default function MyTopics() {
 			) : d.error ? (
 				<div
 					className={styles.stateBox}
-					style={{ color: '#ef4444' }}
+					style={{ color: 'var(--tone-red-fg)' }}
 				>
 					{d.error}
 				</div>

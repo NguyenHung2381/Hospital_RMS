@@ -55,7 +55,7 @@ export default function MembersTab({
 			</div>
 
 			{memberErr && (
-				<p style={{ color: '#ef4444', fontSize: 13, marginBottom: 8 }}>
+				<p style={{ color: 'var(--tone-red-fg)', fontSize: 13, marginBottom: 8 }}>
 					{memberErr}
 				</p>
 			)}

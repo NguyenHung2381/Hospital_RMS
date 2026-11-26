@@ -49,58 +49,29 @@ export const blankMember: MemberFormState = {
 	custom: {},
 };
 
+// Nhãn trạng thái ở tab Thông tin — màu đi qua <Badge tone>.
 export const STATUS_CFG = {
-	submitted: {
-		label: 'Chờ duyệt',
-		tone: 'amber',
-		dot: '#f59e0b',
-		bg: '#fef3c7',
-		color: '#92400e',
-	},
-	approved: {
-		label: 'Đã duyệt',
-		tone: 'green',
-		dot: '#22c55e',
-		bg: '#dcfce7',
-		color: '#166534',
-	},
-	rejected: {
-		label: 'Từ chối',
-		tone: 'red',
-		dot: '#ef4444',
-		bg: '#fee2e2',
-		color: '#991b1b',
-	},
-	supplement: {
-		label: 'Bổ sung',
-		tone: 'blue',
-		dot: '#1a6abd',
-		bg: '#e6f1fb',
-		color: '#0c447c',
-	},
-	cancelled: {
-		label: 'Đã hủy',
-		tone: 'gray',
-		dot: '#9ca3af',
-		bg: '#f3f4f6',
-		color: '#374151',
-	},
+	submitted: { label: 'Chờ duyệt', tone: 'amber' },
+	approved: { label: 'Đã duyệt', tone: 'green' },
+	rejected: { label: 'Từ chối', tone: 'red' },
+	supplement: { label: 'Bổ sung', tone: 'blue' },
+	cancelled: { label: 'Đã hủy', tone: 'gray' },
 } as const;
 
 export const ROLE_BADGE = {
-	leader: { label: 'Chủ nhiệm', bg: '#dcfce7', color: '#166534' },
-	secretary: { label: 'Thư ký', bg: '#dbeafe', color: '#1e40af' },
-	member: { label: 'Thành viên', bg: '#f3f4f6', color: '#374151' },
+	leader: { label: 'Chủ nhiệm', bg: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' },
+	secretary: { label: 'Thư ký', bg: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' },
+	member: { label: 'Thành viên', bg: 'var(--tone-gray-bg)', color: 'var(--tone-gray-fg)' },
 } as const;
 
 export const EDIT_BANNER_STYLE: Record<
 	DeadlineType,
 	{ bg: string; color: string }
 > = {
-	topic_registration: { bg: '#dcfce7', color: '#166534' },
-	edit: { bg: '#dcfce7', color: '#166534' },
-	supplement: { bg: '#e6f1fb', color: '#0c447c' },
-	report_submission: { bg: '#dbeafe', color: '#1e40af' },
+	topic_registration: { bg: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' },
+	edit: { bg: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' },
+	supplement: { bg: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' },
+	report_submission: { bg: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' },
 };
 
 export type InfoForm = {

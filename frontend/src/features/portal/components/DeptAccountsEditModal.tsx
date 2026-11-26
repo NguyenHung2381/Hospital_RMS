@@ -74,7 +74,7 @@ export function DeptAccountsEditModal({
 			open
 			onClose={onClose}
 			icon={<EditSvg />}
-			iconStyle={{ background: '#e6f1fb', color: '#0c447c' }}
+			iconStyle={{ background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }}
 			title='Chỉnh sửa tài khoản'
 			subtitle={<>Cập nhật thông tin — {user.username}</>}
 			className={styles.modal}

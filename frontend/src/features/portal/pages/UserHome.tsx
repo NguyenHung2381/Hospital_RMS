@@ -212,7 +212,7 @@ export default function UserHome() {
 									style={{
 										padding: '36px 24px',
 										textAlign: 'center',
-										color: '#ef4444',
+										color: 'var(--tone-red-fg)',
 										fontSize: '0.875rem',
 									}}
 								>
@@ -246,9 +246,9 @@ export default function UserHome() {
 									{d.recentTopics.map((t) => {
 										const s = STATUS_LABELS[t.status] ?? {
 											label: t.status,
-											color: '#475569',
-											bg: '#f1f5f9',
-											border: '#cbd5e1',
+											color: 'var(--tone-gray-fg)',
+											bg: 'var(--tone-gray-bg)',
+											border: 'var(--color-gray-300)',
 										};
 										const role = t.my_role
 											? ROLE_LABELS[t.my_role]

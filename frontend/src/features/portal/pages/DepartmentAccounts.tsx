@@ -386,7 +386,7 @@ export default function DepartmentAccounts() {
 														title='Đặt lại mật khẩu (về tên đăng nhập)'
 														aria-label={`Đặt lại mật khẩu của tài khoản ${u.username}`}
 														onClick={() => d.setResetUser(u)}
-														style={{ color: '#b45309' }}
+														style={{ color: 'var(--tone-amber-fg)' }}
 													>
 														<KeySvg />
 													</button>

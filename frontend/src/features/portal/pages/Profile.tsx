@@ -31,7 +31,7 @@ const SPINNER = (
 			width: 14,
 			height: 14,
 			border: '2px solid rgba(255,255,255,0.4)',
-			borderTopColor: '#fff',
+			borderTopColor: 'var(--color-white)',
 		}}
 	/>
 );
@@ -69,7 +69,7 @@ export default function Profile() {
 								style={
 									d.profile.is_active
 										? {}
-										: { background: '#fee2e2', color: '#991b1b' }
+										: { background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' }
 								}
 							>
 								{d.profile.is_active ? 'Đang hoạt động' : 'Đã khóa'}
@@ -150,7 +150,7 @@ export default function Profile() {
 							<div className={styles.detailCardHeader}>
 								<div
 									className={styles.detailCardIcon}
-									style={{ background: '#dbeafe', color: '#1a6abd' }}
+									style={{ background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }}
 								>
 									<UserSvg />
 								</div>
@@ -241,8 +241,8 @@ export default function Profile() {
 											className={styles.statusChip}
 											style={
 												d.profile.is_active
-													? { background: '#dcfce7', color: '#166534' }
-													: { background: '#fee2e2', color: '#991b1b' }
+													? { background: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' }
+													: { background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' }
 											}
 										>
 											{d.profile.is_active ? 'Hoạt động' : 'Đã khóa'}
@@ -274,7 +274,7 @@ export default function Profile() {
 						<div className={styles.detailCardHeader}>
 							<div
 								className={styles.detailCardIcon}
-								style={{ background: '#fef3c7', color: '#92400e' }}
+								style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }}
 							>
 								<LockSvg />
 							</div>
@@ -321,10 +321,10 @@ export default function Profile() {
 											className={styles.strengthFill}
 											style={
 												d.newPwd.length < PASSWORD_MIN_LENGTH
-													? { width: '33%', background: '#ef4444' }
+													? { width: '33%', background: 'var(--color-error)' }
 													: d.newPwd.length < PASSWORD_MIN_LENGTH + 4
-														? { width: '66%', background: '#f59e0b' }
-														: { width: '100%', background: '#22c55e' }
+														? { width: '66%', background: 'var(--color-warning)' }
+														: { width: '100%', background: 'var(--color-primary)' }
 											}
 										/>
 									</div>
@@ -350,7 +350,7 @@ export default function Profile() {
 									<div
 										className={styles.matchHint}
 										style={{
-											color: d.confirmPwd === d.newPwd ? '#22c55e' : '#ef4444',
+											color: d.confirmPwd === d.newPwd ? 'var(--color-primary-dark)' : 'var(--tone-red-fg)',
 										}}
 									>
 										{d.confirmPwd === d.newPwd
@@ -380,7 +380,7 @@ export default function Profile() {
 												width: 14,
 												height: 14,
 												border: '2px solid rgba(255,255,255,0.4)',
-												borderTopColor: '#fff',
+												borderTopColor: 'var(--color-white)',
 											}}
 										/>
 									) : (
@@ -399,7 +399,7 @@ export default function Profile() {
 						>
 							<div
 								className={styles.detailCardIcon}
-								style={{ background: '#e0e7ff', color: '#4338ca' }}
+								style={{ background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }}
 							>
 								<KeySvg />
 							</div>
@@ -411,7 +411,7 @@ export default function Profile() {
 											className={styles.statusChip}
 											style={
 												d.twoFaEnabled
-													? { background: '#dcfce7', color: '#166534' }
+													? { background: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' }
 													: { background: 'var(--color-gray-100)', color: 'var(--color-gray-600)' }
 											}
 										>
@@ -482,7 +482,7 @@ export default function Profile() {
 													width: 14,
 													height: 14,
 													border: '2px solid rgba(255,255,255,0.4)',
-													borderTopColor: '#fff',
+													borderTopColor: 'var(--color-white)',
 												}}
 											/>
 										) : (
@@ -506,13 +506,13 @@ export default function Profile() {
 								{d.backupCodes ? (
 									<div
 										style={{
-											border: '1px solid #fde68a',
-											background: '#fefce8',
+											border: '1px solid var(--tone-amber-border)',
+											background: 'var(--tone-amber-bg)',
 											borderRadius: 8,
 											padding: 12,
 										}}
 									>
-										<div className={styles.formLabel} style={{ color: '#92400e', marginBottom: 8 }}>
+										<div className={styles.formLabel} style={{ color: 'var(--tone-amber-fg)', marginBottom: 8 }}>
 											Lưu các mã khôi phục dưới đây ở nơi an toàn (in ra hoặc lưu vào trình quản lý
 											mật khẩu). Mất điện thoại thì dùng 1 mã thay cho mã 6 số — mỗi mã chỉ dùng
 											được 1 lần. Các mã <strong>chỉ hiển thị lần này</strong>.
@@ -698,7 +698,7 @@ export default function Profile() {
 						<div className={`${styles.detailCardHeader} ${styles.headerOnly}`}>
 							<div
 								className={styles.detailCardIcon}
-								style={{ background: '#fee2e2', color: '#dc2626' }}
+								style={{ background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' }}
 							>
 								<ShieldSvg />
 							</div>
