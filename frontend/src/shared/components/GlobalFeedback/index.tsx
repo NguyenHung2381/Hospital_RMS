@@ -1,3 +1,4 @@
+import { XSvg } from '@/assets/icons';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { cancelUploads, dismissToast, feedbackStore } from '../../utils/feedback';
 import styles from './GlobalFeedback.module.css';
@@ -112,9 +113,16 @@ export function GlobalFeedback() {
 				</div>
 			)}
 
-			<div className={styles.toasts} aria-live='polite'>
+			{/* Mỗi toast tự là vùng thông báo: lỗi đọc ngay (alert), còn lại đọc khi rảnh (status).
+			    Khung ngoài không đặt aria-live để tránh đọc lặp do vùng lồng nhau. */}
+			<div className={styles.toasts}>
 				{toasts.map((t) => (
-					<div key={t.id} className={`${styles.toast} ${styles[t.type]}`} role='status'>
+					<div
+						key={t.id}
+						className={`${styles.toast} ${styles[t.type]}`}
+						role={t.type === 'error' ? 'alert' : 'status'}
+						aria-atomic='true'
+					>
 						{icons[t.type]}
 						<span className={styles.msg}>{t.msg}</span>
 						{t.action && (
@@ -129,8 +137,13 @@ export function GlobalFeedback() {
 								{t.action.label}
 							</button>
 						)}
-						<button type='button' className={styles.close} aria-label='Đóng' onClick={() => dismissToast(t.id)}>
-							×
+						<button
+							type='button'
+							className={styles.close}
+							aria-label='Đóng thông báo'
+							onClick={() => dismissToast(t.id)}
+						>
+							<XSvg aria-hidden='true' />
 						</button>
 					</div>
 				))}

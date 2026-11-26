@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
+import { MAIN_ID, SkipLink } from '../components/SkipLink';
 import styles from './PublicLayout.module.css';
 
 export type PublicSection = 'training' | 'research';
@@ -56,6 +57,7 @@ export default function PublicLayout({ title, subtitle, section = 'training', ba
 	);
 	return (
 		<div className={styles.wrapper}>
+			<SkipLink />
 			<header className={styles.header}>
 				<div className={styles.headerInner}>
 					{bare ? (
@@ -92,7 +94,11 @@ export default function PublicLayout({ title, subtitle, section = 'training', ba
 				</div>
 			</header>
 
-			<main className={styles.main}>
+			<main
+				id={MAIN_ID}
+				tabIndex={-1}
+				className={styles.main}
+			>
 				<div className={styles.card}>
 					<h1 className={styles.title}>{title}</h1>
 					{subtitle && <p className={styles.subtitle}>{subtitle}</p>}

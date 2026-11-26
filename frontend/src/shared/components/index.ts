@@ -6,11 +6,29 @@ export { badgeTone } from './Badge/badgeTone';
 export type { BadgeTone } from './Badge/badgeTone';
 
 export { EmptyState, TableEmpty } from './EmptyState';
+export { ErrorState } from './ErrorState';
+export { Tabs } from './Tabs';
+export type { TabItem, TabsProps } from './Tabs';
 export { Card } from './Card';
 
 export { Button } from './Button';
 export { Modal, ModalActions, ConfirmDeleteModal } from './Modal';
 export { Drawer, DrawerSection, DrawerFields } from './Drawer';
+export {
+	ConfirmDialog,
+	PromptDialog,
+	DialogHost,
+	confirmDialog,
+	alertDialog,
+	promptDialog,
+} from './Dialog';
+export type {
+	ConfirmDialogProps,
+	PromptDialogProps,
+	ConfirmDialogOptions,
+	AlertDialogOptions,
+	PromptDialogOptions,
+} from './Dialog';
 export { Can } from './Can';
 
 /* Nặng (docx-preview / dompurify / html5-qrcode) — import trực tiếp theo đường dẫn, không qua barrel:
@@ -18,6 +36,10 @@ export { Can } from './Can';
  *   import RichTextEditor from '@/shared/components/RichTextEditor';
  *   import { QrScanner } from '@/shared/components/QrScanner'; */
 
+export { FormField } from './Input/FormField';
+export { markFieldControl } from './Input/fieldControl';
+export type { FieldControlProps } from './Input/fieldControl';
+export { Toggle } from './Input/Toggle';
 export { DatePicker } from './Input/DatePicker';
 export { TimePicker } from './Input/TimePicker';
 export { MultiSelect } from './Input/MultiSelect';

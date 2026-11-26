@@ -3,7 +3,7 @@
    ---------------------------------------------
    Mỗi module CSS từng tự vẽ select theo cách riêng (viền 1px/1.5px, bo 6–12px,
    có/không mũi tên…). File này ép chung một kiểu khớp với ô nhập formInput:
-   viền 1.5px gray-200, bo radius-lg, nền gray-50, mũi tên chevron, viền xanh
+   viền 1.5px --outline (≥3:1), bo radius-lg, nền gray-50, mũi tên chevron, viền xanh
    + vòng sáng khi focus.
 
    Bộ chọn `select:not([multiple])` (độ ưu tiên 0,1,1) cố ý cao hơn một class
@@ -21,7 +21,9 @@
 ============================================= */
 
 :root {
-	--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aaab6' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+	/* Mũi tên: #7a8996 (= --outline, hex phải viết thẳng vì data-URI không đọc được
+	   var()) — 3.59:1 trên trắng, 3.43:1 trên gray-50; trước là #9aaab6 chỉ 2.28:1. */
+	--select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237a8996' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 	--select-chevron-active: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230a9b4a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 	--select-focus-ring: 0 0 0 3px rgba(10, 155, 74, 0.1);
 	--select-menu-shadow: 0 10px 32px rgba(13, 24, 32, 0.12), 0 2px 6px rgba(13, 24, 32, 0.06);
@@ -33,7 +35,7 @@ select:not([multiple]) {
 	-webkit-appearance: none;
 	min-width: 0;
 	padding-right: 34px;
-	border: 1.5px solid var(--color-gray-200);
+	border: 1.5px solid var(--outline); /* ranh giới ô nhập ≥3:1 (WCAG 1.4.11) */
 	border-radius: var(--radius-lg);
 	background-color: var(--color-gray-50);
 	background-image: var(--select-chevron);
@@ -57,7 +59,7 @@ select:not([multiple]) {
 }
 
 select:not([multiple]):hover {
-	border-color: var(--color-gray-300);
+	border-color: var(--color-gray-400); /* đậm hơn --outline một nấc */
 	background-color: var(--color-white);
 }
 

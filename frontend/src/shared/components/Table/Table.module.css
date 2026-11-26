@@ -503,8 +503,15 @@
 /* Màn cảm ứng: nút thao tác trên dòng to hơn để không bấm nhầm Sửa ↔ Xóa */
 @media (pointer: coarse) {
 	.actionBtn {
+		position: relative;
 		width: 40px;
 		height: 40px;
+	}
+	/* Vùng bấm 48×48 (MD3), nhìn thấy vẫn 40px — khe giữa các nút ≥ 8px nên không chồng nhau */
+	.actionBtn::after {
+		content: '';
+		position: absolute;
+		inset: -4px;
 	}
 	.actionBtns {
 		gap: var(--space-3);

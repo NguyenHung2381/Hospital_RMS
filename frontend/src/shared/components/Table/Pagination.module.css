@@ -95,8 +95,18 @@
 }
 
 @media (pointer: coarse) {
+	.buttons {
+		gap: 8px;
+	}
 	.btn {
+		position: relative;
 		min-width: 40px;
 		height: 40px;
+	}
+	/* Vùng bấm 48×48, nhìn thấy 40px; khe 8px nên vùng bấm các nút không chồng nhau */
+	.btn::after {
+		content: '';
+		position: absolute;
+		inset: -4px;
 	}
 }

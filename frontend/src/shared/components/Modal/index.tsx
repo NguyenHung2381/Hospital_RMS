@@ -1,11 +1,12 @@
 import { CheckSvg, TrashSvg, XSvg } from '@/assets/icons';
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { DIALOG_LAYER_SELECTOR, useFocusTrap } from '../../hooks/useFocusTrap';
 import { cx } from '../../utils/cx';
 import styles from './Modal.module.css';
 
-const FOCUSABLE =
-	'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+/** Lớp hộp thoại: Modal / Drawer (aria-modal) và modal tự viết `composes: modalBackdrop`. */
+const MODAL_LAYER_SELECTOR = `${DIALOG_LAYER_SELECTOR}, .${styles.modalBackdrop}`;
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -50,7 +51,6 @@ export function Modal({
 	bodyClassName,
 	iconStyle,
 }: ModalProps) {
-	const backdropRef = useRef<HTMLDivElement>(null);
 	const dialogRef = useRef<HTMLDivElement>(null);
 	const titleId = useId();
 	const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -60,64 +60,16 @@ export function Modal({
 		if (dirty) setConfirmDiscard(true);
 		else onClose();
 	};
-	const requestCloseRef = useRef(requestClose);
-	useEffect(() => {
-		requestCloseRef.current = requestClose;
-	});
 
 	// Focus: đưa vào hộp thoại khi mở (chính khung dialog — trình đọc màn hình đọc
 	// tiêu đề; không tự focus ô nhập vì DatePicker/Select mở popover khi focus),
-	// giữ Tab trong hộp thoại, trả focus về chỗ cũ khi đóng.
-	useEffect(() => {
-		if (!open) return;
-		const previouslyFocused = document.activeElement as HTMLElement | null;
-		const dialog = dialogRef.current;
-		if (dialog && !dialog.contains(document.activeElement)) {
-			dialog.focus({ preventScroll: true });
-		}
-
-		const isTopmost = () => {
-			const all = document.querySelectorAll(`.${styles.modalBackdrop}`);
-			return all[all.length - 1] === backdropRef.current;
-		};
-		const onKey = (e: KeyboardEvent) => {
-			// Modal chồng nhau: chỉ modal trên cùng (portal mở sau ⇒ nằm cuối body) xử lý phím
-			if (!isTopmost()) return;
-			if (e.key === 'Escape') {
-				e.preventDefault();
-				requestCloseRef.current();
-				return;
-			}
-			if (e.key !== 'Tab' || !dialogRef.current) return;
-			const items = Array.from(
-				dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
-			).filter((el) => el.offsetParent !== null || el === document.activeElement);
-			if (items.length === 0) {
-				e.preventDefault();
-				return;
-			}
-			const firstEl = items[0];
-			const lastEl = items[items.length - 1];
-			const active = document.activeElement;
-			if (e.shiftKey && (active === firstEl || active === dialogRef.current)) {
-				e.preventDefault();
-				lastEl.focus();
-			} else if (!e.shiftKey && active === lastEl) {
-				e.preventDefault();
-				firstEl.focus();
-			} else if (!dialogRef.current.contains(active)) {
-				e.preventDefault();
-				firstEl.focus();
-			}
-		};
-		document.addEventListener('keydown', onKey);
-		return () => {
-			document.removeEventListener('keydown', onKey);
-			if (previouslyFocused && document.contains(previouslyFocused)) {
-				previouslyFocused.focus({ preventScroll: true });
-			}
-		};
-	}, [open]);
+	// giữ Tab trong hộp thoại, trả focus về chỗ cũ khi đóng. Modal chồng nhau (kể cả
+	// modal tự viết trong feature `composes: modalBackdrop`): chỉ lớp trên cùng xử lý phím.
+	useFocusTrap(dialogRef, {
+		active: open,
+		onEscape: requestClose,
+		layerSelector: MODAL_LAYER_SELECTOR,
+	});
 
 	if (!open) return null;
 
@@ -126,7 +78,6 @@ export function Modal({
 	// overflow: hidden — giữ position: fixed lại và cắt mất header / footer.
 	return createPortal(
 		<div
-			ref={backdropRef}
 			className={`${styles.modalBackdrop} ${styles.top}`}
 			onClick={(e) => closeOnBackdrop && e.target === e.currentTarget && requestClose()}
 		>

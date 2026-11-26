@@ -152,4 +152,14 @@ thead th.checkCol {
 		width: 6px;
 		height: 11px;
 	}
+	/* Vùng bấm 48×48 quanh ô 22px (::after đã dùng vẽ dấu tích nên dùng ::before) */
+	.checkbox::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 48px;
+		height: 48px;
+		transform: translate(-50%, -50%);
+	}
 }

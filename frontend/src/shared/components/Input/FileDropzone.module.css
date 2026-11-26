@@ -162,6 +162,19 @@
 	background: var(--tone-red-bg);
 	color: var(--color-error, var(--tone-red-fg));
 }
+/* Màn cảm ứng: nút bỏ file 40px, vùng bấm 48×48 */
+@media (pointer: coarse) {
+	.removeBtn {
+		position: relative;
+		width: 40px;
+		height: 40px;
+	}
+	.removeBtn::after {
+		content: '';
+		position: absolute;
+		inset: -4px;
+	}
+}
 .removeBtn svg {
 	width: 14px;
 	height: 14px;

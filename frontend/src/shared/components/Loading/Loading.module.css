@@ -115,25 +115,41 @@
 	overflow: hidden;
 }
 
-.progressFill {
-	height: 100%;
+.progressIndeterminate {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 40%;
 	border-radius: var(--radius-full);
 	background: linear-gradient(
 		90deg,
 		var(--color-primary) 0%,
 		var(--color-secondary) 100%
 	);
-	transition: width 0.15s ease-out;
+	animation: indeterminate 1.4s var(--ease-out) infinite;
 }
 
-.percentText {
-	position: relative;
-	z-index: 1;
-	color: var(--color-primary-dark);
-	font-weight: var(--font-weight-semibold);
-	font-size: var(--font-size-sm);
-	letter-spacing: 0.02em;
-	font-variant-numeric: tabular-nums;
+@keyframes indeterminate {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(250%);
+	}
+}
+
+/* Chữ chỉ dành cho trình đọc màn hình */
+.srOnly {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 /* === INLINE LOADING (page section inside a layout) === */
@@ -215,5 +231,11 @@
 	.inlineSpinner::after {
 		animation-duration: 2.4s !important;
 		animation-iteration-count: infinite !important;
+	}
+}
+/* Thanh trượt không xác định: chuyển động ngang — ẩn khi giảm chuyển động, vòng xoay đủ báo đang tải */
+@media (prefers-reduced-motion: reduce) {
+	.progressTrack {
+		display: none;
 	}
 }

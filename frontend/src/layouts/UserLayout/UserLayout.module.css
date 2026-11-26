@@ -71,6 +71,9 @@
 	background: none;
 	cursor: pointer;
 	text-align: left;
+	/* Là thẻ <a>: bỏ gạch chân và màu liên kết mặc định */
+	text-decoration: none;
+	color: inherit;
 }
 
 .brandLogo {
@@ -79,7 +82,7 @@
 	flex-shrink: 0;
 	border-radius: 50%;
 	object-fit: contain;
-	background: #fff;
+	background: var(--color-white);
 	padding: 2px;
 }
 
@@ -93,7 +96,7 @@
 .brandName {
 	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-white);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -114,7 +117,7 @@
 	border-radius: var(--radius-md);
 	border: none;
 	background: rgba(255, 255, 255, 0.12);
-	color: #fff;
+	color: var(--color-white);
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
@@ -171,20 +174,22 @@
 	color: rgba(255, 255, 255, 0.92);
 	cursor: pointer;
 	text-align: left;
+	/* Là thẻ <a>: bỏ gạch chân mặc định */
+	text-decoration: none;
 	transition:
 		color var(--transition-fast),
 		background var(--transition-fast);
 }
 
 .navItem:hover {
-	color: #fff;
+	color: var(--color-white);
 	background: rgba(255, 255, 255, 0.1);
 }
 
 /* Mục đang mở: thẻ trắng nổi trên nền xanh */
 .navItem.active {
 	color: var(--color-primary-dark);
-	background: #fff;
+	background: var(--color-white);
 	box-shadow: var(--shadow-sm);
 }
 
@@ -208,7 +213,7 @@
 	padding: 0 6px;
 	border-radius: var(--radius-full);
 	background: var(--color-accent);
-	color: #fff;
+	color: var(--color-white);
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	display: inline-flex;
@@ -242,7 +247,7 @@
 }
 
 .collapseBtn:hover {
-	color: #fff;
+	color: var(--color-white);
 	background: rgba(255, 255, 255, 0.1);
 }
 
@@ -369,6 +374,9 @@
 	cursor: pointer;
 	text-align: left;
 	flex-shrink: 1;
+	/* Là thẻ <a>: bỏ gạch chân và màu liên kết mặc định */
+	text-decoration: none;
+	color: inherit;
 }
 
 .topbarBrand .brandLogo {
@@ -411,11 +419,13 @@
 	color: var(--color-gray-500);
 }
 
-button.trailItem {
+/* Mục có đường dẫn là <a>; mục cuối là <span> nên không có con trỏ tay */
+a.trailItem {
+	text-decoration: none;
 	cursor: pointer;
 }
 
-button.trailItem:hover {
+a.trailItem:hover {
 	color: var(--color-primary-dark);
 }
 
@@ -455,7 +465,7 @@ button.trailItem:hover {
 	padding: 3px var(--space-2) 3px 3px;
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-full);
-	background: #fff;
+	background: var(--color-white);
 	cursor: pointer;
 	transition:
 		border-color var(--transition-fast),
@@ -473,7 +483,7 @@ button.trailItem:hover {
 	height: 32px;
 	border-radius: 50%;
 	background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-	color: #fff;
+	color: var(--color-white);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -583,6 +593,8 @@ button.trailItem:hover {
 	color: var(--color-gray-700);
 	cursor: pointer;
 	text-align: left;
+	/* Mục tài khoản là <a> (Link) hoặc <button>: thống nhất không gạch chân */
+	text-decoration: none;
 	transition:
 		background var(--transition-fast),
 		color var(--transition-fast);
@@ -632,7 +644,7 @@ button.trailItem:hover {
 	height: 38px;
 	border-radius: var(--radius-md);
 	border: 1px solid var(--color-gray-200);
-	background: #fff;
+	background: var(--color-white);
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
@@ -659,6 +671,11 @@ button.trailItem:hover {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+}
+
+/* <main tabIndex={-1}> nhận focus từ liên kết "Bỏ qua tới nội dung" — không vẽ viền */
+.pageArea:focus {
+	outline: none;
 }
 
 .pageInner {
@@ -723,7 +740,7 @@ button.trailItem:hover {
 	height: 38px;
 	border-radius: var(--radius-full);
 	border: 1px solid var(--color-gray-200);
-	background: #fff;
+	background: var(--color-white);
 	display: flex;
 	align-items: center;
 	justify-content: center;

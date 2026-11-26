@@ -1,13 +1,14 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './DatePicker.module.css';
+import { markFieldControl, type FieldControlProps } from './fieldControl';
 
 const POPOVER_WIDTH = 310;
 const POPOVER_HEIGHT = 360; // ước lượng trước khi đo được chiều cao thật
 const GAP = 6;
 const EDGE = 8; // khoảng cách tối thiểu tới mép màn hình
 
-interface DatePickerProps {
+interface DatePickerProps extends Omit<FieldControlProps, 'id'> {
 	value?: string; // 'YYYY-MM-DD'
 	onChange: (val: string) => void;
 	placeholder?: string;
@@ -25,6 +26,14 @@ interface DatePickerProps {
 	className?: string;
 	style?: React.CSSProperties;
 	align?: 'left' | 'right' | 'auto';
+}
+
+const WEEKDAY_FULL = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+
+/** Nhãn đọc cho ô ngày, vd "Thứ hai, 05 tháng 10 năm 2026". */
+function dayLabel(year: number, month: number, day: number): string {
+	const wd = WEEKDAY_FULL[new Date(year, month, day).getDay()];
+	return `${wd}, ${String(day).padStart(2, '0')} tháng ${month + 1} năm ${year}`;
 }
 
 const MONTH_NAMES = [
@@ -122,8 +131,13 @@ export function DatePicker({
 	className,
 	style,
 	align = 'auto',
+	'aria-label': ariaLabel,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-required': ariaRequired,
 }: DatePickerProps) {
 	const [isOpen, setIsOpen] = useState(false);
+	const popoverId = useId();
 	// Chữ đang gõ tay — null = đang hiện đúng giá trị
 	const [draft, setDraft] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -373,6 +387,13 @@ export function DatePicker({
 					type='text'
 					inputMode='numeric'
 					autoComplete='off'
+					aria-label={ariaLabel}
+					aria-describedby={ariaDescribedBy}
+					aria-invalid={ariaInvalid ?? (hasError || undefined)}
+					aria-required={ariaRequired}
+					aria-haspopup='dialog'
+					aria-expanded={isOpen}
+					aria-controls={isOpen ? popoverId : undefined}
 					maxLength={10}
 					disabled={disabled}
 					value={draft ?? formatVN(value)}
@@ -398,7 +419,10 @@ export function DatePicker({
 				/>
 
 				{/* Calendar Icon */}
-				<span className={styles.calendarIcon}>
+				<span
+					className={styles.calendarIcon}
+					aria-hidden='true'
+				>
 					<svg
 						width='16'
 						height='16'
@@ -444,6 +468,7 @@ export function DatePicker({
 						type='button'
 						className={styles.clearBtn}
 						title='Xóa ngày'
+						aria-label='Xóa ngày'
 						onClick={(e) => {
 							e.stopPropagation();
 							setDraft(null);
@@ -459,6 +484,7 @@ export function DatePicker({
 							strokeWidth='2'
 							strokeLinecap='round'
 							strokeLinejoin='round'
+							aria-hidden='true'
 						>
 							<line
 								x1='18'
@@ -481,6 +507,9 @@ export function DatePicker({
 			{isOpen && pos && createPortal(
 				<div
 					ref={popoverRef}
+					id={popoverId}
+					role='dialog'
+					aria-label='Chọn ngày'
 					className={`${styles.popover} ${
 						pos.bottom !== undefined ? styles.placementTop : ''
 					}`}
@@ -496,6 +525,7 @@ export function DatePicker({
 							{/* Month Select */}
 							<select
 								className={styles.select}
+								aria-label='Tháng'
 								value={viewMonth}
 								onChange={(e) => setViewMonth(Number(e.target.value))}
 							>
@@ -512,6 +542,7 @@ export function DatePicker({
 							{/* Year Select */}
 							<select
 								className={styles.select}
+								aria-label='Năm'
 								value={viewYear}
 								onChange={(e) => setViewYear(Number(e.target.value))}
 							>
@@ -533,6 +564,7 @@ export function DatePicker({
 								className={styles.navBtn}
 								onClick={prevMonth}
 								title='Tháng trước'
+								aria-label='Tháng trước'
 							>
 								<svg
 									width='14'
@@ -543,6 +575,7 @@ export function DatePicker({
 									strokeWidth='2.2'
 									strokeLinecap='round'
 									strokeLinejoin='round'
+									aria-hidden='true'
 								>
 									<polyline points='15 18 9 12 15 6' />
 								</svg>
@@ -552,6 +585,7 @@ export function DatePicker({
 								className={styles.navBtn}
 								onClick={nextMonth}
 								title='Tháng sau'
+								aria-label='Tháng sau'
 							>
 								<svg
 									width='14'
@@ -562,6 +596,7 @@ export function DatePicker({
 									strokeWidth='2.2'
 									strokeLinecap='round'
 									strokeLinejoin='round'
+									aria-hidden='true'
 								>
 									<polyline points='9 18 15 12 9 6' />
 								</svg>
@@ -570,7 +605,10 @@ export function DatePicker({
 					</div>
 
 					{/* Weekdays */}
-					<div className={styles.weekdays}>
+					<div
+						className={styles.weekdays}
+						aria-hidden='true'
+					>
 						{WEEKDAYS.map((wd, i) => (
 							<div
 								key={wd}
@@ -611,6 +649,9 @@ export function DatePicker({
 									key={cell.iso}
 									type='button'
 									disabled={disabledCell}
+									// aria-selected chỉ hợp lệ với gridcell/option — nút ngày nói "đang chọn" ngay trong nhãn
+									aria-label={`${dayLabel(cell.year, cell.month, cell.day)}${isSelected ? ', đang chọn' : ''}`}
+									aria-current={isToday ? 'date' : undefined}
 									onClick={() => handleSelectDay(cell.iso)}
 									className={`${styles.dayCell} ${
 										!cell.isCurrentMonth ? styles.otherMonth : ''
@@ -661,3 +702,5 @@ export function DatePicker({
 		</div>
 	);
 }
+
+markFieldControl(DatePicker);

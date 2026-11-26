@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../assets/logo.png';
 import { getMyProgressCount } from '../../features/council/api/councilApi';
 import { getMyTasks } from '../../features/my-tasks/api/myTasksApi';
@@ -9,14 +9,20 @@ import { NotificationPanel } from '../../features/notifications/components/Notif
 import { useNotifications } from '../../features/notifications/hooks/useNotifications';
 import { toNotif } from '../../features/notifications/utils/notifUtils';
 import { useHiddenMenus } from '../../shared/hooks/useMenuConfig';
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery';
 import { useModules } from '../../shared/hooks/useModules';
 import { usePermission } from '../../shared/hooks/usePermission';
+import { maxWidth } from '../../shared/utils/breakpoints';
 import { scopeOf } from '../../shared/utils/permissions';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser, type StoredUser } from '../../shared/utils/storage';
 import { logout } from '../../features/auth/api/authApi';
 import TwoFactorReminder from '../../shared/components/TwoFactorReminder';
 import { isTraineeAccount, isTraineePath } from '../../app/router/authHelpers';
+import { DisabledFeature } from '../components/DisabledFeature';
+import { MAIN_ID, SkipLink } from '../components/SkipLink';
+import { useAccountMenu } from '../hooks/useAccountMenu';
+import { useMobileDrawer } from '../hooks/useMobileDrawer';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import TraineeLayout from '../TraineeLayout';
 import styles from './UserLayout.module.css';
@@ -192,6 +198,18 @@ function PortalLayout({
 			return !c;
 		});
 	const [mobileNavOpen, setMobileNavOpen] = useState(false);
+	const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+	// Màn hẹp (≤1024px): sidebar là ngăn kéo. Cùng mốc với @media trong CSS.
+	const isMobile = useMediaQuery(maxWidth('lg'));
+	const drawerActive = showNav && isMobile && mobileNavOpen;
+	const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+	const drawerCloseRef = useRef<HTMLButtonElement>(null);
+	useMobileDrawer({
+		active: drawerActive,
+		onClose: closeMobileNav,
+		initialFocusRef: drawerCloseRef,
+		triggerRef: mobileTriggerRef,
+	});
 
 	// Thu hồi phiên trên server (refresh token trong cookie) rồi mới rời trang
 	const handleLogout = useCallback(async () => {
@@ -210,29 +228,21 @@ function PortalLayout({
 	const notifs = rawNotifs.map(toNotif);
 
 	// ── User menu state ──────────────────────
-	const [userMenuOpen, setUserMenuOpen] = useState(false);
-	const userMenuRef = useRef<HTMLDivElement>(null);
+	const {
+		open: userMenuOpen,
+		toggle: toggleUserMenu,
+		close: closeUserMenu,
+		wrapRef: userMenuWrapRef,
+		triggerRef: userMenuTriggerRef,
+		menuRef: userMenuListRef,
+		onMenuKeyDown: onUserMenuKeyDown,
+		onTriggerKeyDown: onUserTriggerKeyDown,
+	} = useAccountMenu();
 
-	useEffect(() => {
-		const handler = (e: MouseEvent) => {
-			if (
-				userMenuRef.current &&
-				!userMenuRef.current.contains(e.target as Node)
-			) {
-				setUserMenuOpen(false);
-			}
-		};
-		if (userMenuOpen) document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
-	}, [userMenuOpen]);
-
+	// Đóng bảng thông báo khi bấm Escape (menu tài khoản và drawer tự xử lý Esc)
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				setNotifOpen(false);
-				setUserMenuOpen(false);
-				setMobileNavOpen(false);
-			}
+			if (e.key === 'Escape') setNotifOpen(false);
 		};
 		window.addEventListener('keydown', handler);
 		return () => window.removeEventListener('keydown', handler);
@@ -241,14 +251,14 @@ function PortalLayout({
 	// ── Initials ──────────────────────────────
 	const initials = userInitials ?? getInitials(userName);
 
-	const handleNavClick = (key: string) => {
-		const path = KEY_TO_PATH[key];
-		if (path) {
-			setMobileNavOpen(false);
-			setUserMenuOpen(false);
-			navigate(path);
-		}
+	// Mục điều hướng là <Link> thật (chuột giữa mở tab mới được); handler chỉ còn
+	// tác dụng phụ: đóng ngăn kéo mobile và menu tài khoản.
+	const handleNavClick = () => {
+		setMobileNavOpen(false);
+		closeUserMenu();
 	};
+	const pathOf = (key: string) => KEY_TO_PATH[key] ?? KEY_TO_PATH.home ?? '/user';
+	const homePath = pathOf('home');
 
 	// ── Đường dẫn trên thanh trên: Trang chủ › Nhóm › Mục › Trang con ──
 	// Lấy từ cấu hình điều hướng chứ không ghép thẳng breadcrumbs của trang: các
@@ -269,18 +279,18 @@ function PortalLayout({
 	const renderNavItem = (item: NavItem) => {
 		const badge = item.key === 'myTasks' ? taskCount : item.key === 'myMentoring' ? mentor.awaiting : 0;
 		return (
-			<button
+			<Link
 				key={item.key}
-				type='button'
+				to={pathOf(item.key)}
 				className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
-				onClick={() => handleNavClick(item.key)}
+				onClick={handleNavClick}
 				title={collapsed ? item.label : undefined}
 				aria-current={activePage === item.key ? 'page' : undefined}
 			>
 				{item.icon}
 				<span className={styles.navLabel}>{item.label}</span>
 				{badge > 0 && <span className={styles.navBadge}>{badge > 99 ? '99+' : badge}</span>}
-			</button>
+			</Link>
 		);
 	};
 
@@ -288,17 +298,22 @@ function PortalLayout({
 		<div
 			className={`${styles.userWrapper} ${showNav ? styles.withSidebar : ''} ${collapsed ? styles.collapsed : ''}`}
 		>
+			<SkipLink />
+
 			{/* ══ SIDEBAR ════════════════════════════ */}
 			{showNav && (
 				<aside
+					id='user-sidebar'
 					className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ''}`}
 					aria-label='Điều hướng cổng nhân viên'
+					// Ngăn kéo đang đóng chỉ bị đẩy ra ngoài bằng transform: không cho Tab / trình đọc màn hình đi vào
+					inert={isMobile && !mobileNavOpen ? true : undefined}
 				>
 					<div className={styles.sidebarHead}>
-						<button
-							type='button'
+						<Link
+							to={homePath}
 							className={styles.brand}
-							onClick={() => handleNavClick('home')}
+							onClick={handleNavClick}
 							aria-label='Về trang chủ'
 						>
 							<img
@@ -310,11 +325,12 @@ function PortalLayout({
 								<span className={styles.brandName}>BV Hữu nghị ĐK Nghệ An</span>
 								<span className={styles.brandSub}>Cổng nhân viên</span>
 							</span>
-						</button>
+						</Link>
 						<button
+							ref={drawerCloseRef}
 							type='button'
 							className={styles.sidebarClose}
-							onClick={() => setMobileNavOpen(false)}
+							onClick={closeMobileNav}
 							aria-label='Đóng menu'
 						>
 							<XSvg />
@@ -351,29 +367,36 @@ function PortalLayout({
 			{showNav && mobileNavOpen && (
 				<div
 					className={styles.mobileBackdrop}
-					onClick={() => setMobileNavOpen(false)}
+					onClick={closeMobileNav}
 				/>
 			)}
 
-			<div className={styles.mainCol}>
+			{/* Ngăn kéo mobile đang mở: focus không được lọt ra sau lớp phủ */}
+			<div
+				className={styles.mainCol}
+				inert={drawerActive ? true : undefined}
+			>
 				{/* ══ TOP BAR ════════════════════════════ */}
 				<header className={styles.topbar}>
 					<div className={styles.topbarInner}>
 						{showNav && (
 							<button
+								ref={mobileTriggerRef}
+								type='button'
 								className={styles.mobileNavTrigger}
 								onClick={() => setMobileNavOpen(true)}
 								aria-label='Mở menu'
 								aria-expanded={mobileNavOpen}
+								aria-controls='user-sidebar'
 							>
 								<MenuSvg />
 							</button>
 						)}
 
 						{/* Logo trên thanh trên: chỉ khi không có sidebar (hoặc sidebar đang ẩn ở màn hẹp) */}
-						<button
+						<Link
+							to={homePath}
 							className={`${styles.topbarBrand} ${showNav ? styles.topbarBrandMobile : ''}`}
-							onClick={() => navigate('/user')}
 							aria-label='Về trang chủ'
 						>
 							<img
@@ -387,31 +410,29 @@ function PortalLayout({
 									<span className={styles.brandSub}>Cổng nhân viên</span>
 								</span>
 							)}
-						</button>
+						</Link>
 
 						{showNav && (
 							<nav
 								className={styles.trail}
 								aria-label='Vị trí trang'
 							>
-								<button
-									type='button'
+								<Link
+									to={homePath}
 									className={styles.trailItem}
-									onClick={() => navigate('/user')}
 								>
 									Trang chủ
-								</button>
+								</Link>
 								{trail.map((t, i) => (
 									<React.Fragment key={i}>
 										<ChevRSvg className={styles.trailSep} />
 										{t.path ? (
-											<button
-												type='button'
+											<Link
+												to={t.path}
 												className={styles.trailItem}
-												onClick={() => navigate(t.path!)}
 											>
 												{t.label}
-											</button>
+											</Link>
 										) : (
 											<span
 												className={i === trail.length - 1 ? styles.trailCurrent : styles.trailItem}
@@ -442,11 +463,14 @@ function PortalLayout({
 							{/* User chip + dropdown */}
 							<div
 								className={styles.userMenuWrap}
-								ref={userMenuRef}
+								ref={userMenuWrapRef}
 							>
 								<button
+									ref={userMenuTriggerRef}
+									type='button'
 									className={styles.userChip}
-									onClick={() => setUserMenuOpen((o) => !o)}
+									onClick={toggleUserMenu}
+									onKeyDown={onUserTriggerKeyDown}
 									aria-haspopup='menu'
 									aria-expanded={userMenuOpen}
 								>
@@ -462,8 +486,11 @@ function PortalLayout({
 
 								{userMenuOpen && (
 									<div
+										ref={userMenuListRef}
 										className={styles.userDropdown}
 										role='menu'
+										aria-label='Tài khoản'
+										onKeyDown={onUserMenuKeyDown}
 									>
 										<div className={styles.userDropdownHead}>
 											<span className={`${styles.userAvatar} ${styles.userAvatarLg}`}>{initials}</span>
@@ -473,18 +500,20 @@ function PortalLayout({
 											</span>
 										</div>
 										{accountNav.map((item) => (
-											<button
+											<Link
 												key={item.key}
+												to={pathOf(item.key)}
 												className={styles.userDropdownItem}
-												onClick={() => handleNavClick(item.key)}
+												onClick={handleNavClick}
 												role='menuitem'
 											>
 												{item.icon}
 												<span>{item.label}</span>
-											</button>
+											</Link>
 										))}
 										<div className={styles.userDropdownSep} />
 										<button
+											type='button'
 											className={`${styles.userDropdownItem} ${styles.userDropdownDanger}`}
 											onClick={handleLogout}
 											role='menuitem'
@@ -500,7 +529,11 @@ function PortalLayout({
 				</header>
 
 				{/* ══ PAGE ═══════════════════════════════ */}
-				<main className={styles.pageArea}>
+				<main
+					id={MAIN_ID}
+					tabIndex={-1}
+					className={styles.pageArea}
+				>
 					<div className={styles.pageInner}>
 						{showPageHeader && (
 							<div className={styles.pageHeader}>
@@ -519,9 +552,7 @@ function PortalLayout({
 						<TwoFactorReminder />
 						{/* Vào thẳng URL của mục đã tắt ở "Menu hiển thị" (kể cả trang con) */}
 						{hiddenMenus.has(activePage) ? (
-							<div style={{ padding: 48, textAlign: 'center', color: '#6b7280' }}>
-								Chức năng này đã được quản trị viên tắt.
-							</div>
+							<DisabledFeature homePath={homePath} />
 						) : (
 							children
 						)}

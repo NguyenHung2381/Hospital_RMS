@@ -30,6 +30,10 @@ import { usePermission } from '../../shared/hooks/usePermission';
 import { maxWidth } from '../../shared/utils/breakpoints';
 import { getInitials } from '../../shared/utils/helper';
 import { getStoredUser } from '../../shared/utils/storage';
+import { DisabledFeature } from '../components/DisabledFeature';
+import { MAIN_ID, SkipLink } from '../components/SkipLink';
+import { useAccountMenu } from '../hooks/useAccountMenu';
+import { useMobileDrawer } from '../hooks/useMobileDrawer';
 import { useRealtimeUpdate } from '../hooks/useRealtime';
 import styles from './AdminLayout.module.css';
 import {
@@ -139,6 +143,17 @@ export default function AdminLayout({
 	const effectiveCollapsed = isMobile ? false : collapsed;
 
 	const [mobileNavOpen, setMobileNavOpen] = useState(false);
+	const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
+	// Drawer mobile thật sự đang hiện: màn hẹp và đang mở
+	const drawerActive = isMobile && mobileNavOpen;
+	const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+	const drawerCloseRef = useRef<HTMLButtonElement>(null);
+	useMobileDrawer({
+		active: drawerActive,
+		onClose: closeMobileNav,
+		initialFocusRef: drawerCloseRef,
+		triggerRef: mobileTriggerRef,
+	});
 
 	const toggleSidebar = useCallback(() => {
 		setCollapsed((prev) => {
@@ -197,29 +212,20 @@ export default function AdminLayout({
 	};
 
 	// ── User menu state ──────────────────────
-	const [userMenuOpen, setUserMenuOpen] = useState(false);
-	const userMenuRef = useRef<HTMLDivElement>(null);
+	const {
+		open: userMenuOpen,
+		toggle: toggleUserMenu,
+		wrapRef: userMenuWrapRef,
+		triggerRef: userMenuTriggerRef,
+		menuRef: userMenuListRef,
+		onMenuKeyDown: onUserMenuKeyDown,
+		onTriggerKeyDown: onUserTriggerKeyDown,
+	} = useAccountMenu();
 
-	useEffect(() => {
-		const handler = (e: MouseEvent) => {
-			if (
-				userMenuRef.current &&
-				!userMenuRef.current.contains(e.target as Node)
-			) {
-				setUserMenuOpen(false);
-			}
-		};
-		if (userMenuOpen) document.addEventListener('mousedown', handler);
-		return () => document.removeEventListener('mousedown', handler);
-	}, [userMenuOpen]);
-
-	// Đóng panels khi bấm Escape
+	// Đóng bảng thông báo khi bấm Escape (menu tài khoản và drawer tự xử lý Esc)
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				setNotifOpen(false);
-				setUserMenuOpen(false);
-			}
+			if (e.key === 'Escape') setNotifOpen(false);
 		};
 		window.addEventListener('keydown', handler);
 		return () => window.removeEventListener('keydown', handler);
@@ -256,11 +262,12 @@ export default function AdminLayout({
 
 	return (
 		<div className={styles.adminWrapper}>
+			<SkipLink />
 			{/* Mobile Backdrop Overlay */}
 			{mobileNavOpen && (
 				<div
 					className={styles.mobileBackdrop}
-					onClick={() => setMobileNavOpen(false)}
+					onClick={closeMobileNav}
 				/>
 			)}
 
@@ -282,6 +289,7 @@ export default function AdminLayout({
 								/>
 							</div>
 							<button
+								type='button'
 								className={styles.collapseBtn}
 								onClick={toggleSidebar}
 								aria-label={
@@ -303,8 +311,10 @@ export default function AdminLayout({
 						</div>
 					</div>
 					<button
+						ref={drawerCloseRef}
+						type='button'
 						className={styles.mobileMenuBtn}
-						onClick={() => setMobileNavOpen(false)}
+						onClick={closeMobileNav}
 						aria-label='Đóng menu'
 					>
 						<XSvg />
@@ -333,7 +343,7 @@ export default function AdminLayout({
 									aria-current={activePage === item.key ? 'page' : undefined}
 									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
 									data-label={item.label}
-									onClick={() => setMobileNavOpen(false)}
+									onClick={closeMobileNav}
 									onMouseEnter={(e) => {
 										const r = e.currentTarget.getBoundingClientRect();
 										e.currentTarget.style.setProperty(
@@ -372,11 +382,19 @@ export default function AdminLayout({
 				>
 					<div
 						className={styles.userMenuWrap}
-						ref={userMenuRef}
+						ref={userMenuWrapRef}
 					>
 						{userMenuOpen && (
-							<div className={styles.userDropdown}>
+							<div
+								ref={userMenuListRef}
+								className={styles.userDropdown}
+								role='menu'
+								aria-label='Tài khoản'
+								onKeyDown={onUserMenuKeyDown}
+							>
 								<button
+									type='button'
+									role='menuitem'
 									className={styles.userDropdownItem}
 									onClick={() => navigate('/admin/profile')}
 								>
@@ -384,6 +402,8 @@ export default function AdminLayout({
 									<span>Cài đặt tài khoản</span>
 								</button>
 								<button
+									type='button'
+									role='menuitem'
 									className={styles.userDropdownItem}
 									onClick={handleLogout}
 								>
@@ -393,12 +413,14 @@ export default function AdminLayout({
 							</div>
 						)}
 						<button
+							ref={userMenuTriggerRef}
 							type='button'
 							className={styles.userCard}
 							title={collapsed ? userName : undefined}
 							aria-haspopup='menu'
 							aria-expanded={userMenuOpen}
-							onClick={() => setUserMenuOpen((o) => !o)}
+							onClick={toggleUserMenu}
+							onKeyDown={onUserTriggerKeyDown}
 						>
 							<div className={styles.userAvatar}>{initials}</div>
 							<div className={styles.userInfo}>
@@ -414,11 +436,17 @@ export default function AdminLayout({
 			</aside>
 
 			{/* ══ MAIN ═══════════════════════════════ */}
-			<div className={styles.mainContent}>
+			<div
+				className={styles.mainContent}
+				// Drawer mobile đang mở: focus không được lọt ra sau lớp phủ
+				inert={drawerActive ? true : undefined}
+			>
 				{/* Topbar */}
 				<header className={styles.topbar}>
 					<div className={styles.topbarLeft}>
 						<button
+							ref={mobileTriggerRef}
+							type='button'
 							className={styles.mobileNavTrigger}
 							onClick={() => setMobileNavOpen(true)}
 							aria-label='Mở menu'
@@ -436,17 +464,35 @@ export default function AdminLayout({
 							<span className={styles.mobileBrandTitle}>Hospital RMS</span>
 						</div>
 						{/* Breadcrumb */}
-						<div className={styles.breadcrumb}>
-							<span className={styles.breadcrumbItem}>Hospital RMS</span>
-							<span className={styles.breadcrumbSep}>/</span>
-							{breadcrumbs?.map((bc, i) => (
-								<React.Fragment key={i}>
-									<span className={styles.breadcrumbItem}>{bc.label}</span>
-									<span className={styles.breadcrumbSep}>/</span>
-								</React.Fragment>
-							))}
-							<span className={styles.breadcrumbCurrent}>{currentLabel}</span>
-						</div>
+						<nav
+							className={styles.breadcrumb}
+							aria-label='Vị trí trang'
+						>
+							<ol className={styles.breadcrumbList}>
+								{['Hospital RMS', ...(breadcrumbs?.map((bc) => bc.label) ?? [])].map(
+									(label, i) => (
+										<li
+											key={i}
+											className={styles.breadcrumbItem}
+										>
+											{label}
+											<span
+												className={styles.breadcrumbSep}
+												aria-hidden='true'
+											>
+												/
+											</span>
+										</li>
+									),
+								)}
+								<li
+									className={styles.breadcrumbCurrent}
+									aria-current='page'
+								>
+									{currentLabel}
+								</li>
+							</ol>
+						</nav>
 					</div>
 
 					<div className={styles.topbarRight}>
@@ -474,7 +520,11 @@ export default function AdminLayout({
 				</header>
 
 				{/* Page content */}
-				<main className={styles.pageArea}>
+				<main
+					id={MAIN_ID}
+					tabIndex={-1}
+					className={styles.pageArea}
+				>
 					{/* Mục menu gộp nhiều trang: thanh tab chuyển giữa các trang cùng mảng */}
 					{sectionTabs && sectionTabs.length > 1 && (
 						<nav
@@ -511,9 +561,7 @@ export default function AdminLayout({
 
 					<TwoFactorReminder />
 					{pageOff ? (
-						<div style={{ padding: 48, textAlign: 'center', color: '#6b7280' }}>
-							Chức năng này đã được quản trị viên tắt.
-						</div>
+						<DisabledFeature homePath='/admin' />
 					) : (
 						children
 					)}

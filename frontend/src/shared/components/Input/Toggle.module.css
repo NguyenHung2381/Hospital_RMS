@@ -1,14 +1,30 @@
+/* Công tắc 36×20 (nhìn thấy). Khi tắt: nền nhạt + viền gray-400 (≥3:1 trên nền trắng)
+ * và núm gray-400 — trạng thái đọc được cả khi không phân biệt màu. Viền vẽ bằng
+ * box-shadow inset để không đổi kích thước hay vị trí núm. */
 .track {
 	width: 36px;
 	height: 20px;
 	padding: 0;
 	border-radius: var(--radius-full);
-	background: var(--color-gray-200);
+	background: var(--color-gray-100);
+	box-shadow: inset 0 0 0 1.5px var(--color-gray-400);
 	border: none;
 	cursor: pointer;
 	position: relative;
-	transition: background var(--transition-fast);
+	transition:
+		background var(--transition-fast),
+		box-shadow var(--transition-fast);
 	flex-shrink: 0;
+}
+/* Vùng bấm 44×44 quanh công tắc (48×48 trên màn cảm ứng), không đổi kích thước nhìn thấy */
+.track::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 44px;
+	height: 44px;
+	transform: translate(-50%, -50%);
 }
 .track:disabled {
 	opacity: 0.5;
@@ -16,6 +32,7 @@
 }
 .on {
 	background: var(--color-primary);
+	box-shadow: none;
 }
 .thumb {
 	position: absolute;
@@ -24,9 +41,19 @@
 	width: 16px;
 	height: 16px;
 	border-radius: 50%;
-	background: var(--color-white);
-	transition: transform var(--transition-fast);
+	background: var(--color-gray-400);
+	transition:
+		transform var(--transition-fast),
+		background var(--transition-fast);
 }
 .on .thumb {
+	background: var(--color-white);
 	transform: translateX(16px);
+}
+
+@media (pointer: coarse) {
+	.track::after {
+		width: 48px;
+		height: 48px;
+	}
 }

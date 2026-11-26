@@ -87,6 +87,17 @@
 	width: 14px;
 	height: 14px;
 }
+/* Màn cảm ứng: vùng bấm 48×48 quanh nút đóng 32px */
+@media (pointer: coarse) {
+	.close {
+		position: relative;
+	}
+	.close::after {
+		content: '';
+		position: absolute;
+		inset: -8px;
+	}
+}
 
 .body {
 	flex: 1;

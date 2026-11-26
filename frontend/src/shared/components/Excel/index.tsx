@@ -68,12 +68,12 @@ export function ExcelActions<T>({ fileName, itemLabel, columns, getRows, importR
 	return (
 		<div className={styles.actions}>
 			{importRow && (
-				<button className={styles.btn} onClick={() => setShowImport(true)}>
+				<button type='button' className={styles.btn} onClick={() => setShowImport(true)}>
 					<UploadSvg /> Nhập Excel
 				</button>
 			)}
 			{getRows && exportCols.length > 0 && (
-				<button className={styles.btn} onClick={doExport} disabled={exporting}>
+				<button type='button' className={styles.btn} onClick={doExport} disabled={exporting}>
 					<DownloadSvg /> {exporting ? 'Đang xuất…' : 'Xuất Excel'}
 				</button>
 			)}
@@ -220,11 +220,12 @@ function ImportModal<T>({
 			bodyClassName={styles.body}
 			footer={
 				<>
-					<button className={styles.btn} onClick={onClose} disabled={loading}>
+					<button type='button' className={styles.btn} onClick={onClose} disabled={loading}>
 						{result ? 'Đóng' : 'Hủy'}
 					</button>
 					{!result && (
 						<button
+							type='button'
 							className={styles.btnPrimary}
 							onClick={commit}
 							disabled={loading || !valid.length}
@@ -273,7 +274,7 @@ function ImportModal<T>({
 							. Cột in đậm là bắt buộc. {hint}
 						</span>
 					</div>
-					<button className={styles.btnSm} onClick={downloadTemplate} disabled={loading}>
+					<button type='button' className={styles.btnSm} onClick={downloadTemplate} disabled={loading}>
 						<FileTextSvg /> Tải file mẫu
 					</button>
 					<FormField label='File Excel (.xlsx)'>

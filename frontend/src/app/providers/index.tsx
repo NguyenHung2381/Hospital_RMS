@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DialogHost } from '../../shared/components/Dialog/DialogHost';
 import { GlobalFeedback } from '../../shared/components/GlobalFeedback';
 import { AntdProvider } from './AntdProvider';
 import { PermissionSync } from './PermissionSync';
@@ -10,6 +11,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
 			<AntdProvider>
 				<PermissionSync>{children}</PermissionSync>
 				<GlobalFeedback />
+				{/* Hộp thoại gọi bằng confirmDialog() / alertDialog() / promptDialog() */}
+				<DialogHost />
 			</AntdProvider>
 		</QueryProvider>
 	);
