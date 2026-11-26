@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CheckSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -30,7 +30,6 @@ const NO_MENTOR = '-';
  * bấm Đạt / Không đạt từng dòng (hoặc "Tất cả Đạt") → Lưu một lần.
  */
 export default function PracticeResults() {
-	const navigate = useNavigate();
 	const canEdit = usePermission().has('courses:update');
 	const [params, setParams] = useSearchParams();
 	const mentor = params.get('mentor') ?? '';
@@ -237,7 +236,6 @@ export default function PracticeResults() {
 											canEdit={canEdit && !saving}
 											onToggle={(m) => toggle(r.id, m)}
 											onComment={(c) => setDraft(r.id, { comment: c })}
-											onOpen={() => navigate(`/admin/practice-records/${r.enrollment_id}?tab=rotations`)}
 										/>
 									))
 								)}
@@ -258,7 +256,6 @@ function ResultRow({
 	canEdit,
 	onToggle,
 	onComment,
-	onOpen,
 }: {
 	idx: number;
 	row: PracticeResultRow;
@@ -266,16 +263,15 @@ function ResultRow({
 	canEdit: boolean;
 	onToggle: (m: Mark) => void;
 	onComment: (c: string) => void;
-	onOpen: () => void;
 }) {
 	const mark = draft?.result;
 	return (
 		<tr className={`${styles.tr} ${mark ? local.rowMarked : ''}`}>
 			<td className={`${styles.td} ${styles.tdIdx}`}>{idx}</td>
 			<td className={styles.td}>
-				<span className={styles.itemName} onClick={onOpen}>
+				<Link className={styles.itemName} to={`/admin/practice-records/${r.enrollment_id}?tab=rotations`}>
 					{r.trainee_name}
-				</span>
+				</Link>
 				<div className={styles.descText}>{[r.practice_code, r.program_code || r.program_name].filter(Boolean).join(' · ')}</div>
 			</td>
 			<td className={styles.td}>

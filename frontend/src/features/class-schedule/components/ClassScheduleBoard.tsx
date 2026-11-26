@@ -65,14 +65,16 @@ export function ClassScheduleBoard({
 			<div className={styles.page}>
 				<div className={styles.toolbar}>
 					<div className={styles.viewSwitcher}>
-						<button
+						<button type='button'
 							className={`${styles.viewBtn}${viewMode === 'calendar' ? ` ${styles.viewBtnActive}` : ''}`}
+							aria-pressed={viewMode === 'calendar'}
 							onClick={() => setViewMode('calendar')}
 						>
 							🗓 Lịch
 						</button>
-						<button
+						<button type='button'
 							className={`${styles.viewBtn}${viewMode === 'list' ? ` ${styles.viewBtnActive}` : ''}`}
+							aria-pressed={viewMode === 'list'}
 							onClick={() => setViewMode('list')}
 						>
 							📋 Danh sách buổi học
@@ -86,6 +88,7 @@ export function ClassScheduleBoard({
 						currentYear={currentYear}
 					/>
 					<select
+						aria-label='Lọc theo khóa học'
 						className={styles.roundFilter}
 						value={filterCourseId}
 						onChange={(e) => setFilterCourseId(e.target.value)}
@@ -100,7 +103,7 @@ export function ClassScheduleBoard({
 						<div className={styles.actionGroup}>
 							<div className={styles.calViewGroup} role='tablist' aria-label='Chế độ xem lịch'>
 								{CAL_MODES.map(({ key, label }) => (
-									<button
+									<button type='button'
 										key={key}
 										role='tab'
 										aria-selected={calMode === key}
@@ -112,7 +115,7 @@ export function ClassScheduleBoard({
 								))}
 							</div>
 							{!calShowsToday && (
-								<button className={styles.todayBtn} onClick={calGoToday} title={todayTitle}>
+								<button type='button' className={styles.todayBtn} onClick={calGoToday} title={todayTitle}>
 									<span className={styles.todayDot} />
 									Hôm nay
 								</button>

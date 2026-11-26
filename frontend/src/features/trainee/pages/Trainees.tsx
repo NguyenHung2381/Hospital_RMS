@@ -1,7 +1,7 @@
 import { avatarColor, getInitials } from '@/shared/utils';
 import { SearchInput, RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpenSvg, FileTextSvg, FingerprintSvg, KeySvg, PlusSvg, TrashSvg, UploadSvg, UserPlusSvg } from '@/assets/icons';
 import { Badge, TableEmpty } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
@@ -87,19 +87,19 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 			{/* Thêm mới ở danh bạ chung — tab theo loại chỉ hiện người đã ghi danh nên thêm ở đó sẽ không thấy */}
 			{!typeId && (
 				<>
-					<button
+					<button type='button'
 						className={styles.btnAddHeader}
 						onClick={() => setShowImport(true)}
 					>
 						<UploadSvg /> Nhập từ Excel
 					</button>
-					<button
+					<button type='button'
 						className={styles.btnAddHeader}
 						onClick={() => d.setModal('add')}
 					>
 						<PlusSvg /> Thêm học viên
 					</button>
-					<button
+					<button type='button'
 						className={styles.btnAddHeader}
 						onClick={() => setShowQuickAdd(true)}
 						title='Nhập nhanh thông tin cơ bản của học viên ngoài bệnh viện'
@@ -262,10 +262,9 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 										<td className={`${styles.td} ${styles.tdIdx}`}>{rowNum}</td>
 										<td className={styles.td}>
 											<div
-												className={styles.personCell}
+												className={`${styles.personCell} ${styles.personCellLink}`}
 												style={{ cursor: 'pointer' }}
 												title='Xem chi tiết học viên'
-												onClick={() => openDetail(t)}
 											>
 												<div
 													className={styles.personAvatar}
@@ -278,7 +277,12 @@ export default function Trainees({ typeId = '' }: { typeId?: string }) {
 														className={styles.personName}
 														style={{ display: 'flex', alignItems: 'center', gap: 6 }}
 													>
-														{t.full_name}
+														<Link
+															to={`/admin/trainees/${t.id}?tab=info`}
+															className={styles.rowLink}
+														>
+															{t.full_name}
+														</Link>
 														{t.account_granted && (
 															<Badge
 																tone='green'

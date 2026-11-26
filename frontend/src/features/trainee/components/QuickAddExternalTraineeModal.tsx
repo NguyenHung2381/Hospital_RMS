@@ -244,6 +244,8 @@ export function QuickAddExternalTraineeModal({
 				<button
 					type='submit'
 					hidden
+					tabIndex={-1}
+					aria-label='Thêm học viên'
 				/>
 			</form>
 		</Modal>

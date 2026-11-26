@@ -1,5 +1,5 @@
 import { Modal, ModalActions } from '@/shared/components';
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { UserCheckSvg } from '@/assets/icons';
 import { formatDateOr } from '@/shared/utils';
 import { EMPTY_FORM, type Lecturer, type LecturerFormData } from '../types/lecturer.type';
@@ -35,6 +35,9 @@ export function LecturerFormModal({
 	const cfg = useFormConfig('lecturer', 'admin');
 	const [custom, setCustom] = useState<CustomValues>(lecturer?.custom ?? {});
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	// CfgField nối nhãn theo htmlFor nên mỗi ô cần id tương ứng
+	const uid = useId();
+	const fid = (name: string) => `${uid}-${name}`;
 
 	const set =
 		(k: keyof LecturerFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,28 +75,35 @@ export function LecturerFormModal({
 				<CfgField
 					cfg={cfg}
 					name='full_name'
+					htmlFor={fid('full_name')}
 					label='Họ và tên'
 					required
 					error={errors.full_name}
 					style={{ gridColumn: '1 / -1' }}
 				>
 					<input
+						id={fid('full_name')}
 						className={`${styles.formInput} ${errors.full_name ? styles.inputError : ''}`}
+						aria-invalid={errors.full_name ? true : undefined}
 						value={form.full_name}
 						onChange={set('full_name')}
 						placeholder='VD: BS. Nguyễn Văn A'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='specialty' error={errors.specialty} label='Chuyên môn'>
+				<CfgField cfg={cfg} name='specialty'
+					htmlFor={fid('specialty')} error={errors.specialty} label='Chuyên môn'>
 					<input
+						id={fid('specialty')}
 						className={styles.formInput}
 						value={form.specialty}
 						onChange={set('specialty')}
 						placeholder='VD: Hồi sức cấp cứu'
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='phone' error={errors.phone} label='Điện thoại'>
+				<CfgField cfg={cfg} name='phone'
+					htmlFor={fid('phone')} error={errors.phone} label='Điện thoại'>
 					<input
+						id={fid('phone')}
 						className={styles.formInput}
 						value={form.phone}
 						onChange={set('phone')}
@@ -103,11 +113,14 @@ export function LecturerFormModal({
 				<CfgField
 					cfg={cfg}
 					name='email'
+					htmlFor={fid('email')}
 					label='Email'
 					error={errors.email}
 				>
 					<input
+						id={fid('email')}
 						className={`${styles.formInput} ${errors.email ? styles.inputError : ''}`}
+						aria-invalid={errors.email ? true : undefined}
 						value={form.email}
 						onChange={set('email')}
 						placeholder='email@benhvien.vn'

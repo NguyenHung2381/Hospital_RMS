@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { KeySvg } from '@/assets/icons';
+import { confirmDialog } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
 import {
 	grantTraineeAccounts,
@@ -54,9 +55,13 @@ export function TraineeAccountSection({
 			}
 		}, 'Cấp tài khoản thất bại');
 
-	const reset = () => {
-		if (!window.confirm(`Đặt lại mật khẩu tài khoản ${trainee.account_username} bằng mật khẩu tạm mới? Học viên sẽ bị đăng xuất khỏi mọi phiên.`))
-			return;
+	const reset = async () => {
+		const ok = await confirmDialog({
+			title: 'Đặt lại mật khẩu?',
+			message: `Đặt lại mật khẩu tài khoản ${trainee.account_username} bằng mật khẩu tạm mới? Học viên sẽ bị đăng xuất khỏi mọi phiên.`,
+			confirmLabel: 'Đặt lại mật khẩu',
+		});
+		if (!ok) return;
 		void run(async () => {
 			const r = await resetTraineeAccountPassword(trainee.id);
 			if (r?.temporary_password && trainee.user_id && trainee.account_username) {
@@ -74,8 +79,16 @@ export function TraineeAccountSection({
 		}, 'Đặt lại mật khẩu thất bại');
 	};
 
-	const toggle = () => {
-		if (active && !window.confirm(`Khóa tài khoản ${trainee.account_username}? Học viên sẽ không đăng nhập được.`))
+	const toggle = async () => {
+		if (
+			active &&
+			!(await confirmDialog({
+				title: 'Khóa tài khoản?',
+				message: `Khóa tài khoản ${trainee.account_username}? Học viên sẽ không đăng nhập được.`,
+				confirmLabel: 'Khóa tài khoản',
+				tone: 'danger',
+			}))
+		)
 			return;
 		void run(async () => {
 			await setTraineeAccountActive(trainee.id, !active);
@@ -115,7 +128,7 @@ export function TraineeAccountSection({
 			{canManage && (
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
 					{!granted ? (
-						<button
+						<button type='button'
 							className={styles.btnGhost}
 							onClick={() => void grant()}
 							disabled={busy}
@@ -124,16 +137,16 @@ export function TraineeAccountSection({
 						</button>
 					) : (
 						<>
-							<button
+							<button type='button'
 								className={styles.btnGhost}
-								onClick={reset}
+								onClick={() => void reset()}
 								disabled={busy}
 							>
 								<KeySvg /> Đặt lại mật khẩu
 							</button>
-							<button
+							<button type='button'
 								className={styles.btnGhost}
-								onClick={toggle}
+								onClick={() => void toggle()}
 								disabled={busy}
 							>
 								{active ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}

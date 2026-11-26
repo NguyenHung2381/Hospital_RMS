@@ -100,6 +100,7 @@ export function MentorPicker({
 						className={styles.subSelect}
 						style={{ width: '100%', boxSizing: 'border-box' }}
 						placeholder='Gõ tên, MNV hoặc số CCHN…'
+						aria-label='Tìm người hướng dẫn theo tên, MNV hoặc số CCHN'
 						value={query}
 						disabled={disabled}
 						onChange={(e) => {

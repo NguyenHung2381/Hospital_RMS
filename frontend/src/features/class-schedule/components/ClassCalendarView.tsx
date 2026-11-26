@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { CalMode } from '../../schedule/types/calendarView.type';
 import { MONTHS_LONG } from '../../schedule/types/schedule.type';
 import {
@@ -10,6 +10,8 @@ import {
 } from '../../schedule/utils/calendarViewHelpers';
 import { MonthGrid, WeekGrid, type CalItem } from '../../schedule/components/CalendarGrid';
 import styles from '../../schedule/components/CalendarView.module.css';
+import a11y from './ClassSchedule.module.css';
+import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
 import type { CalendarSession } from '../types/classSchedule.type';
 import {
@@ -104,10 +106,19 @@ export function ClassCalendarView({
 	const nextLabel = isWeek ? 'Tuần sau' : 'Tháng sau';
 
 	const renderYearCard = ({ month, weeks, sessionsByDay, courseSummary }: ClassMonthData) => (
-		<div key={month} className={styles.card} onClick={() => onSelectMonth(month)}>
+		<div key={month} className={`${styles.card} ${a11y.rel}`}>
 			<div className={styles.cardHead}>
 				<span className={styles.cardTitle}>{MONTHS_LONG[month]}</span>
-				<span className={styles.zoomHint} title='Nhấp để phóng to tháng này'>🔍 Xem tháng</span>
+				{/* Nút thật cho bàn phím; vùng bấm phủ cả thẻ nên chuột bấm đâu trong thẻ cũng phóng to tháng */}
+				<button
+					type='button'
+					className={`${a11y.plainBtn} ${a11y.stretch}`}
+					aria-label={`Xem ${MONTHS_LONG[month]}`}
+					title='Nhấp để phóng to tháng này'
+					onClick={() => onSelectMonth(month)}
+				>
+					<span className={styles.zoomHint}>🔍 Xem tháng</span>
+				</button>
 			</div>
 
 			<div className={styles.calGrid}>
@@ -133,15 +144,13 @@ export function ClassCalendarView({
 										{evs.length > 0 && (
 											<div className={styles.dotRow}>
 												{evs.slice(0, 3).map((ev) => (
-													<button
+													<button type='button'
 														key={ev.session.id}
-														className={styles.dot}
+														className={`${styles.dot} ${a11y.above}`}
 														style={{ background: ev.color }}
 														title={`${sessionTime(ev.session)} ${sessionTitle(ev.session)} (${ev.session.course_name})`}
-														onClick={(e) => {
-															e.stopPropagation();
-															setDetail({ kind: 'session', session: ev.session });
-														}}
+														aria-label={`Xem buổi học ${sessionTitle(ev.session)}, ${ev.session.course_name}`}
+														onClick={() => setDetail({ kind: 'session', session: ev.session })}
 													/>
 												))}
 												{evs.length > 3 && <span className={styles.dotMore}>+</span>}
@@ -158,14 +167,11 @@ export function ClassCalendarView({
 			{courseSummary.length > 0 && (
 				<div className={styles.dlList}>
 					{courseSummary.map(({ course, count, color }) => (
-						<button
+						<button type='button'
 							key={course.id}
-							className={styles.dlItem}
+							className={`${styles.dlItem} ${a11y.above}`}
 							title={`${course.name}: ${count} buổi học trong tháng`}
-							onClick={(e) => {
-								e.stopPropagation();
-								onOpenCourse(course.id);
-							}}
+							onClick={() => onOpenCourse(course.id)}
 						>
 							<span className={styles.dlDay}>{count}</span>
 							<span className={styles.dlDot} style={{ background: color }} />
@@ -182,9 +188,9 @@ export function ClassCalendarView({
 		<div ref={containerRef} className={styles.wrapper} data-view={isSingle ? 1 : 12} data-mode={mode}>
 			{isSingle && (
 				<div className={styles.navBar}>
-					<button className={styles.navBtn} onClick={onPrev} disabled={!canPrev} aria-label={prevLabel} title={prevLabel}>‹</button>
+					<button type='button' className={styles.navBtn} onClick={onPrev} disabled={!canPrev} aria-label={prevLabel} title={prevLabel}>‹</button>
 					<span className={styles.navLabel}>{isWeek && <span className={styles.navKicker}>Tuần</span>}{navLabel}</span>
-					<button className={styles.navBtn} onClick={onNext} disabled={!canNext} aria-label={nextLabel} title={nextLabel}>›</button>
+					<button type='button' className={styles.navBtn} onClick={onNext} disabled={!canNext} aria-label={nextLabel} title={nextLabel}>›</button>
 				</div>
 			)}
 
@@ -232,19 +238,32 @@ function DetailModal({
 		['📍 Phòng học:', session.room || '—'],
 	];
 
+	// Hộp chi tiết tự dựng: gắn ngữ nghĩa hộp thoại + bẫy focus, Esc để đóng
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const titleId = useId();
+	useFocusTrap(dialogRef, { active: true, onEscape: onClose });
+
 	return (
 		<div className={styles.popoverOverlay} onClick={onClose}>
-			<div className={styles.detailCard} onClick={(e) => e.stopPropagation()}>
+			<div
+				ref={dialogRef}
+				className={styles.detailCard}
+				role='dialog'
+				aria-modal='true'
+				aria-labelledby={titleId}
+				tabIndex={-1}
+				onClick={(e) => e.stopPropagation()}
+			>
 				<div className={styles.detailHead} style={{ borderLeftColor: color }}>
 					<div>
 						<span className={styles.detailBadge} style={{ background: `${color}20`, color }}>
 							Buổi học
 						</span>
-						<h3 className={styles.detailTitle}>
+						<h3 id={titleId} className={styles.detailTitle}>
 							{sessionTitle(session)}
 						</h3>
 					</div>
-					<button className={styles.popoverClose} onClick={onClose}>✕</button>
+					<button type='button' className={styles.popoverClose} onClick={onClose} aria-label='Đóng chi tiết buổi học'>✕</button>
 				</div>
 
 				<div className={styles.detailBody}>
@@ -257,7 +276,7 @@ function DetailModal({
 				</div>
 
 				<div className={styles.detailFoot}>
-					<button className={styles.detailEditBtn} onClick={() => onOpenCourse(courseId)}>
+					<button type='button' className={styles.detailEditBtn} onClick={() => onOpenCourse(courseId)}>
 						📋 Mở lịch học & điểm danh của khóa
 					</button>
 				</div>

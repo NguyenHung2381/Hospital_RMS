@@ -313,3 +313,17 @@
 		transform: translateY(0) scale(1);
 	}
 }
+
+/* Liên kết thật ở tên học viên (bàn phím / trình đọc màn hình); vùng bấm phủ cả khối người để chuột bấm đâu cũng mở */
+.personCellLink {
+	position: relative;
+}
+.rowLink {
+	color: inherit;
+	text-decoration: none;
+}
+.rowLink::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+}

@@ -1,5 +1,5 @@
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { DownloadSvg, FileSvg, LinkSvg, TrashSvg, UploadSvg } from '@/assets/icons';
 import { Badge, FileDropzone } from '@/shared/components';
 import type { DocumentSource } from '../api/courseApi';
@@ -26,6 +26,7 @@ export function CourseDocumentsTab({
 }) {
 	// Tài liệu theo Cấu hình hệ thống + video/audio bài giảng (allowMedia ở backend)
 	const uploadPolicy = useUploadPolicy({ allowMedia: true });
+	const titleId = useId();
 	const [title, setTitle] = useState('');
 	const [isPublic, setIsPublic] = useState(true);
 	const [sourceType, setSourceType] = useState<SourceType>('file');
@@ -71,6 +72,7 @@ export function CourseDocumentsTab({
 							<button
 								type='button'
 								className={`${styles.segBtn} ${sourceType === 'file' ? styles.segBtnActive : ''}`}
+								aria-pressed={sourceType === 'file'}
 								onClick={() => setSourceType('file')}
 							>
 								<UploadSvg /> Tải file
@@ -78,6 +80,7 @@ export function CourseDocumentsTab({
 							<button
 								type='button'
 								className={`${styles.segBtn} ${sourceType === 'link' ? styles.segBtnActive : ''}`}
+								aria-pressed={sourceType === 'link'}
 								onClick={() => setSourceType('link')}
 							>
 								<LinkSvg /> Dán link
@@ -97,6 +100,7 @@ export function CourseDocumentsTab({
 					) : (
 						<input
 							className={styles.input}
+							aria-label='Đường dẫn tài liệu'
 							placeholder='https://...'
 							value={externalUrl}
 							onChange={(e) => {
@@ -108,8 +112,9 @@ export function CourseDocumentsTab({
 				</div>
 
 				<div className={styles.field}>
-					<span className={styles.label}>Tiêu đề</span>
+					<label className={styles.label} htmlFor={titleId}>Tiêu đề</label>
 					<input
+						id={titleId}
 						className={styles.input}
 						placeholder={sourceType === 'file' ? 'Để trống sẽ dùng tên file' : 'VD: Bài giảng Hồi sức cơ bản'}
 						value={title}
@@ -176,9 +181,10 @@ export function CourseDocumentsTab({
 									</span>
 								</div>
 							</div>
-							<button
+							<button type='button'
 								className={styles.iconBtn}
 								title='Xóa'
+								aria-label={`Xóa tài liệu ${doc.title}`}
 								disabled={busy}
 								onClick={() => onRemove(doc.id)}
 							>

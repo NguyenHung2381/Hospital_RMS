@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	AlertSvg,
@@ -14,7 +14,7 @@ import {
 	UploadSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { Button, InlineLoading, Modal, QuestionImageView, QuestionText } from '../../../shared/components';
+import { Button, confirmDialog, InlineLoading, Modal, QuestionImageView, QuestionText } from '../../../shared/components';
 import { MultiSelect } from '../../../shared/components/Input/MultiSelect';
 import { notify } from '../../../shared/utils/feedback';
 import { getAssignments, getCourse, getProgramLinks } from '../../course/api/courseApi';
@@ -316,18 +316,36 @@ export default function ExamBuilder() {
 		});
 
 	// Đổi kho / lớp ⇒ câu đã chọn thuộc ngân hàng khác, phải bỏ
-	const changeScope = (patch: Partial<Form>) => {
-		if (form.questions.length && !confirm('Đổi loại đề / lớp sẽ bỏ các câu đã chọn trong đề. Tiếp tục?')) return;
+	const changeScope = async (patch: Partial<Form>) => {
+		if (
+			form.questions.length &&
+			!(await confirmDialog({
+				title: 'Đổi loại đề / lớp?',
+				message: 'Đổi loại đề / lớp sẽ bỏ các câu đã chọn trong đề. Tiếp tục?',
+				confirmLabel: 'Tiếp tục',
+				tone: 'danger',
+			}))
+		)
+			return;
 		update({ ...patch, questions: [] });
 	};
 	const changePurpose = (p: QuestionPool) =>
 		// Đầu vào: mặc định 1 đề gồm cả trắc nghiệm + tự luận, chỉ phần lý thuyết
 		changeScope(p === 'entrance' ? { purpose: p, kind: 'mixed', examPart: 'theory' } : { purpose: p });
-	const changeKind = (kind: PaperKind) => {
+	const changeKind = async (kind: PaperKind) => {
 		const t = kind === 'mixed' ? null : PAPER_QUESTION_TYPE[kind];
 		const keep = t ? form.questions.filter((q) => q.question_type === t) : form.questions;
 		const dropped = form.questions.length - keep.length;
-		if (dropped && !confirm(`Đổi dạng đề sẽ bỏ ${dropped} câu khác loại khỏi đề. Tiếp tục?`)) return;
+		if (
+			dropped &&
+			!(await confirmDialog({
+				title: 'Đổi dạng đề?',
+				message: `Đổi dạng đề sẽ bỏ ${dropped} câu khác loại khỏi đề. Tiếp tục?`,
+				confirmLabel: 'Tiếp tục',
+				tone: 'danger',
+			}))
+		)
+			return;
 		update({ kind, questions: keep });
 	};
 
@@ -394,7 +412,16 @@ export default function ExamBuilder() {
 	};
 
 	const regenerate = async () => {
-		if (!paper || !confirm('Bốc lại toàn bộ câu hỏi của đề từ ngân hàng?')) return;
+		if (
+			!paper ||
+			!(await confirmDialog({
+				title: 'Bốc lại câu hỏi?',
+				message: 'Bốc lại toàn bộ câu hỏi của đề từ ngân hàng?',
+				confirmLabel: 'Bốc lại',
+				tone: 'danger',
+			}))
+		)
+			return;
 		try {
 			setPaper(await examApi.updatePaper(paper.id, { title: paper.title, regenerate: true }));
 			notify.success('Đã bốc lại câu hỏi');
@@ -571,6 +598,7 @@ export default function ExamBuilder() {
 										<div className={styles.staticValue}>Khóa chưa gắn chương trình</div>
 									) : (
 										<select
+											aria-label='Lớp / chương trình'
 											className={styles.input}
 											value={form.programId}
 											onChange={(e) => changeScope({ programId: e.target.value })}
@@ -730,7 +758,15 @@ export default function ExamBuilder() {
 									<Button
 										variant='ghost'
 										icon={<TrashSvg />}
-										onClick={() => confirm('Bỏ toàn bộ câu hỏi khỏi đề?') && update({ questions: [] })}
+										onClick={async () => {
+											const ok = await confirmDialog({
+												title: 'Bỏ hết câu hỏi?',
+												message: 'Bỏ toàn bộ câu hỏi khỏi đề?',
+												confirmLabel: 'Bỏ hết',
+												tone: 'danger',
+											});
+											if (ok) update({ questions: [] });
+										}}
 									>
 										Bỏ hết
 									</Button>
@@ -987,6 +1023,7 @@ export default function ExamBuilder() {
 								hint='Học viên chỉ thấy đề khi “Đang mở”.'
 							>
 								<select
+									aria-label='Trạng thái đề'
 									className={styles.input}
 									value={form.status}
 									onChange={(e) => update({ status: e.target.value as PaperStatus })}
@@ -1003,6 +1040,7 @@ export default function ExamBuilder() {
 								>
 									<div className={styles.withUnit}>
 										<select
+											aria-label='Cách chia đề'
 											className={styles.input}
 											value={form.codeMode}
 											onChange={(e) => update({ codeMode: e.target.value as CodeMode })}
@@ -1036,6 +1074,7 @@ export default function ExamBuilder() {
 								hint='Để trống = giảng viên được phân công bài học.'
 							>
 								<MultiSelect
+									aria-label='Người chấm tự luận'
 									options={lecturers}
 									selected={new Set(form.graders)}
 									onChange={(s) => update({ graders: [...s] })}
@@ -1168,12 +1207,28 @@ export default function ExamBuilder() {
 }
 
 // ─── Thành phần nhỏ ──────────────────────────────────────────────────────────
+/** Nhãn + ô nhập: nối nhãn / ghi chú vào ô khi con là đúng một select / input / textarea hoặc Segmented. */
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+	const uid = useId();
+	const labelId = `${uid}-label`;
+	const hintId = `${uid}-hint`;
+	let content = children;
+	if (isValidElement(children)) {
+		const el = children as ReactElement<Record<string, unknown>>;
+		const nameable =
+			typeof el.type === 'string' ? ['select', 'input', 'textarea'].includes(el.type) : el.type === Segmented;
+		if (nameable && !el.props['aria-label'] && !el.props['aria-labelledby']) {
+			content = cloneElement(el, {
+				'aria-labelledby': labelId,
+				...(hint ? { 'aria-describedby': hintId } : {}),
+			});
+		}
+	}
 	return (
 		<div className={styles.field}>
-			<div className={styles.label}>{label}</div>
-			{children}
-			{hint && <div className={styles.hint}>{hint}</div>}
+			<div id={labelId} className={styles.label}>{label}</div>
+			{content}
+			{hint && <div id={hintId} className={styles.hint}>{hint}</div>}
 		</div>
 	);
 }
@@ -1182,15 +1237,21 @@ function Segmented<T extends string>({
 	value,
 	options,
 	onChange,
+	'aria-labelledby': labelledBy,
+	'aria-describedby': describedBy,
 }: {
 	value: T;
 	options: { value: T; label: string }[];
 	onChange: (v: T) => void;
+	'aria-labelledby'?: string;
+	'aria-describedby'?: string;
 }) {
 	return (
 		<div
 			className={styles.segmented}
 			role='radiogroup'
+			aria-labelledby={labelledBy}
+			aria-describedby={describedBy}
 		>
 			{options.map((o) => (
 				<button

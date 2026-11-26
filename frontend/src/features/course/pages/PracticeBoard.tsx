@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevLSvg, ChevRSvg, DeptSvg, UserCheckSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
@@ -82,30 +82,28 @@ export default function PracticeBoard() {
 
 	const openEnrollment = (r: PracticeBoardRow) => navigate(`/admin/practice-records/${r.enrollment_id}?tab=rotations`);
 
-	const openCourse = (courseId: string) => navigate(`/admin/courses/${courseId}?tab=enrollments`);
-
 	const traineeCell = (r: PracticeBoardRow) => (
 		<>
-			<span
+			<Link
 				className={styles.itemName}
 				title='Mở hồ sơ thực hành'
-				onClick={() => openEnrollment(r)}
+				to={`/admin/practice-records/${r.enrollment_id}?tab=rotations`}
 			>
 				{r.trainee_name}
-			</span>
+			</Link>
 			<div className={styles.descText}>
 				{[r.practice_code, r.program_code || r.program_name].filter(Boolean).join(' · ') || '—'}
 			</div>
 		</>
 	);
 	const courseCell = (r: PracticeBoardRow) => (
-		<span
+		<Link
 			className={styles.itemName}
 			title='Mở khóa học'
-			onClick={() => openCourse(r.course_id)}
+			to={`/admin/courses/${r.course_id}?tab=enrollments`}
 		>
 			{r.course_name}
-		</span>
+		</Link>
 	);
 
 	const isToday = date === todayKey();
@@ -120,26 +118,29 @@ export default function PracticeBoard() {
 		>
 			<div className={local.toolbar}>
 				<div className={local.dateNav}>
-					<button
+					<button type='button'
 						className={local.navBtn}
 						title='Ngày trước'
+						aria-label='Ngày trước'
 						onClick={() => setDate((d) => shiftDay(d, -1))}
 					>
 						<ChevLSvg />
 					</button>
 					<DatePicker
+						aria-label='Chọn ngày xem thực hành'
 						className={local.dateField}
 						value={date}
 						onChange={(v) => v && setDate(v)}
 					/>
-					<button
+					<button type='button'
 						className={local.navBtn}
 						title='Ngày sau'
+						aria-label='Ngày sau'
 						onClick={() => setDate((d) => shiftDay(d, 1))}
 					>
 						<ChevRSvg />
 					</button>
-					<button
+					<button type='button'
 						className={local.navBtn}
 						disabled={isToday}
 						onClick={() => setDate(todayKey())}
@@ -147,8 +148,8 @@ export default function PracticeBoard() {
 						Hôm nay
 					</button>
 				</div>
-				<div className={`${styles.segment} ${local.tabs}`} role='tablist'>
-					<button
+				<div className={`${styles.segment} ${local.tabs}`} role='tablist' aria-label='Cách xem thực hành theo ngày'>
+					<button type='button'
 						role='tab'
 						aria-selected={tab === 'department'}
 						className={`${styles.segBtn}${tab === 'department' ? ` ${styles.segBtnActive}` : ''}`}
@@ -156,7 +157,7 @@ export default function PracticeBoard() {
 					>
 						<DeptSvg /> Theo khoa
 					</button>
-					<button
+					<button type='button'
 						role='tab'
 						aria-selected={tab === 'mentor'}
 						className={`${styles.segBtn}${tab === 'mentor' ? ` ${styles.segBtnActive}` : ''}`}
@@ -316,7 +317,7 @@ export default function PracticeBoard() {
 										<td className={styles.td}>
 											<div className={local.traineeList}>
 												{m.rows.map((r) => (
-													<button
+													<button type='button'
 														key={r.id}
 														className={local.traineeChip}
 														title={`${deptOf(r) || 'Chưa chọn khoa'} · ${span(r)} · ${r.course_name}`}

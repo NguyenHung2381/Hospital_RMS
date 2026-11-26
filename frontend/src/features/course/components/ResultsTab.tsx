@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BadgeSvg, TrashSvg } from '@/assets/icons';
 import { Modal } from '@/shared/components/Modal';
-import { DatePicker } from '@/shared/components';
+import { confirmDialog, DatePicker, promptDialog } from '@/shared/components';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -116,27 +116,33 @@ export function ResultsTab({
 	const toolbar = (
 		<>
 			{!book.locked ? (
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					disabled={busy || !book.rows.length}
 					title='Khóa điểm cả khóa — sau khi khóa không ai sửa được, trừ người có quyền mở khóa'
-					onClick={() => {
+					onClick={async () => {
 						const missing = book.rows.filter((r) => r.computed.result == null).length;
 						const msg = missing
 							? `Còn ${missing} học viên chưa đủ điểm. Vẫn khóa điểm?`
 							: 'Khóa điểm cả khóa? Sau khi khóa chỉ người có quyền mở khóa mới sửa được.';
-						if (confirm(msg)) void run(() => lockGrades(courseId), 'Đã khóa điểm');
+						const ok = await confirmDialog({ title: 'Khóa điểm cả khóa?', message: msg, confirmLabel: 'Khóa điểm' });
+						if (ok) void run(() => lockGrades(courseId), 'Đã khóa điểm');
 					}}
 				>
 					Khóa điểm
 				</button>
 			) : (
 				has('grades:unlock') && (
-					<button
+					<button type='button'
 						className={styles.btnGhost}
 						disabled={busy}
-						onClick={() => {
-							const reason = window.prompt('Lý do mở khóa điểm (ghi nhật ký):');
+						onClick={async () => {
+							const reason = await promptDialog({
+								title: 'Mở khóa điểm',
+								label: 'Lý do mở khóa điểm (ghi nhật ký)',
+								multiline: true,
+								confirmLabel: 'Mở khóa',
+							});
 							if (reason !== null) void run(() => unlockGrades(courseId, reason), 'Đã mở khóa điểm');
 						}}
 					>
@@ -152,7 +158,7 @@ export function ResultsTab({
 						value={certExpiry}
 						onChange={setCertExpiry}
 					/>
-					<button
+					<button type='button'
 						className={styles.btnPrimary}
 						disabled={busy}
 						onClick={() => {
@@ -175,7 +181,7 @@ export function ResultsTab({
 				</>
 			)}
 			{book.locked && has('courses:approve') && (
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					disabled={busy}
 					title='Tự cộng tín chỉ CME: học viên nội viện đã có giấy chứng nhận + giảng viên theo số tiết (Cài đặt hệ thống → Đào tạo)'
@@ -203,14 +209,18 @@ export function ResultsTab({
 					row[`${p}_attempt`] < 1 + book.rules.maxRetakes,
 			)
 			.map((p) => (
-				<button
+				<button type='button'
 					key={p}
 					className={styles.btnSmall}
 					disabled={busy}
 					title={`Mở lượt thi lại phần ${PART_LABEL[p]} (điểm cũ lưu ở lịch sử)`}
-					onClick={() => {
-						if (confirm(`Mở thi lại phần ${PART_LABEL[p]} cho ${row.trainee_name}?`))
-							void run(() => retakeGrade(row.enrollment_id, p), 'Đã mở lượt thi lại');
+					onClick={async () => {
+						const ok = await confirmDialog({
+							title: 'Mở lượt thi lại?',
+							message: `Mở thi lại phần ${PART_LABEL[p]} cho ${row.trainee_name}?`,
+							confirmLabel: 'Mở thi lại',
+						});
+						if (ok) void run(() => retakeGrade(row.enrollment_id, p), 'Đã mở lượt thi lại');
 					}}
 				>
 					Thi lại {PART_LABEL[p]}
@@ -219,7 +229,7 @@ export function ResultsTab({
 		return (
 			<>
 				{retakeBtns}
-				<button
+				<button type='button'
 					className={styles.btnSmall}
 					onClick={() => setHistoryOf(row)}
 				>
@@ -236,21 +246,31 @@ export function ResultsTab({
 						</span>
 						{has('courses:approve') &&
 							(cert.status === 'active' ? (
-								<button
+								<button type='button'
 									className={styles.actionBtn}
 									title='Thu hồi giấy chứng nhận'
+									aria-label={`Thu hồi giấy chứng nhận ${cert.cert_no}`}
 									disabled={busy}
-									onClick={() => {
-										const reason = window.prompt('Lý do thu hồi (không bắt buộc):') ?? '';
+									onClick={async () => {
+										// Hủy hộp thoại = không thu hồi (trước đây bấm Hủy vẫn thu hồi)
+										const reason = await promptDialog({
+											title: 'Thu hồi giấy chứng nhận',
+											label: 'Lý do thu hồi (không bắt buộc)',
+											multiline: true,
+											confirmLabel: 'Thu hồi',
+											tone: 'danger',
+										});
+										if (reason === null) return;
 										void d.revokeCertificate(cert.id, reason || undefined).then(load);
 									}}
 								>
 									<TrashSvg />
 								</button>
 							) : (
-								<button
+								<button type='button'
 									className={styles.actionBtn}
 									title='Xóa hẳn giấy chứng nhận'
+									aria-label={`Xóa hẳn giấy chứng nhận ${cert.cert_no}`}
 									disabled={busy}
 									onClick={() => void d.removeCertificate(cert.id).then(load)}
 								>

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { DatePicker } from '@/shared/components';
+import { useId, useEffect, useState } from 'react';
+import { confirmDialog, DatePicker } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
 import { usePracticeCatalogs } from '../../catalog/hooks/usePracticeCatalogs';
 import { updateEnrollment } from '../api/courseApi';
@@ -45,6 +45,10 @@ export function PracticeRecordInfo({
 	/** Trường vừa lưu — trang cập nhật hồ sơ ngay rồi tải lại. */
 	onSaved: (patch: EnrollmentUpdate) => void;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [draft, setDraft] = useState<Partial<Record<Field, string>>>({});
 	const [state, setState] = useState<SaveState>({ kind: 'idle' });
 	const catalogs = usePracticeCatalogs();
@@ -68,9 +72,12 @@ export function PracticeRecordInfo({
 		if (
 			k === 'program_id' &&
 			enrollment.rotation_total > 0 &&
-			!window.confirm(
-				'Hồ sơ đã có vòng thực hành theo chương trình cũ. Đổi chương trình không tự đổi các vòng — sau đó vào tab "Vòng thực hành" bấm "Tự động xếp lại" nếu cần. Tiếp tục?',
-			)
+			!(await confirmDialog({
+				title: 'Đổi chương trình?',
+				message:
+					'Hồ sơ đã có vòng thực hành theo chương trình cũ. Đổi chương trình không tự đổi các vòng — sau đó vào tab "Vòng thực hành" bấm "Tự động xếp lại" nếu cần. Tiếp tục?',
+				confirmLabel: 'Đổi chương trình',
+			}))
 		)
 			return clear();
 		setDraft((d) => ({ ...d, [k]: next }));
@@ -91,6 +98,7 @@ export function PracticeRecordInfo({
 	// Ô chữ: gõ vào bản nháp, rời ô / Enter thì lưu
 	const text = (k: Field, placeholder?: string) => (
 		<input
+			id={fid(k)}
 			className={styles.formInput}
 			value={value(k)}
 			placeholder={placeholder}
@@ -105,6 +113,7 @@ export function PracticeRecordInfo({
 		const v = value(k);
 		return (
 			<select
+				id={fid(k)}
 				className={styles.formInput}
 				value={v}
 				disabled={!canEdit}
@@ -125,6 +134,7 @@ export function PracticeRecordInfo({
 	};
 	const date = (k: Field, bounds: { min?: string; max?: string } = {}) => (
 		<DatePicker
+			id={fid(k)}
 			value={value(k)}
 			onChange={(v) => void commit(k, v ?? '')}
 			min={bounds.min || undefined}
@@ -174,11 +184,11 @@ export function PracticeRecordInfo({
 				<div className={styles.formGrid2}>
 					<CfgField
 						cfg={cfg}
-						name='program_id'
+						name='program_id' htmlFor={fid('program_id')}
 						label='Chương trình thực hành'
 						style={full}
 					>
-						<select
+						<select id={fid('program_id')}
 							className={styles.formInput}
 							value={value('program_id')}
 							disabled={!canEdit}
@@ -195,8 +205,8 @@ export function PracticeRecordInfo({
 							))}
 						</select>
 					</CfgField>
-					<CfgField cfg={cfg} name='progress_status' label='Tiến độ'>
-						<select
+					<CfgField cfg={cfg} name='progress_status' htmlFor={fid('progress_status')} label='Tiến độ'>
+						<select id={fid('progress_status')}
 							className={styles.formInput}
 							value={progress}
 							disabled={!canEdit}
@@ -226,7 +236,7 @@ export function PracticeRecordInfo({
 					{progress === 'dropped' && (
 						<CfgField
 							cfg={cfg}
-							name='progress_reason'
+							name='progress_reason' htmlFor={fid('progress_reason')}
 							label='Lý do nghỉ học'
 							style={full}
 						>
@@ -239,12 +249,12 @@ export function PracticeRecordInfo({
 			<section className={local.section}>
 				<h3 className={local.sectionTitle}>Thời gian &amp; địa điểm thực hành</h3>
 				<div className={styles.formGrid2}>
-					<CfgField cfg={cfg} name='start_date' label='Bắt đầu thực hành'>{date('start_date', { max: value('end_date') })}</CfgField>
-					<CfgField cfg={cfg} name='end_date' label='Kết thúc thực hành'>{date('end_date', { min: value('start_date') })}</CfgField>
-					<CfgField cfg={cfg} name='total_duration' label='Tổng thời gian thực hành'>
+					<CfgField cfg={cfg} name='start_date' htmlFor={fid('start_date')} label='Bắt đầu thực hành'>{date('start_date', { max: value('end_date') })}</CfgField>
+					<CfgField cfg={cfg} name='end_date' htmlFor={fid('end_date')} label='Kết thúc thực hành'>{date('end_date', { min: value('start_date') })}</CfgField>
+					<CfgField cfg={cfg} name='total_duration' htmlFor={fid('total_duration')} label='Tổng thời gian thực hành'>
 						{text('total_duration', program?.program_duration ?? 'VD: 12 tháng')}
 					</CfgField>
-					<CfgField cfg={cfg} name='practice_location' label='Địa điểm thực hành'>
+					<CfgField cfg={cfg} name='practice_location' htmlFor={fid('practice_location')} label='Địa điểm thực hành'>
 						{text('practice_location', 'VD: Tại các khoa: Cấp cứu, Nội tim mạch 2…')}
 					</CfgField>
 				</div>
@@ -253,12 +263,12 @@ export function PracticeRecordInfo({
 			<section className={local.section}>
 				<h3 className={local.sectionTitle}>Thông tin in trên giấy tờ (đơn đề nghị, hợp đồng)</h3>
 				<div className={styles.formGrid2}>
-					<CfgField cfg={cfg} name='practice_code' label='Mã thực hành'>{text('practice_code', '226.BS')}</CfgField>
-					<CfgField cfg={cfg} name='sending_unit' label='Đơn vị cử đi'>{pick('sending_unit', catalogs.units, '-- Chọn đơn vị cử đi --')}</CfgField>
-					<CfgField cfg={cfg} name='professional_field' label='Lĩnh vực chuyên môn'>
+					<CfgField cfg={cfg} name='practice_code' htmlFor={fid('practice_code')} label='Mã thực hành'>{text('practice_code', '226.BS')}</CfgField>
+					<CfgField cfg={cfg} name='sending_unit' htmlFor={fid('sending_unit')} label='Đơn vị cử đi'>{pick('sending_unit', catalogs.units, '-- Chọn đơn vị cử đi --')}</CfgField>
+					<CfgField cfg={cfg} name='professional_field' htmlFor={fid('professional_field')} label='Lĩnh vực chuyên môn'>
 						{pick('professional_field', catalogs.fields, '-- Chọn lĩnh vực --')}
 					</CfgField>
-					<CfgField cfg={cfg} name='practice_form' label='Hình thức hành nghề'>
+					<CfgField cfg={cfg} name='practice_form' htmlFor={fid('practice_form')} label='Hình thức hành nghề'>
 						{pick('practice_form', catalogs.forms, '-- Chọn hình thức --')}
 					</CfgField>
 					<div
@@ -270,7 +280,7 @@ export function PracticeRecordInfo({
 					</div>
 					<CfgField
 						cfg={cfg}
-						name='note'
+						name='note' htmlFor={fid('note')}
 						label='Ghi chú'
 						style={full}
 					>

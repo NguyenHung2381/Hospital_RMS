@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tooltip } from 'antd';
 import {
@@ -74,6 +74,7 @@ const kindSelect = (
 ) => (
 	<select
 		className={cls}
+		aria-label='Loại buổi (lý thuyết hay thực hành)'
 		value={value}
 		title='Buổi lý thuyết hay thực hành — tính chuyên cần ở bảng điểm'
 		onChange={(e) => onChange(e.target.value as SessionKind | '')}
@@ -360,6 +361,10 @@ function SessionFormModal({
 	mainLecturerOf: (lessonId: string) => string;
 	onClose: (result?: { created: number; skipped: number }) => void;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const bulk = state.mode === 'bulk';
 	const editing = state.mode === 'one' ? state.session : undefined;
 	const [one, setOne] = useState<SessionForm>(() =>
@@ -520,30 +525,30 @@ function SessionFormModal({
 			) : (
 				<CfgField
 					cfg={cfg}
-					name='session_date'
+					name='session_date' htmlFor={fid('session_date')}
 					error={errors.session_date}
 					label='Ngày học'
 					required
 				>
-					<DatePicker value={one.session_date} onChange={(v) => set({ session_date: v })} />
+					<DatePicker id={fid('session_date')} aria-invalid={!!errors.session_date || undefined} value={one.session_date} onChange={(v) => set({ session_date: v })} />
 				</CfgField>
 			)}
 			<div className={m.formRow}>
-				<CfgField cfg={cfg} name='start_time' error={errors.start_time} label='Giờ bắt đầu'>
-					<TimePicker
+				<CfgField cfg={cfg} name='start_time' htmlFor={fid('start_time')} error={errors.start_time} label='Giờ bắt đầu'>
+					<TimePicker id={fid('start_time')} aria-invalid={!!errors.start_time || undefined}
 						value={f.start_time}
 						onChange={(v) => set({ start_time: v })}
 					/>
 				</CfgField>
-				<CfgField cfg={cfg} name='end_time' error={errors.end_time} label='Giờ kết thúc'>
-					<TimePicker
+				<CfgField cfg={cfg} name='end_time' htmlFor={fid('end_time')} error={errors.end_time} label='Giờ kết thúc'>
+					<TimePicker id={fid('end_time')} aria-invalid={!!errors.end_time || undefined}
 						value={f.end_time}
 						onChange={(v) => set({ end_time: v })}
 					/>
 				</CfgField>
 			</div>
-			<CfgField cfg={cfg} name='subject_id' error={errors.subject_id} label='Bài học'>
-				<select
+			<CfgField cfg={cfg} name='subject_id' htmlFor={fid('subject_id')} error={errors.subject_id} label='Bài học'>
+				<select id={fid('subject_id')} aria-invalid={!!errors.subject_id || undefined}
 					className={m.formInput}
 					value={f.lesson_id}
 					onChange={(e) =>
@@ -946,9 +951,10 @@ export function SessionsTab({
 													>
 														Điểm danh
 													</Button>
-													<button
+													<button type='button'
 														className={styles.actionBtn}
 														title='Xóa buổi học'
+														aria-label={`Xóa buổi học ${s.subject_name ?? ''} ngày ${formatDateVN(s.session_date)}`}
 														disabled={d.busy}
 														onClick={() => d.removeSession(s.id)}
 													>
@@ -974,7 +980,7 @@ export function SessionsTab({
 					placeholder='-- Chọn giảng viên --'
 					onChange={setNewLecturerId}
 				/>
-				<button
+				<button type='button'
 					className={styles.btnGhost}
 					disabled={!newLecturerId || d.busy}
 					onClick={() => {
@@ -996,9 +1002,10 @@ export function SessionsTab({
 						>
 							<strong>{a.lecturer_name}</strong>
 							{a.subject_name && <span className={styles.chipMeta}>· {a.subject_name}</span>}
-							<button
+							<button type='button'
 								className={styles.chipRemove}
 								title='Gỡ phân công'
+								aria-label={`Gỡ phân công giảng viên ${a.lecturer_name}`}
 								disabled={d.busy}
 								onClick={() => d.removeAssignment(a.id)}
 							>

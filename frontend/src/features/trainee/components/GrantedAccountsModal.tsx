@@ -28,7 +28,7 @@ export function GrantedAccountsModal({
 			onClose={onClose}
 			title={`Tài khoản đã được cấp (${accounts.length})`}
 			footer={
-				<button
+				<button type='button'
 					className='btnPrimary'
 					onClick={onClose}
 					style={{
@@ -72,7 +72,7 @@ export function GrantedAccountsModal({
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
 							<span style={{ color: 'var(--color-gray-500)', width: 100 }}>Tên đăng nhập</span>
 							<span style={{ fontFamily: 'var(--font-mono)' }}>{acc.username}</span>
-							<button
+							<button type='button'
 								onClick={() => copy(acc.username, `u-${acc.user_id}`)}
 								style={{ marginLeft: 'auto', fontSize: 12, cursor: 'pointer' }}
 							>
@@ -82,7 +82,7 @@ export function GrantedAccountsModal({
 						<div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 4 }}>
 							<span style={{ color: 'var(--color-gray-500)', width: 100 }}>Mật khẩu</span>
 							<span style={{ fontFamily: 'var(--font-mono)' }}>{acc.password_plain}</span>
-							<button
+							<button type='button'
 								onClick={() => copy(acc.password_plain, `p-${acc.user_id}`)}
 								style={{ marginLeft: 'auto', fontSize: 12, cursor: 'pointer' }}
 							>

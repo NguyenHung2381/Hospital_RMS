@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useId, useEffect, useMemo, useState } from 'react';
 import { UserPlusSvg } from '@/assets/icons';
 import { Modal, ModalActions, SearchableSelect } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
@@ -28,6 +28,10 @@ export function AddPracticeRecordModal({
 	/** id hồ sơ vừa tạo. */
 	onAdded: (enrollmentId: string) => void;
 }) {
+	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
+	const fieldUid = useId();
+	const fid = (name: string) => `${fieldUid}-${name}`;
+
 	const [courseId, setCourseId] = useState(defaultCourseId || courses[0]?.id || '');
 	const [links, setLinks] = useState<CourseProgramLink[]>([]);
 	const [programId, setProgramId] = useState('');
@@ -116,12 +120,12 @@ export function AddPracticeRecordModal({
 				</FormField>
 				<CfgField
 					cfg={cfg}
-					name='program_id'
+					name='program_id' htmlFor={fid('program_id')}
 					error={errors.program_id}
 					label='Chương trình thực hành'
 					style={{ gridColumn: '1 / -1' }}
 				>
-					<select
+					<select id={fid('program_id')} aria-invalid={!!errors.program_id || undefined}
 						className={styles.formInput}
 						value={programId}
 						onChange={(e) => {

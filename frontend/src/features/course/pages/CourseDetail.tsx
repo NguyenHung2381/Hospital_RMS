@@ -93,7 +93,7 @@ export default function CourseDetail() {
 	if (notFound) {
 		return (
 			<AdminLayout pageTitle='Không tìm thấy'>
-				<button
+				<button type='button'
 					className={styles.backLink}
 					onClick={() => navigate(-1)}
 				>

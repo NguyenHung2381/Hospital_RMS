@@ -62,6 +62,7 @@ export function CourseCards({
 									<button
 										type='button'
 										title='Link & QR đăng ký'
+										aria-label={`Link và QR đăng ký của khóa ${c.name}`}
 										onClick={() => onShareLink(c)}
 									>
 										<QrSvg />
@@ -71,6 +72,7 @@ export function CourseCards({
 									<button
 										type='button'
 										title='Nhân bản khóa học'
+										aria-label={`Nhân bản khóa ${c.name}`}
 										onClick={() => onClone(c)}
 									>
 										<CopySvg />
@@ -79,6 +81,7 @@ export function CourseCards({
 								<button
 									type='button'
 									title='Sửa thông tin'
+									aria-label={`Sửa thông tin khóa ${c.name}`}
 									onClick={() => onEdit(c)}
 								>
 									<EditSvg />
@@ -86,6 +89,7 @@ export function CourseCards({
 								<button
 									type='button'
 									title='Xóa khóa học'
+									aria-label={`Xóa khóa ${c.name}`}
 									className={styles.danger}
 									onClick={() => onDelete(c)}
 								>

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import styles from '../../schedule/components/ScheduleListView.module.css';
+import a11y from './ClassSchedule.module.css';
 import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
 import type { CalendarCourse, CalendarSession } from '../types/classSchedule.type';
 import { courseColor, sessionTime, sessionTitle } from '../utils/classCalendar';
@@ -57,7 +58,7 @@ export function SessionListView({ sessions, courses, year, onOpenCourse }: Sessi
 									<span>{upcoming} buổi sắp tới</span>
 								</div>
 							</div>
-							<button className={styles.addBtn} onClick={() => onOpenCourse(g.id)}>
+							<button type='button' className={styles.addBtn} onClick={() => onOpenCourse(g.id)}>
 								📋 Lịch học & điểm danh
 							</button>
 						</div>
@@ -71,13 +72,19 @@ export function SessionListView({ sessions, courses, year, onOpenCourse }: Sessi
 										<div
 											key={s.id}
 											className={styles.deadlineItem}
-											onClick={() => onOpenCourse(g.id)}
 											title='Nhấp để mở lịch học của khóa'
 											style={{ '--dl-color': color, opacity: past ? 0.6 : 1 } as React.CSSProperties}
 										>
 											<div className={styles.deadlineDot} />
 											<div className={styles.deadlineInfo}>
-												<span className={styles.deadlineName}>{sessionTitle(s)}</span>
+												{/* Nút thật cho bàn phím; vùng bấm phủ cả dòng nên chuột bấm đâu cũng mở lịch học của khóa */}
+												<button
+													type='button'
+													className={`${a11y.plainBtn} ${a11y.stretch}`}
+													onClick={() => onOpenCourse(g.id)}
+												>
+													<span className={styles.deadlineName}>{sessionTitle(s)}</span>
+												</button>
 												<div className={styles.deadlineMeta}>
 													{sessionTime(s) && <span className={styles.phaseBadge}>{sessionTime(s)}</span>}
 													<span>GV: {s.lecturer_name || '—'}</span>

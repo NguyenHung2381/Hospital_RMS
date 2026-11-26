@@ -267,6 +267,7 @@ export function ImportQuestionsModal({
 													type='button'
 													className={styles.actionBtn}
 													title={r.editing ? 'Xong' : 'Sửa câu này'}
+													aria-label={`${r.editing ? 'Xong sửa' : 'Sửa'} câu ${r.number ?? i + 1}`}
 													onClick={() => update(i, { editing: !r.editing })}
 												>
 													{r.editing ? '✓' : <EditSvg />}
@@ -275,6 +276,7 @@ export function ImportQuestionsModal({
 													type='button'
 													className={styles.actionBtn}
 													title='Xóa câu này khỏi danh sách'
+													aria-label={`Xóa câu ${r.number ?? i + 1} khỏi danh sách`}
 													onClick={() => remove(i)}
 												>
 													<TrashSvg />
@@ -349,6 +351,7 @@ export function ImportQuestionsModal({
 																/>
 																<input
 																	className={styles.input}
+																	aria-label={`Nội dung phương án ${opt(oi)}`}
 																	placeholder={`Phương án ${opt(oi)}`}
 																	value={o}
 																	onChange={(e) =>
@@ -360,6 +363,7 @@ export function ImportQuestionsModal({
 																		type='button'
 																		className={styles.actionBtn}
 																		title='Bỏ phương án'
+																		aria-label={`Bỏ phương án ${opt(oi)}`}
 																		onClick={() =>
 																			update(i, {
 																				options: r.options.filter((_, j) => j !== oi),

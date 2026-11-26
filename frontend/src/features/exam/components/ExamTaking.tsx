@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { CheckSvg, ClockSvg } from '@/assets/icons';
-import { QuestionImageView, QuestionText } from '@/shared/components';
+import { alertDialog, QuestionImageView, QuestionText } from '@/shared/components';
 import { examApi } from '../api/examApi';
 import type { AnswerPayload } from '../api/examApi';
 import type { AttemptQuestion, StartAttemptResult } from '../types/exam.type';
@@ -31,6 +31,7 @@ export default function ExamTaking({
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState('');
 	const submittedRef = useRef(false);
+	const uid = useId();
 
 	const doSubmit = async () => {
 		if (submittedRef.current) return;
@@ -40,7 +41,11 @@ export default function ExamTaking({
 			const result = await examApi.submitAttempt(paperId, Object.values(answers));
 			// Server tính giờ theo đồng hồ của mình — nộp quá hạn (kể cả thời gian ân
 			// hạn) thì đóng bài nhưng không ghi nhận đáp án
-			if (result.late) window.alert('Bài nộp quá thời gian làm bài nên đáp án không được ghi nhận.');
+			if (result.late)
+				await alertDialog({
+					title: 'Bài nộp quá hạn',
+					message: 'Bài nộp quá thời gian làm bài nên đáp án không được ghi nhận.',
+				});
 			onDone();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : 'Nộp bài thất bại');
@@ -87,8 +92,10 @@ export default function ExamTaking({
 				<div
 					key={q.id}
 					className={styles.questionBlock}
+					role='group'
+					aria-labelledby={`${uid}-q-${q.id}`}
 				>
-					<div className={styles.questionLabel}>
+					<div id={`${uid}-q-${q.id}`} className={styles.questionLabel}>
 						{qi + 1}. <QuestionText text={q.question_text} /> ({q.points} điểm)
 					</div>
 					{q.image_url && (
@@ -98,6 +105,7 @@ export default function ExamTaking({
 					)}
 					{q.question_type === 'essay' ? (
 						<textarea
+							aria-labelledby={`${uid}-q-${q.id}`}
 							className={styles.formTextarea}
 							rows={4}
 							value={answers[q.id]?.essay_text ?? ''}
@@ -124,14 +132,14 @@ export default function ExamTaking({
 			))}
 
 			<div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-				<button
+				<button type='button'
 					className={styles.btnCancel}
 					onClick={onCancel}
 					disabled={submitting}
 				>
 					Tạm thoát (làm tiếp sau)
 				</button>
-				<button
+				<button type='button'
 					className={styles.btnConfirm}
 					onClick={() => void doSubmit()}
 					disabled={submitting}
