@@ -1,5 +1,6 @@
-import { Modal, ModalActions } from '@/shared/components';
-import { formatDateVN } from '../../../shared/utils/formatDate';
+import { Badge, Modal, ModalActions } from '@/shared/components';
+import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
+import { formatDateVN, formatTimeVN } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useState } from 'react';
 import { ClipboardCheckSvg } from '@/assets/icons';
@@ -7,6 +8,21 @@ import { getAttendance, saveAttendance } from '../api/courseApi';
 import type { AttendanceRow, AttendanceStatus, ClassSession } from '../types/course.type';
 import { AttendanceQrDisplay } from './AttendanceQrDisplay';
 import styles from '../pages/Courses.module.css';
+
+// Nguồn điểm danh tự động (QR học viên tự quét / máy chấm công vân tay)
+const METHOD_LABEL: Partial<Record<NonNullable<AttendanceRow['method']>, string>> = {
+	qr: 'QR',
+	device: 'Máy chấm công',
+};
+
+// Tải lại khi có học viên tự điểm danh: dòng QR / máy chấm công lấy theo server, dòng
+// khác giữ lựa chọn giảng viên đang sửa dở.
+const mergeRows = (prev: AttendanceRow[], fresh: AttendanceRow[]) =>
+	fresh.map((row) => {
+		const old = prev.find((p) => p.enrollment_id === row.enrollment_id);
+		if (row.method && METHOD_LABEL[row.method]) return { ...row, status: row.status ?? 'present' };
+		return { ...row, status: old?.status ?? row.status ?? 'present' };
+	});
 
 const ATT_OPTIONS: { value: AttendanceStatus; label: string; cls: string }[] = [
 	{ value: 'present', label: 'Có mặt', cls: 'attRadioActivePresent' },
@@ -35,16 +51,23 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 	const setStatus = (enrollmentId: string, status: AttendanceStatus) =>
 		setRows((prev) => prev.map((r) => (r.enrollment_id === enrollmentId ? { ...r, status } : r)));
 
+	const refresh = () =>
+		getAttendance(session.id)
+			.then((r) => setRows((prev) => mergeRows(prev, r)))
+			.catch(() => {});
+
+	// Học viên quét QR / chấm vân tay ⇒ server phát sự kiện 'attendance' ⇒ cập nhật ngay
+	useRealtimeUpdate('attendance', () => {
+		if (!loading) refresh();
+	});
+
 	// Trong lúc hiện QR, học viên có thể tự quét bất kỳ lúc nào — tải lại danh
-	// sách định kỳ để giảng viên thấy cập nhật gần như trực tiếp.
+	// sách định kỳ (dự phòng khi mất kết nối sự kiện trực tiếp).
 	useEffect(() => {
 		if (!showQr) return;
-		const poll = setInterval(() => {
-			getAttendance(session.id)
-				.then((r) => setRows((prev) => r.map((row) => ({ ...row, status: row.status ?? prev.find((p) => p.enrollment_id === row.enrollment_id)?.status ?? 'present' }))))
-				.catch(() => {});
-		}, 5000);
+		const poll = setInterval(refresh, 5000);
 		return () => clearInterval(poll);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [showQr, session.id]);
 
 	const handleSave = async () => {
@@ -124,6 +147,15 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 										Lớp {r.program_code ?? r.program_name}
 										{r.program_code && r.program_name ? ` · ${r.program_name}` : ''}
 									</div>
+								) : null}
+								{r.method && METHOD_LABEL[r.method] && r.checked_in_at ? (
+									<Badge
+										tone='teal'
+										className={styles.attMethodBadge}
+										title='Học viên tự điểm danh — giờ chấm'
+									>
+										{METHOD_LABEL[r.method]} · {formatTimeVN(r.checked_in_at)}
+									</Badge>
 								) : null}
 							</div>
 							<div className={styles.attGrid}>

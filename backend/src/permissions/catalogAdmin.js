@@ -183,6 +183,24 @@ const ADMIN_MODULE = {
 			],
 		},
 		{
+			key: 'attendance_devices',
+			label: 'Máy chấm công',
+			permissions: [
+				p(
+					'PERM-ATTDEV-READ',
+					'read',
+					'Xem máy chấm công',
+					'Xem danh sách máy chấm công vân tay, lượt chấm và lệnh đồng bộ xuống máy',
+				),
+				p(
+					'PERM-ATTDEV-MANAGE',
+					'manage',
+					'Quản lý máy chấm công',
+					'Duyệt máy chấm công mới, sửa thông tin máy, đồng bộ học viên xuống máy và ghép lại lượt chấm',
+				),
+			],
+		},
+		{
 			key: 'activity_logs',
 			label: 'Nhật ký hoạt động',
 			permissions: [

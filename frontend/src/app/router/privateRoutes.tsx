@@ -85,6 +85,9 @@ const StaffAttendance = lazy(
 const Shifts = lazy(() => import('../../features/staff-attendance/pages/Shifts'));
 const Roster = lazy(() => import('../../features/staff-attendance/pages/Roster'));
 const LeaveRequests = lazy(() => import('../../features/staff-attendance/pages/LeaveRequests'));
+const AttendanceDevices = lazy(
+	() => import('../../features/attendance-device/pages/AttendanceDevices'),
+);
 const StaffLicenses = lazy(
 	() => import('../../features/staff-license/pages/StaffLicenses'),
 );
@@ -382,6 +385,14 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='staff_attendance:read'>
 				{admin('Điểm danh theo ca', <StaffAttendance />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/attendance-devices',
+		element: (
+			<RequirePermission perm='attendance_devices:read'>
+				{admin('Máy chấm công', <AttendanceDevices />)}
 			</RequirePermission>
 		),
 	},

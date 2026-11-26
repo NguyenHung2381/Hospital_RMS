@@ -57,7 +57,7 @@ const listAttendance = async (sessionId) => {
 	const r = await pool.request().input('session_id', sql.VarChar(20), sessionId).query(`
     SELECT e.id AS enrollment_id, t.full_name AS trainee_name,
            tp.code AS program_code, tp.name AS program_name,
-           a.id AS attendance_id, a.status, a.note
+           a.id AS attendance_id, a.status, a.note, a.method, a.checked_in_at
     ${ROSTER_FROM}
     LEFT JOIN training_programs tp ON tp.id = e.program_id
     LEFT JOIN attendance a ON a.session_id = sess.id AND a.enrollment_id = e.id
@@ -223,7 +223,45 @@ const checkInSelf = async (token, deviceId, actor) => {
 	return { session_id: decoded.session_id };
 };
 
+// Điểm danh từ máy chấm công vân tay (modules/attendanceDevices/punchMatcher). Không tự
+// broadcast / tính lại tiến độ — bên gọi làm 1 lần sau cả lô. Trả kết quả cho lượt chấm:
+//   'locked'      điểm đã khóa (L-11) — không ghi
+//   'kept_manual' giảng viên đã điểm danh tay buổi này — giữ nguyên, không ghi đè
+//   'matched'     đã ghi; dòng QR / máy chấm công có sẵn thì giữ lần chấm SỚM nhất
+const recordDeviceCheckIn = async ({ sessionId, enrollmentId, status, checkedInAt, deviceTag }) => {
+	if ((await gradebook().lockedEnrollmentIds([enrollmentId])).size) return 'locked';
+	return withTransaction(async (tx) => {
+		const req = () =>
+			tx
+				.request()
+				.input('session_id', sql.VarChar(20), sessionId)
+				.input('enrollment_id', sql.VarChar(20), enrollmentId)
+				.input('status', sql.VarChar(10), status)
+				.input('checked_in_at', sql.DateTime2, checkedInAt)
+				.input('device_id', sql.VarChar(64), deviceTag);
+		const cur = (
+			await req().query(`
+        SELECT method, checked_in_at FROM attendance
+        WHERE session_id = @session_id AND enrollment_id = @enrollment_id FOR UPDATE`)
+		).recordset[0];
+		if (!cur) {
+			await req().input('new_id', sql.VarChar(20), await genAttendanceId(tx)).query(`
+        INSERT INTO attendance (id, session_id, enrollment_id, status, method, checked_in_at, checkin_device_id, updated_at)
+        VALUES (@new_id, @session_id, @enrollment_id, @status, 'device', @checked_in_at, @device_id, CURRENT_TIMESTAMP)`);
+			return 'matched';
+		}
+		if (cur.method === 'manual') return 'kept_manual';
+		if (cur.checked_in_at && cur.checked_in_at.getTime() <= checkedInAt.getTime()) return 'matched';
+		await req().query(`
+        UPDATE attendance SET status = @status, method = 'device', checked_in_at = @checked_in_at,
+               checkin_device_id = @device_id, updated_at = CURRENT_TIMESTAMP
+        WHERE session_id = @session_id AND enrollment_id = @enrollment_id`);
+		return 'matched';
+	});
+};
+
 module.exports = {
+	recordDeviceCheckIn,
 	listAttendance,
 	setAttendance,
 	bulkSetAttendance,

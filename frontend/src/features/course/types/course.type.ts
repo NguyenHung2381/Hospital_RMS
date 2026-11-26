@@ -507,6 +507,10 @@ export interface AttendanceRow {
 	attendance_id: string | null;
 	status: AttendanceStatus | null;
 	note: string | null;
+	/** Nguồn điểm danh: nhập tay / học viên quét QR / máy chấm công vân tay */
+	method?: 'manual' | 'qr' | 'device' | null;
+	/** Giờ học viên tự điểm danh (UTC ISO) — QR / máy chấm công */
+	checked_in_at?: string | null;
 }
 
 export type DocType = 'material' | 'test_question' | 'test_answer';

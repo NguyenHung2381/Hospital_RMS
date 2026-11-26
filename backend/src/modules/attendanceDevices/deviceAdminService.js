@@ -1,0 +1,207 @@
+// Trang quản trị Máy chấm công: danh sách máy, duyệt máy, lượt chấm, lệnh đồng bộ.
+const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { httpError } = require('../../utils/httpError');
+const { broadcast } = require('../events/eventService');
+const protocol = require('./iclockProtocol');
+const commands = require('./deviceCommandService');
+const sync = require('./deviceSyncService');
+const matcher = require('./punchMatcher');
+
+const listDevices = async () => {
+	const pool = await getPool();
+	return (
+		await pool.request().query(`
+      SELECT d.id, d.serial_no, d.name, d.location, d.status, d.name_ascii, d.push_version,
+             d.firmware, d.fp_algorithm, d.last_seen_at, d.last_ip, d.user_count, d.fp_count,
+             d.created_at,
+             (SELECT COUNT(*) FROM attendance_device_users u WHERE u.device_id = d.id) AS synced_users,
+             (SELECT COUNT(*) FROM attendance_device_commands c
+               WHERE c.device_id = d.id AND c.status IN ('pending', 'sent')) AS pending_commands,
+             (SELECT COUNT(*) FROM attendance_device_commands c
+               WHERE c.device_id = d.id AND c.status = 'failed'
+                 AND c.created_at > (now() AT TIME ZONE 'UTC') - interval '1 day') AS failed_commands,
+             (SELECT MAX(p.punched_at) FROM attendance_punches p WHERE p.device_id = d.id) AS last_punch_at
+      FROM attendance_devices d
+      ORDER BY (d.status = 'pending') DESC, d.name NULLS LAST, d.serial_no`)
+	).recordset.map((d) => ({
+		...d,
+		synced_users: Number(d.synced_users),
+		pending_commands: Number(d.pending_commands),
+		failed_commands: Number(d.failed_commands),
+	}));
+};
+
+const getDevice = async (id) => {
+	const pool = await getPool();
+	const d = (
+		await pool
+			.request()
+			.input('id', sql.Int, id)
+			.query('SELECT id, status FROM attendance_devices WHERE id = @id')
+	).recordset[0];
+	if (!d) throw httpError(404, 'Không tìm thấy máy chấm công');
+	return d;
+};
+
+/** @param {{ name?: string|null, location?: string|null, status?: string, name_ascii?: boolean }} data */
+const updateDevice = async (id, data, actorId) => {
+	const before = await getDevice(id);
+	const sets = [];
+	const inputs = [];
+	const add = (col, type, value) => {
+		sets.push(`${col} = @${col}`);
+		inputs.push([col, type, value]);
+	};
+	if (data.name !== undefined) add('name', sql.NVarChar(150), data.name || null);
+	if (data.location !== undefined) add('location', sql.NVarChar(255), data.location || null);
+	if (data.status !== undefined) add('status', sql.VarChar(10), data.status);
+	if (data.name_ascii !== undefined) add('name_ascii', sql.Bit, !!data.name_ascii);
+	if (!sets.length) return;
+	await withActorTransaction(actorId, async (tx) => {
+		const req = tx.request().input('id', sql.Int, id).input('actor_id', sql.VarChar(20), actorId);
+		for (const [n, t, v] of inputs) req.input(n, t, v);
+		await req.query(`UPDATE attendance_devices SET ${sets.join(', ')},
+        updated_at = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh'), updated_by = @actor_id WHERE id = @id`);
+	});
+	broadcast('update', { entity: 'attendance_device' });
+	// Vừa duyệt / bật lại, hoặc đổi cách ghi tên ⇒ đồng bộ học viên xuống máy
+	if (data.status === 'active' && before.status !== 'active') sync.requestSync();
+	else if (data.name_ascii !== undefined) sync.requestSync();
+};
+
+const deleteDevice = async (id) => {
+	await getDevice(id);
+	const pool = await getPool();
+	await pool
+		.request()
+		.input('id', sql.Int, id)
+		.query('DELETE FROM attendance_devices WHERE id = @id');
+	broadcast('update', { entity: 'attendance_device' });
+};
+
+const MATCH_FILTERS = {
+	unmatched: "p.match_status IN ('pending', 'no_trainee', 'no_session')",
+	matched: "p.match_status = 'matched'",
+	skipped: "p.match_status IN ('kept_manual', 'locked')",
+	all: 'TRUE',
+};
+
+/** @param {{ status?: string, from?: string, to?: string, device_id?: number }} q */
+const listPunches = async (q) => {
+	const pool = await getPool();
+	const req = pool.request();
+	const where = [MATCH_FILTERS[q.status || 'unmatched'] || MATCH_FILTERS.unmatched];
+	// Lọc theo ngày giờ Việt Nam (punched_at lưu UTC)
+	if (q.from) {
+		req.input('from', sql.Date, q.from);
+		where.push("p.punched_at >= (CAST(@from AS timestamp) - interval '7 hours')");
+	}
+	if (q.to) {
+		req.input('to', sql.Date, q.to);
+		where.push("p.punched_at < (CAST(@to AS timestamp) + interval '17 hours')");
+	}
+	if (q.device_id) {
+		req.input('device_id', sql.Int, q.device_id);
+		where.push('p.device_id = @device_id');
+	}
+	return (
+		await req.query(`
+      SELECT p.id, p.pin, p.punched_at, p.verify_mode, p.match_status, p.received_at,
+             p.trainee_id, t.full_name AS trainee_name,
+             p.session_id, s.session_date, s.start_time, s.end_time, c.id AS course_id, c.name AS course_name,
+             d.id AS device_id, COALESCE(d.name, d.serial_no) AS device_name
+      FROM attendance_punches p
+      JOIN attendance_devices d ON d.id = p.device_id
+      LEFT JOIN trainees t ON t.id = p.trainee_id
+      LEFT JOIN class_sessions s ON s.id = p.session_id
+      LEFT JOIN courses c ON c.id = s.course_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY p.punched_at DESC
+      LIMIT 500`)
+	).recordset;
+};
+
+// Lệnh vân tay chứa mẫu sinh trắc — không bao giờ trả nguyên văn ra ngoài
+const commandSummary = (c) => {
+	const pin = /\bPIN=([^\t\s]+)/.exec(c.command)?.[1] || '';
+	switch (c.kind) {
+		case 'user_upsert': {
+			const name = /\bName=([^\t]*)/.exec(c.command)?.[1] || '';
+			return `Thêm/cập nhật ${pin} — ${name}`;
+		}
+		case 'user_delete':
+			return `Xóa ${pin} khỏi máy`;
+		case 'fp_upsert':
+			return `Chép vân tay ngón ${/\bFID=(\d+)/.exec(c.command)?.[1] ?? '?'} của ${pin}`;
+		case 'query_attlog':
+			return `Kéo lại lượt chấm ${c.command.replace(/^DATA QUERY ATTLOG\s*/, '').replace(/\t/g, ' → ')}`;
+		default:
+			return c.command.slice(0, 80);
+	}
+};
+
+/** @param {{ device_id?: number, status?: string }} q */
+const listCommands = async (q) => {
+	const pool = await getPool();
+	const req = pool.request();
+	const where = ['TRUE'];
+	if (q.device_id) {
+		req.input('device_id', sql.Int, q.device_id);
+		where.push('c.device_id = @device_id');
+	}
+	if (q.status) {
+		req.input('status', sql.VarChar(10), q.status);
+		where.push('c.status = @status');
+	}
+	return (
+		await req.query(`
+      SELECT c.id, c.device_id, COALESCE(d.name, d.serial_no) AS device_name, c.kind, c.trainee_id,
+             t.full_name AS trainee_name, c.command, c.status, c.return_code, c.attempts,
+             c.created_at, c.sent_at, c.done_at
+      FROM attendance_device_commands c
+      JOIN attendance_devices d ON d.id = c.device_id
+      LEFT JOIN trainees t ON t.id = c.trainee_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY c.id DESC
+      LIMIT 300`)
+	).recordset.map(({ command, ...c }) => ({ ...c, summary: commandSummary({ ...c, command }) }));
+};
+
+const requireActive = async (id) => {
+	const d = await getDevice(id);
+	if (d.status !== 'active') throw httpError(409, 'Máy chưa được duyệt hoặc đang tắt');
+};
+
+const resync = async (id, actorId) => {
+	await requireActive(id);
+	return sync.resyncDevice(id, actorId);
+};
+
+/** Kéo lại lượt chấm trong khoảng ngày (giờ VN) — máy gửi lại, trùng thì bỏ qua */
+const pullAttlog = async (id, from, to, actorId) => {
+	await requireActive(id);
+	const start = new Date(`${from}T00:00:00+07:00`);
+	const end = new Date(`${to}T23:59:59+07:00`);
+	if (!(start <= end)) throw httpError(400, 'Khoảng ngày không hợp lệ');
+	await commands.enqueue(
+		id,
+		[{ kind: 'query_attlog', command: protocol.formatQueryAttlog(start, end) }],
+		actorId,
+	);
+};
+
+const syncAll = (actorId) => sync.reconcile({ actorId });
+const rematch = (days) => matcher.rematchRecent(days);
+
+module.exports = {
+	listDevices,
+	updateDevice,
+	deleteDevice,
+	listPunches,
+	listCommands,
+	resync,
+	pullAttlog,
+	syncAll,
+	rematch,
+	commandSummary,
+};

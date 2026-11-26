@@ -27,6 +27,7 @@ export { default as EyeOffSvg } from '../svg/eye-off.svg?react';
 export { default as FileSvg } from '../svg/file.svg?react';
 export { default as FilePdfSvg } from '../svg/file-pdf.svg?react';
 export { default as FileTextSvg } from '../svg/file-text.svg?react';
+export { default as FingerprintSvg } from '../svg/fingerprint.svg?react';
 export { default as FilterSvg } from '../svg/filter.svg?react';
 export { default as HelpSvg } from '../svg/help.svg?react';
 export { default as HistorySvg } from '../svg/history.svg?react';

@@ -48,6 +48,11 @@ const KEYS = [
 	'ATTENDANCE_LOCATION',
 	'ATTENDANCE_RADIUS_M',
 	'ATTENDANCE_MAX_ACCURACY_M',
+	// Máy chấm công vân tay (ADMS) — modules/attendanceDevices/deviceSettings.js
+	'DEVICE_CHECKIN_EARLY_MIN',
+	'DEVICE_LATE_AFTER_MIN',
+	'DEVICE_CLEANUP_DAYS',
+	'DEVICE_FP_SYNC',
 	// Đơn xin phép của học viên — utils/leavePolicy.js
 	'LEAVE_REQUEST_ENABLED',
 	'LEAVE_BACKDATE_DAYS',
@@ -105,6 +110,7 @@ const BOOLEAN_KEYS = new Set([
 	'TRAINING_REGISTRATION_DOC_CHECK',
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
+	'DEVICE_FP_SYNC',
 ]);
 // Khóa chỉ nhận một trong các giá trị liệt kê (rỗng = bỏ ghi đè, về mặc định — giá trị đầu).
 // Khớp courseCmeService.APPROVAL_MODES.

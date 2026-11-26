@@ -5,6 +5,7 @@ const personLinkJob = require('./personLinkJob');
 const supplementDeadlineJob = require('./supplementDeadlineJob');
 const notificationCleanupJob = require('./notificationCleanupJob');
 const dataRetentionJob = require('./dataRetentionJob');
+const attendanceDeviceJob = require('./attendanceDeviceJob');
 const practiceAutoService = require('../modules/training/courses/practiceAutoService');
 const docCheckWorker = require('../modules/training/registration/docCheck/docCheckWorker');
 const logger = require('../config/logger');
@@ -64,6 +65,15 @@ const start = () => {
 
 	// 04:30 sáng: xóa nhật ký cũ (security_events > 24 tháng, job_execution_log theo ngày > 180 ngày)
 	cron.schedule('30 4 * * *', runSafely('data_retention', dataRetentionJob.run), {
+		timezone: TZ,
+	});
+
+	// 5 phút/lần: máy chấm công — đồng bộ học viên / vân tay xuống máy, ghép lại lượt chấm
+	cron.schedule('*/5 * * * *', runSafely('attendance_device_sync', attendanceDeviceJob.run), {
+		timezone: TZ,
+	});
+	// 04:45 sáng: xóa lượt chấm thô > 1 năm, lịch sử lệnh máy chấm công > 90 ngày
+	cron.schedule('45 4 * * *', runSafely('attendance_device_purge', attendanceDeviceJob.purge), {
 		timezone: TZ,
 	});
 

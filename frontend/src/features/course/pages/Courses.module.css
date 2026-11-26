@@ -725,6 +725,11 @@
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	margin-top: 2px;
 }
+/* Nhãn "Máy chấm công · 07:52" / "QR · 07:52" ở bảng điểm danh buổi học */
+.attMethodBadge {
+	margin-top: 4px;
+	font-variant-numeric: tabular-nums;
+}
 /* Thẻ 1 vòng thực hành GPHN (RotationsPanel) */
 .rotCard {
 	display: flex;

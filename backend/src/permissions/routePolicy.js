@@ -27,6 +27,13 @@ module.exports = {
 		'GET /health/': 'Health check cho Docker / reverse proxy',
 		'GET /health/db':
 			'Health check kết nối DB — chỉ trả connected/disconnected, chi tiết lỗi ghi log',
+		// Máy chấm công vân tay (ADMS) không đăng nhập được: chỉ nhận dữ liệu từ máy có số
+		// serial đã được duyệt (attendanceDevices/iclockService), giới hạn tốc độ riêng
+		'GET /iclock/cdata': 'Máy chấm công chào hỏi, nhận cấu hình (máy lạ ghi chờ duyệt)',
+		'POST /iclock/cdata': 'Máy chấm công gửi lượt chấm / người dùng / vân tay (chỉ máy đã duyệt)',
+		'GET /iclock/getrequest': 'Máy chấm công hỏi lệnh đồng bộ (chỉ máy đã duyệt nhận lệnh)',
+		'POST /iclock/devicecmd': 'Máy chấm công báo kết quả lệnh',
+		'GET /iclock/ping': 'Máy chấm công kiểm tra kết nối (trả OK)',
 		[`POST ${API}/auth/login`]: 'Đăng nhập',
 		[`POST ${API}/auth/refresh`]: 'Làm mới phiên bằng refresh token',
 		[`POST ${API}/auth/logout`]: 'Đăng xuất bằng refresh token',

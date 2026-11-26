@@ -1,5 +1,14 @@
 GET    /api/v1/activity-logs/  activity_logs:read
 GET    /api/v1/activity-logs/stats  activity_logs:read
+GET    /api/v1/attendance-devices/  attendance_devices:read | attendance_devices:manage
+PATCH  /api/v1/attendance-devices/:id  attendance_devices:manage
+DELETE /api/v1/attendance-devices/:id  attendance_devices:manage
+POST   /api/v1/attendance-devices/:id/pull-attlog  attendance_devices:manage
+POST   /api/v1/attendance-devices/:id/resync  attendance_devices:manage
+GET    /api/v1/attendance-devices/commands  attendance_devices:read | attendance_devices:manage
+GET    /api/v1/attendance-devices/punches  attendance_devices:read | attendance_devices:manage
+POST   /api/v1/attendance-devices/punches/rematch  attendance_devices:manage
+POST   /api/v1/attendance-devices/sync  attendance_devices:manage
 POST   /api/v1/auth/2fa/backup-codes  authOnly
 POST   /api/v1/auth/2fa/disable  authOnly
 POST   /api/v1/auth/2fa/setup  authOnly
@@ -551,3 +560,8 @@ DELETE /api/v1/workflows/definitions/:id  workflows:manage
 GET    /api/v1/workflows/status/:entityId  authOnly
 GET    /health/  public
 GET    /health/db  public
+GET    /iclock/cdata  public
+POST   /iclock/cdata  public
+POST   /iclock/devicecmd  public
+GET    /iclock/getrequest  public
+GET    /iclock/ping  public

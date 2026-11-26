@@ -1,0 +1,241 @@
+/* Trang Máy chấm công — bảng / modal dùng CrudPage.module.css, file này chỉ phần riêng. */
+
+.deviceIcon {
+	background: var(--tone-green-bg);
+	color: var(--tone-green-fg);
+}
+.deviceIcon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.online,
+.offline {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+}
+.online::before,
+.offline::before {
+	content: '';
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: currentColor;
+}
+.online {
+	color: var(--tone-green-fg);
+}
+.offline {
+	color: var(--color-gray-500);
+}
+
+.tdNum {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.nowrap {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.mono {
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: var(--font-size-compact);
+	letter-spacing: 0.02em;
+}
+
+.link {
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+	text-decoration: none;
+}
+.link:hover {
+	text-decoration: underline;
+}
+
+/* Duyệt máy = việc đang chờ bạn xử lý */
+.approveBtn {
+	height: 32px;
+	padding: 0 var(--space-3);
+	border-radius: var(--radius-md);
+	border: 1px solid var(--tone-pink-border);
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.approveBtn:hover:not(:disabled) {
+	border-color: var(--color-accent);
+}
+
+.textAction {
+	height: 30px;
+	padding: 0 var(--space-2);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: transparent;
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.textAction:hover:not(:disabled) {
+	background: var(--color-gray-50);
+}
+
+.pendingBadge {
+	font-size: var(--font-size-2xs);
+	padding: 1px 7px;
+	border-radius: var(--radius-full, 9999px);
+	font-weight: var(--font-weight-bold);
+	background: var(--tone-pink-bg);
+	color: var(--tone-pink-fg);
+	border: 1px solid var(--tone-pink-border);
+}
+
+/* ── Bộ lọc trên bảng ─────────────────────────────── */
+.filterBar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--space-2);
+	padding: var(--space-3) var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.pushRight {
+	margin-left: auto;
+}
+.dateFilter {
+	width: 150px;
+}
+
+.segment {
+	display: inline-flex;
+	padding: 2px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+}
+.segmentBtn,
+.segmentActive {
+	height: 30px;
+	padding: 0 var(--space-3);
+	border: none;
+	border-radius: calc(var(--radius-md) - 2px);
+	background: transparent;
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-500);
+	cursor: pointer;
+}
+.segmentBtn:hover {
+	color: var(--color-gray-700);
+}
+.segmentActive {
+	background: var(--color-white, #fff);
+	color: var(--color-primary-dark);
+	box-shadow: 0 0 0 1px var(--color-gray-200);
+}
+
+.footNote {
+	margin: 0;
+	padding: var(--space-3) var(--space-4);
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	border-top: 1px solid var(--color-gray-100);
+}
+
+/* ── Modal ─────────────────────────────── */
+.modalNote {
+	margin: 0 0 var(--space-4);
+	font-size: var(--font-size-compact);
+	line-height: 1.55;
+	color: var(--color-gray-600, var(--color-gray-700));
+}
+.formRow {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-3);
+}
+.toggleRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--space-4);
+	padding-top: var(--space-2);
+}
+.toggleTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.toggleDesc {
+	margin-top: 2px;
+	font-size: var(--font-size-compact);
+	line-height: 1.5;
+	color: var(--color-gray-500);
+}
+
+/* ── Hướng dẫn cài máy ─────────────────────────────── */
+.guide {
+	margin-top: var(--space-6);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white, #fff);
+}
+.guideSummary {
+	padding: var(--space-3) var(--space-4);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.guideBody {
+	padding: 0 var(--space-4) var(--space-4);
+	font-size: var(--font-size-compact);
+	line-height: 1.6;
+	color: var(--color-gray-700);
+	max-width: 72ch;
+}
+.guideBody p {
+	margin: 0 0 var(--space-3);
+}
+.guideBody code {
+	padding: 1px 6px;
+	border-radius: var(--radius-sm);
+	background: var(--color-gray-100);
+	font-size: 0.95em;
+}
+.guideList {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 6px var(--space-4);
+	margin: 0 0 var(--space-3);
+	padding: var(--space-3) var(--space-4);
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+}
+.guideList dt {
+	color: var(--color-gray-500);
+}
+.guideList dd {
+	margin: 0;
+	font-weight: var(--font-weight-semibold);
+}
+
+@media (max-width: 640px) {
+	.formRow {
+		grid-template-columns: 1fr;
+	}
+	.pushRight {
+		margin-left: 0;
+	}
+}

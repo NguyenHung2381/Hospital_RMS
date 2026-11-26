@@ -46,6 +46,10 @@ app.use(helmet({ contentSecurityPolicy: false }));
 // Set CORS_ORIGIN (phân cách bởi dấu phẩy) để giới hạn origin được phép gọi API.
 const corsOrigins = config.CORS_ORIGIN ?? true;
 app.use(cors({ origin: corsOrigins }));
+// Máy chấm công vân tay (ADMS /iclock/*) gửi text thuần, đường dẫn do firmware cố định:
+// mount TRƯỚC parser toàn cục (urlencoded sẽ nuốt body), ngoài /api/v1 (không qua
+// activityLogger / rate-limit chung — router có giới hạn riêng).
+app.use('/iclock', require('./modules/attendanceDevices/iclock.routes'));
 // Parser nhỏ cho /excel đặt TRƯỚC parser toàn cục: body-parser bỏ qua body đã parse nên
 // giới hạn 2 MB này thắng 10 MB (chặn dựng workbook cỡ lớn làm hết heap worker).
 app.use('/api/v1/excel', express.json({ limit: '2mb' }));
@@ -228,6 +232,11 @@ app.use(
 	`${API}/training-programs`,
 	requireModule('TRAINING'),
 	require('./modules/training/programs/trainingPrograms.routes'),
+);
+app.use(
+	`${API}/attendance-devices`,
+	requireModule('TRAINING'),
+	require('./modules/attendanceDevices/devices.routes'),
 );
 app.use(`${API}/surveys`, requireModule('SURVEY'), require('./modules/surveys/surveys.routes'));
 app.use(`${API}/my-tasks`, require('./modules/portal/myTasks.routes'));

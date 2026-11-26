@@ -16,6 +16,7 @@ import {
 	DocSvg,
 	DownloadSvg,
 	EditSvg,
+	FingerprintSvg,
 	HelpSvg,
 	HistorySvg,
 	KeySvg,
@@ -77,6 +78,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	cmeRecords: '/admin/cme-records',
 	staffLicenses: '/admin/staff-licenses',
 	staffAttendance: '/admin/staff-attendance',
+	attendanceDevices: '/admin/attendance-devices',
 	cmeCreditCatalog: '/admin/cme-credit-categories',
 	users: '/admin/users',
 	roles: '/admin/roles',
@@ -243,7 +245,10 @@ export const NAV_GROUPS: NavGroup[] = [
 	{
 		// Ca, phân ca, điểm danh và đơn xin phép của học viên — 1 mục, mỗi việc 1 tab (theo quyền).
 		section: 'Ca & điểm danh học viên',
-		items: [navItem('staffAttendance', 'Ca & điểm danh', ClockSvg)],
+		items: [
+			navItem('staffAttendance', 'Ca & điểm danh', ClockSvg),
+			navItem('attendanceDevices', 'Máy chấm công', FingerprintSvg, 'attendance_devices:read'),
+		],
 	},
 	{
 		// Khai báo 1 lần trước khi mở khóa: chương trình & bài học → câu hỏi → giảng viên → danh mục.
@@ -352,6 +357,8 @@ const MODULE_BY_SECTION: Record<string, ModuleKey> = {
 const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	surveys: 'survey',
 	staffAttendance: 'attendance',
+	// Máy chấm công thuộc phân hệ Đào tạo (điểm danh buổi học), không phụ thuộc phân hệ ca
+	attendanceDevices: 'training',
 };
 export const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];

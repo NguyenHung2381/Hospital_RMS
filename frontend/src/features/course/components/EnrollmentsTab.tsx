@@ -45,6 +45,7 @@ import tbl from "@/shared/components/Table/Table.module.css";
 import { CustomValuesInline, useFormConfig } from "@/shared/formConfig";
 import { useClientPaging } from "@/shared/hooks/useClientPaging";
 import { Pagination } from "@/shared/components/Table/Pagination";
+import { attendanceDeviceApi } from "@/features/attendance-device/api/attendanceDeviceApi";
 
 /** Bỏ dấu + chữ thường để tìm "nguyen van" khớp "Nguyễn Văn". */
 const normalize = (s: string) =>
@@ -183,6 +184,25 @@ export function EnrollmentsTab({
   const canViewTrainee = usePermission().has("trainees:read");
   const [bookOpen, setBookOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Máy chấm công vân tay: gửi học viên đã duyệt xuống máy ngay (không chờ job 5 phút)
+  const canSyncDevices = usePermission().has("attendance_devices:manage");
+  const [syncingDevices, setSyncingDevices] = useState(false);
+  const syncDevices = async () => {
+    setSyncingDevices(true);
+    try {
+      const r = await attendanceDeviceApi.syncAll();
+      showToast(
+        "success",
+        r.queued
+          ? `Đã xếp ${r.queued} lệnh — máy chấm công nhận trong ít phút`
+          : "Máy chấm công đã có đủ học viên",
+      );
+    } catch (e) {
+      showToast("error", e instanceof Error ? e.message : "Đồng bộ máy chấm công thất bại");
+    } finally {
+      setSyncingDevices(false);
+    }
+  };
   const [arranging, setArranging] = useState(false);
   const [proposalsOpen, setProposalsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -917,6 +937,17 @@ export function EnrollmentsTab({
                 title="Xuất danh sách học viên ra Excel (toàn khóa hoặc theo từng chương trình)"
               >
                 Xuất danh sách
+              </button>
+            )}
+            {canSyncDevices && course && (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                disabled={busy || syncingDevices}
+                onClick={syncDevices}
+                title="Gửi học viên đã duyệt của các khóa đang học xuống máy chấm công vân tay (hệ thống cũng tự làm 5 phút/lần)"
+              >
+                {syncingDevices ? "Đang đồng bộ…" : "Đồng bộ máy chấm công"}
               </button>
             )}
             {hasInternalRegistrations && course && (
