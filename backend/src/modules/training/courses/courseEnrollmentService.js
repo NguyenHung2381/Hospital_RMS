@@ -369,9 +369,6 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 
 	// Khóa GPHN: duyệt chỉ là duyệt — xếp vòng / khoa / NHD là bước riêng (practiceAutoService.arrange).
 	broadcast('update', { entity: 'course_enrollment' });
-	// Vào / ra danh sách được duyệt ⇒ đồng bộ ngay xuống máy chấm công (không thì job 5 phút)
-	if ((finalStatus === 'approved') !== (row.status === 'approved'))
-		require('../../attendanceDevices/deviceSyncService').requestSync();
 	return {
 		id: enrollmentId,
 		status: finalStatus,

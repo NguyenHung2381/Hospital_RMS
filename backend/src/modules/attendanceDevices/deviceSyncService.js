@@ -7,7 +7,7 @@
 // do phần mềm khác thêm) không bao giờ bị đụng tới.
 const { getPool, sql, withTransaction, lockResource } = require('../../config/db');
 const logger = require('../../config/logger');
-const { broadcast } = require('../events/eventService');
+const { broadcast, onUpdate } = require('../events/eventService');
 const protocol = require('./iclockProtocol');
 const commands = require('./deviceCommandService');
 const fingerprints = require('./fingerprintService');
@@ -248,5 +248,10 @@ const resyncDevice = async (deviceId, actorId) => {
 		);
 	return reconcile({ deviceId, actorId });
 };
+
+// Ghi danh khóa học đổi (duyệt / hủy duyệt / chuyển lớp...) ⇒ đồng bộ ngay xuống máy chấm
+// công thay vì chờ job 5 phút. Nghe qua eventService để module training không phụ thuộc
+// ngược vào module này (scripts/check-deps.js).
+onUpdate('course_enrollment', requestSync);
 
 module.exports = { reconcile, requestSync, applyCompleted, resyncDevice, planDeviceSync };

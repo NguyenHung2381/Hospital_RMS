@@ -71,6 +71,28 @@ const publish = (payload) => {
 const COALESCE_MS = 200;
 const pending = new Set();
 
+// Nghe sự kiện 'update' trong CÙNG tiến trình (không qua Redis / SSE): module A phản ứng
+// khi module B đổi dữ liệu mà B không phải require A — tránh phụ thuộc 2 chiều giữa các
+// module nghiệp vụ (scripts/check-deps.js). Gọi 1 lần mỗi cửa sổ gộp; lỗi của người nghe
+// không ảnh hưởng nơi phát. Vd. máy chấm công đồng bộ lại khi ghi danh khóa học đổi.
+const localListeners = new Map(); // entity → Set<fn>
+const onUpdate = (entity, fn) => {
+	if (!localListeners.has(entity)) localListeners.set(entity, new Set());
+	localListeners.get(entity).add(fn);
+	return () => localListeners.get(entity)?.delete(fn);
+};
+const notifyLocal = (event, data) => {
+	const fns = event === 'update' && data ? localListeners.get(data.entity) : null;
+	if (!fns) return;
+	for (const fn of fns) {
+		try {
+			fn(data);
+		} catch {
+			// người nghe tự ghi log lỗi của mình
+		}
+	}
+};
+
 const broadcast = (event, data) => {
 	const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 	if (pending.has(payload)) return;
@@ -78,6 +100,7 @@ const broadcast = (event, data) => {
 	setTimeout(() => {
 		pending.delete(payload);
 		publish(payload);
+		notifyLocal(event, data);
 	}, COALESCE_MS);
 };
 
@@ -92,4 +115,4 @@ const send = (payload) => {
 	}
 };
 
-module.exports = { addClient, removeClient, broadcast, MAX_PER_USER };
+module.exports = { addClient, removeClient, broadcast, onUpdate, MAX_PER_USER };
