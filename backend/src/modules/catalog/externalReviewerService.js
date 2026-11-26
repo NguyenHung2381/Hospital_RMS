@@ -1,4 +1,11 @@
-const { getPool, sql, withTransaction, nowSql, ilike } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	withActorTransaction,
+	actorRequest,
+	nowSql,
+	ilike,
+} = require('../../config/db');
 const { genExternalReviewerId } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const personService = require('../persons/personService');
@@ -43,7 +50,7 @@ const getById = async (id) => {
 };
 
 const create = async (data, actorId) => {
-	const newId = await withTransaction(async (tx) => {
+	const newId = await withActorTransaction(actorId, async (tx) => {
 		const id = await genExternalReviewerId(tx);
 		await tx
 			.request()
@@ -67,9 +74,9 @@ const create = async (data, actorId) => {
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
 	const sets = [];
-	const req = pool.request().input('id', sql.VarChar(20), id);
+	// actorRequest: câu UPDATE chạy trong transaction có người thao tác (trigger audit)
+	const req = actorRequest(actorId).input('id', sql.VarChar(20), id);
 
 	addSets(req, sets, data, {
 		full_name: sql.NVarChar(150),
@@ -105,17 +112,16 @@ const remove = async (id, actorId) => {
 		.query(
 			'SELECT 1 WHERE EXISTS (SELECT 1 FROM council_members WHERE external_reviewer_id = @id)',
 		);
+	// Vô hiệu hoá / xoá trong transaction có người thao tác (trigger audit ghi được ai xoá)
 	if (used.recordset.length) {
-		await pool
-			.request()
+		await actorRequest(actorId)
 			.input('id', sql.VarChar(20), id)
 			.input('actor_id', sql.VarChar(20), actorId || null)
 			.query(
 				`UPDATE external_reviewers SET is_active = 'false', updated_at = ${nowSql}, updated_by = @actor_id WHERE id = @id`,
 			);
 	} else {
-		await pool
-			.request()
+		await actorRequest(actorId)
 			.input('id', sql.VarChar(20), id)
 			.query('DELETE FROM external_reviewers WHERE id = @id');
 	}
