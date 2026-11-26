@@ -291,7 +291,6 @@
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-700);
-	text-transform: uppercase;
 	letter-spacing: 0.06em;
 }
 
