@@ -183,10 +183,6 @@
 		grid-template-columns: repeat(2, 1fr);
 		flex-basis: 100%;
 	}
-
-	.lessonBody {
-		margin-left: 0;
-	}
 }
 
 .group + .group {
@@ -200,43 +196,6 @@
 	margin-bottom: 8px;
 }
 
-/* Bài học: hàng bấm mở/đóng */
-.lessonHead {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	width: 100%;
-	padding: 0;
-	border: 0;
-	background: none;
-	font: inherit;
-	text-align: left;
-	cursor: pointer;
-}
-
-.lessonNo {
-	flex: 0 0 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--tone-green-bg);
-	color: var(--tone-green-fg);
-	font-weight: 700;
-	font-size: var(--font-size-xs);
-	display: grid;
-	place-items: center;
-}
-
-.lessonMain {
-	flex: 1;
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-}
-
-.lessonMain .meta {
-	margin-top: 2px;
-}
-
 .chev {
 	flex: 0 0 16px;
 	width: 16px;
@@ -247,13 +206,6 @@
 
 .chevOpen {
 	transform: rotate(180deg);
-}
-
-.lessonBody {
-	margin: 10px 0 0 40px;
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
 }
 
 .lessonDesc {
