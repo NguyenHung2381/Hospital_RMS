@@ -95,11 +95,11 @@
 
 .statAlert .statIcon {
 	background: var(--tone-red-bg);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 .statAlert .statText strong {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 /* ── Việc cần chú ý ─────────────────────── */
@@ -142,7 +142,7 @@
 }
 
 .todoRed > svg:first-child {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 .todoAmber {
