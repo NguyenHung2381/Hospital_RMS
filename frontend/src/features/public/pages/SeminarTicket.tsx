@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AlertSvg, CheckSvg, DownloadSvg, XSvg } from '@/assets/icons';
+import { confirmDialog } from '@/shared/components';
 import { BrandedQrCode, useBrandedQrImage } from '@/shared/components/BrandedQr';
 import { QuestionImageView } from '@/shared/components/QuestionImage';
 import { QuestionText } from '@/shared/components/QuestionImage/QuestionText';
@@ -158,20 +159,29 @@ export default function SeminarTicket() {
 		void submitRef.current(true);
 	}, [remaining]);
 
-	const handleSubmitTest = (e: React.FormEvent) => {
+	const handleSubmitTest = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!questions) return;
 		const missing = questions.filter((_, i) => answers[i] === undefined).length;
-		const msg = missing
-			? `Bạn còn ${missing} câu chưa trả lời (tính 0 điểm). Vẫn nộp bài? Mỗi người chỉ được nộp 1 lần.`
-			: 'Nộp bài? Mỗi người chỉ được nộp 1 lần.';
-		if (!window.confirm(msg)) return;
+		const ok = await confirmDialog({
+			title: 'Nộp bài kiểm tra?',
+			message: missing
+				? `Bạn còn ${missing} câu chưa trả lời (tính 0 điểm). Vẫn nộp bài? Mỗi người chỉ được nộp 1 lần.`
+				: 'Mỗi người chỉ được nộp 1 lần.',
+			confirmLabel: 'Nộp bài',
+		});
+		if (!ok) return;
 		void submit(false);
 	};
 
 	const handleStart = async () => {
 		const minutes = ticket?.test.duration_minutes;
-		if (!window.confirm(`Bắt đầu làm bài? Bạn có ${minutes} phút, hết giờ bài sẽ tự nộp.`)) return;
+		const ok = await confirmDialog({
+			title: 'Bắt đầu làm bài?',
+			message: `Bạn có ${minutes} phút, hết giờ bài sẽ tự nộp.`,
+			confirmLabel: 'Bắt đầu',
+		});
+		if (!ok) return;
 		setStarting(true);
 		try {
 			applyTicket(await startSeminarTest(code));
@@ -189,7 +199,10 @@ export default function SeminarTicket() {
 				bare
 				title='Vé tham dự hội nghị'>
 				{error ? (
-					<div className={`${styles.alertBox} ${styles.alertError}`}>
+					<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 						<AlertSvg /> {error}
 					</div>
 				) : (
@@ -213,12 +226,18 @@ export default function SeminarTicket() {
 			subtitle={ticket.seminar.title}
 		>
 			{welcome && (
-				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertSuccess}`}
+					role='status'
+				>
 					<CheckSvg /> Đăng ký thành công! Hãy lưu mã QR về máy (bấm "Tải mã QR" hoặc chụp màn hình).
 				</div>
 			)}
 			{error && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> {error}
 				</div>
 			)}
@@ -277,12 +296,18 @@ export default function SeminarTicket() {
 			</ol>
 
 			{autoSubmitted && (
-				<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertSuccess}`}
+					role='status'
+				>
 					<CheckSvg /> Đã hết giờ — bài làm đã được tự động nộp.
 				</div>
 			)}
 			{testDone && test.pass_score != null && test.passed === false && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> Chưa đạt điểm tối thiểu ({test.pass_score} điểm) để được cấp chứng nhận CME.
 				</div>
 			)}

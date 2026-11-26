@@ -407,6 +407,7 @@
 /* 32px: đủ bấm chính xác bằng chuột/touchpad; không co lại khi cột hẹp */
 .actionBtn {
 	flex-shrink: 0;
+	padding: 0; /* nút thật: bỏ padding mặc định của trình duyệt */
 	width: 32px;
 	height: 32px;
 	border: 1px solid var(--color-gray-200);

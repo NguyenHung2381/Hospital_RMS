@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { notify } from '../utils/feedback';
 import { sanitizeCommentHtml } from '../utils/sanitizeHtml';
 import styles from './RichTextEditor.module.css';
 
@@ -8,6 +9,8 @@ interface Props {
 	onUploadImage: (file: File) => Promise<string>;
 	maxTextLength?: number;
 	placeholder?: string;
+	/** Tên của ô soạn thảo cho trình đọc màn hình; bỏ trống thì lấy theo placeholder. */
+	'aria-label'?: string;
 }
 
 export default function RichTextEditor({
@@ -16,6 +19,7 @@ export default function RichTextEditor({
 	onUploadImage,
 	maxTextLength,
 	placeholder,
+	'aria-label': ariaLabel,
 }: Props) {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +94,7 @@ export default function RichTextEditor({
 			const url = await onUploadImage(file);
 			exec('insertImage', url);
 		} catch (err) {
-			alert(err instanceof Error ? err.message : 'Tải ảnh thất bại');
+			notify.error(err instanceof Error ? err.message : 'Tải ảnh thất bại');
 		} finally {
 			setUploading(false);
 		}
@@ -104,13 +108,19 @@ export default function RichTextEditor({
 
 	return (
 		<div className={styles.wrapper}>
-			<div className={styles.toolbar}>
+			<div
+				className={styles.toolbar}
+				role='toolbar'
+				aria-label='Định dạng văn bản'
+			>
 				<button
 					type='button'
 					className={`${styles.toolBtn} ${active.bold ? styles.toolBtnActive : ''}`}
 					onMouseDown={keepSelection}
 					onClick={() => exec('bold')}
 					title='Đậm'
+					aria-label='Đậm'
+					aria-pressed={active.bold}
 				>
 					<b>B</b>
 				</button>
@@ -120,6 +130,8 @@ export default function RichTextEditor({
 					onMouseDown={keepSelection}
 					onClick={() => exec('italic')}
 					title='Nghiêng'
+					aria-label='Nghiêng'
+					aria-pressed={active.italic}
 				>
 					<i>I</i>
 				</button>
@@ -129,6 +141,8 @@ export default function RichTextEditor({
 					onMouseDown={keepSelection}
 					onClick={() => exec('underline')}
 					title='Gạch chân'
+					aria-label='Gạch chân'
+					aria-pressed={active.underline}
 				>
 					<u>U</u>
 				</button>
@@ -139,6 +153,8 @@ export default function RichTextEditor({
 					onMouseDown={keepSelection}
 					onClick={() => exec('insertUnorderedList')}
 					title='Danh sách'
+					aria-label='Danh sách'
+					aria-pressed={active.ul}
 				>
 					☰
 				</button>
@@ -148,6 +164,8 @@ export default function RichTextEditor({
 					onMouseDown={keepSelection}
 					onClick={() => exec('insertOrderedList')}
 					title='Danh sách số'
+					aria-label='Danh sách số'
+					aria-pressed={active.ol}
 				>
 					1.
 				</button>
@@ -159,6 +177,7 @@ export default function RichTextEditor({
 					onClick={() => fileInputRef.current?.click()}
 					disabled={uploading}
 					title='Chèn ảnh'
+					aria-label='Chèn ảnh'
 				>
 					{uploading ? '…' : '🖼️'}
 				</button>
@@ -181,6 +200,9 @@ export default function RichTextEditor({
 				ref={editorRef}
 				className={styles.editor}
 				contentEditable
+				role='textbox'
+				aria-multiline='true'
+				aria-label={ariaLabel ?? placeholder ?? 'Nội dung'}
 				onInput={handleInput}
 				onFocus={() => {
 					focused.current = true;

@@ -46,14 +46,15 @@ export default function Roles() {
 	const headerActions = (
 		<div className={styles.headerBtns}>
 			{has('users:read') && (
-				<button className={styles.btnSecondaryHeader} onClick={() => r.setModal('userPermissions')}>
+				<button type='button' className={styles.btnSecondaryHeader} onClick={() => r.setModal('userPermissions')}>
 					<UserCheckSvg /> Tra cứu quyền người dùng
 				</button>
 			)}
-			<button className={styles.btnSecondaryHeader} onClick={() => r.setModal('compare')}>
+			<button type='button' className={styles.btnSecondaryHeader} onClick={() => r.setModal('compare')}>
 				<LayersSvg /> So sánh vai trò
 			</button>
 			<button
+				type='button'
 				className={styles.btnAddHeader}
 				onClick={() => r.setModal('add')}
 			>
@@ -118,6 +119,7 @@ export default function Roles() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm vai trò theo tên hoặc mô tả'
 								placeholder='Tìm theo tên, mô tả...'
 								value={r.search}
 								onChange={(e) => {
@@ -127,6 +129,8 @@ export default function Roles() {
 							/>
 							{r.search && (
 								<button
+									type='button'
+									aria-label='Xóa tìm kiếm'
 									className={styles.searchClear}
 									onClick={() => {
 										r.setSearch('');
@@ -291,49 +295,57 @@ export default function Roles() {
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
 											<div className={styles.actionBtns}>
-												<div
+												<button
+													type='button'
 													className={`${styles.actionBtn} ${styles.actionPerm}`}
 													title='Phân quyền'
+													aria-label={`Phân quyền của vai trò ${role.name}`}
 													onClick={() => {
 														r.setPermRole(role);
 														r.setModal('permissions');
 													}}
 												>
 													<KeySvg />
-												</div>
+												</button>
 												{canClone && (
-													<div
+													<button
+														type='button'
 														className={styles.actionBtn}
 														title='Nhân bản (vai trò mới cùng quyền)'
+														aria-label={`Nhân bản vai trò ${role.name}`}
 														onClick={() => {
 															r.setActionRole(role);
 															r.setModal('clone');
 														}}
 													>
 														<CopySvg />
-													</div>
+													</button>
 												)}
-												<div
+												<button
+													type='button'
 													className={styles.actionBtn}
 													title='Chỉnh sửa'
+													aria-label={`Chỉnh sửa vai trò ${role.name}`}
 													onClick={() => {
 														r.setEditingRole(role);
 														r.setModal('edit');
 													}}
 												>
 													<EditSvg />
-												</div>
+												</button>
 												{!role.is_system && (
-													<div
+													<button
+														type='button'
 														className={`${styles.actionBtn} ${styles.danger}`}
 														title='Xóa'
+														aria-label={`Xóa vai trò ${role.name}`}
 														onClick={() => {
 															r.setDeletingRole(role);
 															r.setModal('delete');
 														}}
 													>
 														<TrashSvg />
-													</div>
+													</button>
 												)}
 											</div>
 										</td>

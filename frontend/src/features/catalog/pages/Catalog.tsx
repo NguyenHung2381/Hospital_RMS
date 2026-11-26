@@ -43,6 +43,7 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 				onImported={d.refreshData}
 			/>
 			<button
+				type='button'
 				className={styles.btnAddHeader}
 				onClick={() => d.setModal('add')}
 			>
@@ -58,13 +59,19 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 			breadcrumbs={groupCfg.breadcrumb ? [{ label: groupCfg.breadcrumb }] : undefined}
 			headerActions={headerActions}
 		>
-			<div className={styles.tabs}>
+			<div
+				className={styles.tabs}
+				role='group'
+				aria-label='Loại danh mục'
+			>
 				{d.tabs.map((t) => {
 					const { icon: Icon, label: tabLabel } = TAB_CONFIG[t];
 					return (
 						<button
+							type='button'
 							key={t}
 							className={`${styles.tabBtn} ${d.tab === t ? styles.tabBtnActive : ''}`}
+							aria-pressed={d.tab === t}
 							onClick={() => d.handleTabChange(t)}
 						>
 							<Icon /> {tabLabel}

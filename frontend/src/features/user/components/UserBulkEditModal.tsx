@@ -1,5 +1,5 @@
 import { Modal } from '@/shared/components';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { CheckSvg, ChevDSvg, EditSvg } from '@/assets/icons';
 import type { SimpleItem, UpdateUserPayload } from '../api/userApi';
 import styles from '../pages/UserList.module.css';
@@ -19,6 +19,7 @@ export function UserBulkEditModal({
 	onSave: (payload: UpdateUserPayload) => void;
 	loading: boolean;
 }) {
+	const uid = useId();
 	const [departmentId, setDepartmentId] = useState('');
 	const [roleId, setRoleId] = useState('');
 	const [activeState, setActiveState] = useState<'' | 'active' | 'locked'>('');
@@ -43,6 +44,7 @@ export function UserBulkEditModal({
 			footer={
 				<>
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 						disabled={loading}
@@ -50,6 +52,7 @@ export function UserBulkEditModal({
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={styles.btnConfirmBlue}
 						onClick={() => onSave(payload)}
 						disabled={loading || !hasChange}
@@ -66,9 +69,15 @@ export function UserBulkEditModal({
 		>
 			<div className={styles.formRow}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Vai trò</label>
+					<label
+						className={styles.formLabel}
+						htmlFor={`${uid}-role`}
+					>
+						Vai trò
+					</label>
 					<div className={styles.selectWrapper}>
 						<select
+							id={`${uid}-role`}
 							className={styles.formSelect}
 							value={roleId}
 							onChange={(e) => setRoleId(e.target.value)}
@@ -87,9 +96,15 @@ export function UserBulkEditModal({
 					</div>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Trạng thái</label>
+					<label
+						className={styles.formLabel}
+						htmlFor={`${uid}-status`}
+					>
+						Trạng thái
+					</label>
 					<div className={styles.selectWrapper}>
 						<select
+							id={`${uid}-status`}
 							className={styles.formSelect}
 							value={activeState}
 							onChange={(e) =>
@@ -106,9 +121,15 @@ export function UserBulkEditModal({
 			</div>
 			<div className={styles.formRow}>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Khoa/phòng</label>
+					<label
+						className={styles.formLabel}
+						htmlFor={`${uid}-dept`}
+					>
+						Khoa/phòng
+					</label>
 					<div className={styles.selectWrapper}>
 						<select
+							id={`${uid}-dept`}
 							className={styles.formSelect}
 							value={departmentId}
 							onChange={(e) => setDepartmentId(e.target.value)}

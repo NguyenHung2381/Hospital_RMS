@@ -24,35 +24,6 @@
 	composes: tableControls from '../../../shared/components/Table/Table.module.css';
 }
 
-/* .cardHeaderIcon/.cardTitle/.cardSub vẫn dùng lại cho header của modal bên dưới. */
-
-.cardHeaderIcon {
-	width: 40px;
-	height: 40px;
-	border-radius: var(--radius-lg);
-	background: var(--tone-green-bg);
-	color: var(--tone-green-fg);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.cardHeaderIcon svg {
-	width: 18px;
-	height: 18px;
-}
-
-.cardTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
-}
-.cardSub {
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
-	margin-top: 2px;
-}
-
 .btnRefresh {
 	width: 32px;
 	height: 32px;
@@ -316,6 +287,20 @@
 	color: var(--color-gray-600);
 }
 
+.deptSelectBtn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
 .treeCheckBox {
 	width: 16px;
 	height: 16px;
@@ -374,6 +359,7 @@
 }
 
 .userNode {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -382,6 +368,24 @@
 	cursor: pointer;
 	transition: background var(--transition-fast);
 	user-select: none;
+}
+/* Dòng chọn đề tài là nút thật: bỏ kiểu mặc định của button */
+button.userNode {
+	width: 100%;
+	border: none;
+	background: none;
+	font: inherit;
+	text-align: left;
+}
+.userNode input {
+	/* ô checkbox thật vẫn nằm trong thứ tự Tab (thay cho thuộc tính hidden) nhưng không hiện ra */
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+.userNode:has(input:focus-visible) {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 1px;
 }
 .userNode:hover {
 	background: var(--color-gray-50);
@@ -619,69 +623,12 @@
 	}
 }
 
-/* ── DELETE MODAL ───────────────────────── */
-.modalBackdrop {
-	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modal {
-	background: var(--color-white);
-	border-radius: var(--radius-2xl);
-	box-shadow: var(--shadow-xl);
-	width: 100%;
-	max-width: 540px;
-	animation: modalPopIn 220ms var(--ease-out) both;
-	overflow: hidden;
-}
-@keyframes modalPopIn {
-	from {
-		opacity: 0;
-		transform: scale(0.95) translateY(8px);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1) translateY(0);
-	}
-}
-
-.modalBody {
-	padding: var(--space-6);
-	overflow-y: auto;
-	max-height: 70vh;
-	max-height: 70dvh;
+/* ── MODAL GỬI THÔNG BÁO (khung do <Modal> của kit lo) ───────────────────── */
+/* Thân hộp thoại xếp dọc các nhóm trường */
+.sendBody {
 	display: flex;
 	flex-direction: column;
 	gap: var(--space-4);
-}
-
-.modalHeader {
-	composes: modalHeader from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modalClose {
-	margin-left: auto;
-	width: 32px;
-	height: 32px;
-	border-radius: var(--radius-md);
-	border: 1px solid var(--color-gray-200);
-	background: transparent;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: var(--color-gray-500);
-}
-.modalClose:hover {
-	background: var(--color-gray-100);
-	color: var(--color-gray-700);
-}
-.modalClose svg {
-	width: 14px;
-	height: 14px;
-}
-
-.modalFooter {
-	composes: modalFooter from '../../../shared/components/Modal/Modal.module.css';
 }
 
 /* ── RECIPIENT DRILL-DOWN ───────────────── */

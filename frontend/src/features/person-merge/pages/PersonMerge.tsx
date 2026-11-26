@@ -1,6 +1,7 @@
 import { InfoSvg, SearchSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '../../../shared/components/Badge';
+import { Tabs } from '../../../shared/components/Tabs';
 import { SkeletonTable } from '../../../shared/components/Loading';
 import { Pagination } from '../../../shared/components/Table/Pagination';
 import { formatDateVN } from '../../../shared/utils/formatDate';
@@ -62,19 +63,25 @@ export default function PersonMerge() {
 			</div>
 
 			<div className={styles.tableCard}>
-				<div className={styles.tabsRow}>
-					{STATUS_TABS.map((t) => (
-						<div
-							key={t.key}
-							className={`${styles.tab} ${d.status === t.key ? styles.tabActive : ''}`}
-							onClick={() => d.changeStatus(t.key)}
-						>
-							{t.label}
-							{d.stats && <span className={styles.tabBadge}>{d.stats.by_status[t.key] ?? 0}</span>}
-						</div>
-					))}
-				</div>
+				<Tabs
+					aria-label='Trạng thái cặp hồ sơ'
+					idPrefix='person-merge'
+					// đổi tab là tải lại danh sách: mũi tên chỉ dời focus, Enter / Space mới chọn
+					activation='manual'
+					value={d.status}
+					onChange={(key) => d.changeStatus(key as typeof d.status)}
+					items={STATUS_TABS.map((t) => ({
+						id: t.key,
+						label: t.label,
+						badge: d.stats ? (d.stats.by_status[t.key] ?? 0) : undefined,
+					}))}
+				/>
 
+				<div
+					role='tabpanel'
+					id={`person-merge-panel-${d.status}`}
+					aria-labelledby={`person-merge-tab-${d.status}`}
+				>
 				<div className={styles.tableHeader}>
 					<div className={styles.tableHeaderLeft}>
 						<span className={styles.tableTitle}>Cặp hồ sơ nghi trùng</span>
@@ -99,6 +106,7 @@ export default function PersonMerge() {
 							<SearchSvg className={styles.searchIcon} />
 							<input
 								className={styles.searchInput}
+								aria-label='Tìm cặp hồ sơ theo tên, email hoặc số điện thoại'
 								placeholder='Tìm theo tên, email, SĐT…'
 								value={d.search}
 								onChange={(e) => d.changeSearch(e.target.value)}
@@ -178,6 +186,7 @@ export default function PersonMerge() {
 						d.setPage(1);
 					}}
 				/>
+				</div>
 			</div>
 
 			{d.openId !== null && (

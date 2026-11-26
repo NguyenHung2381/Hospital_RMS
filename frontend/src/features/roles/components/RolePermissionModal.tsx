@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
 	CheckSvg,
 	SearchSvg,
@@ -7,7 +7,6 @@ import {
 	LayersSvg,
 	ShieldSvg,
 	UsersSvg,
-	XSvg,
 } from '@/assets/icons';
 import {
 	getPermissionCatalog,
@@ -21,7 +20,7 @@ import type {
 	Role,
 	RoleGrant,
 } from '../types/role.type';
-import { InlineLoading } from '@/shared/components';
+import { InlineLoading, Modal } from '@/shared/components';
 import styles from '../pages/Roles.module.css';
 
 const RESOURCE_ICON: Record<string, React.ReactNode> = {
@@ -154,6 +153,12 @@ export function RolePermissionModal({
 	const [filter, setFilter] = useState('');
 	const [onlyGranted, setOnlyGranted] = useState(false);
 	const [confirming, setConfirming] = useState(false);
+	const confirmRef = useRef<HTMLDivElement>(null);
+
+	// Bảng xác nhận nằm cuối thân hộp thoại (có thể cuộn) — đưa vào tầm nhìn khi hiện ra
+	useEffect(() => {
+		if (confirming) confirmRef.current?.scrollIntoView({ block: 'nearest' });
+	}, [confirming]);
 	// Dòng đang mở phần "Tùy chỉnh" (tick từng quyền)
 	const [openCustom, setOpenCustom] = useState<Set<string>>(new Set());
 
@@ -293,30 +298,60 @@ export function RolePermissionModal({
 		);
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
-		>
-			<div className={`${styles.modal} ${styles.permModal}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<KeySvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Phân quyền — {role.name}</div>
-						<div className={styles.modalSub}>Chọn các quyền được phép thực hiện</div>
-					</div>
-					{!loading && <span className={styles.permCount}>{granted.size} quyền</span>}
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
+		<Modal
+			open
+			onClose={onClose}
+			// Có thay đổi chưa lưu thì Esc / bấm nền / nút X hỏi lại trước khi đóng
+			dirty={changes.count > 0 && !saving}
+			closeOnBackdrop={!saving}
+			title={`Phân quyền — ${role.name}`}
+			subtitle={
+				<>
+					Chọn các quyền được phép thực hiện
+					{!loading && <span className={styles.permCountInline}>{granted.size} quyền</span>}
+				</>
+			}
+			icon={<KeySvg />}
+			iconStyle={{ background: 'var(--tone-purple-bg)', color: 'var(--tone-purple-fg)' }}
+			size='xl'
+			className={styles.permModal}
+			bodyClassName={styles.modalBodyFlush}
+			footer={
+				<>
+					{error && (
+						<span style={{ fontSize: 12, color: '#e24b4a', flex: 1 }} role='alert'>{error}</span>
+					)}
+					{!error && !loading && (
+						<span className={styles.viewSub} style={{ flex: 1 }}>
+							{changes.count ? `${changes.count} thay đổi chưa lưu` : 'Chưa có thay đổi'}
+						</span>
+					)}
+					<button
+						type='button'
+						className={styles.btnCancel}
+						onClick={confirming ? () => setConfirming(false) : onClose}
+						disabled={saving}
+					>
+						{confirming ? 'Quay lại' : 'Hủy'}
 					</button>
-				</div>
-
+					<button
+						type='button'
+						className={styles.btnSave}
+						onClick={confirming ? handleSave : () => setConfirming(true)}
+						disabled={saving || loading || changes.count === 0}
+					>
+						{saving ? <span className={styles.spinner} /> : <CheckSvg />}
+						{confirming ? 'Xác nhận lưu' : 'Xem lại & lưu'}
+					</button>
+				</>
+			}
+		>
 				{!loading && catalog && (
 					<div className={styles.viewToolbar}>
 						<div className={styles.viewSearch}>
 							<SearchSvg />
 							<input
+								aria-label='Tìm chức năng hoặc quyền'
 								placeholder='Tìm chức năng hoặc quyền…'
 								value={filter}
 								onChange={(e) => setFilter(e.target.value)}
@@ -385,6 +420,7 @@ export function RolePermissionModal({
 															<select
 																className={styles.permScopeSelect}
 																title='Phạm vi dữ liệu — áp cho mọi quyền được chọn'
+																aria-label={`Phạm vi dữ liệu của ${res.label}`}
 																value={rowScope[res.key] ?? res.scopes[0].key}
 																onChange={(e) =>
 																	setRowScope((prev) => ({
@@ -482,7 +518,11 @@ export function RolePermissionModal({
 				</div>
 
 				{confirming && (
-					<div className={styles.permConfirm}>
+					<div
+						ref={confirmRef}
+						className={styles.permConfirm}
+						role='status'
+					>
 						<div className={styles.permConfirmTitle}>
 							Xác nhận thay đổi cho vai trò "{role.name}" ({role.user_count ?? 0} người
 							dùng)
@@ -513,32 +553,6 @@ export function RolePermissionModal({
 					</div>
 				)}
 
-				<div className={styles.modalFooter}>
-					{error && (
-						<span style={{ fontSize: 12, color: '#e24b4a', flex: 1 }}>{error}</span>
-					)}
-					{!error && !loading && (
-						<span className={styles.viewSub} style={{ flex: 1 }}>
-							{changes.count ? `${changes.count} thay đổi chưa lưu` : 'Chưa có thay đổi'}
-						</span>
-					)}
-					<button
-						className={styles.btnCancel}
-						onClick={confirming ? () => setConfirming(false) : onClose}
-						disabled={saving}
-					>
-						{confirming ? 'Quay lại' : 'Hủy'}
-					</button>
-					<button
-						className={styles.btnSave}
-						onClick={confirming ? handleSave : () => setConfirming(true)}
-						disabled={saving || loading || changes.count === 0}
-					>
-						{saving ? <span className={styles.spinner} /> : <CheckSvg />}
-						{confirming ? 'Xác nhận lưu' : 'Xem lại & lưu'}
-					</button>
-				</div>
-			</div>
-		</div>
+		</Modal>
 	);
 }

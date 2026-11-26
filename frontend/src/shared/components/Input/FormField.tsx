@@ -44,6 +44,7 @@ export function FormField({
 	label,
 	required,
 	error,
+	hint,
 	htmlFor,
 	className,
 	style,
@@ -52,6 +53,8 @@ export function FormField({
 	label: ReactNode;
 	required?: boolean;
 	error?: ReactNode;
+	/** Ghi chú nhỏ dưới ô nhập (trước dòng lỗi) — được nối vào aria-describedby của ô. */
+	hint?: ReactNode;
 	htmlFor?: string;
 	className?: string;
 	style?: CSSProperties;
@@ -59,6 +62,7 @@ export function FormField({
 }) {
 	const autoId = useId();
 	const errorId = `${autoId}-error`;
+	const hintId = `${autoId}-hint`;
 	const hasError = !!error;
 	const control = asControl(children);
 
@@ -68,7 +72,7 @@ export function FormField({
 		const props = control.props;
 		const controlId = props.id ?? (htmlFor ? undefined : autoId);
 		labelFor = htmlFor ?? controlId;
-		const describedBy = [props['aria-describedby'], hasError ? errorId : undefined]
+		const describedBy = [props['aria-describedby'], hint ? hintId : undefined, hasError ? errorId : undefined]
 			.filter(Boolean)
 			.join(' ');
 		const patch: FieldControlProps = {};
@@ -94,6 +98,14 @@ export function FormField({
 				{required && <span className={m.required}> *</span>}
 			</label>
 			{content}
+			{hint && (
+				<div
+					id={hintId}
+					className={m.formHint}
+				>
+					{hint}
+				</div>
+			)}
 			{hasError && (
 				<div
 					id={errorId}

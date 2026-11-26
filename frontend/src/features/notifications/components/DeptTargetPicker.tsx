@@ -74,6 +74,8 @@ export function DeptTargetPicker({
 								type='button'
 								className={styles.expandBtn}
 								onClick={() => toggleDeptExpanded(dept.id)}
+								aria-expanded={isExpanded}
+								aria-label={`${isExpanded ? 'Thu gọn' : 'Mở rộng'} khoa ${dept.name}`}
 							>
 								<ChevDSvg
 									style={{
@@ -85,32 +87,31 @@ export function DeptTargetPicker({
 								/>
 							</button>
 
-							{/* Dept checkbox */}
-							<span
-								className={`${styles.treeCheckBox} ${state === 'all' ? styles.treeCheckOn : state === 'some' ? styles.treeCheckPartial : ''}`}
+							{/* Ô chọn khoa + tên khoa: một nút checkbox thật, bấm vào tên cũng chọn như trước */}
+							<button
+								type='button'
+								className={styles.deptSelectBtn}
 								onClick={() => toggleDeptSelection(dept.id)}
 								role='checkbox'
 								aria-checked={state === 'all' ? true : state === 'some' ? 'mixed' : false}
 							>
-								{state === 'all' && (
-									<CheckSmSvg
-										style={{
-											width: 9,
-											height: 7,
-											color: '#fff',
-										}}
-									/>
-								)}
-								{state === 'some' && <span className={styles.partialDash} />}
-							</span>
-
-							{/* Name + count */}
-							<span
-								className={styles.deptNodeName}
-								onClick={() => toggleDeptSelection(dept.id)}
-							>
-								{dept.name}
-							</span>
+								<span
+									className={`${styles.treeCheckBox} ${state === 'all' ? styles.treeCheckOn : state === 'some' ? styles.treeCheckPartial : ''}`}
+									aria-hidden='true'
+								>
+									{state === 'all' && (
+										<CheckSmSvg
+											style={{
+												width: 9,
+												height: 7,
+												color: '#fff',
+											}}
+										/>
+									)}
+									{state === 'some' && <span className={styles.partialDash} />}
+								</span>
+								<span className={styles.deptNodeName}>{dept.name}</span>
+							</button>
 							<span className={styles.deptNodeCount}>
 								{selCount}/{deptUsers.length}
 							</span>
@@ -133,12 +134,12 @@ export function DeptTargetPicker({
 											>
 												<input
 													type='checkbox'
-													hidden
 													checked={isSel}
 													onChange={() => toggleUserInDept(u.id)}
 												/>
 												<span
 													className={`${styles.treeCheckBox} ${isSel ? styles.treeCheckOn : ''}`}
+													aria-hidden='true'
 												>
 													{isSel && (
 														<CheckSmSvg

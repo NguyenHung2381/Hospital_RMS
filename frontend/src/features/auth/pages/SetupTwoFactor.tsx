@@ -116,7 +116,11 @@ export default function SetupTwoFactor() {
 							<br />
 							2. Nhập mã 6 số đang hiện trong ứng dụng.
 						</p>
-						<div style={{ display: 'flex', justifyContent: 'center' }}>
+						<div
+							style={{ display: 'flex', justifyContent: 'center' }}
+							role='img'
+							aria-label={setup ? 'Mã QR để thêm tài khoản vào ứng dụng xác thực' : 'Đang tạo mã QR'}
+						>
 							{setup ? <QRCode value={setup.otpauth_uri} /> : <span className={styles.btnSpinner} />}
 						</div>
 						<div className={styles.inputGroup}>

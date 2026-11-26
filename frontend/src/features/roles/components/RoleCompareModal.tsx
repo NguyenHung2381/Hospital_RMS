@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckSvg, LayersSvg, XSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
+import { CheckSvg, LayersSvg } from '@/assets/icons';
+import { InlineLoading, Modal } from '@/shared/components';
 import { getPermissionCatalog, getRolePermissions, getRoles } from '../api/roleApi';
 import type { PermissionCatalog, Role, RoleGrant } from '../types/role.type';
 import { grantMap, scopeLabel } from '../utils/permissionView';
@@ -86,8 +86,8 @@ export function RoleCompareModal({ initialRoleId, onClose }: RoleCompareModalPro
 			<div className={styles.permCellDash} />
 		);
 
-	const picker = (value: string, onChange: (v: string) => void, other: string) => (
-		<select className={styles.viewSelect} value={value} onChange={(e) => onChange(e.target.value)}>
+	const picker = (value: string, onChange: (v: string) => void, other: string, label: string) => (
+		<select aria-label={label} className={styles.viewSelect} value={value} onChange={(e) => onChange(e.target.value)}>
 			<option value=''>— Chọn vai trò —</option>
 			{roles
 				.filter((r) => r.id !== other)
@@ -100,29 +100,26 @@ export function RoleCompareModal({ initialRoleId, onClose }: RoleCompareModalPro
 	);
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title='So sánh vai trò'
+			subtitle={
+				<>
+					Quyền và phạm vi dữ liệu khác nhau giữa 2 vai trò
+					{ready && !showAll && <span className={styles.permCountInline}>{diffCount} khác biệt</span>}
+				</>
+			}
+			icon={<LayersSvg />}
+			iconStyle={{ background: 'var(--tone-purple-bg)', color: 'var(--tone-purple-fg)' }}
+			size='lg'
+			className={styles.dialogWide}
+			bodyClassName={styles.modalBodyFlush}
 		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<LayersSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>So sánh vai trò</div>
-						<div className={styles.modalSub}>Quyền và phạm vi dữ liệu khác nhau giữa 2 vai trò</div>
-					</div>
-					{ready && !showAll && <span className={styles.permCount}>{diffCount} khác biệt</span>}
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-
 				<div className={styles.viewToolbar}>
-					{picker(aId, setAId, bId)}
+					{picker(aId, setAId, bId, 'Vai trò thứ nhất')}
 					<span className={styles.viewVs}>so với</span>
-					{picker(bId, setBId, aId)}
+					{picker(bId, setBId, aId, 'Vai trò thứ hai')}
 					<label className={styles.viewToggle}>
 						<input type='checkbox' checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
 						Hiện cả quyền giống nhau
@@ -169,7 +166,6 @@ export function RoleCompareModal({ initialRoleId, onClose }: RoleCompareModalPro
 						</table>
 					)}
 				</div>
-			</div>
-		</div>
+		</Modal>
 	);
 }

@@ -127,7 +127,9 @@ export default function UserNotifications() {
 					<div className={styles.tabs}>
 						{(['all', 'unread'] as const).map((t) => (
 							<button
+								type='button'
 								key={t}
+								aria-pressed={tab === t}
 								className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
 								onClick={() => { setTab(t); setPage(1); }}
 							>
@@ -144,6 +146,7 @@ export default function UserNotifications() {
 							<FilterSvg style={{ width: 13, height: 13 }} />
 							<select
 								className={styles.filterSelect}
+								aria-label='Lọc thông báo theo danh mục'
 								value={filterCategory}
 								onChange={(e) => {
 									setFilterCategory(e.target.value as NotifCategory | '');
@@ -164,6 +167,7 @@ export default function UserNotifications() {
 
 						{unreadCount > 0 && (
 							<button
+								type='button'
 								className={styles.btnMarkAll}
 								onClick={handleMarkAll}
 								disabled={markingAll}
@@ -206,13 +210,28 @@ export default function UserNotifications() {
 										className={`${styles.item} ${!n.is_read ? styles.unread : ''}`}
 										onClick={() => handleMarkOne(n.id)}
 									>
-										{!n.is_read && <span className={styles.unreadDot} />}
+										{!n.is_read && <span className={styles.unreadDot} aria-hidden='true' />}
 										<div className={`${styles.itemIcon} ${cfg.cls}`}>
 											{cfg.el}
 										</div>
 										<div className={styles.itemBody}>
 											<div className={styles.itemTop}>
-												<span className={styles.itemTitle}>{n.title}</span>
+												{/* Bấm cả dòng vẫn đánh dấu đã đọc (chuột); nút này là đường đi cho bàn phím */}
+												{n.is_read ? (
+													<span className={styles.itemTitle}>{n.title}</span>
+												) : (
+													<button
+														type='button'
+														className={styles.itemTitle}
+														aria-label={`Đánh dấu đã đọc: ${n.title}`}
+														onClick={(e) => {
+															e.stopPropagation();
+															void handleMarkOne(n.id);
+														}}
+													>
+														{n.title}
+													</button>
+												)}
 												<span
 													className={`${styles.typeBadge} ${styles[`type_${n.type}`] ?? styles[`type_${notif.type}`]}`}
 												>

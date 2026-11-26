@@ -1,5 +1,6 @@
 import { KeySvg } from '@/assets/icons';
 import { useState } from 'react';
+import { Modal } from '@/shared/components';
 import styles from '../pages/UserList.module.css';
 import type { User } from '../types/user.type';
 
@@ -43,76 +44,22 @@ export function ResetPasswordModal({
 	};
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => {
-				// Đã hiện mật khẩu tạm thì không đóng khi bấm nhầm ra ngoài
-				if (e.target === e.currentTarget && !tempPassword) onClose();
-			}}
-		>
-			<div
-				className={`${styles.modal} ${styles.modalSm}`}
-				role='alertdialog'
-				aria-modal='true'
-			>
-				<div
-					className={styles.modalBody}
-					style={{ textAlign: 'center', gap: 16 }}
-				>
-					<div
-						className={styles.modalHeaderIcon}
-						style={{
-							margin: '0 auto',
-							background: '#fff7ed',
-							color: '#b45309',
-						}}
-					>
-						<KeySvg />
-					</div>
-					{tempPassword ? (
-						<div>
-							<div className={styles.modalTitle}>Đã đặt lại mật khẩu</div>
-							<div
-								className={styles.modalSubtitle}
-								style={{ marginTop: 6 }}
-							>
-								Mật khẩu của <strong>{user.full_name}</strong> đã được đặt về
-								tên đăng nhập. Người dùng phải đổi mật khẩu ở lần đăng nhập tới.
-							</div>
-							<div
-								style={{
-									marginTop: 12,
-									fontFamily: 'var(--font-mono)',
-									fontSize: 18,
-									letterSpacing: 1,
-									background: '#f3f4f6',
-									padding: '8px 12px',
-									borderRadius: 6,
-									userSelect: 'all',
-								}}
-							>
-								{tempPassword}
-							</div>
-						</div>
-					) : (
-						<div>
-							<div className={styles.modalTitle}>Đặt lại mật khẩu?</div>
-							<div
-								className={styles.modalSubtitle}
-								style={{ marginTop: 6 }}
-							>
-								Mật khẩu của{' '}
-								<strong>{user.full_name}</strong> sẽ được đặt về tên đăng nhập (
-								{user.username}) và tài khoản bị đăng xuất khỏi mọi thiết bị.
-							</div>
-						</div>
-					)}
-				</div>
-				<div className={styles.modalFooter}>
+		<Modal
+			open
+			onClose={onClose}
+			size='sm'
+			// Đã hiện mật khẩu tạm thì không đóng khi bấm nhầm ra ngoài
+			closeOnBackdrop={!tempPassword}
+			title={tempPassword ? 'Đã đặt lại mật khẩu' : 'Đặt lại mật khẩu?'}
+			icon={<KeySvg />}
+			iconStyle={{ background: '#fff7ed', color: '#b45309' }}
+			footer={
+				<>
 					{error && (
 						<span
 							className={styles.fieldError}
 							style={{ flex: 1 }}
+							role='alert'
 						>
 							{error}
 						</span>
@@ -120,12 +67,14 @@ export function ResetPasswordModal({
 					{tempPassword ? (
 						<>
 							<button
+								type='button'
 								className={styles.btnCancel}
 								onClick={() => void copy()}
 							>
 								{copied ? 'Đã sao chép' : 'Sao chép'}
 							</button>
 							<button
+								type='button'
 								className={styles.btnConfirmBlue}
 								onClick={onClose}
 							>
@@ -135,12 +84,14 @@ export function ResetPasswordModal({
 					) : (
 						<>
 							<button
+								type='button'
 								className={styles.btnCancel}
 								onClick={onClose}
 							>
 								Hủy bỏ
 							</button>
 							<button
+								type='button'
 								className={styles.btnConfirmBlue}
 								onClick={() => void handleConfirm()}
 								disabled={loading}
@@ -158,8 +109,36 @@ export function ResetPasswordModal({
 							</button>
 						</>
 					)}
+				</>
+			}
+		>
+			{tempPassword ? (
+				<div>
+					<div className={styles.modalSubtitle}>
+						Mật khẩu của <strong>{user.full_name}</strong> đã được đặt về tên đăng
+						nhập. Người dùng phải đổi mật khẩu ở lần đăng nhập tới.
+					</div>
+					<div
+						style={{
+							marginTop: 12,
+							fontFamily: 'var(--font-mono)',
+							fontSize: 18,
+							letterSpacing: 1,
+							background: '#f3f4f6',
+							padding: '8px 12px',
+							borderRadius: 6,
+							userSelect: 'all',
+						}}
+					>
+						{tempPassword}
+					</div>
 				</div>
-			</div>
-		</div>
+			) : (
+				<div className={styles.modalSubtitle}>
+					Mật khẩu của <strong>{user.full_name}</strong> sẽ được đặt về tên đăng nhập (
+					{user.username}) và tài khoản bị đăng xuất khỏi mọi thiết bị.
+				</div>
+			)}
+		</Modal>
 	);
 }

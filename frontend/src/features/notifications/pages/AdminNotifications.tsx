@@ -65,6 +65,7 @@ export default function AdminNotifications() {
 
 	const headerActions = (
 		<button
+			type='button'
 			className={styles.btnSend}
 			onClick={() => setShowSendModal(true)}
 		>

@@ -218,9 +218,6 @@
 }
 
 /* ── MODAL ───────────────────────────────── */
-.modalBackdrop {
-	composes: modalBackdrop from '../../../shared/components/Modal/Modal.module.css';
-}
 
 .modal {
 	background: var(--color-white);
@@ -233,37 +230,6 @@
 }
 .modalSm {
 	composes: modalSm from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modalHeader {
-	composes: modalHeader from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modalHeaderIcon {
-	width: 42px;
-	height: 42px;
-	border-radius: var(--radius-lg);
-	background: var(--tone-purple-bg);
-	color: var(--tone-purple-fg);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-}
-.modalHeaderIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
-.modalTitle {
-	composes: modalTitle from '../../../shared/components/Modal/Modal.module.css';
-}
-.modalSub {
-	composes: modalSub from '../../../shared/components/Modal/Modal.module.css';
-}
-
-.modalClose {
-	composes: modalClose from '../../../shared/components/Modal/Modal.module.css';
 }
 
 .modalBody {
@@ -322,9 +288,6 @@
 /* ── PAGINATION ──────────────────────────── */
 
 /* ── PERMISSION MODAL ────────────────────── */
-.modalLg {
-	max-width: 780px;
-}
 
 /* Header badge hiển thị số quyền đã chọn */
 .permCount {
@@ -338,6 +301,23 @@
 	font-weight: var(--font-weight-bold);
 	margin-left: auto;
 	margin-right: var(--space-10);
+}
+
+/* Modal xem quyền dùng <Modal> của kit: thân không đệm (bảng/ thanh công cụ tự đệm), độ rộng riêng.
+ * Chọn đôi lớp để thắng .body / .lg của Modal bất kể thứ tự nạp CSS. */
+.dialogWide.dialogWide {
+	max-width: 780px;
+}
+.modalBodyFlush.modalBodyFlush {
+	padding: 0;
+}
+.modalBodyVisible.modalBodyVisible {
+	overflow: visible;
+}
+/* Nhãn đếm trong dòng phụ dưới tiêu đề modal */
+.permCountInline {
+	composes: permCount;
+	margin: 0 0 0 var(--space-2);
 }
 
 /* Body của permission modal có scroll */
@@ -658,7 +638,7 @@
 }
 
 /* ── Phân quyền vai trò: mỗi chức năng chọn 1 mức, "Tùy chỉnh" để tick từng quyền ── */
-.permModal {
+.permModal.permModal {
 	max-width: min(860px, 96vw);
 }
 .permGroupHead {

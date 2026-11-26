@@ -149,12 +149,14 @@ export function UserModal({
 						</span>
 					)}
 					<button
+						type='button'
 						className={styles.btnCancel}
 						onClick={onClose}
 					>
 						Hủy
 					</button>
 					<button
+						type='button'
 						className={
 							mode === 'create' ? styles.btnConfirmAmber : styles.btnConfirmBlue
 						}

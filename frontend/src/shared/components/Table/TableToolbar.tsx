@@ -8,16 +8,20 @@ export function SearchInput({
 	value,
 	onChange,
 	placeholder = 'Tìm kiếm...',
+	'aria-label': ariaLabel,
 }: {
 	value: string;
 	onChange: (v: string) => void;
 	placeholder?: string;
+	/** Tên truy cập của ô; bỏ trống thì lấy theo placeholder. */
+	'aria-label'?: string;
 }) {
 	return (
 		<div className={styles.searchBox}>
 			<SearchSvg className={styles.searchIcon} />
 			<input
 				className={styles.searchInput}
+				aria-label={ariaLabel ?? placeholder.replace(/[….]+$/, '')}
 				placeholder={placeholder}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}

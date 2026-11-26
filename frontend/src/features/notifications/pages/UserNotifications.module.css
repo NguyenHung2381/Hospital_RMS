@@ -179,6 +179,15 @@
 	flex: 1;
 	min-width: 0;
 }
+/* Tiêu đề của thông báo chưa đọc là nút thật: bỏ kiểu mặc định của button */
+button.itemTitle {
+	padding: 0;
+	border: none;
+	background: none;
+	font-family: inherit;
+	text-align: left;
+	cursor: pointer;
+}
 .unread .itemTitle { color: var(--color-gray-900); }
 
 .typeBadge {

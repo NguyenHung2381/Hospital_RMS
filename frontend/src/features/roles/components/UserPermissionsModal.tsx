@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CheckSvg, SearchSvg, UserCheckSvg, XSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CheckSvg, SearchSvg, UserCheckSvg } from '@/assets/icons';
+import { InlineLoading, Modal } from '@/shared/components';
 import { getUsers } from '../../user/api/userApi';
 import type { User } from '../../user/types/user.type';
 import { getPermissionCatalog, getRolePermissions, getRoles } from '../api/roleApi';
@@ -24,6 +24,12 @@ export function UserPermissionsModal({ onClose }: UserPermissionsModalProps) {
 	const [catalog, setCatalog] = useState<PermissionCatalog | null>(null);
 	const [grants, setGrants] = useState<RoleGrant[] | null>(null);
 	const [error, setError] = useState('');
+	const searchRef = useRef<HTMLInputElement>(null);
+
+	// Đưa con trỏ vào ô tìm (không dùng autoFocus để Modal còn nhớ chỗ trả focus khi đóng)
+	useEffect(() => {
+		searchRef.current?.focus();
+	}, []);
 
 	useEffect(() => {
 		Promise.all([getRoles({ page: 1, limit: 100 }), getPermissionCatalog()])
@@ -87,29 +93,24 @@ export function UserPermissionsModal({ onClose }: UserPermissionsModalProps) {
 	}, [catalog, grants]);
 
 	return (
-		<div
-			className={styles.modalBackdrop}
-			onClick={(e) => e.target === e.currentTarget && onClose()}
+		<Modal
+			open
+			onClose={onClose}
+			title='Tra cứu quyền người dùng'
+			subtitle='Người này được làm gì, trong phạm vi nào'
+			icon={<UserCheckSvg />}
+			iconStyle={{ background: 'var(--tone-purple-bg)', color: 'var(--tone-purple-fg)' }}
+			size='lg'
+			className={styles.dialogWide}
+			// overflow hiện để danh sách gợi ý tài khoản không bị cắt ở mép thân hộp thoại
+			bodyClassName={`${styles.modalBodyFlush} ${styles.modalBodyVisible}`}
 		>
-			<div className={`${styles.modal} ${styles.modalLg}`}>
-				<div className={styles.modalHeader}>
-					<div className={styles.modalHeaderIcon}>
-						<UserCheckSvg />
-					</div>
-					<div>
-						<div className={styles.modalTitle}>Tra cứu quyền người dùng</div>
-						<div className={styles.modalSub}>Người này được làm gì, trong phạm vi nào</div>
-					</div>
-					<button className={styles.modalClose} onClick={onClose}>
-						<XSvg />
-					</button>
-				</div>
-
 				<div className={styles.viewToolbar}>
 					<div className={styles.viewSearch}>
 						<SearchSvg />
 						<input
-							autoFocus
+							ref={searchRef}
+							aria-label='Tìm tài khoản theo họ tên, tài khoản hoặc mã nhân viên'
 							placeholder='Tìm theo họ tên, tài khoản, mã nhân viên…'
 							value={query}
 							onChange={(e) => setQuery(e.target.value)}
@@ -196,7 +197,6 @@ export function UserPermissionsModal({ onClose }: UserPermissionsModalProps) {
 						</>
 					)}
 				</div>
-			</div>
-		</div>
+		</Modal>
 	);
 }

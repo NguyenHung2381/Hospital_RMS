@@ -54,10 +54,21 @@ export function SessionsPanel({ sessions, gapMinutes, onOpen }: Props) {
 								>
 									<td className={`${styles.td} ${tbl.tdIdx}`}>{pg.offset + i + 1}</td>
 									<td className={styles.td}>
-										<div className={styles.actorName}>{actorDisplay(s)}</div>
-										<div className={styles.actorId}>
-											{[s.actor_username, s.actor_id].filter(Boolean).join(' · ')}
-										</div>
+										{/* Bấm cả dòng mở chi tiết (chuột); nút này là đường đi cho bàn phím */}
+										<button
+											type='button'
+											className={styles.rowLink}
+											aria-label={`Xem chi tiết phiên làm việc của ${actorDisplay(s)}`}
+											onClick={(e) => {
+												e.stopPropagation();
+												onOpen(s);
+											}}
+										>
+											<span className={styles.actorName}>{actorDisplay(s)}</span>
+											<span className={styles.actorId}>
+												{[s.actor_username, s.actor_id].filter(Boolean).join(' · ')}
+											</span>
+										</button>
 									</td>
 									<td className={styles.td}>
 										<div className={styles.timeMain}>

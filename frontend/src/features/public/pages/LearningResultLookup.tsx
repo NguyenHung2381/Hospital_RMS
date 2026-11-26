@@ -56,7 +56,10 @@ export default function LearningResultLookup() {
 			subtitle='Nhập họ tên, số CCCD/CMND và ngày sinh đã dùng khi đăng ký để tra cứu tình trạng đăng ký, kết quả học tập và chứng chỉ.'
 		>
 			{error && (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> {error}
 				</div>
 			)}

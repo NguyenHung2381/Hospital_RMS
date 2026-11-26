@@ -160,7 +160,10 @@ export default function SeminarRegisterPublic() {
 				title='Đăng ký tham dự hội nghị'
 			>
 				{loadError ? (
-					<div className={`${styles.alertBox} ${styles.alertError}`}>
+					<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 						<AlertSvg /> {loadError}
 					</div>
 				) : (
@@ -193,13 +196,19 @@ export default function SeminarRegisterPublic() {
 			</div>
 
 			{!seminar.registration_open ? (
-				<div className={`${styles.alertBox} ${styles.alertError}`}>
+				<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 					<AlertSvg /> Hội nghị đã kết thúc, không nhận đăng ký.
 				</div>
 			) : (
 				<>
 					{error && (
-						<div className={`${styles.alertBox} ${styles.alertError}`}>
+						<div
+					className={`${styles.alertBox} ${styles.alertError}`}
+					role='alert'
+				>
 							<AlertSvg /> {error}
 						</div>
 					)}
@@ -313,7 +322,10 @@ export default function SeminarRegisterPublic() {
 									</CfgField>
 								</div>
 								{staff && (
-									<div className={`${styles.alertBox} ${styles.alertSuccess}`}>
+									<div
+					className={`${styles.alertBox} ${styles.alertSuccess}`}
+					role='status'
+				>
 										<div>
 											<strong>
 												{staff.title_prefix ? `${staff.title_prefix}. ` : ''}

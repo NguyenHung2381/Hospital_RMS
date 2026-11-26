@@ -1,5 +1,5 @@
 import { ChevDSvg, FilterSvg, SearchSvg, XSvg } from '@/assets/icons';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { DatePicker, MultiSelect } from '../../../shared/components';
 import { DEFAULT_FILTERS, type FilterState, type RangePreset } from '../hooks/useActivityLogs';
 import {
@@ -100,6 +100,7 @@ const labelOf = (opts: { value: string; label: string }[], v: string) =>
 	opts.find((o) => o.value === v)?.label ?? v;
 
 export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
+	const uid = useId();
 	const [showAdvanced, setShowAdvanced] = useState(true);
 	const moduleMap = Object.fromEntries(moduleOptions);
 
@@ -202,6 +203,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 				<label className={styles.search}>
 					<SearchSvg className={styles.searchIcon} />
 					<input
+						aria-label='Lọc theo người dùng: mã nhân viên, tài khoản, họ tên'
 						placeholder='Người dùng: mã NV, tài khoản, họ tên…'
 						value={filters.actor}
 						onChange={(e) => patch({ actor: e.target.value })}
@@ -210,6 +212,7 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 				<label className={styles.search}>
 					<SearchSvg className={styles.searchIcon} />
 					<input
+						aria-label='Lọc theo từ khóa: đường dẫn, nội dung gửi lên, lỗi'
 						placeholder='Từ khóa: đường dẫn, nội dung gửi lên, lỗi…'
 						value={filters.search}
 						onChange={(e) => patch({ search: e.target.value })}
@@ -257,8 +260,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 			{showAdvanced && (
 				<div className={styles.grid}>
 					<div className={styles.field}>
-						<span className={styles.label}>Hành động</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-action`}
+						>
+							Hành động
+						</label>
 						<MultiSelect
+							id={`${uid}-action`}
 							className={styles.ms}
 							options={ACTION_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
 							selected={new Set(filters.action)}
@@ -267,8 +276,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						/>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Phân hệ</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-module`}
+						>
+							Phân hệ
+						</label>
 						<MultiSelect
+							id={`${uid}-module`}
 							className={styles.ms}
 							options={moduleOptions.map(([id, label]) => ({ id, label }))}
 							selected={new Set(filters.module)}
@@ -278,8 +293,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						/>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Phương thức</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-method`}
+						>
+							Phương thức
+						</label>
 						<MultiSelect
+							id={`${uid}-method`}
 							className={styles.ms}
 							options={METHOD_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
 							selected={new Set(filters.method)}
@@ -288,8 +309,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						/>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Kết quả</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-status`}
+						>
+							Kết quả
+						</label>
 						<select
+							id={`${uid}-status`}
 							className={`${styles.control} ${filters.status ? styles.controlOn : ''}`}
 							data-active={filters.status ? 'true' : undefined}
 							value={filters.status}
@@ -307,8 +334,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						</select>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Thời gian xử lý</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-duration`}
+						>
+							Thời gian xử lý
+						</label>
 						<select
+							id={`${uid}-duration`}
 							className={`${styles.control} ${filters.minDuration ? styles.controlOn : ''}`}
 							data-active={filters.minDuration ? 'true' : undefined}
 							value={filters.minDuration}
@@ -326,8 +359,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						</select>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Loại tài khoản</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-actor`}
+						>
+							Loại tài khoản
+						</label>
 						<select
+							id={`${uid}-actor`}
 							className={`${styles.control} ${filters.actorType ? styles.controlOn : ''}`}
 							data-active={filters.actorType ? 'true' : undefined}
 							value={filters.actorType}
@@ -345,8 +384,14 @@ export function FilterPanel({ filters, patch, reset, moduleOptions }: Props) {
 						</select>
 					</div>
 					<div className={styles.field}>
-						<span className={styles.label}>Địa chỉ IP</span>
+						<label
+							className={styles.label}
+							htmlFor={`${uid}-ip`}
+						>
+							Địa chỉ IP
+						</label>
 						<input
+							id={`${uid}-ip`}
 							className={`${styles.control} ${filters.ip ? styles.controlOn : ''}`}
 							placeholder='vd 10.0.0.'
 							value={filters.ip}
