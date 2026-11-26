@@ -116,7 +116,7 @@
 	height: 16px;
 	flex: none;
 	margin-top: 2px;
-	color: var(--color-info);
+	color: var(--tone-blue-fg);
 }
 
 @media (max-width: 768px) {
