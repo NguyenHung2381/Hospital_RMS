@@ -11,12 +11,20 @@
 // không có Tesseract thì chỉ dùng tầng 1–2, cần OCR mà không có ⇒ status 'skipped'.
 //
 // KHÔNG trả / lưu chữ đọc được hay nội dung QR (dữ liệu cá nhân) — chỉ kết luận + cờ đúng/sai.
+//
+// Kiểm chữ ký (input.signature = công tắc TRAINING_DOC_SIGNATURE_CHECK, docCheckService truyền
+// vào): analyzeSignatures dùng lại Buffer + tài liệu mupdf đã mở — chữ ký số (PDF), dấu đỏ / chữ ký
+// tay ở trang cuối + trang đầu, gộp theo signature/signatureRules.js. source 'trainee_document'
+// (hồ sơ học viên tự nộp) CHỈ kiểm chữ ký, không đoán loại giấy tờ.
 const fs = require('fs');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 // jsqr: bản CommonJS export thẳng hàm (kèm .default) — typings chỉ khai báo default
 const jsQR = require('jsqr').default;
 const rules = require('./docCheckRules');
+const { verifyPdfSignatures } = require('./signature/pdfSignature');
+const { detectMarks } = require('./signature/visualMarks');
+const sigRules = require('./signature/signatureRules');
 
 /** @type {Promise<typeof import('mupdf')> | undefined} */
 let mupdfP;
@@ -30,6 +38,10 @@ const OCR_DIM = 2000; // cạnh dài khi OCR cả trang
 const HEADER_FRACTION = 0.35; // phần đầu trang chứa tiêu đề
 const MIN_IMAGE_SIDE = 500; // ảnh nhỏ hơn ⇒ cảnh báo độ phân giải thấp
 const OCR_TIMEOUT_MS = 60_000;
+const SIG_DIM = 1600; // cạnh dài khi dò dấu / chữ ký tay
+// docCheckRunner dừng luồng sau 3 phút ⇒ phần chữ ký chỉ OCR khi còn đủ thời gian trước mốc này
+const DEADLINE_MS = 150_000;
+const SIG_OCR_MIN_LEFT_MS = 45_000;
 
 /** @type {Promise<boolean> | undefined} */
 let tessP;
@@ -222,58 +234,24 @@ const withPix = (pix, fn) => {
 	}
 };
 
-// ─── Phân tích ─────────────────────────────────────────────────────────────────
-/**
- * @param {{
- *   filePath: string,
- *   mime?: string | null,
- *   kind: string,
- *   identity?: Record<string, string | null | undefined>,
- * }} input
- * @returns {Promise<{
- *   status: 'done' | 'skipped',
- *   reason?: string,
- *   sha256: string,
- *   verdict?: 'ok' | 'mismatch' | 'unclear',
- *   detected_kind?: string | null,
- *   confidence?: number,
- *   warnings?: string[],
- *   signals?: Record<string, any>,
- * }>}
- */
-const analyze = async ({ filePath, mime = null, kind, identity = {} }) => {
-	const started = Date.now();
-	const buf = await fs.promises.readFile(filePath);
-	const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
-	const mupdf = await loadMupdf();
-	const magic = magicOf(filePath, mime);
-
-	let doc;
+// ─── Phân tích loại giấy tờ ───────────────────────────────────────────────────
+/** Lớp chữ có sẵn của 1 trang ('' nếu là ảnh). */
+const pageText = (page) => {
 	try {
-		doc = mupdf.Document.openDocument(buf, magic);
+		const st = page.toStructuredText('preserve-whitespace');
+		const text = st.asText();
+		st.destroy();
+		return text;
 	} catch {
-		return {
-			status: 'done',
-			sha256,
-			verdict: 'unclear',
-			detected_kind: null,
-			confidence: 0,
-			warnings: ['unreadable'],
-			signals: { method: 'open_failed', ms: Date.now() - started },
-		};
+		return '';
 	}
+};
 
-	let lowResImage = false;
-	if (magic.startsWith('image/')) {
-		try {
-			const img = new mupdf.Image(buf);
-			lowResImage = Math.min(img.getWidth(), img.getHeight()) < MIN_IMAGE_SIDE;
-			img.destroy();
-		} catch {
-			/* không đọc được kích thước ⇒ bỏ qua cảnh báo */
-		}
-	}
-
+/**
+ * Đoán loại giấy tờ (xếp tầng lớp chữ → QR → OCR). Không destroy `doc` (người gọi giữ).
+ * @returns {Promise<Record<string, any>>}
+ */
+const checkKind = async (mupdf, doc, { kind, identity, sha256, started, lowResImage }) => {
 	const pageCount = Math.min(doc.countPages(), MAX_PAGES);
 	const pageObjs = [];
 	/** @type {Array<{ text: string, qr: string[], blank: boolean, lowRes: boolean }>} */
@@ -282,15 +260,7 @@ const analyze = async ({ filePath, mime = null, kind, identity = {} }) => {
 		for (let i = 0; i < pageCount; i++) {
 			const page = doc.loadPage(i);
 			pageObjs.push(page);
-			let text = '';
-			try {
-				const st = page.toStructuredText('preserve-whitespace');
-				text = st.asText();
-				st.destroy();
-			} catch {
-				/* ảnh không có lớp chữ */
-			}
-			pages.push({ text, qr: [], blank: false, lowRes: lowResImage });
+			pages.push({ text: pageText(page), qr: [], blank: false, lowRes: lowResImage });
 		}
 
 		const done = (method, extra = {}) => ({
@@ -361,12 +331,165 @@ const analyze = async ({ filePath, mime = null, kind, identity = {} }) => {
 		return finish(res);
 	} finally {
 		for (const p of pageObjs) p.destroy();
+	}
+};
+
+// ─── Kiểm chữ ký ───────────────────────────────────────────────────────────────
+/**
+ * Chữ ký số (chỉ PDF) + dấu đỏ / chữ ký tay ở trang cuối và trang đầu (nếu khác trang cuối),
+ * gộp theo signatureRules. OCR (tìm chức danh người ký) chỉ khi có Tesseract và còn đủ thời gian
+ * trước `deadline`. Không trả chữ đọc được.
+ * @param {{ mupdf: any, doc: any, buf: Buffer, magic: string, kind: string,
+ *   unit?: string | null, trust?: any, deadline: number }} o
+ * @returns {Promise<{ sig_verdict: string, sig_details: Record<string, any> }>}
+ */
+const analyzeSignatures = async ({
+	mupdf,
+	doc,
+	buf,
+	magic,
+	kind,
+	unit = null,
+	trust,
+	deadline,
+}) => {
+	const t0 = Date.now();
+	const expect = sigRules.SIGNATURE_REQUIREMENTS[kind]?.expect ?? undefined;
+	const isPdf = magic === 'application/pdf';
+	const digital = isPdf ? await verifyPdfSignatures(buf, trust ? { trust } : {}) : null;
+	const total = doc.countPages();
+	const canOcr = await tesseractAvailable();
+	let textLayer = false;
+	/** @type {Array<{ page: number, result: any }>} */
+	const visualPages = [];
+	// Trang cuối trước (chỗ ký của văn bản), rồi trang đầu
+	for (const i of total > 0 ? [...new Set([total - 1, 0])] : []) {
+		let page = null;
+		try {
+			page = doc.loadPage(i);
+			if (isPdf && !textLayer) textLayer = pageText(page).replace(/\s+/g, '').length >= 50;
+			const pix = renderRgb(mupdf, page, SIG_DIM);
+			try {
+				let words = null;
+				if (canOcr && deadline - Date.now() > SIG_OCR_MIN_LEFT_MS) {
+					try {
+						words = await ocrTsv(pix.asPNG());
+					} catch {
+						words = null; // OCR lỗi ⇒ dò không chữ (mực xanh)
+					}
+				}
+				// pixmapImage lấy view bộ nhớ WASM ngay lúc dùng (sau await)
+				const result = detectMarks({ ...pixmapImage(pix), words, expect });
+				visualPages.push({ page: i + 1, result });
+			} finally {
+				pix.destroy();
+			}
+		} catch {
+			visualPages.push({ page: i + 1, result: null });
+		} finally {
+			page?.destroy();
+		}
+	}
+	visualPages.sort((a, b) => a.page - b.page);
+	const out = sigRules.combine(kind, digital, visualPages, { unit, textLayer, pageCount: total });
+	out.sig_details.ocr = canOcr;
+	out.sig_details.ms = Date.now() - t0;
+	return out;
+};
+
+// ─── Phân tích ─────────────────────────────────────────────────────────────────
+/**
+ * @param {{
+ *   filePath: string,
+ *   mime?: string | null,
+ *   kind: string,
+ *   identity?: Record<string, string | null | undefined>,
+ *   source?: 'registration' | 'trainee_document',
+ *   signature?: boolean,
+ *   unit?: string | null,
+ * }} input signature = kiểm chữ ký (công tắc TRAINING_DOC_SIGNATURE_CHECK); unit = đơn vị công
+ *   tác đã khai (so mờ với tổ chức người ký số)
+ * @param {{ trust?: any }} [opts] bộ CA riêng (test) — mặc định src/assets/trust
+ * @returns {Promise<{
+ *   status: 'done' | 'skipped',
+ *   reason?: string,
+ *   sha256: string,
+ *   verdict?: 'ok' | 'mismatch' | 'unclear' | null,
+ *   detected_kind?: string | null,
+ *   confidence?: number,
+ *   warnings?: string[],
+ *   signals?: Record<string, any>,
+ *   sig_verdict?: string,
+ *   sig_details?: Record<string, any>,
+ * }>}
+ */
+const analyze = async (input, { trust } = {}) => {
+	const { filePath, mime = null, kind, identity = {}, unit = null } = input;
+	const source = input.source ?? 'registration';
+	const started = Date.now();
+	const deadline = started + DEADLINE_MS;
+	const buf = await fs.promises.readFile(filePath);
+	const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+	const mupdf = await loadMupdf();
+	const magic = magicOf(filePath, mime);
+	const sigKind = source === 'trainee_document' ? 'trainee_document' : kind;
+	const wantSig = !!input.signature && sigRules.needsSignatureCheck(sigKind);
+	if (source === 'trainee_document' && !wantSig)
+		return { status: 'skipped', reason: 'signature_disabled', sha256 };
+
+	let doc;
+	try {
+		doc = mupdf.Document.openDocument(buf, magic);
+	} catch {
+		// mupdf không mở được ⇒ không dò dấu; vẫn thử chữ ký số (bộ đọc PDF riêng)
+		const digital =
+			wantSig && magic === 'application/pdf'
+				? await verifyPdfSignatures(buf, trust ? { trust } : {})
+				: null;
+		const sig = wantSig ? sigRules.combine(sigKind, digital, []) : {};
+		if (source === 'trainee_document') return { status: 'done', sha256, verdict: null, ...sig };
+		return {
+			status: 'done',
+			sha256,
+			verdict: 'unclear',
+			detected_kind: null,
+			confidence: 0,
+			warnings: ['unreadable'],
+			signals: { method: 'open_failed', ms: Date.now() - started },
+			...sig,
+		};
+	}
+
+	try {
+		let lowResImage = false;
+		if (magic.startsWith('image/')) {
+			try {
+				const img = new mupdf.Image(buf);
+				lowResImage = Math.min(img.getWidth(), img.getHeight()) < MIN_IMAGE_SIDE;
+				img.destroy();
+			} catch {
+				/* không đọc được kích thước ⇒ bỏ qua cảnh báo */
+			}
+		}
+		/** @type {Record<string, any>} */
+		const res =
+			source === 'trainee_document'
+				? { status: 'done', sha256, verdict: null, signals: { method: 'signature_only' } }
+				: await checkKind(mupdf, doc, { kind, identity, sha256, started, lowResImage });
+		if (wantSig)
+			Object.assign(
+				res,
+				await analyzeSignatures({ mupdf, doc, buf, magic, kind: sigKind, unit, trust, deadline }),
+			);
+		return /** @type {any} */ (res);
+	} finally {
 		doc.destroy();
 	}
 };
 
 module.exports = {
 	analyze,
+	analyzeSignatures,
 	tesseractAvailable,
 	magicOf,
 	loadMupdf,
