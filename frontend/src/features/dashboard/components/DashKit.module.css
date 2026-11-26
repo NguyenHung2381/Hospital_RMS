@@ -32,13 +32,6 @@
 	align-items: stretch;
 }
 
-.stack {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-6);
-	min-width: 0;
-}
-
 @media (max-width: 1100px) {
 	.grid2,
 	.grid2even {
@@ -1354,19 +1347,6 @@ th.rankSorted .sortIcon {
 	}
 }
 
-.shareGroup + .shareGroup {
-	margin-top: var(--space-5);
-	padding-top: var(--space-5);
-	border-top: 1px solid var(--color-gray-100);
-}
-
-.shareGroupTitle {
-	margin: 0 0 var(--space-3);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-}
-
 /* ─── Xếp hạng bằng thanh ngang ─── */
 .rankBars {
 	display: flex;
@@ -1561,24 +1541,6 @@ th.rankSorted .sortIcon {
 /* Nhóm danh sách theo ngày (lịch học) */
 .dayGroup + .dayGroup {
 	margin-top: var(--space-4);
-}
-
-.dayLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	margin: 0 0 var(--space-2);
-	padding: 2px 10px;
-	border-radius: var(--radius-full);
-	background: var(--color-gray-100);
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-700);
-}
-
-.dayLabelToday {
-	color: var(--color-white);
-	background: var(--color-primary-dark);
 }
 
 .queueAction {
