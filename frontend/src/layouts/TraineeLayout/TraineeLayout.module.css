@@ -347,7 +347,7 @@
 
 .menuDanger,
 .menuDanger svg {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 /* ── DẢI TIÊU ĐỀ TRANG ───────────────────── */
