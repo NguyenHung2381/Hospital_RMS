@@ -319,7 +319,7 @@ export function RolePermissionModal({
 			footer={
 				<>
 					{error && (
-						<span style={{ fontSize: 12, color: '#e24b4a', flex: 1 }} role='alert'>{error}</span>
+						<span style={{ fontSize: 12, color: 'var(--tone-red-fg)', flex: 1 }} role='alert'>{error}</span>
 					)}
 					{!error && !loading && (
 						<span className={styles.viewSub} style={{ flex: 1 }}>
