@@ -35,6 +35,7 @@
   "dependencies": {
     "@napi-rs/canvas": "^1.1.1",
     "@pdf-lib/fontkit": "^1.1.1",
+    "asn1js": "^4.1.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "cross-env": "^10.1.0",
@@ -60,6 +61,7 @@
     "pino": "^10.4.0",
     "pino-roll": "^4.0.0",
     "pizzip": "^3.3.0",
+    "pkijs": "^4.0.1",
     "qrcode": "^1.5.4",
     "sanitize-html": "^2.18.2",
     "swagger-jsdoc": "^6.3.0",
