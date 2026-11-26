@@ -17,13 +17,12 @@ const { badRequest, notFound, conflict } = require('../../../utils/httpError');
 const { genTuitionPaymentId, genTuitionReceiptNo } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const notificationService = require('../../notifications/notificationService');
-const { findActiveUserIdsWhere } = require('../../access/permissionService');
-const { hasPermission } = require('../../../permissions/authz');
 const trainingFileService = require('../trainingFileService');
 const { isPdfOrImage } = require('../trainees/traineeProfilePdf');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { getBankInfo } = require('./tuitionSettings');
+const { lockFee, approvers } = require('./tuitionGuards');
 const { courseScope, ASSIGNED_EXISTS_SQL } = require('../courses/coursePolicy');
 
 const changed = () => broadcast('update', { entity: 'tuition' });
@@ -142,7 +141,17 @@ const ensureFeeRow = (tx, enrollmentId, actorId) =>
       INSERT INTO enrollment_fees (enrollment_id, base_amount, discount_amount, created_by)
       SELECT e.id, COALESCE(tp.tuition_fee, 0), 0, @actor
       FROM course_enrollments e LEFT JOIN training_programs tp ON tp.id = e.program_id
-      WHERE e.id = @eid AND NOT EXISTS (SELECT 1 FROM enrollment_fees f WHERE f.enrollment_id = e.id)`);
+      WHERE e.id = @eid AND NOT EXISTS (SELECT 1 FROM enrollment_fees f WHERE f.enrollment_id = e.id)
+      ON CONFLICT (enrollment_id) DO NOTHING`);
+
+// Số phải nộp / đã nộp / đang chờ tính lại TRONG transaction, sau khi khóa enrollment_fees
+// (tuitionGuards.lockFee) — kiểm ngoài transaction thì 2 thao tác song song cùng thấy "còn đủ".
+const lockedSummary = async (tx, enrollmentId) => {
+	const { fee, payments } = await lockFee(tx, enrollmentId);
+	return summarize(fee, payments);
+};
+const overpayConflict = () =>
+	conflict('Số tiền vượt số còn phải nộp (vừa có khoản khác được ghi nhận). Vui lòng tải lại.');
 
 const parseAmount = (v) => {
 	const n = Number(v);
@@ -162,8 +171,7 @@ const clip = (v, n) => {
 	return s ? s.slice(0, n) : null;
 };
 
-// Người nhận thông báo phía phòng Đào tạo
-const approvers = () => findActiveUserIdsWhere((u) => hasPermission(u, 'courses', 'approve'));
+// Người nhận thông báo phía phòng Đào tạo: tuitionGuards.approvers (theo phạm vi khóa học)
 const traineeUsers = (row) => [
 	...new Set([row.trainee_user_id, row.staff_user_id].filter(Boolean)),
 ];
@@ -245,6 +253,8 @@ const submitMine = async (userId, enrollmentId, body, file) => {
 		);
 		const id = await withActorTransaction(userId, async (tx) => {
 			await ensureFeeRow(tx, enrollmentId, userId);
+			const locked = await lockedSummary(tx, enrollmentId);
+			if (amount > locked.remaining - locked.pending) throw overpayConflict();
 			const newId = await genTuitionPaymentId(tx);
 			await tx
 				.request()
@@ -264,7 +274,7 @@ const submitMine = async (userId, enrollmentId, body, file) => {
 		await notificationService.push(
 			'tuition_submitted',
 			`${row.trainee_name} báo đã chuyển khoản ${money(amount)} học phí khóa ${row.course_name}`,
-			await approvers(),
+			await approvers(row.course_id),
 			{
 				message: `Nội dung chuyển khoản: ${transferContent(enrollmentId)}`,
 				refId: id,
@@ -456,6 +466,7 @@ const recordPayment = async (courseId, enrollmentId, body, actorId) => {
 	const paidDate = parseDate(body.paid_date);
 	const saved = await withActorTransaction(actorId, async (tx) => {
 		await ensureFeeRow(tx, enrollmentId, actorId);
+		if (amount > (await lockedSummary(tx, enrollmentId)).remaining) throw overpayConflict();
 		const id = await genTuitionPaymentId(tx);
 		await tx
 			.request()
@@ -499,9 +510,13 @@ const pendingInCourse = async (pool, courseId, paymentId) => {
 const confirmPayment = async (courseId, paymentId, actorId) => {
 	const pool = await getPool();
 	const { p, row } = await pendingInCourse(pool, courseId, paymentId);
-	const receiptNo = await withActorTransaction(actorId, (tx) =>
-		confirmInTx(tx, paymentId, actorId),
-	);
+	// Xác nhận nhiều khoản chờ (hoặc vừa có khoản ghi nhận tại quầy) không được vượt số phải nộp
+	const receiptNo = await withActorTransaction(actorId, async (tx) => {
+		await ensureFeeRow(tx, p.enrollment_id, actorId);
+		if (Number(p.amount) > (await lockedSummary(tx, p.enrollment_id)).remaining)
+			throw overpayConflict();
+		return confirmInTx(tx, paymentId, actorId);
+	});
 	changed();
 	await notifyTrainee(
 		row,

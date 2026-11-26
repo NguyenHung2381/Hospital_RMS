@@ -182,6 +182,15 @@ const changePassword = async (
 		.input('user_id', sql.VarChar(20), userId)
 		.query(`DELETE FROM refresh_tokens WHERE user_id = @user_id`);
 	await bumpTokenVersion(userId, pool);
+	// Nhật ký bảo mật: đổi mật khẩu là dấu vết cần có khi điều tra chiếm tài khoản
+	await securityEvents.log({
+		eventType: 'password_changed',
+		actorId: userId,
+		targetType: 'user',
+		targetId: userId,
+		ip,
+		userAgent,
+	});
 
 	const fresh = (
 		await pool

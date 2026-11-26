@@ -188,6 +188,16 @@ const resetPassword = async (login, code, newPassword, ip = null) => {
 		],
 	);
 	await bumpTokenVersion(row.id, pool);
+	// Đặt lại bằng OTP qua email thành công — dấu hiệu chiếm tài khoản qua hộp thư phải
+	// thấy được ở Nhật ký bảo mật, không chỉ trong file activity log.
+	await securityEvents.log({
+		eventType: 'password_reset_self',
+		actorId: row.id,
+		targetType: 'user',
+		targetId: row.id,
+		ip,
+		detail: 'Tự đặt lại mật khẩu bằng mã OTP qua email',
+	});
 };
 
 module.exports = { requestOtp, resetPassword };

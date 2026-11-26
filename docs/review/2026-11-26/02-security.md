@@ -8,19 +8,26 @@ Phiên `security`, nhánh `claude/review-security-479bca`.
 |---|---|---|---|
 | Cao | 2 | 1 (S-02) | 1 (S-01, cần người dùng quyết) |
 | Trung bình | 3 | 2 (S-03, S-04) | 1 (S-05) |
-| Thấp | 5 | 0 | 5 |
+| Thấp | 5 | 3 (S-06, S-07, S-09) | 2 (S-08, S-10) |
 
 Mỗi lỗi đã sửa có test tái hiện trong `backend/test/security/`. Test đỏ trước khi sửa và xanh sau khi sửa:
 
 - `tuitionReceiptIntegrity.test.js`: S-02, S-03
 - `tuitionPendingScope.test.js`: S-04
+- `tuitionPaymentRace.test.js`: S-06, S-07
+- `passwordEventLog.test.js`: S-09
+
+Các mục S-01, S-05, S-10 và migration FK `RESTRICT` của S-02 đang chờ người dùng quyết.
 
 **File ngoài vùng `security` đã sửa** (thuộc vùng `training-cleanup`; mỗi chỗ chỉ sửa đúng các dòng cần thiết):
 
 - `backend/src/modules/training/courses/courseEnrollmentService.js` (`removeEnrollment`)
 - `backend/src/modules/training/courses/courseService.js` (`HAS_TUITION_SQL` và `remove`)
-- `backend/src/modules/training/tuition/tuitionService.js` (`cancelMine`, `listPending`, thêm require `coursePolicy`)
+- `backend/src/modules/training/tuition/tuitionService.js`: `cancelMine`, `listPending`; `ensureFeeRow` thêm `ON CONFLICT DO NOTHING`; `lockedSummary` kiểm lại trong transaction của `submitMine` / `recordPayment` / `confirmPayment`; thêm require `coursePolicy` và `tuitionGuards`
+- `backend/src/modules/training/tuition/tuitionGuards.js` (file mới): `lockFee` (S-06), `approvers` (S-07). Tách khỏi `tuitionService` để file đó không vượt `max-lines` 500
 - `backend/src/modules/training/tuition/tuitionController.js` (`listPending` truyền `req.user`)
+
+File trong vùng `security`: `backend/src/modules/auth/authService.js`, `backend/src/modules/auth/passwordResetService.js` (S-09).
 
 `npm run check:routes`: 584 route (420 có kiểm quyền, 117 chỉ cần đăng nhập, 47 công khai). Script báo mọi route đều đã khai báo phân quyền.
 
@@ -85,17 +92,20 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
 - **Mô tả:** Activity log của app đã che các trường này (`logRedact`). Tuy vậy URL đầy đủ vẫn nằm trong access log mặc định của nginx (`frontend/nginx.conf` không khai `log_format`, nên `$request` có cả query string), trong log của proxy HTTPS của viện, và trong lịch sử trình duyệt. Đây là dữ liệu cá nhân theo NĐ 13/2023.
 - **Đề xuất:** Chuyển sang `POST /public/lookup` với dữ liệu trong body, như các route `/course-registration/:code/status` đã làm. Cần sửa đồng thời frontend (vùng `frontend-cleanup`), nên ghi lại để làm chung.
 
-### S-06 — Thấp — Kiểm "vượt số còn phải nộp" nằm ngoài transaction (race nộp trùng)
+### S-06 — Thấp — Kiểm "vượt số còn phải nộp" nằm ngoài transaction (race nộp trùng) — ĐÃ SỬA
 
 - **Vị trí:** `tuitionService.js:448` (`recordPayment`), `:233` (`submitMine`), `:498` (`confirmPayment` không kiểm lại số còn lại).
 - **Mô tả:** Hai cán bộ ghi nhận cùng lúc, hoặc học viên gửi hai lần song song, đều qua được bước kiểm rồi cùng INSERT, gây nộp thừa. Xác nhận nhiều khoản chờ có tổng vượt số phải nộp cũng không bị chặn. Hệ thống có hiển thị `overpaid` nên không mất dữ liệu, nhưng biên lai vẫn được cấp cho số tiền thừa.
-- **Đề xuất:** Trong transaction, `SELECT ... FROM enrollment_fees WHERE enrollment_id = @eid FOR UPDATE` (sau `ensureFeeRow`), rồi tính lại số còn lại trước khi INSERT / xác nhận.
+- **Đã sửa:** Trong transaction của `submitMine`, `recordPayment` và `confirmPayment`, sau `ensureFeeRow`, hàm `tuitionGuards.lockFee` chạy `SELECT ... FROM enrollment_fees ... FOR UPDATE` rồi đọc lại các khoản nộp. Số còn phải nộp được tính lại từ đó: học viên gửi thì trừ cả khoản đang chờ; cán bộ ghi nhận hoặc xác nhận thì tính theo số còn lại. Vượt thì trả 409 và transaction rollback, không INSERT, không cấp biên lai. `ensureFeeRow` thêm `ON CONFLICT (enrollment_id) DO NOTHING`, để hai thao tác đầu tiên chạy song song không bị lỗi khoá chính mà chờ nhau.
+- **Giữ nguyên:** Bước kiểm sơ bộ ngoài transaction (trả 400 sớm, không lưu chứng từ thừa), kiểm chủ sở hữu và lượt ghi danh thuộc khoá, người thao tác (`withActorTransaction`), chặn xác nhận trùng (`confirmInTx`, `status = 'pending'`).
+- **Test:** `test/security/tuitionPaymentRace.test.js`, gồm 3 ca lỗi và 1 ca đối chứng (còn đủ thì vẫn ghi nhận).
 
-### S-07 — Thấp — Thông báo học phí gửi tới mọi người có `courses:approve`, kể cả phạm vi `assigned`
+### S-07 — Thấp — Thông báo học phí gửi tới mọi người có `courses:approve`, kể cả phạm vi `assigned` — ĐÃ SỬA
 
 - **Vị trí:** `tuitionService.js:166` (`approvers`).
 - **Mô tả:** Giảng viên có `courses:approve@assigned` nhận được thông báo "<họ tên học viên> báo đã chuyển khoản <số tiền> khoá <tên khoá>" của cả những khoá không được phân công. Lỗi cùng loại với S-04, nhưng nằm ở kênh thông báo.
-- **Đề xuất:** Lọc người nhận theo phân công của khoá (`lecturer_assignments`), hoặc chỉ gửi cho người có phạm vi `all`.
+- **Đã sửa:** `tuitionGuards.approvers(courseId)` chỉ trả người có `courses:approve` với phạm vi hiệu lực `all`, cộng với người có phạm vi `assigned` **và** được phân công khoá đó (`lecturer_assignments`, giảng viên còn hoạt động). Đây là cùng điều kiện mà `listPending` và `router.param` của khoá học đang dùng. `submitMine` truyền `row.course_id` vào.
+- **Test:** `tuitionPaymentRace.test.js` (ca S-07).
 
 ### S-08 — Thấp — Nộp khảo sát không nằm trong transaction
 
@@ -103,11 +113,16 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
 - **Mô tả:** INSERT `survey_responses` và từng `survey_answers` là các câu riêng lẻ. Nếu lỗi giữa chừng (DB rớt, đáp án quá dài), phản hồi bị lưu dở, và người dùng không nộp lại được vì nhận 409 "đã nộp". `answer_options` cũng không được đối chiếu với các lựa chọn của câu hỏi.
 - **Đề xuất:** Bọc trong `withTransaction`; kiểm `answer_options` thuộc `question.options`.
 
-### S-09 — Thấp — Tự đặt lại / tự đổi mật khẩu thành công không ghi `security_events`
+### S-09 — Thấp — Tự đặt lại / tự đổi mật khẩu thành công không ghi `security_events` — ĐÃ SỬA
 
 - **Vị trí:** `backend/src/modules/auth/passwordResetService.js:128` (`resetPassword`); `authService.changePassword`.
 - **Mô tả:** Chỉ lần thử sai (`password_reset_failed`) và đặt lại bởi admin (`password_reset_by_admin`) được ghi vào `security_events`. Lần đặt lại bằng OTP thành công thì chỉ có trong activity log (file). Trang Sự kiện bảo mật và cảnh báo vì vậy không thấy được dấu hiệu chiếm tài khoản qua hộp thư.
-- **Đề xuất:** Ghi `password_reset_self` / `password_changed` (actor, IP) sau khi đổi thành công.
+- **Đã sửa:** Ghi `security_events` sau khi đổi thành công:
+  - `passwordResetService.resetPassword` ghi `password_reset_self` (actor = target = người dùng, IP).
+  - `authService.changePassword` ghi `password_changed` (actor, IP, user agent).
+  - Hai loại này không được thêm vào danh sách gửi email cảnh báo ngay (`securityAlertService.IMMEDIATE`), để quản trị không nhận email mỗi lần có người đổi mật khẩu. Nếu muốn cảnh báo khi xảy ra dồn dập, có thể thêm vào `BURST`.
+  - `securityEvents.log` không bao giờ throw, nên lỗi ghi nhật ký không làm hỏng việc đổi mật khẩu.
+- **Test:** `test/security/passwordEventLog.test.js`, gồm 2 ca lỗi và 1 ca đối chứng (sai OTP thì không ghi).
 
 ### S-10 — Thấp — Khoá `url` / `image` trong `FILE_KEYS` ký mọi chuỗi `/uploads/...` mang tên trường đó
 
@@ -117,6 +132,12 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
 
 ## Ghi chú cho các phiên khác
 
-- `training-cleanup`: 4 file training đã sửa (xem đầu báo cáo). Khi gộp, giữ lại điều kiện `tuition_payments ... status = 'confirmed'` trong các câu DELETE và tham số `actor` của `listPending`.
+- `training-cleanup`: 4 file training đã sửa và thêm file mới `tuition/tuitionGuards.js` (xem đầu báo cáo). Khi gộp, giữ lại:
+  - điều kiện `tuition_payments ... status = 'confirmed'` trong các câu DELETE;
+  - tham số `actor` của `listPending`;
+  - `lockedSummary` (gọi `lockFee`) trong 3 transaction ghi tiền;
+  - `approvers(row.course_id)`.
+  
+  Đợt S-06/S-07/S-09 không đụng thêm vào `courseService.js`.
 - `backend-cleanup`: S-01 (`attendanceDevices`) và S-08 (`surveys`) thuộc vùng của bạn; chưa sửa.
 - `frontend-cleanup`: S-05 cần đổi lời gọi `GET /public/lookup` sang POST, nếu người dùng đồng ý.
