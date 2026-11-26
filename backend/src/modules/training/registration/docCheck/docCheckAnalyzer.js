@@ -42,16 +42,17 @@ const tesseractAvailable = () =>
 	}));
 
 /**
- * OCR 1 ảnh PNG qua stdin. OMP_THREAD_LIMIT=1: mỗi lần OCR chỉ ăn 1 nhân CPU.
+ * Chạy Tesseract với ảnh PNG qua stdin, trả stdout. OMP_THREAD_LIMIT=1: mỗi lần OCR chỉ ăn
+ * 1 nhân CPU.
  * @param {Uint8Array} png
- * @param {number} [psm] chế độ tách trang của Tesseract (3 = tự động)
+ * @param {string[]} args tham số sau `stdin stdout`
  * @returns {Promise<string>}
  */
-const ocr = (png, psm = 3) =>
+const runTesseract = (png, args) =>
 	new Promise((resolve, reject) => {
 		const child = execFile(
 			TESSERACT_BIN,
-			['stdin', 'stdout', '-l', 'vie', '--psm', String(psm)],
+			['stdin', 'stdout', ...args],
 			{
 				timeout: OCR_TIMEOUT_MS,
 				maxBuffer: 4 * 1024 * 1024,
@@ -63,6 +64,55 @@ const ocr = (png, psm = 3) =>
 		child.stdin?.on('error', () => {}); // tesseract chết sớm ⇒ lỗi báo ở callback
 		child.stdin?.end(Buffer.from(png));
 	});
+
+/**
+ * OCR 1 ảnh PNG ra chữ thường.
+ * @param {Uint8Array} png
+ * @param {number} [psm] chế độ tách trang của Tesseract (3 = tự động)
+ * @returns {Promise<string>}
+ */
+const ocr = (png, psm = 3) => runTesseract(png, ['-l', 'vie', '--psm', String(psm)]);
+
+/**
+ * @typedef {{ text: string, conf: number, left: number, top: number, width: number,
+ *   height: number, line: string }} OcrWord
+ */
+
+/**
+ * Đọc đầu ra `tsv` của Tesseract: chỉ lấy dòng cấp từ (level 5) có chữ. `line` = khóa
+ * "trang.khối.đoạn.dòng" — các từ cùng khóa nằm trên cùng 1 dòng.
+ * @param {string} tsv
+ * @returns {OcrWord[]}
+ */
+const parseTsv = (tsv) => {
+	/** @type {OcrWord[]} */
+	const words = [];
+	for (const row of String(tsv ?? '').split(/\r?\n/)) {
+		const c = row.split('\t');
+		if (c.length < 12 || c[0] !== '5') continue;
+		const text = c.slice(11).join('\t').trim();
+		if (!text) continue;
+		words.push({
+			text,
+			conf: Number(c[10]),
+			left: Number(c[6]),
+			top: Number(c[7]),
+			width: Number(c[8]),
+			height: Number(c[9]),
+			line: `${c[1]}.${c[2]}.${c[3]}.${c[4]}`,
+		});
+	}
+	return words;
+};
+
+/**
+ * OCR 1 ảnh PNG, trả từng từ kèm toạ độ (điểm ảnh của chính ảnh đưa vào) + độ tin cậy 0–100.
+ * @param {Uint8Array} png
+ * @param {number} [psm]
+ * @returns {Promise<OcrWord[]>}
+ */
+const ocrTsv = async (png, psm = 3) =>
+	parseTsv(await runTesseract(png, ['-l', 'vie', '--psm', String(psm), 'tsv']));
 
 const MAGIC = {
 	'.pdf': 'application/pdf',
@@ -91,6 +141,27 @@ const renderGray = (mupdf, page, maxDim, rotate = 0) => {
 	if (rotate) m = mupdf.Matrix.concat(m, mupdf.Matrix.rotate(rotate));
 	return page.toPixmap(m, mupdf.ColorSpace.DeviceGray, false, true);
 };
+
+/**
+ * Ảnh MÀU (RGB, không kênh alpha) cả trang, cạnh dài ≈ maxDim — cho dò dấu đỏ / mực xanh
+ * (signature/visualMarks.js). Người gọi tự destroy() pixmap.
+ */
+const renderRgb = (mupdf, page, maxDim) => {
+	const s = scaleFor(page, maxDim);
+	return page.toPixmap(mupdf.Matrix.scale(s, s), mupdf.ColorSpace.DeviceRGB, false, true);
+};
+
+/**
+ * Pixmap mupdf ⇒ dạng ảnh mà visualMarks.detectMarks() nhận. `pixels` là view vào bộ nhớ
+ * WASM — chỉ dùng trước khi pixmap bị destroy().
+ */
+const pixmapImage = (pix) => ({
+	pixels: pix.getPixels(),
+	width: pix.getWidth(),
+	height: pix.getHeight(),
+	channels: pix.getNumberOfComponents(), // n của MuPDF đã gồm kênh alpha (nếu có)
+	stride: pix.getStride(),
+});
 
 /** Ảnh xám phần đầu trang (tiêu đề). */
 const renderHeader = (mupdf, page, maxDim) => {
@@ -294,4 +365,13 @@ const analyze = async ({ filePath, mime = null, kind, identity = {} }) => {
 	}
 };
 
-module.exports = { analyze, tesseractAvailable, magicOf };
+module.exports = {
+	analyze,
+	tesseractAvailable,
+	magicOf,
+	loadMupdf,
+	renderRgb,
+	pixmapImage,
+	ocrTsv,
+	parseTsv,
+};
