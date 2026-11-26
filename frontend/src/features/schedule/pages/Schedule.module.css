@@ -290,7 +290,7 @@
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .ganttHeader {
 	display: flex;
-	background: linear-gradient(180deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+	background: var(--color-white);
 	border-bottom: 2px solid var(--color-gray-200);
 	position: sticky;
 	top: 0;
@@ -500,8 +500,6 @@
 	border-radius: 7px;
 	min-width: 4px;
 	opacity: 0.94;
-	background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.06) 100%);
-	background-blend-mode: overlay;
 	transition: opacity 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
 	cursor: grab;
 	overflow: hidden;
