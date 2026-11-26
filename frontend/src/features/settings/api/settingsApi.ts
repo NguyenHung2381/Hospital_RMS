@@ -17,6 +17,8 @@ export interface DocCheckStatus {
 	worker_disabled: boolean;
 	/** Máy chủ có Tesseract (gói tiếng Việt) */
 	ocr: boolean;
+	/** Công tắc TRAINING_DOC_SIGNATURE_CHECK (kiểm chữ ký) đang bật — chỉ chạy khi `enabled` cũng bật */
+	signature_enabled: boolean;
 	queue: {
 		pending: number;
 		running: number;
@@ -25,6 +27,10 @@ export interface DocCheckStatus {
 		skipped: number;
 		skipped_ocr: number;
 		mismatch: number;
+		/** File có chữ ký số không hợp lệ / bị sửa sau khi ký */
+		sig_invalid: number;
+		/** File thiếu dấu / chữ ký theo yêu cầu của loại giấy tờ */
+		sig_missing: number;
 		/** Việc chờ lâu nhất đã chờ bao nhiêu phút (null = không có việc chờ) */
 		oldest_pending_min: number | null;
 		last_checked_min: number | null;

@@ -1,4 +1,5 @@
 import type { CustomValues } from '@/shared/formConfig/types';
+import type { DocFileCheck } from '@/shared/components/FileCheckNote/fileCheck.types';
 import { BASE_URL } from '../../../shared/api/axios';
 import { seg } from '../../../shared/api/path';
 
@@ -240,18 +241,12 @@ export type RegistrationFileCheckWarning =
 	| 'cccd_missing_back'
 	| 'name_not_found';
 
-/** Kết quả tự kiểm tra 1 file hồ sơ (backend docCheckService.present) */
-export interface RegistrationFileCheck {
-	status: 'pending' | 'running' | 'done' | 'error' | 'skipped';
-	/** ok = đúng loại; mismatch = có vẻ sai loại; unclear = không đọc được; null = chưa xong */
-	verdict: 'ok' | 'mismatch' | 'unclear' | null;
-	detected_kind: string | null;
-	detected_label: string | null;
-	/** ok = đúng, không cảnh báo; warn = nên xem lại; info = đang kiểm / không kết luận */
-	level: 'ok' | 'warn' | 'info';
-	message: string;
-	warnings: { code: RegistrationFileCheckWarning; message: string }[];
-}
+/**
+ * Kết quả tự kiểm tra 1 file hồ sơ (backend docCheckService.present): phần đoán loại giấy tờ
+ * (`level`, `message`, `warnings`) + khối `signature` (kiểm chữ ký — null khi công tắc
+ * TRAINING_DOC_SIGNATURE_CHECK tắt hoặc loại giấy tờ không kiểm, ví dụ CCCD).
+ */
+export type RegistrationFileCheck = DocFileCheck<RegistrationFileCheckWarning>;
 
 /** Kết quả nộp / thay 1 file (công khai và cổng nhân viên) */
 export interface RegistrationFileUploadResult {

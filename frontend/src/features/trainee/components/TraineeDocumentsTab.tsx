@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { confirmDialog, FileDropzone, promptDialog } from '@/shared/components';
+import { confirmDialog, FileCheckNote, FileDropzone, promptDialog } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { showToast } from '@/shared/utils/feedback';
@@ -189,6 +189,7 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 										<TrashSvg />
 									</button>
 								)}
+								<FileCheckNote check={doc.check} />
 							</div>
 						</div>
 					</div>
