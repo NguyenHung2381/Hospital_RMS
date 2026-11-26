@@ -435,19 +435,19 @@ const update = async (id, data, actorId, actor = null) => {
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members)
-	await pool.request().input('topic_id', sql.VarChar(15), id).query(`
+	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members).
+	// Cùng 1 transaction có người thao tác: DELETE lỗi thì tài khoản giữ liên kết.
+	await withActorTransaction(actorId, async (tx) => {
+		await tx.request().input('topic_id', sql.VarChar(15), id).query(`
       UPDATE users SET topic_member_id = NULL
       WHERE topic_member_id IN (SELECT id FROM topic_members WHERE topic_id = @topic_id)
     `);
-	await withActorTransaction(actorId, (tx) =>
-		tx
+		await tx
 			.request()
 			.input('id', sql.VarChar(15), id)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query(`DELETE FROM topics WHERE id = @id`),
-	);
+			.query(`DELETE FROM topics WHERE id = @id`);
+	});
 	await formCustomValueService.remove('topic', id);
 	broadcast('update', { entity: 'topic' });
 };
