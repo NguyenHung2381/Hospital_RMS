@@ -991,11 +991,6 @@
 	composes: emptyDesc from '../../../shared/components/Table/Table.module.css';
 }
 
-/* Delete confirm */
-.confirmModal {
-	max-width: 420px;
-}
-
 /* ── File list multi-select ─────────────────── */
 .fileListHeader {
 	display: flex;
@@ -1495,56 +1490,6 @@
 	color: var(--color-white);
 	background: var(--color-error);
 	box-shadow: 0 4px 8px rgba(232, 69, 69, 0.25);
-}
-
-/* ── Enhanced confirm modal ─────────────────── */
-.confirmModalUpload {
-	max-width: 480px;
-}
-
-.cfmHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-	padding: var(--space-5) var(--space-6);
-	background: var(--cfm-accent, var(--tone-red-bg));
-	border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.cfmHeaderIcon {
-	width: 44px;
-	height: 44px;
-	border-radius: 50%;
-	background: white;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	color: var(--cfm-color, var(--tone-red-fg));
-}
-
-.cfmHeaderIcon svg {
-	width: 20px;
-	height: 20px;
-}
-
-.cfmHeaderText {
-	flex: 1;
-	min-width: 0;
-}
-
-.cfmHeaderTitle {
-	font-size: var(--font-size-lg);
-	font-weight: var(--font-weight-extrabold);
-	color: var(--color-gray-800);
-	letter-spacing: -0.01em;
-}
-
-.cfmHeaderSub {
-	font-size: var(--font-size-xs);
-	color: var(--color-gray-500);
-	margin-top: 1px;
 }
 
 /* File info card (delete modal) */
