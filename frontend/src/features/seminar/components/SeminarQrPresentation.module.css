@@ -32,7 +32,6 @@
 	font-family: var(--font-heading);
 	font-size: clamp(16px, 2.2vw, 26px);
 	font-weight: 700;
-	text-transform: uppercase;
 	letter-spacing: 0.02em;
 }
 
