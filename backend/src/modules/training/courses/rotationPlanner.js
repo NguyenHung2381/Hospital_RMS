@@ -354,7 +354,6 @@ module.exports = {
 	dayStr,
 	shortDept,
 	practiceFieldLabel,
-	roundKey,
 	deriveTemplate,
 	arrangeRotations,
 	pickMentor,

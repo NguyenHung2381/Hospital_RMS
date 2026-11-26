@@ -538,4 +538,4 @@ const detectMarks = (input) => {
 	};
 };
 
-module.exports = { detectMarks, THRESHOLDS, TITLE_PHRASES };
+module.exports = { detectMarks };

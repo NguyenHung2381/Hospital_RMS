@@ -489,7 +489,6 @@ const syncCourse = async (courseId, actorId, { canApprove = false } = {}) => {
 };
 
 module.exports = {
-	SOURCE,
 	syncTrainees,
 	syncLecturers,
 	syncCourse,

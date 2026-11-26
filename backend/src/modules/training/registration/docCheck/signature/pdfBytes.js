@@ -199,12 +199,4 @@ async function readDss(buf) {
 	return { certs: grab('Certs'), ocsps: grab('OCSPs'), crls: grab('CRLs') };
 }
 
-module.exports = {
-	isPdf,
-	isEncrypted,
-	derLength,
-	parsePdfDate,
-	findSignatureFields,
-	classifyAppendedUpdate,
-	readDss,
-};
+module.exports = { isPdf, isEncrypted, findSignatureFields, classifyAppendedUpdate, readDss };

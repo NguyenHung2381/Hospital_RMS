@@ -218,7 +218,6 @@ const removeQuestion = async (id) => {
 
 module.exports = {
 	listQuestions,
-	getQuestion,
 	createQuestion,
 	createQuestionsBulk,
 	updateQuestion,

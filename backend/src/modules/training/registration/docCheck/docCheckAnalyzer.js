@@ -553,9 +553,7 @@ const analyze = async (input, { trust } = {}) => {
 
 module.exports = {
 	analyze,
-	analyzeSignatures,
 	tesseractAvailable,
-	magicOf,
 	loadMupdf,
 	renderRgb,
 	pixmapImage,

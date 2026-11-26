@@ -74,10 +74,4 @@ const getExportData = async (courseId, body) => {
 	};
 };
 
-module.exports = {
-	DEFAULT_STATUSES,
-	normalizeOptions,
-	filterRows,
-	filterPrograms,
-	getExportData,
-};
+module.exports = { normalizeOptions, filterRows, filterPrograms, getExportData };

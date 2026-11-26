@@ -419,7 +419,6 @@ module.exports = {
 	arrangeOne,
 	arrangeCourse,
 	completeFinished,
-	codeSuffix,
 	// Cho test-integration (arrangeOne chạy song song nhiều câu, không chạy được trong 1 tx test)
 	loadMentorCandidates,
 };

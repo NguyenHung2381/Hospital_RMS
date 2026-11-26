@@ -100,10 +100,4 @@ const splitStaffCell = (raw) =>
 		.map(tidy)
 		.filter(Boolean);
 
-module.exports = {
-	nameKeyOf,
-	createStaffResolver,
-	createLecturerResolver,
-	splitLecturerCell,
-	splitStaffCell,
-};
+module.exports = { createStaffResolver, createLecturerResolver, splitLecturerCell, splitStaffCell };

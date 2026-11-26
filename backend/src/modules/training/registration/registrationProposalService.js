@@ -114,11 +114,4 @@ const listForCourse = async (courseId) =>
 		proposed_count: proposedPeople(g).length,
 	}));
 
-module.exports = {
-	proposedPeople,
-	buildProposalData,
-	renderGroup,
-	findGroup,
-	sameProgram,
-	listForCourse,
-};
+module.exports = { renderGroup, findGroup, sameProgram, listForCourse };

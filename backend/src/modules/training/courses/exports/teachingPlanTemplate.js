@@ -140,4 +140,4 @@ const buildTeachingPlanTemplate = ({ title, period, lessons, cme = null }) => {
 	return wb;
 };
 
-module.exports = { buildTeachingPlanTemplate, KIND_LABEL };
+module.exports = { buildTeachingPlanTemplate };

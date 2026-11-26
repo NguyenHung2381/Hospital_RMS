@@ -58,4 +58,4 @@ const receiptUnit = async () =>
 		(await systemSettingService.getValue('TUITION_RECEIPT_UNIT', '')) || DEFAULT_RECEIPT_UNIT,
 	).trim();
 
-module.exports = { BANKS, getBankInfo, receiptUnit };
+module.exports = { getBankInfo, receiptUnit };

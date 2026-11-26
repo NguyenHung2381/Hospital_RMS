@@ -547,7 +547,6 @@ const incrementLessonDocumentDownload = async (docId) => {
 
 module.exports = {
 	setLessonDepartments,
-	listLessonLecturers,
 	setLessonLecturers,
 	listLessons,
 	listAllLessons,

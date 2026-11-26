@@ -469,5 +469,4 @@ module.exports = {
 	updateSession,
 	removeSession,
 	createSessionsBulk,
-	ASSISTANTS_SQL,
 };
