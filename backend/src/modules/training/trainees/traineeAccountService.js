@@ -14,7 +14,8 @@ const { ROLE, requireRoleId } = require('../../access/roleCodes');
 const { generateTempPassword } = require('../../../utils/passwordPolicy');
 const { traineeUsernamePrefix, nextTraineeUsername } = require('./traineeUsername');
 const userService = require('../../users/userService');
-const { httpError } = require('../../../utils/httpError');
+const { httpError, publicMessage } = require('../../../utils/httpError');
+const logger = require('../../../config/logger');
 const { nextId } = require('../../../utils/idGenerator');
 const userStatusCache = require('../../../permissions/userStatusCache');
 
@@ -184,10 +185,12 @@ const grantAccounts = async (traineeIds, actorId) => {
 					// bỏ qua nếu transaction đã bị abort
 				}
 			}
+			logger.error(`grantAccounts: bỏ qua học viên ${trainee.id}:`, err?.message);
 			skipped.push({
 				trainee_id: trainee.id,
 				full_name: trainee.full_name,
-				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
+				// Lỗi CSDL / lỗi code không trả nguyên văn (đã ghi log ở trên)
+				reason: publicMessage(err),
 			});
 		}
 	}

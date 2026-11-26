@@ -212,10 +212,28 @@ ${ROUND_LEVEL_APPLY}
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
 };
 
+const ROUND_DATES_MSG = 'Ngày kết thúc đợt phải sau hoặc bằng ngày bắt đầu';
+
+// Ngày 'yyyy-mm-dd' để so sánh (chuỗi từ form giữ nguyên, kiểu khác qua Date ISO);
+// không đọc được → null (để CSDL/validator khác xử lý).
+const ymd = (v) => {
+	if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+	const d = v instanceof Date ? v : v ? new Date(v) : null;
+	return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+};
+
+// Kiểm tra trước khi ghi thay vì để CHECK chk_rr_dates của CSDL chặn.
+const assertRoundDates = (start, end) => {
+	const s = ymd(start);
+	const e = ymd(end);
+	if (s && e && e < s) throw httpError(400, ROUND_DATES_MSG);
+};
+
 const create = async (data, actorId) => {
 	const pool = await getPool();
 	const year = Number(data.year) || new Date().getFullYear();
 	const round_number = Number(data.round_number) || 1;
+	assertRoundDates(data.start_date, data.end_date);
 
 	// Mã DOT<năm><số đợt>; trùng đợt đã có ⇒ 409
 	const id = await genRoundId(pool, year, round_number);
@@ -292,6 +310,19 @@ const update = async (id, data, actorId) => {
 	if (data.status !== undefined) {
 		sets.push('status = @status');
 		req.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status);
+	}
+	if (data.start_date !== undefined || data.end_date !== undefined) {
+		assertRoundDates(data.start_date, data.end_date);
+		// Chỉ gửi 1 trong 2 ngày ⇒ so với ngày còn lại đang lưu (so trong SQL cùng
+		// kiểu date với lúc ghi, tránh lệch múi giờ khi so bằng JS)
+		const bad = await pool
+			.request()
+			.input('id', sql.VarChar(10), id)
+			.input('start_date', sql.Date, data.start_date ? new Date(data.start_date) : null)
+			.input('end_date', sql.Date, data.end_date ? new Date(data.end_date) : null).query(`
+				SELECT 1 AS x FROM research_rounds
+				WHERE id = @id AND COALESCE(@end_date, end_date) < COALESCE(@start_date, start_date)`);
+		if (bad.recordset.length) throw httpError(400, ROUND_DATES_MSG);
 	}
 	await req.query(`UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`);
 	if (Array.isArray(data.level_ids)) await writeLevels(() => pool.request(), id, data.level_ids);

@@ -18,7 +18,7 @@ const { generateTempPassword } = require('../../utils/passwordPolicy');
 const userStatusCache = require('../../permissions/userStatusCache');
 const { stripDiacritics, stripQualification } = require('../../utils/vietnameseText');
 const logger = require('../../config/logger');
-const { httpError } = require('../../utils/httpError');
+const { httpError, publicMessage } = require('../../utils/httpError');
 const { isMaskedEmail } = require('./memberEmailMask');
 
 const getMembers = async (topicId) => {
@@ -376,7 +376,8 @@ const grantAccountsNoEmail = async (topicId, memberIds, actorId) => {
 			skipped.push({
 				member_id: member.id,
 				ho_ten: member.ho_ten,
-				reason: err instanceof Error ? err.message : 'Lỗi không xác định',
+				// Lỗi CSDL / lỗi code không trả nguyên văn (đã ghi log đầy đủ ở trên)
+				reason: publicMessage(err),
 			});
 		}
 	}

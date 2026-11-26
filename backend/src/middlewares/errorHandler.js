@@ -22,6 +22,21 @@ const validate = (req, res, next) => {
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// Thông báo riêng cho ràng buộc CHECK người dùng có thể chạm tới qua dữ liệu nhập
+// (tên ràng buộc chữ thường — xem database/baseline/02_constraints_indexes.sql).
+// Ràng buộc khác dùng thông báo chung.
+const CHECK_MESSAGES = Object.freeze({
+	chk_rr_dates: 'Ngày kết thúc đợt phải sau hoặc bằng ngày bắt đầu',
+	chk_rd_dates: 'Ngày bắt đầu mốc thời gian phải trước hoặc bằng hạn chót',
+	chk_enrrot_dates: 'Ngày kết thúc luân khoa phải sau hoặc bằng ngày bắt đầu',
+	ck_attendance_leave_requests_dates: 'Ngày kết thúc nghỉ phải sau hoặc bằng ngày bắt đầu',
+	chk_grades_part_scores: 'Điểm phải nằm trong khoảng 0–10',
+	chk_topics_acceptance_score: 'Điểm nghiệm thu phải nằm trong khoảng 0–100',
+	chk_lecass_hours: 'Số giờ giảng không được âm',
+	chk_venues_capacity: 'Sức chứa phải lớn hơn 0',
+	chk_trnplanitem_quarter: 'Quý phải từ 1 đến 4',
+});
+
 const errorHandler = (err, req, res, next) => {
 	// Lỗi từ CSDL — không trả nguyên văn err.message ra ngoài ở production
 	// vì nó có thể lộ tên bảng/cột hoặc đoạn câu lệnh SQL; log đầy đủ ở server.
@@ -40,8 +55,17 @@ const errorHandler = (err, req, res, next) => {
 				return error(res, 'Số CCHN này đã gán cho nhân sự khác', 409);
 			return error(res, 'Dữ liệu bị trùng với bản ghi đã có', 409);
 		}
-		if (isForeignKeyViolation(err) || isCheckViolation(err)) {
+		if (isForeignKeyViolation(err)) {
 			return error(res, 'Không thể thực hiện vì dữ liệu đang được liên kết ở nơi khác', 409);
+		}
+		// CHECK = giá trị nằm ngoài điều kiện cho phép (không phải "đang liên kết")
+		if (isCheckViolation(err)) {
+			const msg = CHECK_MESSAGES[constraintName(err) ?? ''];
+			return error(
+				res,
+				msg ?? 'Dữ liệu không hợp lệ: có giá trị nằm ngoài điều kiện cho phép',
+				400,
+			);
 		}
 		return error(res, isProd ? 'Lỗi cơ sở dữ liệu' : err.message || 'Lỗi cơ sở dữ liệu', 500);
 	}
