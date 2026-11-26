@@ -8,9 +8,9 @@
 
 | Chỉ số | Trước | Sau |
 |---|---|---|
-| Dòng trong `src/modules/training` | 24.491 | 24.370 (**−121**: thêm 215, xoá 336; tính cả 2 file mới `customFormCrud.js`, `importText.js`) |
+| Dòng trong `src/modules/training` | 24.491 | 24.389 (**−102**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm) |
 | `npm test` | 1080 qua / 0 lỗi* | 1094 qua / 0 lỗi (thêm 14 test đơn vị) |
-| `npm run lint` | 0 lỗi, 1 cảnh báo | 0 lỗi, 1 cảnh báo (`courses.routes.js` 505 dòng > 500, có từ trước) |
+| `npm run lint` | 0 lỗi, 1 cảnh báo | 0 lỗi, 0 cảnh báo |
 | Smoke trên DB dev (`test-integration/**`, so baseline dựng từ `60d56a71`) | — | 218 test, 216 qua, 2 bỏ qua (thiếu dữ liệu mẫu), 0 lỗi; 192 route GET giữ nguyên mã HTTP và tập trường JSON |
 
 \* Lần chạy mốc đầu tiên báo 4 file lỗi (`test/cme/cmeCycleCompliance`, `test/security/courseLecturerCme`, `gradeLockOutcome`, `moduleKillSwitchMounts`). Chạy riêng từng file đều qua; các lần chạy đầy đủ sau đó cũng qua. Đây là lỗi chập chờn do máy tải nặng (7 phiên cùng chạy), không phải lỗi code.
@@ -24,7 +24,7 @@ Cách chạy smoke: chép `src/` + `test-integration/` của từng commit vào 
 **1. Bỏ 34 export không nơi nào dùng** (commit `31948235`)
 Quét `src/`, `test/`, `scripts/`, `test-integration*`: các tên dưới đây không xuất hiện ở file nào khác. Mọi hàm/hằng **vẫn được dùng trong chính file đó**: chỉ bỏ khỏi `module.exports`, không xoá code.
 Danh sách: `classSessionService.ASSISTANTS_SQL`, `courseCmeService.SOURCE`, `enrollmentExportService.DEFAULT_STATUSES`, `courseEnrollmentWorkbook.{STATUS_LABEL, slugify, givenName}`, `teachingPlanTemplate.KIND_LABEL`, `practiceAutoService.codeSuffix`, `practiceBookImportService.findRotationGroups`, `programClassService.isInternalTrainee`, `rotationPlanner.roundKey`, `sessionLecturerResolver.nameKeyOf`, `questionBankService.getQuestion`, `programLessonService.listLessonLecturers`, `docCheckAnalyzer.{analyzeSignatures, magicOf}`, `docCheckRules.{alnum, levenshtein, hasMrz, scoreKinds, nameFound}`, `docCheckService.{isCheckable, presentTraineeDocument}`, `pdfBytes.{derLength, parsePdfDate}`, `trustStore.splitCerts`, `visualMarks.{THRESHOLDS, TITLE_PHRASES}`, `registrationFileKinds.{REGISTRATION_FILE_KINDS, RETIRED_KINDS}`, `registrationProposalService.{proposedPeople, buildProposalData}`, `registrationUpload.FORM_MAX_FILES`, `tuitionSettings.BANKS`.
-Đối chiếu với `06-dead-code.md` mục 1.2: cả 30 mục của phiên quét đều nằm trong danh sách này. Tôi bỏ thêm 4 mục (`STATUS_LABEL`, `KIND_LABEL`, `presentTraineeDocument`, `BANKS`) cũng chỉ dùng nội bộ. Không có file chết, không có hàm chết hẳn.
+Đối chiếu với `06-dead-code.md` mục 1.2: cả 30 mục của phiên quét đều nằm trong danh sách này. Tôi bỏ thêm 4 mục (`STATUS_LABEL`, `KIND_LABEL`, `presentTraineeDocument`, `BANKS`) cũng chỉ dùng nội bộ. Không có file chết, không có hàm chết hẳn. Đối chiếu lại theo yêu cầu phiên điều phối: không còn mục nào của 06-dead-code.md nhóm training chưa xử lý (mục 1.1 file nạp động và 1.3 console/TODO đều không có gì phải làm).
 Vẫn giữ nguyên: mọi code, mọi đường gọi nội bộ.
 
 **2. Gộp `tidy` / `cleanCode` / `groupBy` trùng lặp** (commit `240dabcf`)
@@ -67,6 +67,21 @@ Kiểm thử:
 Không dùng `shared/crudController.js` vì nó không có bước trường tuỳ chỉnh và thuộc phiên `backend-cleanup`.
 Vẫn giữ nguyên: `authorizePermission` + `formConfigGuard` ở route, validate ở service, hình dạng response và thông điệp (`'Cập nhật thành công'`, `'Xóa thành công'`, 201 khi tạo, 404 khi không thấy). Smoke GET không đổi. Test: `test/training/customFormCrud.test.js`.
 
+### Rủi ro thấp — chỉ dời vị trí khai báo route
+
+**5. Tách route Điểm / Giấy chứng nhận / CME khỏi `courses.routes.js`** (hết cảnh báo lint `max-lines`)
+Khối 56 dòng chuyển nguyên văn sang `courses/courseGradeRoutes.js`. Các route trong khối: `/:id/grades*`, `/:id/gradebook`, `/enrollments/:enrollmentId/grades/*`, `/grades/:gradeId`, `/:id/certificates*`, `/certificates*`, `/:id/cme-sync`.
+File mới làm theo đúng mẫu `coursePracticeRoutes.js` / `sessionImportRoutes.js`: hàm nhận `router` của khóa học và đăng ký thẳng vào đó, không dùng sub-router. Nó được gọi tại đúng vị trí cũ (sau Documents, trước `courseTuitionRoutes`).
+Vẫn giữ nguyên:
+- `router.use(authenticate)`.
+- `router.param` kiểm phạm vi khóa cho `:id` / `:enrollmentId` / `:gradeId` / `:certId`: vẫn áp dụng vì cùng một router.
+- `authorizePermission`, validator và thứ tự từng route.
+
+Đã kiểm, đều qua:
+- `test/contract/routeInventory.test.js`: khớp `routes.snapshot.txt`, không có hai route trùng method + path.
+- `check:routes`: mọi route đều khai báo phân quyền.
+- `test/security/gradeLockOutcome.test.js` và `test/security/courseTeachingScope.test.js`.
+
 ## Phát hiện chưa sửa
 
 | # | Vị trí | Mức | Mô tả | Đề xuất | Đã sửa? |
@@ -82,7 +97,7 @@ Vẫn giữ nguyên: `authorizePermission` + `formConfigGuard` ở route, valida
 | F9 | `courses/gradebookService.js:415` `lock`, `:315` `saveBulk` | thấp | 1 `ensureGradeRow` + 1 UPDATE / học viên. | Có thể gom UPDATE `locked_at` cho các dòng đã có. Nhưng `ensureGradeRow` cần khoá sinh mã `genGradeId` nên không gom toàn bộ. | Chưa |
 | F10 | `courses/practiceBookWriter.js:63` `addToCatalogs` | thấp | SELECT + INSERT / tên danh mục. | `INSERT … SELECT FROM jsonValues WHERE NOT EXISTS`. Tên bảng là hằng nên an toàn. | Chưa |
 | F11 | `courses/classSessionService.js:400` `createSessionsBulk`, `courses/courseAttendanceService.js:190` `checkInSelf`, `trainees/traineeAccountService.js:110` `grantAccounts` | — | Vòng ghi từng dòng, **cố ý**: mã sinh tuần tự trong transaction, kiểm trùng từng buổi, kiểm thiết bị điểm danh hộ, mỗi học viên 1 transaction riêng để lỗi một người không chặn cả lô (có bcrypt). | Giữ nguyên. | Không cần |
-| F12 | `courses/courses.routes.js` | thấp | 505 dòng, vượt `max-lines` (cảnh báo lint duy nhất). | Tách nhóm route (vd. lịch học / điểm) sang file `*Routes.js` như `coursePracticeRoutes.js`. Cần đối chiếu `routes.snapshot.txt`. | Chưa |
+| F12 | `courses/courses.routes.js` | thấp | 505 dòng, vượt `max-lines` (cảnh báo lint duy nhất). | Đã tách nhóm Điểm / Giấy chứng nhận / CME sang `courseGradeRoutes.js` (xem thay đổi 5). | **Đã sửa** |
 
 Không thấy dấu hiệu lỗi bảo mật mới trong vùng này:
 - `check:routes` báo mọi route đều khai báo phân quyền.
