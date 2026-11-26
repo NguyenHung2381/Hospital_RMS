@@ -18,7 +18,7 @@
 
 /* Avatar card */
 .avatarCard {
-	background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%);
+	background: var(--color-primary-dark);
 	border-radius: var(--radius-2xl);
 	padding: var(--space-8) var(--space-6);
 	display: flex;
