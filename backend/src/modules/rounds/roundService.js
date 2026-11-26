@@ -17,6 +17,7 @@ const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 const { httpError } = require('../../utils/httpError');
+const { inClause } = require('../../utils/sqlFilters');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };
@@ -63,13 +64,13 @@ const writeLevels = async (request, roundId, levelIds) => {
 	await request()
 		.input('rid', sql.VarChar(10), roundId)
 		.query('DELETE FROM research_round_levels WHERE round_id = @rid');
-	for (const lid of ids) {
-		const req = () =>
-			request().input('rid', sql.VarChar(10), roundId).input('lid', sql.VarChar(5), lid);
-		if (!(await req().query('SELECT 1 AS x FROM levels WHERE id = @lid')).recordset.length)
-			continue;
-		await req().query('INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)');
-	}
+	if (!ids.length) return;
+	// 1 câu cho cả danh sách; mã không có trong levels tự bị bỏ qua (như trước)
+	const req = request().input('rid', sql.VarChar(10), roundId);
+	const where = inClause(req, 'id', 'lid', ids, sql.VarChar(5));
+	await req.query(
+		`INSERT INTO research_round_levels (round_id, level_id) SELECT @rid, id FROM levels WHERE ${where}`,
+	);
 };
 
 // Cấp độ hợp lệ cho đề tài của một đợt: cấu hình riêng của đợt nếu có, không

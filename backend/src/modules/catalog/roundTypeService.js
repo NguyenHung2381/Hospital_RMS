@@ -1,6 +1,7 @@
 const { sql, withTransaction } = require('../../config/db');
 const { createCrudService } = require('../../shared/crudService');
 const { broadcast } = require('../events/eventService');
+const { inClause } = require('../../utils/sqlFilters');
 const { createWithSeqId, getLevelIdsForRoundType } = require('./levelService');
 
 // Constraint CHK_round_types_id: id = RT + 2 chữ số → RT01, RT02, ...
@@ -23,15 +24,13 @@ const setLevels = async (roundTypeId, levelIds) => {
 			.request()
 			.input('rt', sql.VarChar(6), roundTypeId)
 			.query('DELETE FROM round_type_levels WHERE round_type_id = @rt');
-		for (const lid of ids) {
-			const req = () =>
-				tx.request().input('rt', sql.VarChar(6), roundTypeId).input('lid', sql.VarChar(5), lid);
-			if (!(await req().query('SELECT 1 AS x FROM levels WHERE id = @lid')).recordset.length)
-				continue;
-			await req().query(
-				'INSERT INTO round_type_levels (round_type_id, level_id) VALUES (@rt, @lid)',
-			);
-		}
+		if (!ids.length) return;
+		// 1 câu cho cả danh sách; mã không có trong levels tự bị bỏ qua (như trước)
+		const req = tx.request().input('rt', sql.VarChar(6), roundTypeId);
+		const where = inClause(req, 'id', 'lid', ids, sql.VarChar(5));
+		await req.query(
+			`INSERT INTO round_type_levels (round_type_id, level_id) SELECT @rt, id FROM levels WHERE ${where}`,
+		);
 	});
 	broadcast('update', { entity: 'round_type' });
 	return getLevelIdsForRoundType(roundTypeId);
