@@ -646,7 +646,7 @@
 .ticketStepText { font-size: var(--font-size-sm); color: var(--color-gray-500); text-align: right; }
 .ticketStep_done .ticketStepIcon { background: var(--color-primary-dark); border-color: var(--color-primary-dark); color: #fff; }
 .ticketStep_done .ticketStepText { color: var(--tone-green-fg); }
-.ticketStep_fail .ticketStepIcon { background: var(--color-error); border-color: var(--color-error); color: #fff; }
+.ticketStep_fail .ticketStepIcon { background: var(--tone-red-fg); border-color: var(--color-error); color: var(--color-white); }
 .ticketStep_fail .ticketStepText { color: var(--tone-red-fg); }
 .testIntro { display: flex; flex-direction: column; gap: var(--space-3); }
 .testIntro .submitBtn { margin-top: 0; }
