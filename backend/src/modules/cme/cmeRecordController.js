@@ -3,7 +3,7 @@ const cmeRecordImportService = require('./cmeRecordImportService');
 const cmeReportService = require('./cmeReportService');
 const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
 const cmeUserService = require('./cmeUserService');
-const { success, created, notFound } = require('../../utils/response');
+const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { hasPermission } = require('../../permissions/authz');
 const { departmentLimit } = require('../../permissions/actionScope');
 const { asyncHandler } = require('../../utils/asyncHandler');
@@ -155,19 +155,6 @@ const reviewWith = (approve) =>
 	});
 const approve = reviewWith(true);
 const reject = reviewWith(false);
-
-const sendWorkbook = async (res, wb, fileName) => {
-	res.setHeader(
-		'Content-Type',
-		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	);
-	res.setHeader(
-		'Content-Disposition',
-		`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-	);
-	await wb.xlsx.write(res);
-	res.end();
-};
 
 const importTemplate = asyncHandler(async (req, res) => {
 	return sendWorkbook(
