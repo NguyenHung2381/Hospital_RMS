@@ -381,7 +381,7 @@
 }
 
 /* CSS Modules băm tên keyframes theo từng file: `animation: tên` chỉ chạy khi
-   @keyframes cùng tên khai báo NGAY trong file này (bản trong mixins.css / file
+   @keyframes cùng tên khai báo NGAY trong file này (bản trong global.css / file
    khác không dùng được). Thiếu thì animation lặng lẽ không chạy. */
 @keyframes modalFadeIn {
 	from {

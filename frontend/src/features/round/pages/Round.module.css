@@ -948,7 +948,7 @@
 }
 
 /* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
-   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+   bản trong global.css / Modal.module.css không dùng được từ file này. */
 @keyframes modalPopIn {
 	from {
 		opacity: 0;
