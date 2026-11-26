@@ -2,6 +2,7 @@ const {
 	getPool,
 	sql,
 	jsonValues,
+	jsonRows,
 	newIdSql,
 	nowSql,
 	stringAgg,
@@ -115,13 +116,17 @@ const setLessonLecturers = async (programId, lessonId, data, actorId) => {
 		await req().query(
 			'DELETE FROM program_lesson_lecturers WHERE program_id = @program_id AND lesson_id = @lesson_id',
 		);
-		for (const row of rows)
+		// 1 câu INSERT cho cả GV chính + GV phụ (trước đây 1 round-trip / người)
+		if (rows.length)
 			await req()
-				.input('lecturer_id', sql.VarChar(20), row.lecturer_id)
-				.input('role', sql.VarChar(10), row.role)
+				.input('rows', sql.NVarChar(sql.MAX), JSON.stringify(rows))
 				.input('actor_id', sql.VarChar(20), actorId).query(`
           INSERT INTO program_lesson_lecturers (program_id, lesson_id, lecturer_id, role, created_by)
-          VALUES (@program_id, @lesson_id, @lecturer_id, @role, @actor_id)`);
+          SELECT @program_id, @lesson_id, j.lecturer_id, j.role, @actor_id
+          FROM ${jsonRows('@rows', 'j', [
+						['lecturer_id', 'VARCHAR(20)'],
+						['role', 'VARCHAR(10)'],
+					])}`);
 	});
 };
 
@@ -316,30 +321,23 @@ const linkLessons = async (programId, lessonIds, actorId) => {
 		.query(
 			'SELECT COALESCE(MAX(display_order), -1) AS max_order FROM lesson_programs WHERE program_id = @program_id',
 		);
-	let nextOrder = maxRow.recordset[0].max_order + 1;
-
-	let linked = 0;
-	for (const lessonId of ids) {
-		if (already.has(lessonId)) continue;
-		const newId = randomId('LP', 18);
-		const req = () => pool.request().input('lesson_id', sql.VarChar(20), lessonId);
-		// Mã bài học không tồn tại thì bỏ qua (vẫn tính vào linked như trước)
-		if (
-			(await req().query('SELECT 1 AS x FROM program_lessons WHERE id = @lesson_id')).recordset
-				.length
-		)
-			await req()
-				.input('program_id', sql.VarChar(20), programId)
-				.input('display_order', sql.Int, nextOrder)
-				.input('actor_id', sql.VarChar(20), actorId)
-				.input('new_id', sql.VarChar(20), newId).query(`
+	const fresh = ids.filter((id) => !already.has(id));
+	// 1 câu INSERT cho cả lô (trước đây 2 round-trip / bài). Thứ tự = sau bài cuối + vị trí
+	// trong `fresh`; mã bài học không tồn tại thì bỏ qua nhưng vẫn giữ chỗ thứ tự và vẫn
+	// tính vào linked như trước.
+	if (fresh.length)
+		await pool
+			.request()
+			.input('program_id', sql.VarChar(20), programId)
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(fresh))
+			.input('base_order', sql.Int, maxRow.recordset[0].max_order + 1)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
         INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
-        VALUES (@new_id, @lesson_id, @program_id, @display_order, @actor_id)`);
-		nextOrder += 1;
-		linked += 1;
-	}
+        SELECT ${newIdSql('LP', 18)}, pl.id, @program_id, @base_order + j.idx, @actor_id
+        FROM ${jsonValues('@ids', { type: 'VARCHAR(20)', withIndex: true })} j
+        JOIN program_lessons pl ON pl.id = j.value`);
 	broadcast('update', { entity: 'program_lesson' });
-	return { linked };
+	return { linked: fresh.length };
 };
 
 // Sắp xếp lại thứ tự TOÀN BỘ bài học của 1 chương trình theo mảng link_id đã

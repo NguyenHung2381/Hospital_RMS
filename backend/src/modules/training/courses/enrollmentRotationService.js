@@ -20,6 +20,7 @@ const {
 	stringAgg,
 	nstr,
 	queryBatch,
+	jsonRows,
 } = require('../../../config/db');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
@@ -477,18 +478,21 @@ const schedule = async (enrollmentId, startDate, actorId) => {
 		loadRounds(pool, enrollment.program_id),
 	]);
 	const plan = planSchedule(rows.recordset, new Map(rounds.map((x) => [x.id, x])), startDate);
-	for (const p of plan) {
+	if (plan.length) {
+		// 1 câu UPDATE cho cả lịch (trước đây 1 round-trip / vòng); chỉ vòng của hồ sơ này
 		await pool
 			.request()
-			.input('id', sql.VarChar(20), p.id)
-			.input('start_date', sql.Date, p.start_date)
-			.input('end_date', sql.Date, p.end_date)
+			.input('enrollment_id', sql.VarChar(20), enrollmentId)
+			.input('rows', sql.NVarChar(sql.MAX), JSON.stringify(plan))
 			.input('actor_id', sql.VarChar(20), actorId).query(`
-        UPDATE enrollment_rotations SET start_date = @start_date, end_date = @end_date,
+        UPDATE enrollment_rotations SET start_date = j.start_date, end_date = j.end_date,
                updated_at = ${nowSql}, updated_by = @actor_id
-        WHERE id = @id`);
-	}
-	if (plan.length) {
+        FROM ${jsonRows('@rows', 'j', [
+					['id', 'VARCHAR(20)'],
+					['start_date', 'DATE'],
+					['end_date', 'DATE'],
+				])}
+        WHERE j.id = enrollment_rotations.id AND enrollment_rotations.enrollment_id = @enrollment_id`);
 		const first = plan[0].start_date;
 		const last = plan[plan.length - 1].end_date;
 		await pool

@@ -8,6 +8,7 @@ const {
 	nowSql,
 	stringAgg,
 	jsonArray,
+	jsonValues,
 	ilike,
 	likeCi,
 } = require('../../../config/db');
@@ -139,21 +140,17 @@ const setProgramTraineeTypes = async (programId, typeIds) => {
 		.request()
 		.input('program_id', sql.VarChar(20), programId)
 		.query('DELETE FROM program_trainee_types WHERE program_id = @program_id');
-	for (let i = 0; i < typeIds.length; i++) {
-		const req = () => pool.request().input('trainee_type_id', sql.VarChar(20), typeIds[i]);
-		// Mã đối tượng không tồn tại thì bỏ qua
-		if (
-			!(await req().query('SELECT 1 AS x FROM trainee_types WHERE id = @trainee_type_id')).recordset
-				.length
-		)
-			continue;
-		await req()
+	// 1 câu INSERT cho cả danh sách (trước đây 2 round-trip / đối tượng). display_order = vị
+	// trí trong mảng gửi lên; mã đối tượng không tồn tại thì bỏ qua.
+	if (typeIds.length)
+		await pool
+			.request()
 			.input('program_id', sql.VarChar(20), programId)
-			.input('display_order', sql.Int, i)
-			.query(
-				'INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order) VALUES (@program_id, @trainee_type_id, @display_order)',
-			);
-	}
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(typeIds)).query(`
+        INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order)
+        SELECT @program_id, tt.id, j.idx
+        FROM ${jsonValues('@ids', { type: 'VARCHAR(20)', withIndex: true })} j
+        JOIN trainee_types tt ON tt.id = j.value`);
 };
 
 const getAll = async ({

@@ -9,6 +9,7 @@ const {
 	nowSql,
 	ilike,
 	queryBatch,
+	jsonValues,
 } = require('../../../config/db');
 const { genCourseId, genCourseProgramId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
@@ -349,20 +350,31 @@ const setPrograms = async (courseId, programIds, actorId) => {
 			.input('course_id', sql.VarChar(20), courseId)
 			.query('SELECT id, program_id FROM course_programs WHERE course_id = @course_id')
 	).recordset;
-	for (const link of current.filter((l) => !wanted.has(l.program_id))) {
+	const dropIds = current.filter((l) => !wanted.has(l.program_id)).map((l) => l.id);
+	if (dropIds.length)
 		await pool
 			.request()
-			.input('id', sql.VarChar(20), link.id)
-			.query('DELETE FROM course_programs WHERE id = @id');
-	}
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(dropIds))
+			.query(
+				`DELETE FROM course_programs WHERE course_id = @course_id AND id IN ${jsonValues('@ids', { type: 'VARCHAR(20)' })}`,
+			);
 	const have = new Set(current.map((l) => l.program_id));
-	for (const programId of [...wanted].filter((id) => !have.has(id))) {
-		// Mã chương trình không tồn tại thì bỏ qua
-		const exists = await pool
-			.request()
-			.input('program_id', sql.VarChar(20), programId)
-			.query('SELECT 1 AS x FROM training_programs WHERE id = @program_id');
-		if (!exists.recordset.length) continue;
+	const toAdd = [...wanted].filter((id) => !have.has(id));
+	if (!toAdd.length) return;
+	// Mã chương trình không tồn tại thì bỏ qua — kiểm 1 lần cho cả danh sách
+	const known = new Set(
+		(
+			await pool
+				.request()
+				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(toAdd))
+				.query(
+					`SELECT id FROM training_programs WHERE id IN ${jsonValues('@ids', { type: 'VARCHAR(20)' })}`,
+				)
+		).recordset.map((r) => r.id),
+	);
+	// Mã course_programs sinh tuần tự trong giao dịch (genCourseProgramId) nên vẫn ghi từng dòng
+	for (const programId of toAdd.filter((id) => known.has(id))) {
 		await withTransaction(async (tx) =>
 			tx
 				.request()
