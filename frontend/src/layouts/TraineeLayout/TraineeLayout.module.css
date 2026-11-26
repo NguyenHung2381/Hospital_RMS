@@ -633,7 +633,7 @@
 		padding: 13px;
 		margin-top: -22px;
 		border-radius: var(--radius-full);
-		background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+		background: var(--color-primary-dark);
 		color: var(--color-white);
 		border: 3px solid var(--color-white);
 		box-sizing: border-box;
