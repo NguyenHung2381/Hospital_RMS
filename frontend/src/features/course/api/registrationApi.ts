@@ -22,16 +22,6 @@ export interface RegistrationDiff {
 	profile_label?: string | null;
 }
 
-export interface RegistrationDossier {
-	file_id: string;
-	file_name: string;
-	/** null khi thiếu quyền xem dữ liệu nhạy cảm của học viên */
-	file_url: string | null;
-	mime_type: string | null;
-	file_size: number | null;
-	uploaded_at: string | null;
-}
-
 export interface RegistrationReview {
 	enrollment_id: string;
 	registration_code: string;
@@ -140,8 +130,6 @@ const reg = (enrollmentId: string) => `/courses/enrollments/${seg(enrollmentId)}
 
 export const getEnrollmentRegistration = (enrollmentId: string) =>
 	apiClient.get<RegistrationReview | null>(reg(enrollmentId));
-export const getRegistrationDossier = (enrollmentId: string) =>
-	apiClient.get<RegistrationDossier>(`${reg(enrollmentId)}/dossier`);
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
 export const registrationApplicationUrl = (enrollmentId: string) => `/api/v1${reg(enrollmentId)}/application`;
 export const downloadRegistrationApplication = (enrollmentId: string) => getBlob(`${reg(enrollmentId)}/application`);
