@@ -14,6 +14,7 @@ import {
 import styles from '../pages/Seminar.module.css';
 import cs from './SeminarFormModal.module.css';
 import { SeminarLocationField } from './SeminarLocationField';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 // Form gồm 2 phần:
 //  - Thông tin cơ bản: luôn hiện — tên (bắt buộc duy nhất, backend chỉ validate title),
@@ -203,9 +204,7 @@ export function SeminarFormModal({
 	const [topics, setTopics] = useState<Option[]>([]);
 	useEffect(() => {
 		if (!ht) return;
-		apiClient
-			.get<{ data: Option[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<Option>().then(setDepartments)
 			.catch(() => {});
 		apiClient
 			.get<{ data: Option[] }>('/hospital-training-topics?limit=0')

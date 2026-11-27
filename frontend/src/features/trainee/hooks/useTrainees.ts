@@ -20,6 +20,7 @@ import {
 } from '../types/trainee.type';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import type { TraineeDocState } from '../api/traineeRecordApi';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 export interface SimpleItem {
 	id: string;
@@ -87,9 +88,7 @@ export function useTrainees(query: TraineeListQuery = {}) {
 			.get<{ data: SimpleItem[] }>('/trainee-types?limit=0')
 			.then((res) => setTraineeTypes(res.data))
 			.catch(() => {});
-		apiClient
-			.get<{ data: SimpleItem[] }>('/departments?limit=0')
-			.then((res) => setDepartments(res.data))
+		getDepartmentOptions<SimpleItem>().then(setDepartments)
 			.catch(() => {});
 	}, []);
 

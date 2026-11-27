@@ -78,9 +78,9 @@ export function RoundCard({
 								marginLeft: 'auto',
 								fontSize: 11,
 								fontWeight: 700,
-								color: daysLeft <= 30 ? '#A32D2D' : 'var(--color-primary-dark)',
+								color: daysLeft <= 30 ? 'var(--tone-red-fg)' : 'var(--color-primary-dark)',
 								background:
-									daysLeft <= 30 ? '#FCEBEB' : 'var(--color-primary-pale)',
+									daysLeft <= 30 ? 'var(--tone-red-bg)' : 'var(--color-primary-pale)',
 								padding: '2px 8px',
 								borderRadius: 999,
 							}}
@@ -124,7 +124,7 @@ export function RoundCard({
 						<div className={styles.progressTrack}>
 							<div
 								className={styles.progressFill}
-								style={{ width: `${topicPct}%`, background: '#0A9B4A' }}
+								style={{ width: `${topicPct}%`, background: 'var(--color-primary)' }}
 							/>
 						</div>
 					</div>
@@ -138,7 +138,7 @@ export function RoundCard({
 					<div className={styles.cardStat}>
 						<div
 							className={styles.cardStatVal}
-							style={{ color: round.topic_active > 0 ? '#0C447C' : 'inherit' }}
+							style={{ color: round.topic_active > 0 ? 'var(--tone-blue-fg)' : 'inherit' }}
 						>
 							{round.topic_active}
 						</div>
@@ -148,7 +148,7 @@ export function RoundCard({
 						<div
 							className={styles.cardStatVal}
 							style={{
-								color: round.topic_completed > 0 ? '#085028' : 'inherit',
+								color: round.topic_completed > 0 ? 'var(--tone-green-fg)' : 'inherit',
 							}}
 						>
 							{round.topic_completed}

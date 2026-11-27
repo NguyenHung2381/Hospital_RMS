@@ -293,7 +293,6 @@
 	font-size: 13px;
 	font-weight: 700;
 	letter-spacing: 0.02em;
-	text-transform: uppercase;
 	color: var(--color-gray-600);
 }
 .historyTitle span {
@@ -533,7 +532,7 @@
 	height: 44px;
 	border-radius: 12px;
 	background: var(--color-primary-pale);
-	color: var(--color-primary);
+	color: var(--color-primary-dark);
 }
 .itemIcon svg {
 	width: 24px;

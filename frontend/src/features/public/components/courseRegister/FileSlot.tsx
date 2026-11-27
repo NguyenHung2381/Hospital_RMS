@@ -202,6 +202,8 @@ export function FileSlot({
 						className={s.ghostBtn}
 						onClick={() => inputRef.current?.click()}
 						disabled={disabled}
+						// Nhiều ô file trên cùng trang: tên nút kèm tên giấy tờ ("Chọn file Căn cước…")
+						aria-label={`Chọn file ${label}`}
 						aria-describedby={describedBy}
 						aria-invalid={shownError ? true : undefined}
 					>

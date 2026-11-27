@@ -36,7 +36,7 @@ export default function TopicLibrary() {
 							<div className={styles.libraryTitle}>{t.title}</div>
 							{t.description && <div className={styles.libraryDesc}>{t.description}</div>}
 							<div className={styles.libraryMeta}>
-								<span className={styles.badge} style={{ color: '#0c447c', background: '#e6f1fb' }}>
+								<span className={styles.badge} style={{ color: 'var(--tone-blue-fg)', background: 'var(--tone-blue-bg)' }}>
 									{t.article_type === 'bai_bao' ? 'Bài báo / Tập san' : 'Đề tài NCKH'}
 								</span>
 								{t.department_name && <span>{t.department_name}</span>}

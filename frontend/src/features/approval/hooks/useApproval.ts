@@ -31,6 +31,8 @@ const TAB_TO_TOPIC_STATUS: Record<TabKey, TopicApprovalStatus> = {
 
 export interface ApprovalState {
 	records: ApprovalRecord[];
+	/** Tải lại danh sách (nút "Thử lại" khi lỗi). */
+	refreshData: () => void;
 	activeTab: TabKey;
 	search: string;
 	selectedId: string | null;
@@ -384,6 +386,7 @@ export function useApproval(): ApprovalState {
 
 	return {
 		records,
+		refreshData,
 		activeTab,
 		search,
 		selectedId,

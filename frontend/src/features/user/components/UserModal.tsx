@@ -131,8 +131,8 @@ export function UserModal({
 			icon={mode === 'create' ? <KeySvg /> : <EditSvg />}
 			iconStyle={
 				mode === 'create'
-					? { background: '#faeeda', color: '#633806' }
-					: { background: '#e6f1fb', color: '#0c447c' }
+					? { background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }
+					: { background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }
 			}
 			title={mode === 'create' ? 'Cấp tài khoản mới' : 'Chỉnh sửa tài khoản'}
 			subtitle={mode === 'create' ? 'Tạo tài khoản cho cán bộ / nhân viên' : `Cập nhật thông tin — ${user?.id}`}

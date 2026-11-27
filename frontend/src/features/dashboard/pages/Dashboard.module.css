@@ -241,7 +241,7 @@
 
 .councilFill {
 	height: 100%;
-	background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+	background: var(--color-primary);
 	border-radius: var(--radius-full);
 	transition: width var(--transition-slow);
 }
@@ -343,77 +343,6 @@
 	height: 8px;
 	border-radius: 2px;
 	flex-shrink: 0;
-}
-
-/* =============================================
-   TABLE SECTION SWITCHER
-============================================= */
-.sectionSwitcher {
-	display: flex;
-	gap: var(--space-1);
-	background: var(--color-gray-100);
-	border-radius: var(--radius-lg);
-	padding: 4px;
-	width: fit-content;
-	grid-column: 1;
-	grid-row: 1;
-}
-
-.switcherBtn {
-	padding: var(--space-2) var(--space-4);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-gray-500);
-	background: none;
-	border: none;
-	border-radius: var(--radius-md);
-	cursor: pointer;
-	transition: all var(--transition-fast);
-	font-family: var(--font-body);
-}
-
-.switcherBtn:hover {
-	color: var(--color-gray-700);
-}
-
-.switcherBtnActive,
-.switcherBtnActive:hover {
-	color: var(--color-primary-dark);
-	background: var(--color-white);
-	box-shadow: var(--shadow-md);
-	font-weight: var(--font-weight-semibold);
-}
-
-/* =============================================
-   RECENT TOPICS TABLE
-============================================= */
-.tableSection {
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-300);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-}
-
-.tableSectionHeader {
-	padding: var(--space-4) var(--space-6);
-	border-bottom: 2px solid var(--color-gray-300);
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--space-4);
-	background: var(--color-gray-100);
-}
-
-.tableSectionLeft {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-}
-
-.tableSectionTitle {
-	font-size: var(--font-size-base);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-800);
 }
 
 .tableCount {
@@ -603,68 +532,12 @@
 	border: 1px solid var(--color-gray-200);
 }
 
-.topicTitleText {
-	composes: cellTitle from '../../../shared/components/Table/Table.module.css';
-	margin-bottom: 2px;
-	line-height: 1.45;
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	max-width: 320px;
-}
-
 .topicMeta {
 	composes: cellSub from '../../../shared/components/Table/Table.module.css';
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	max-width: 320px;
-}
-
-/* =============================================
-   OPERATIONS GRID (Main table + Sidebar logs)
-============================================= */
-/* Lưới 2 hàng: hàng 1 chỉ có thanh chuyển tab (cột chính), hàng 2 có bảng + cột phụ
-   cùng hàng — nhờ vậy operationsSidebar stretch khớp chiều cao với đúng cái bảng,
-   không tính phần thanh tab phía trên. */
-.operationsGrid {
-	display: grid;
-	grid-template-columns: 1fr 380px;
-	grid-template-rows: auto 1fr;
-	gap: var(--space-4) var(--space-5);
-}
-
-.operationsMain {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	grid-column: 1;
-	grid-row: 2;
-}
-
-/* Cột phụ: 2 thẻ bên dưới chia đều chiều cao được stretch khớp với bảng. */
-.operationsSidebar {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-5);
-	min-width: 0;
-	min-height: 0;
-	grid-column: 2;
-	grid-row: 2;
-}
-
-/* Approval list */
-.approvalCard {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
 }
 
 .cardHeader {
@@ -694,136 +567,6 @@
 	color: var(--color-primary-dark);
 }
 
-.approvalList {
-	display: flex;
-	flex-direction: column;
-	padding: var(--space-2) 0;
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-}
-
-.approvalItem {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-	padding: var(--space-3) var(--space-5);
-	transition:
-		background var(--transition-fast),
-		border-left-color var(--transition-fast);
-	cursor: pointer;
-	border-left: 3px solid transparent;
-}
-
-.approvalItem:hover {
-	background: var(--color-gray-50);
-	border-left-color: var(--color-primary);
-}
-
-.approvalAvatar {
-	width: 38px;
-	height: 38px;
-	border-radius: var(--radius-lg);
-	background: linear-gradient(
-		135deg,
-		var(--color-primary-pale),
-		rgba(55, 138, 221, 0.12)
-	);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-primary-dark);
-	flex-shrink: 0;
-	border: 1px solid rgba(10, 155, 74, 0.2);
-}
-
-.approvalInfo {
-	flex: 1;
-	min-width: 0;
-}
-
-.approvalTopicId {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-	font-family: var(--font-mono);
-	margin-bottom: 2px;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.approvalTopicTitle {
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.approvalMeta {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-500);
-	margin-top: 2px;
-}
-
-.approvalRight {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 4px;
-	flex-shrink: 0;
-}
-
-.approvalDate {
-	font-size: var(--font-size-2xs);
-	color: var(--color-gray-400);
-}
-
-/* Department summary */
-.deptSummaryCard {
-	display: flex;
-	flex-direction: column;
-	flex: 1;
-	min-height: 0;
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-xl);
-	overflow: hidden;
-}
-
-.deptList {
-	padding: var(--space-3) var(--space-4);
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-4);
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-}
-
-.deptItem {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--space-3);
-}
-
-.deptRank {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-gray-400);
-	width: 18px;
-	text-align: center;
-	flex-shrink: 0;
-	padding-top: 2px;
-}
-
-.deptInfo {
-	flex: 1;
-	min-width: 0;
-}
-
 .deptName {
 	font-size: var(--font-size-sm);
 	font-weight: var(--font-weight-semibold);
@@ -832,40 +575,6 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.deptBarWrap {
-	display: flex;
-	align-items: center;
-	gap: var(--space-2);
-	margin-bottom: 4px;
-}
-
-.deptBar {
-	flex: 1;
-	height: 5px;
-	background: var(--color-gray-100);
-	border-radius: var(--radius-full);
-	overflow: hidden;
-}
-
-.deptBarFill {
-	height: 100%;
-	background: linear-gradient(
-		90deg,
-		var(--color-primary),
-		var(--color-primary-light)
-	);
-	border-radius: var(--radius-full);
-	transition: width var(--transition-slow);
-}
-
-.deptCount {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-primary-dark);
-	min-width: 24px;
-	text-align: right;
 }
 
 /* Trạng thái rỗng: dùng <EmptyState>/<TableEmpty> ở @/shared/components */
@@ -905,18 +614,6 @@
 	.chartsGridPairReverse {
 		grid-template-columns: 1fr;
 	}
-	.operationsGrid {
-		grid-template-columns: 1fr;
-		grid-template-rows: auto auto auto;
-	}
-	.operationsMain {
-		grid-column: 1;
-		grid-row: 2;
-	}
-	.operationsSidebar {
-		grid-column: 1;
-		grid-row: 3;
-	}
 	.quickAccessGrid {
 		grid-template-columns: repeat(4, 1fr);
 	}
@@ -946,13 +643,6 @@
 
 	.councilStripRatings {
 		justify-content: space-between;
-	}
-
-	.tableSectionHeader {
-		flex-direction: column;
-		align-items: stretch;
-		gap: var(--space-3);
-		padding: var(--space-4);
 	}
 
 	.tableControls {
@@ -1022,14 +712,6 @@
 	.metricValue {
 		font-size: var(--font-size-2xl);
 	}
-
-	.approvalItem {
-		padding: var(--space-3);
-	}
-
-	.approvalAvatar {
-		display: none;
-	}
 }
 
 /* =============================================
@@ -1088,158 +770,13 @@
 	}
 }
 
-/* Dải chỉ số theo phân hệ ở dashboard chung */
-.moduleGrid {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	gap: var(--space-5);
-}
-
-.moduleStatList {
-	display: flex;
-	flex-direction: column;
-}
-
-.moduleStatRow {
-	display: flex;
-	justify-content: space-between;
-	align-items: baseline;
-	gap: var(--space-3);
-	padding: var(--space-2) 0;
-	border-bottom: 1px solid var(--color-gray-100);
-	font-size: var(--font-size-sm);
-	color: var(--color-gray-600);
-}
-
-.moduleStatRow:last-child {
-	border-bottom: none;
-}
-
-.moduleStatValue {
-	font-size: var(--font-size-lg);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-	font-variant-numeric: tabular-nums;
-}
-
-.moduleLink {
-	background: none;
-	border: none;
-	padding: 0;
-	cursor: pointer;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-medium);
-	color: var(--color-primary-dark);
-	white-space: nowrap;
-}
-
-.moduleLink:hover {
-	text-decoration: underline;
-}
-
-.deptTable {
-	composes: table from '../../../shared/components/Table/Table.module.css';
-}
-
-.deptTable th.num,
-.deptTable td.num {
-	text-align: right;
-	font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 1280px) {
-	.moduleGrid {
-		grid-template-columns: 1fr;
-	}
-}
-
-/* ── Dải tóm tắt nhanh (số liệu phụ của từng dashboard) ── */
-.summaryStrip {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
-	background: var(--color-white);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-lg, 12px);
-	overflow: hidden;
-}
-
-.summaryItem {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: 2px;
-	padding: var(--space-3) var(--space-4);
-	background: none;
-	border: none;
-	border-right: 1px solid var(--color-gray-100);
-	text-align: left;
-	cursor: pointer;
-	font: inherit;
-}
-
-.summaryItem:last-child {
-	border-right: none;
-}
-
-.summaryItem:hover {
-	background: var(--color-gray-50);
-}
-
-.summaryValue {
-	font-size: var(--font-size-lg);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-800);
-	font-variant-numeric: tabular-nums;
-}
-
 .summaryLabel {
 	font-size: var(--font-size-xs);
 	color: var(--color-gray-500);
-}
-
-.listRow {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--space-3);
-	padding: 8px 4px;
-	border-bottom: 1px solid var(--color-gray-100);
-	font-size: var(--font-size-compact);
-}
-
-.listRow:last-child {
-	border-bottom: none;
-}
-
-.listRowTitle {
-	font-weight: 600;
-	color: var(--color-gray-800);
-}
-
-.listRowMeta {
-	color: var(--color-gray-500);
-	font-size: var(--font-size-xs);
-}
-
-.listRowSide {
-	text-align: right;
-	color: var(--color-gray-600);
-	white-space: nowrap;
 }
 
 .emptyNote {
 	padding: 16px;
 	color: var(--color-gray-400);
 	font-size: var(--font-size-compact);
-}
-
-@media (max-width: 768px) {
-	.summaryStrip {
-		grid-template-columns: repeat(2, 1fr);
-	}
-	.summaryItem:nth-child(2n) {
-		border-right: none;
-	}
-	.summaryItem:nth-child(-n + 2) {
-		border-bottom: 1px solid var(--color-gray-100);
-	}
 }

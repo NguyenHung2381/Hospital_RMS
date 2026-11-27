@@ -334,7 +334,7 @@ GET    /api/v1/public/courses  public
 GET    /api/v1/public/departments  public
 GET    /api/v1/public/featured-topics  public
 GET    /api/v1/public/levels  public
-GET    /api/v1/public/lookup  public
+POST   /api/v1/public/lookup  public
 GET    /api/v1/public/seminar-tickets/:code  public
 POST   /api/v1/public/seminar-tickets/:code/test  public
 POST   /api/v1/public/seminar-tickets/:code/test/start  public

@@ -205,7 +205,7 @@
 	border-color: var(--tone-red-border);
 }
 .error svg {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 .info svg {

@@ -9,7 +9,7 @@ import {
 	type GrantedTraineeAccount,
 } from '../api/traineeApi';
 import type { Trainee } from '../types/trainee.type';
-import { GrantedAccountsModal } from './GrantedAccountsModal';
+import { GrantedAccountsModal } from '@/shared/components/GrantedAccountsModal';
 import ds from '../pages/TraineeDetail.module.css';
 import styles from '../pages/Trainees.module.css';
 

@@ -86,7 +86,7 @@ export function RegisterMemberSection({
 										width: 15,
 										height: 15,
 										border: '2px solid #cbd5e1',
-										borderTopColor: '#1a6abd',
+										borderTopColor: 'var(--tone-blue-solid)',
 										borderRadius: '50%',
 										display: 'inline-block',
 										animation: 'spin 0.6s linear infinite',

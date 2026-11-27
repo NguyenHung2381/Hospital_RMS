@@ -482,7 +482,7 @@ a.trailItem:hover {
 	width: 32px;
 	height: 32px;
 	border-radius: 50%;
-	background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+	background: var(--color-primary-dark);
 	color: var(--color-white);
 	display: flex;
 	align-items: center;

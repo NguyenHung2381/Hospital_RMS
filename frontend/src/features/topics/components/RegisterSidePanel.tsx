@@ -59,7 +59,7 @@ export function RegisterSidePanel({
 							background: 'none',
 							border: 'none',
 							cursor: 'pointer',
-							color: '#1a6abd',
+							color: 'var(--tone-blue-fg)',
 							fontSize: 12,
 							fontWeight: 600,
 							display: 'inline-flex',

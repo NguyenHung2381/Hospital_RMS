@@ -222,16 +222,6 @@
 .spinner {
 	composes: spinner from '../../../shared/components/Modal/Modal.module.css';
 }
-
-/* ── DOCUMENTS SUB-LIST (modal hồ sơ học viên) ─────────────────────────── */
-.subSelect {
-	padding: 7px 10px;
-	border: 1.5px solid var(--color-gray-200);
-	border-radius: var(--radius-lg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	background: var(--color-gray-50);
-}
 /* Ô chọn file gọn trong toolbar — chiếm chỗ như .subInput */
 .subDropzone {
 	flex: 1;
@@ -366,7 +356,7 @@
 }
 
 /* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
-   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+   bản trong global.css / Modal.module.css không dùng được từ file này. */
 @keyframes modalPopIn {
 	from {
 		opacity: 0;

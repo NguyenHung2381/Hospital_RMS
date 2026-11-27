@@ -87,7 +87,7 @@
 
 .tools .danger:hover {
 	background: var(--tone-red-bg);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 
 .tools svg {

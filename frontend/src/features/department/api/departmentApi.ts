@@ -21,6 +21,11 @@ export const getDepartments = (params?: DeptListParams) => {
 	return apiClient.get<DeptListResponse>(`/departments?${new URLSearchParams(entries).toString()}`);
 };
 
+/** Toàn bộ khoa/phòng cho ô chọn. Mọi nơi gọi cùng một URL nên dùng chung cache danh mục
+ *  của apiClient (gộp request trùng, giữ 60s, xoá khi có thao tác ghi / realtime). */
+export const getDepartmentOptions = <T = Department>() =>
+	apiClient.get<{ data: T[] }>('/departments?limit=0').then((r) => r.data);
+
 export const createDepartment = (form: DeptFormData) =>
 	apiClient.post<Department>('/departments', {
 		name: form.name,

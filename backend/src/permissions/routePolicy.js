@@ -51,7 +51,7 @@ module.exports = {
 		[`GET ${API}/public/courses`]: 'Cổng công khai — khóa học mở đăng ký',
 		[`GET ${API}/public/trainee-types`]: 'Cổng công khai — danh mục cho form đăng ký',
 		[`GET ${API}/public/upload-policy`]: 'Định dạng & dung lượng file được nhận (không nhạy cảm)',
-		[`GET ${API}/public/lookup`]: 'Cổng công khai — tra cứu trạng thái đăng ký',
+		[`POST ${API}/public/lookup`]: 'Cổng công khai — tra cứu trạng thái đăng ký',
 		[`POST ${API}/public/course-registration`]:
 			'Cổng công khai — đăng ký khóa học (captcha, OTP email, giới hạn theo CCCD / mã NV, mọi nhánh cùng phản hồi)',
 		[`GET ${API}/public/course-registration/rules`]:

@@ -420,34 +420,6 @@ export const uploadRegistrationFile = (
 	});
 };
 
-/** Đơn đăng ký nháp (nội viện) — chưa có mã đăng ký; khóa trường thừa bị máy chủ bỏ qua */
-export interface DraftApplicationPayload {
-	source: 'internal';
-	course_id: string;
-	program_id?: string;
-	staff_number: string;
-	full_name: string;
-	dob?: string;
-	gender?: string;
-	ethnicity?: string;
-	hometown?: string;
-	national_id?: string;
-	national_id_issued_date?: string;
-	national_id_issued_place?: string;
-	permanent_address?: string;
-	address?: string;
-	phone?: string;
-	email?: string;
-	graduated_school?: string;
-	graduated_year?: number;
-	graduated_major?: string;
-	degree_number?: string;
-	degree_registry_number?: string;
-	work_specialty?: string;
-	work_seniority?: string;
-	trainee_type_id?: string;
-}
-
 export interface DraftProposalPayload {
 	course_id: string;
 	program_id?: string;
@@ -457,9 +429,6 @@ export interface DraftProposalPayload {
 	dob?: string;
 }
 
-/** Đơn đăng ký nháp (.docx, điền sẵn, chưa có mã) — không cần captcha, máy chủ bắt khớp lại mã NV + họ tên */
-export const downloadDraftApplication = (data: DraftApplicationPayload) =>
-	requestBlob('/course-registration/draft/application', { method: 'POST', body: JSON.stringify(data) });
 /** Tờ trình + Bảng phân tích nhu cầu nháp (.docx) */
 export const downloadDraftProposal = (data: DraftProposalPayload) =>
 	requestBlob('/course-registration/draft/proposal', { method: 'POST', body: JSON.stringify(data) });
@@ -475,9 +444,10 @@ export interface LookupResult {
 }
 
 export const lookupByNationalId = (nationalId: string, dob: string, fullName: string) =>
-	request<LookupResult[]>(
-		`/lookup?national_id=${encodeURIComponent(nationalId)}&dob=${encodeURIComponent(dob)}&full_name=${encodeURIComponent(fullName)}`,
-	);
+	request<LookupResult[]>('/lookup', {
+		method: 'POST',
+		body: JSON.stringify({ national_id: nationalId, dob, full_name: fullName }),
+	});
 
 // ─── Đăng ký đề tài công khai ────────────────────────────────────────────────
 export interface PublicTopicRound {

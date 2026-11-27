@@ -39,6 +39,7 @@ import {
 } from '../types/exam.type';
 import { QUESTION_TYPE_SHORT, fmtPoints, sample, tally } from '../utils/examBuilder';
 import styles from './ExamBuilder.module.css';
+import { ErrorState } from '@/shared/components';
 
 // ─── Trạng thái form ─────────────────────────────────────────────────────────
 type Mode = 'manual' | 'random';
@@ -122,6 +123,7 @@ export default function ExamBuilder() {
 	const [form, setForm] = useState<Form | null>(null);
 	const [savedSnap, setSavedSnap] = useState('');
 	const [loadError, setLoadError] = useState('');
+	const [retry, setRetry] = useState(0);
 	const [error, setError] = useState('');
 	const [saving, setSaving] = useState<'draft' | 'save' | null>(null);
 
@@ -154,7 +156,7 @@ export default function ExamBuilder() {
 		return () => {
 			alive = false;
 		};
-	}, [courseId, examId, programParam]);
+	}, [courseId, examId, programParam, retry]);
 
 	// Người chấm chọn trong số GV được phân công của khóa
 	useEffect(() => {
@@ -229,7 +231,13 @@ export default function ExamBuilder() {
 				>
 					<ChevLSvg /> Quay lại khóa học
 				</Link>
-				<div className={styles.errorBanner}>{loadError}</div>
+				<ErrorState
+					desc={loadError}
+					onRetry={() => {
+						setLoadError('');
+						setRetry((n) => n + 1);
+					}}
+				/>
 			</AdminLayout>
 		);
 	}

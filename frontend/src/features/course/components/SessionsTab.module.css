@@ -168,11 +168,6 @@
 	min-width: 280px;
 }
 
-/* Không để tên GV dài nhất trong danh sách quyết định độ rộng cột */
-.fitSelect {
-	width: 100%;
-}
-
 .sessCell {
 	display: flex;
 	flex-direction: column;

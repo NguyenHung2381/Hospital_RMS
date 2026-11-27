@@ -27,6 +27,7 @@ import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import styles from './Seminar.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 interface SimpleItem {
 	id: string;
@@ -139,9 +140,7 @@ export default function CmeCompliance() {
 
 	useEffect(load, [load]);
 	useEffect(() => {
-		apiClient
-			.get<{ data: SimpleItem[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<SimpleItem>().then(setDepartments)
 			.catch(() => {});
 	}, []);
 

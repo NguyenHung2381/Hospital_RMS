@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Modal } from '@/shared/components';
+import { Button, ErrorState, Modal } from '@/shared/components';
 import { BadgeSvg, EditSvg, InfoSvg, LayersSvg, ListSvg } from '@/assets/icons';
 import { getProgramResults } from '../api/trainingProgramApi';
 import { formatDuration, type ProgramResultRow, type TrainingProgram } from '../types/trainingProgram.type';
@@ -171,6 +171,7 @@ function ResultsPanel({ programId }: { programId: string }) {
 	const pg = useClientPaging(rows);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -187,10 +188,20 @@ function ResultsPanel({ programId }: { programId: string }) {
 		return () => {
 			cancelled = true;
 		};
-	}, [programId]);
+	}, [programId, retry]);
 
 	if (loading) return <div className={styles.subEmpty}>Đang tải...</div>;
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error)
+		return (
+			<ErrorState
+				desc={error}
+				onRetry={() => {
+					setError('');
+					setLoading(true);
+					setRetry((n) => n + 1);
+				}}
+			/>
+		);
 	if (rows.length === 0) {
 		return (
 			<div className={styles.subEmpty}>

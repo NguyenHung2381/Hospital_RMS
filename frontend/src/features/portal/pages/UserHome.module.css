@@ -11,239 +11,6 @@
 	width: 100%;
 }
 
-/* ── 1. WELCOME BANNER ── */
-.welcomeBanner {
-	position: relative;
-	/* Mảng xanh phẳng (cùng hệ với trang đăng nhập) — không gradient, orb, lưới chấm */
-	background: var(--color-primary-dark);
-	border-radius: var(--radius-xl);
-	padding: 28px 32px;
-	min-height: 124px;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 24px;
-	color: #fff;
-	overflow: hidden;
-}
-
-/* Lớp trang trí cũ (orb + lưới chấm) — tắt, giữ class để markup không đổi */
-.bannerBgPattern {
-	display: none;
-}
-
-.bannerOrb1 {
-	position: absolute;
-	top: -60px;
-	right: -40px;
-	width: 280px;
-	height: 280px;
-	border-radius: 50%;
-	background: radial-gradient(
-		circle,
-		rgba(255, 255, 255, 0.16) 0%,
-		rgba(255, 255, 255, 0) 70%
-	);
-}
-
-.bannerOrb2 {
-	position: absolute;
-	bottom: -70px;
-	left: 20%;
-	width: 240px;
-	height: 240px;
-	border-radius: 50%;
-	background: radial-gradient(
-		circle,
-		rgba(79, 196, 126, 0.22) 0%,
-		rgba(79, 196, 126, 0) 70%
-	);
-}
-
-.bannerMeshGrid {
-	position: absolute;
-	inset: 0;
-	background-image: radial-gradient(
-		rgba(255, 255, 255, 0.08) 1px,
-		transparent 1px
-	);
-	background-size: 20px 20px;
-	opacity: 0.6;
-}
-
-/* Left side of welcome banner */
-.welcomeLeft {
-	position: relative;
-	z-index: 1;
-	display: flex;
-	align-items: center;
-	gap: 20px;
-	min-width: 0;
-	flex: 1;
-}
-
-.avatarWrapper {
-	position: relative;
-	flex-shrink: 0;
-}
-
-.welcomeAvatar {
-	width: 62px;
-	height: 62px;
-	border-radius: 50%;
-	background: rgba(0, 0, 0, 0.18);
-	border: 2px solid rgba(255, 255, 255, 0.6);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: var(--font-size-xl);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	letter-spacing: 0.02em;
-}
-
-.onlineBadge {
-	position: absolute;
-	bottom: 2px;
-	right: 2px;
-	width: 13px;
-	height: 13px;
-	border-radius: 50%;
-	background: var(--color-primary);
-	border: 2px solid var(--color-primary-dark);
-}
-
-.welcomeContent {
-	min-width: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-}
-
-.greetingTag {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-bold, 700);
-	color: #fff;
-	background: rgba(0, 0, 0, 0.18);
-	border: 1px solid rgba(255, 255, 255, 0.25);
-	border-radius: var(--radius-full, 9999px);
-	padding: 3px 10px;
-	width: fit-content;
-}
-
-.greetingTag svg {
-	width: 13px;
-	height: 13px;
-}
-
-.welcomeTitle {
-	font-size: clamp(1.25rem, 2vw, 1.55rem);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	line-height: 1.3;
-	margin: 2px 0 4px;
-	letter-spacing: -0.01em;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.welcomeMetaRow {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-.welcomeBadge {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-medium, 500);
-	color: rgba(255, 255, 255, 0.95);
-	background: rgba(0, 0, 0, 0.18);
-	border: 1px solid rgba(255, 255, 255, 0.15);
-	border-radius: var(--radius-md, 8px);
-	padding: 3px 9px;
-}
-
-.welcomeBadge svg {
-	width: 13px;
-	height: 13px;
-	opacity: 0.9;
-}
-
-/* Right side of welcome banner — Round card */
-.welcomeRight {
-	position: relative;
-	z-index: 1;
-	flex-shrink: 0;
-	min-width: 270px;
-	max-width: 320px;
-}
-
-.roundCard {
-	/* Phủ tối, không kính mờ: chữ trắng bên trong giữ ≥5:1 */
-	background: rgba(0, 0, 0, 0.16);
-	border: 1px solid rgba(255, 255, 255, 0.24);
-	border-radius: var(--radius-xl, 16px);
-	padding: 16px 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.roundStatusHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-}
-
-.roundLivePill {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: #fff;
-	background: rgba(0, 0, 0, 0.2);
-	border: 1px solid rgba(255, 255, 255, 0.35);
-	border-radius: var(--radius-full, 9999px);
-	padding: 3px 9px;
-}
-
-.roundDot {
-	width: 7px;
-	height: 7px;
-	border-radius: 50%;
-	background: var(--color-primary);
-	box-shadow: 0 0 8px var(--color-primary);
-	animation: pulseGlow 1.8s ease-in-out infinite;
-	flex-shrink: 0;
-}
-
-@keyframes pulseGlow {
-	0%,
-	100% {
-		opacity: 1;
-		transform: scale(1);
-	}
-	50% {
-		opacity: 0.5;
-		transform: scale(1.35);
-	}
-}
-
-.roundName {
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-bold, 700);
-	color: #fff;
-	line-height: 1.35;
-}
-
 .roundDeadlineContainer {
 	display: flex;
 	align-items: center;
@@ -673,11 +440,7 @@
 .progressFill {
 	height: 100%;
 	border-radius: var(--radius-full, 9999px);
-	background: linear-gradient(
-		90deg,
-		var(--color-primary) 0%,
-		var(--color-primary-dark) 100%
-	);
+	background: var(--color-primary);
 	transition: width 0.4s ease;
 }
 
@@ -760,14 +523,6 @@
 	background: var(--color-gray-50);
 }
 
-.actionBtnFeatured {
-	background: var(--color-gray-50);
-}
-
-.actionBtnFeatured:hover {
-	background: var(--tone-green-bg);
-}
-
 .actionIcon {
 	width: 42px;
 	height: 42px;
@@ -793,35 +548,11 @@
 	min-width: 0;
 }
 
-.actionNameRow {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
 .actionName {
 	font-size: var(--font-size-compact);
 	font-weight: var(--font-weight-bold, 700);
 	color: var(--color-gray-800);
 	line-height: 1.3;
-}
-
-.actionBadge {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-extrabold, 800);
-	color: var(--tone-green-fg);
-	background: var(--tone-green-border);
-	padding: 1px 6px;
-	border-radius: var(--radius-full, 9999px);
-}
-
-.actionNotifBadge {
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-extrabold, 800);
-	color: var(--tone-red-fg);
-	background: var(--tone-red-bg);
-	padding: 1px 6px;
-	border-radius: var(--radius-full, 9999px);
 }
 
 .actionDesc {
@@ -964,51 +695,14 @@
 }
 
 @media (max-width: 768px) {
-	/* Banner gọn trên điện thoại: avatar nằm cạnh lời chào (không chồng lên trên),
-	   để thẻ đợt + số liệu lọt vào màn hình đầu. */
-	.welcomeBanner {
-		flex-direction: column;
-		align-items: stretch;
-		padding: 16px;
-		gap: 14px;
-		min-height: 0;
-	}
-
-	.welcomeLeft {
-		align-items: center;
-		gap: 12px;
-	}
-
-	.welcomeAvatar {
-		width: 44px;
-		height: 44px;
-		font-size: var(--font-size-base);
-	}
-
-	.roundCard {
-		padding: 12px 14px;
-	}
-
-	.welcomeRight {
-		max-width: 100%;
-		min-width: 0;
-	}
 
 	.statsGrid {
 		grid-template-columns: repeat(2, 1fr);
 		gap: 12px;
 	}
-
-	/* Banner điện thoại: bỏ dòng huy hiệu bệnh viện/vai trò (đã có trên thanh trên) */
-	.welcomeMetaRow {
-		display: none;
-	}
 }
 
 @media (max-width: 480px) {
-	.welcomeBanner {
-		padding: 14px;
-	}
 
 	.actionList {
 		grid-template-columns: 1fr;
@@ -1053,15 +747,5 @@
 
 	.statArrow {
 		display: none;
-	}
-
-	/* Avatar đã có trên thanh trên cùng — bỏ ở banner cho gọn (ẩn cả khối bọc,
-	   không thì chấm "online" còn sót lại lơ lửng) */
-	.avatarWrapper {
-		display: none;
-	}
-
-	.welcomeTitle {
-		font-size: var(--font-size-xl);
 	}
 }

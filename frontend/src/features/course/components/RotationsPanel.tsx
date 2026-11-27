@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { confirmDialog, DatePicker, SearchableSelect } from '@/shared/components';
 import { ChevDSvg, PlusSvg, TrashSvg } from '@/assets/icons';
-import { apiClient } from '@/shared/api/axios';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import {
@@ -26,6 +25,7 @@ import { MentorPicker } from './MentorPicker';
 import { RotationDateRange } from './RotationDateRange';
 import { savePracticeDocument } from '../utils/practiceDocuments';
 import styles from '../pages/Courses.module.css';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 interface Department {
 	id: string;
@@ -132,9 +132,7 @@ export function RotationsPanel({
 	);
 	useEffect(() => {
 		load();
-		apiClient
-			.get<{ data: Department[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<Department>().then(setDepartments)
 			.catch(() => {});
 	}, [load]);
 
@@ -464,7 +462,7 @@ export function RotationsPanel({
 							</div>
 
 							{r.warnings.length > 0 && (
-								<div style={{ color: '#b42318', fontSize: 'var(--font-size-xs)' }}>
+								<div style={{ color: 'var(--tone-red-fg)', fontSize: 'var(--font-size-xs)' }}>
 									{r.warnings.join(' · ')}
 								</div>
 							)}

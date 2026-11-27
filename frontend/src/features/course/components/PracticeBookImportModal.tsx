@@ -172,7 +172,7 @@ export function PracticeBookImportModal({
 														{r.trainee_action === 'new' ? 'Học viên mới' : 'Học viên đã có'}
 													</div>
 												</td>
-												<td style={{ color: r.program_code && !r.program_found ? '#b42318' : undefined }}>
+												<td style={{ color: r.program_code && !r.program_found ? 'var(--tone-red-fg)' : undefined }}>
 													{r.program_code ?? '—'}
 												</td>
 												<td>

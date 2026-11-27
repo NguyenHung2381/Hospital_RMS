@@ -1,8 +1,6 @@
 import type { ExamQuestion, QuestionType } from '../types/exam.type';
 
 export const QUESTION_TYPE_SHORT: Record<QuestionType, string> = { single_choice: 'TN', essay: 'TL' };
-export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = { single_choice: 'Trắc nghiệm', essay: 'Tự luận' };
-
 /** Điểm hiển thị kiểu Việt: 2.5 → "2,5" */
 export const fmtPoints = (n: number) => String(Math.round(Number(n) * 100) / 100).replace('.', ',');
 

@@ -5,7 +5,6 @@
 ============================================= */
 
 @import './variables.css';
-@import './mixins.css';
 @import './select.css';
 
 /* Font Inter / Literata nạp không chặn hiển thị ở main.tsx — KHÔNG
@@ -195,6 +194,14 @@ div[class*='modal' i]::-webkit-scrollbar-track {
 html :where(a[href], button, summary, [role='button'], [role='tab'], [role='menuitem'], [role='option'], [role='checkbox'], [role='switch'], [tabindex]:not([tabindex='-1']), input[type='checkbox'], input[type='radio'], select):focus-visible {
 	outline: var(--focus-ring-width) solid var(--focus-ring-color);
 	outline-offset: var(--focus-ring-offset);
+}
+
+/* Vòng xoay toàn cục — dùng cho style inline (`animation: 'spin …'`).
+   File *.module.css băm tên keyframes nên phải tự khai báo bản riêng. */
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* === GIẢM CHUYỂN ĐỘNG ===

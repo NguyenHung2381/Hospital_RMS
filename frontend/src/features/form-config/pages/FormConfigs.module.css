@@ -58,7 +58,6 @@
 	font-size: 11px;
 	font-weight: var(--font-weight-bold);
 	letter-spacing: 0.04em;
-	text-transform: uppercase;
 	color: var(--color-gray-400, var(--color-gray-500));
 }
 .navTab {
@@ -77,8 +76,9 @@
 	background: var(--tone-green-bg);
 }
 .navBadgeUnsaved {
-	color: #fff;
-	background: var(--color-warning);
+	/* "Chưa lưu" = việc đang chờ bạn xử lý → tông hồng */
+	color: var(--tone-pink-fg);
+	background: var(--tone-pink-bg);
 }
 
 /* Màn ≤1024: thanh bên thành dải cuộn ngang (theo SystemSettings) — nhóm nằm ngang, ngăn bằng vạch */
@@ -231,7 +231,6 @@
 	border-bottom: 1px solid var(--color-gray-200);
 	font-size: 11px;
 	font-weight: var(--font-weight-bold);
-	text-transform: uppercase;
 	letter-spacing: 0.03em;
 	color: var(--color-gray-500, var(--color-gray-600));
 }
@@ -358,13 +357,9 @@
 	background: var(--tone-amber-bg);
 }
 .typeTagUnsaved {
-	color: #fff;
-	background: var(--color-warning);
+	color: var(--tone-pink-fg);
+	background: var(--tone-pink-bg);
 	font-weight: 600;
-}
-.typeTagReq {
-	color: var(--tone-red-fg);
-	background: var(--tone-red-bg);
 }
 
 /* Nút mắt Hiện / Ẩn + nhãn khóa */
@@ -481,8 +476,8 @@
 	min-width: 18px;
 	padding: 0 5px;
 	border-radius: 999px;
-	background: var(--color-primary);
-	color: #fff;
+	background: var(--color-primary-dark);
+	color: var(--color-white);
 	font-size: 10px;
 	text-align: center;
 }
@@ -593,8 +588,8 @@
 	color: var(--color-gray-600);
 }
 .typeCardOn .typeIcon {
-	background: var(--color-primary);
-	color: #fff;
+	background: var(--color-primary-dark);
+	color: var(--color-white);
 }
 .typeName {
 	font-size: var(--font-size-sm);
@@ -760,7 +755,6 @@
 }
 
 /* ── Ô sửa ràng buộc ── */
-.textRow,
 .rules {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -1062,13 +1056,6 @@
 .previewHow {
 	font-size: 11px;
 	color: var(--color-gray-500);
-}
-.previewSection {
-	font-size: var(--font-size-xs);
-	font-weight: var(--font-weight-semibold);
-	color: var(--color-gray-500);
-	padding: var(--space-2) 8px 0;
-	border-top: 1px dashed var(--color-gray-200);
 }
 .previewFoot {
 	display: flex;

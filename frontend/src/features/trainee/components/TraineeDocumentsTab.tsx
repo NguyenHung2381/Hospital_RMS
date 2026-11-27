@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, XSvg } from '@/assets/icons';
-import { confirmDialog, FileCheckNote, FileDropzone, promptDialog } from '@/shared/components';
+import { confirmDialog, ErrorState, FileCheckNote, FileDropzone, promptDialog } from '@/shared/components';
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { useUploadPolicy } from '@/shared/hooks/useUploadPolicy';
 import { showToast } from '@/shared/utils/feedback';
@@ -65,7 +65,7 @@ export function TraineeDocumentsTab({ traineeId, canEdit }: { traineeId: string;
 		}
 	};
 
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error) return <ErrorState desc={error} onRetry={() => void load()} />;
 	if (!data) return <div className={styles.subEmpty}>Đang tải...</div>;
 
 	const meta = DOC_STATE_META[data.state];

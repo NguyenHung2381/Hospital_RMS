@@ -2,7 +2,6 @@ import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
-import { apiClient } from '@/shared/api/axios';
 import {
 	createStaffLicense,
 	deleteStaffLicense,
@@ -10,6 +9,7 @@ import {
 	updateStaffLicense,
 } from '../api/staffLicenseApi';
 import type { StaffLicense, StaffLicenseFormData } from '../types/staffLicense.type';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 type Option = { id: string; name: string };
 
@@ -31,9 +31,7 @@ export function useStaffLicenses() {
 	useRealtimeUpdate('staff_license', refreshData);
 
 	useEffect(() => {
-		apiClient
-			.get<{ data: Option[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<Option>().then(setDepartments)
 			.catch(() => {});
 	}, []);
 

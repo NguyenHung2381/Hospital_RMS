@@ -617,7 +617,7 @@
    TOKEN ACCESS CARD & COPY OPTIONS
 ============================================= */
 .tokenAccessCard {
-	background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
+	background: var(--color-gray-50);
 	border: 1.5px dashed var(--color-gray-300);
 	border-radius: var(--radius-xl);
 	padding: var(--space-5);
@@ -703,7 +703,6 @@
 .modalStatCard {
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
-	border-left: 3px solid transparent;
 	border-radius: var(--radius-xl);
 	padding: var(--space-4);
 	display: flex;
@@ -716,20 +715,6 @@
 	box-shadow: var(--shadow-md);
 }
 
-.modalStatCard.total {
-	border-left-color: var(--tone-blue-solid);
-	background: linear-gradient(135deg, rgba(99, 102, 241, 0.02) 0%, var(--color-white) 100%);
-}
-
-.modalStatCard.active {
-	border-left-color: var(--tone-blue-solid);
-	background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, var(--color-white) 100%);
-}
-
-.modalStatCard.completed {
-	border-left-color: var(--color-primary);
-	background: linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, var(--color-white) 100%);
-}
 
 .modalStatIcon {
 	width: 36px;
@@ -948,7 +933,7 @@
 }
 
 /* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
-   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+   bản trong global.css / Modal.module.css không dùng được từ file này. */
 @keyframes modalPopIn {
 	from {
 		opacity: 0;

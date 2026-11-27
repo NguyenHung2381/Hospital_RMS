@@ -52,7 +52,7 @@ export function ResetPasswordModal({
 			closeOnBackdrop={!tempPassword}
 			title={tempPassword ? 'Đã đặt lại mật khẩu' : 'Đặt lại mật khẩu?'}
 			icon={<KeySvg />}
-			iconStyle={{ background: '#fff7ed', color: '#b45309' }}
+			iconStyle={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }}
 			footer={
 				<>
 					{error && (
@@ -124,7 +124,7 @@ export function ResetPasswordModal({
 							fontFamily: 'var(--font-mono)',
 							fontSize: 18,
 							letterSpacing: 1,
-							background: '#f3f4f6',
+							background: 'var(--tone-gray-bg)',
 							padding: '8px 12px',
 							borderRadius: 6,
 							userSelect: 'all',

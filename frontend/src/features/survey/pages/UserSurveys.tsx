@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { CheckSvg, ClipboardCheckSvg } from '@/assets/icons';
-import { InlineLoading } from '@/shared/components';
+import { ErrorState, InlineLoading } from '@/shared/components';
 import { notify } from '@/shared/utils/feedback';
 import UserLayout from '../../../layouts/UserLayout';
 import { isTraineeAccount, isTraineePath, TRAINEE_HOME } from '../../../app/router/authHelpers';
@@ -211,7 +211,19 @@ export default function UserSurveys() {
 			pageTitle='Khảo sát'
 			pageSubtitle='Các khảo sát đang mở dành cho bạn'
 		>
-			{error && <div className={styles.emptyState}>{error}</div>}
+			{error && (
+				<ErrorState
+					desc={error}
+					onRetry={
+						listError && !id
+							? () => {
+									setListError('');
+									load();
+								}
+							: undefined
+					}
+				/>
+			)}
 
 			{!surveys && !error && !id && <InlineLoading />}
 			{id && !current && <InlineLoading />}

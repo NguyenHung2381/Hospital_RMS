@@ -15,33 +15,33 @@ export const STATUS_LABELS: Record<
 > = {
 	submitted: {
 		label: 'Chờ duyệt',
-		color: '#b45309',
-		bg: '#fef3c7',
-		border: '#fde68a',
+		color: 'var(--tone-amber-fg)',
+		bg: 'var(--tone-amber-bg)',
+		border: 'var(--tone-amber-border)',
 	},
 	approved: {
 		label: 'Đang thực hiện',
-		color: '#0f766e',
-		bg: '#ccfbf1',
-		border: '#99f6e4',
+		color: 'var(--tone-teal-fg)',
+		bg: 'var(--tone-teal-bg)',
+		border: 'var(--tone-teal-border)',
 	},
 	rejected: {
 		label: 'Từ chối',
-		color: '#b91c1c',
-		bg: '#fee2e2',
-		border: '#fca5a5',
+		color: 'var(--tone-red-fg)',
+		bg: 'var(--tone-red-bg)',
+		border: 'var(--tone-red-border)',
 	},
 	supplement: {
 		label: 'Bổ sung',
-		color: '#0c447c',
-		bg: '#e6f1fb',
-		border: '#ddd6fe',
+		color: 'var(--tone-blue-fg)',
+		bg: 'var(--tone-blue-bg)',
+		border: 'var(--tone-blue-border)',
 	},
 	cancelled: {
 		label: 'Đã hủy',
-		color: '#475569',
-		bg: '#f1f5f9',
-		border: '#cbd5e1',
+		color: 'var(--tone-gray-fg)',
+		bg: 'var(--tone-gray-bg)',
+		border: 'var(--color-gray-300)',
 	},
 };
 
@@ -49,9 +49,9 @@ export const ROLE_LABELS: Record<
 	string,
 	{ label: string; color: string; bg: string }
 > = {
-	leader: { label: 'Chủ nhiệm', color: '#0369a1', bg: '#e0f2fe' },
-	secretary: { label: 'Thư ký', color: '#0c447c', bg: '#e6f1fb' },
-	member: { label: 'Thành viên', color: '#475569', bg: '#f1f5f9' },
+	leader: { label: 'Chủ nhiệm', color: 'var(--tone-blue-fg)', bg: 'var(--tone-blue-bg)' },
+	secretary: { label: 'Thư ký', color: 'var(--tone-blue-fg)', bg: 'var(--tone-blue-bg)' },
+	member: { label: 'Thành viên', color: 'var(--tone-gray-fg)', bg: 'var(--tone-gray-bg)' },
 };
 
 function parseDate(dateStr?: string): Date | null {

@@ -149,7 +149,7 @@
 }
 
 .inputRequired {
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-base);
 	line-height: 1;
 }
@@ -214,6 +214,12 @@
 	box-shadow: 0 0 0 4px rgba(232, 69, 69, 0.1);
 }
 
+/* Ô đang lỗi vẫn phải thấy rõ khi nhận focus bằng bàn phím (viền đỏ giữ nguyên) */
+.inputField.hasError:focus-visible {
+	outline: 2px solid var(--color-primary-dark);
+	outline-offset: 2px;
+}
+
 /* Ẩn icon mắt mặc định của trình duyệt (Edge/Chrome) */
 .inputField[type='password']::-ms-reveal,
 .inputField[type='password']::-ms-clear {
@@ -256,7 +262,7 @@
 /* === ERROR MESSAGE === */
 .inputError {
 	font-size: var(--font-size-xs);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	display: flex;
 	align-items: center;
 	gap: var(--space-1);
@@ -425,7 +431,7 @@
 	height: 36px;
 	border-radius: var(--radius-full);
 	background: rgba(245, 166, 35, 0.16);
-	color: var(--color-warning);
+	color: var(--tone-amber-fg);
 }
 
 .serviceNoticeBody {

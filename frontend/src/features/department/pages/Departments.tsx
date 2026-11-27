@@ -21,11 +21,11 @@ import tbl from '@/shared/components/Table/Table.module.css';
 import { TableEmpty } from '@/shared/components/EmptyState';
 
 const DEPT_COLORS = [
-	{ bg: '#e1f5ea', color: '#085028' },
-	{ bg: '#e6f1fb', color: '#0c447c' },
-	{ bg: '#e3f3f6', color: '#0b5866' },
-	{ bg: '#faeeda', color: '#633806' },
-	{ bg: '#f1efe8', color: '#444441' },
+	{ bg: 'var(--tone-green-bg)', color: 'var(--tone-green-fg)' },
+	{ bg: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' },
+	{ bg: 'var(--tone-teal-bg)', color: 'var(--tone-teal-fg)' },
+	{ bg: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' },
+	{ bg: 'var(--tone-gray-bg)', color: 'var(--tone-gray-fg)' },
 ];
 function getDeptColor(id: string) {
 	let hash = 0;

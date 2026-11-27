@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BadgeSvg, TrashSvg } from '@/assets/icons';
 import { Modal } from '@/shared/components/Modal';
-import { confirmDialog, DatePicker, promptDialog } from '@/shared/components';
+import { confirmDialog, DatePicker, ErrorState, promptDialog } from '@/shared/components';
 import { usePermission } from '@/shared/hooks/usePermission';
 import { showToast } from '@/shared/utils/feedback';
 import { formatDateVN } from '@/shared/utils/formatDate';
@@ -104,7 +104,7 @@ export function ResultsTab({
 			.catch(() => setHistory([]));
 	}, [historyOf]);
 
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error) return <ErrorState desc={error} onRetry={() => void load()} />;
 	if (!book) return <div className={styles.subEmpty}>Đang tải bảng điểm…</div>;
 
 	// Khóa điểm / cấp GCN tính trên cả khóa; bảng + số liệu hiển thị theo chương trình đang chọn.
@@ -239,7 +239,7 @@ export function ResultsTab({
 					<>
 						<span
 							className={styles.certBadge}
-							style={cert.status === 'revoked' ? { background: '#fcebeb', color: '#791f1f' } : undefined}
+							style={cert.status === 'revoked' ? { background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' } : undefined}
 							title={`Cấp ngày ${formatDateVN(cert.issue_date)}${cert.expiry_date ? ` · Hạn ${formatDateVN(cert.expiry_date)}` : ''}`}
 						>
 							{cert.cert_no} · {cert.status === 'revoked' ? 'Đã thu hồi' : 'Đã cấp'}

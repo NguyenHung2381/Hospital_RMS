@@ -406,7 +406,7 @@
 	padding: var(--space-3) var(--space-4);
 	border-radius: var(--radius-md);
 	background: var(--tone-red-bg);
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 	font-size: var(--font-size-sm);
 }
 .respondFooter {

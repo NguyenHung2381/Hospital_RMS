@@ -1,6 +1,4 @@
 // ─── TYPES ────────────────────────────────
-export type TabKey = 'all' | 'active' | 'inactive';
-
 export interface User {
 	id: string;
 	username: string;

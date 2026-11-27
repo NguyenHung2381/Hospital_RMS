@@ -22,6 +22,7 @@ export default function Approval() {
 		listLoading,
 		detailLoading,
 		error,
+		refreshData,
 		checkedIds,
 		bulkModal,
 		bulkComment,
@@ -84,6 +85,7 @@ export default function Approval() {
 					setSearch={setSearch}
 					listLoading={listLoading}
 					error={error}
+					onRetry={refreshData}
 					isSelectableTab={isSelectableTab}
 					checkedCount={checkedCount}
 					allChecked={allChecked}

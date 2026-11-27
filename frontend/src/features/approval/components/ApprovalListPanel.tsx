@@ -9,7 +9,7 @@ import {
 	XCircleSvg,
 	XSvg,
 } from '@/assets/icons';
-import { Badge, InlineLoading } from '@/shared/components';
+import { Badge, ErrorState, InlineLoading } from '@/shared/components';
 import type { ApprovalRecord, TabKey } from '../types/approval.type';
 import { STATUS_CFG } from '../utils/approvalHelpers';
 import styles from '../pages/Approval.module.css';
@@ -26,6 +26,7 @@ interface ApprovalListPanelProps {
 	setSearch: (s: string) => void;
 	listLoading: boolean;
 	error: string | null;
+	onRetry: () => void;
 	isSelectableTab: boolean;
 	checkedCount: number;
 	allChecked: boolean;
@@ -48,6 +49,7 @@ export function ApprovalListPanel({
 	setSearch,
 	listLoading,
 	error,
+	onRetry,
 	isSelectableTab,
 	checkedCount,
 	allChecked,
@@ -189,15 +191,10 @@ export function ApprovalListPanel({
 				{listLoading ? (
 					<InlineLoading label='Đang tải…' />
 				) : error ? (
-					<div
-						style={{
-							padding: '48px 24px',
-							textAlign: 'center',
-							color: '#A32D2D',
-						}}
-					>
-						<div style={{ fontSize: 13, fontWeight: 600 }}>{error}</div>
-					</div>
+					<ErrorState
+						desc={error}
+						onRetry={onRetry}
+					/>
 				) : filtered.length === 0 ? (
 					// Đang tìm kiếm → gợi ý đổi từ khóa; hàng chờ trống thật → báo đã xử lý xong
 					<EmptyState
@@ -299,7 +296,7 @@ export function ApprovalListPanel({
 										<span
 											style={{
 												fontSize: 10,
-												color: '#E24B4A',
+												color: 'var(--tone-red-fg)',
 												fontWeight: 700,
 											}}
 										>

@@ -237,7 +237,6 @@
 	font-weight: 700;
 	color: var(--color-gray-400, var(--color-gray-500));
 	padding: 4px 0;
-	text-transform: uppercase;
 	letter-spacing: 0.03em;
 }
 
@@ -370,8 +369,8 @@
 }
 
 .inActiveRange:hover:not(.isDisabled):not(.isSelected) {
-	background: var(--color-primary) !important;
-	color: #ffffff !important;
+	background: var(--color-primary-dark) !important;
+	color: var(--color-white) !important;
 }
 
 .inActiveRange:nth-child(7n + 1) {

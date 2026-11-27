@@ -61,27 +61,6 @@
 .statLabel {
 	composes: statLabel from '../../../shared/components/Card/StatCard.module.css';
 }
-.statHint {
-	composes: statSub from '../../../shared/components/Card/StatCard.module.css';
-}
-.hintAttention {
-	color: var(--tone-pink-fg);
-}
-.hintAmber {
-	composes: subWarn from '../../../shared/components/Card/StatCard.module.css';
-}
-.hintGreen {
-	composes: subGood from '../../../shared/components/Card/StatCard.module.css';
-}
-.hintRed {
-	composes: subBad from '../../../shared/components/Card/StatCard.module.css';
-}
-.hintBlue {
-	color: var(--tone-blue-fg);
-}
-.hintMuted {
-	composes: subMuted from '../../../shared/components/Card/StatCard.module.css';
-}
 
 /* =============================================
    MAIN LAYOUT: split panel
@@ -1199,7 +1178,7 @@
 }
 
 /* CSS Modules băm tên keyframes theo từng file — phải khai báo ngay tại đây,
-   bản trong mixins.css / Modal.module.css không dùng được từ file này. */
+   bản trong global.css / Modal.module.css không dùng được từ file này. */
 @keyframes modalPopIn {
 	from {
 		opacity: 0;

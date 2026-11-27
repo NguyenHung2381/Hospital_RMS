@@ -11,7 +11,6 @@ export type ArticleType = 'de_tai' | 'bai_bao';
 /** Xếp loại nghiệm thu — đề tài nhập bổ sung (đã hoàn thành). */
 export type AcceptanceRating = 'xuat_sac' | 'tot' | 'kha' | 'dat' | 'khong_dat';
 export type MemberRole = 'leader' | 'secretary' | 'member';
-export type ApvStatus = 'pending' | 'approved' | 'rejected';
 export type DrawerTab = 'info' | 'members' | 'files' | 'authors';
 
 export interface TopicFile {
@@ -92,24 +91,6 @@ export interface TopicMember {
 	has_existing_account: boolean;
 	/** Trường tùy chỉnh (Cấu hình form 'topic_member') */
 	custom?: CustomValues;
-}
-
-export interface TopicProgress {
-	id: string;
-	topic_id: string;
-	status: string;
-	note: string | null;
-	created_at: string;
-	created_by: string;
-}
-
-export interface Approval {
-	id: string;
-	topic_id: string;
-	status: ApvStatus;
-	comment: string | null;
-	created_at: string;
-	created_by: string;
 }
 
 export interface TopicForm {

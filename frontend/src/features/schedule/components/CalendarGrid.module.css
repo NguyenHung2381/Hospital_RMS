@@ -134,7 +134,6 @@
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-500);
-	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	border-bottom: 1px solid var(--color-gray-200);
 	white-space: nowrap;
@@ -229,7 +228,6 @@
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-500);
-	text-transform: uppercase;
 }
 .popDayNum {
 	display: inline-flex;
@@ -293,7 +291,6 @@
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-500);
-	text-transform: uppercase;
 	white-space: nowrap;
 }
 .weekHeadToday .weekHeadDow {

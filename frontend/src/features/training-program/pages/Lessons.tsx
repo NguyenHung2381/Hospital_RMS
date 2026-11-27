@@ -239,7 +239,7 @@ export default function Lessons() {
 												) : (
 													<span
 														className={styles.badge}
-														style={{ background: '#faeeda', color: '#633806' }}
+														style={{ background: 'var(--tone-amber-bg)', color: 'var(--tone-amber-fg)' }}
 													>
 														Chưa dùng
 													</span>

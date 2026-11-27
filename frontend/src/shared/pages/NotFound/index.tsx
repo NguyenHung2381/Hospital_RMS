@@ -10,14 +10,17 @@ export default function NotFound() {
 
 	return (
 		<div className={styles.wrapper}>
-			<div className={styles.glowOrb} />
-			<div className={styles.glowOrb} />
-			<div className={styles.ring} />
-			<div className={styles.ring} />
-
 			<div className={styles.content}>
-				<div className={styles.code}>404</div>
-				<div className={styles.icon}>
+				<div
+					className={styles.code}
+					aria-hidden='true'
+				>
+					404
+				</div>
+				<div
+					className={styles.icon}
+					aria-hidden='true'
+				>
 					<AlertSvg
 						width={26}
 						height={26}

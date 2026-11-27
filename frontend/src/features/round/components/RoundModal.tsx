@@ -51,7 +51,7 @@ export function RoundModal({
 					{saveError && (
 						<span
 							role='alert'
-							style={{ color: '#A32D2D', fontSize: 13, flex: 1 }}
+							style={{ color: 'var(--tone-red-fg)', fontSize: 13, flex: 1 }}
 						>
 							{saveError}
 						</span>

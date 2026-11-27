@@ -54,47 +54,6 @@
 	font-weight: var(--font-weight-semibold);
 	color: var(--color-gray-900);
 }
-.steps {
-	display: flex;
-	flex-direction: column;
-	gap: var(--space-2);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-.steps li {
-	display: flex;
-	align-items: center;
-	gap: var(--space-3);
-	font-size: var(--font-size-sm);
-}
-.stepIcon {
-	flex: none;
-	display: grid;
-	place-items: center;
-	width: 22px;
-	height: 22px;
-	border: 1.5px solid var(--color-gray-300);
-	border-radius: 50%;
-}
-.stepIcon svg {
-	width: 12px;
-	height: 12px;
-}
-.stepDone {
-	color: var(--color-gray-900);
-}
-.stepDone .stepIcon {
-	border-color: var(--color-primary-dark);
-	background: var(--color-primary-dark);
-	color: var(--color-white);
-}
-.stepWait {
-	color: var(--color-gray-700);
-}
-.stepNote {
-	color: var(--color-gray-600);
-}
 
 /* Việc đang chờ người dùng xử lý — màu hồng dành riêng cho loại việc này */
 .todo {
@@ -112,12 +71,6 @@
 	font-size: var(--font-size-base);
 	font-weight: var(--font-weight-semibold);
 	color: var(--tone-pink-fg);
-}
-.todoText {
-	margin: 0;
-	font-size: var(--font-size-sm);
-	line-height: 1.5;
-	color: var(--color-gray-800);
 }
 .todoList {
 	margin: 0;

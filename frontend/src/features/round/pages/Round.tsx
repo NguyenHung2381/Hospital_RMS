@@ -194,7 +194,7 @@ export default function Round() {
 					<div className={styles.emptyState}>
 						<p
 							className={styles.emptyTitle}
-							style={{ color: '#A32D2D' }}
+							style={{ color: 'var(--tone-red-fg)' }}
 						>
 							{d.loadError}
 						</p>

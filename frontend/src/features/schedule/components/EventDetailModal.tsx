@@ -29,7 +29,7 @@ export function EventDetailModal({ detail, onClose, onEditDeadline, onAddDeadlin
 				tabIndex={-1}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className={styles.detailHead} style={{ borderLeftColor: detail.color }}>
+				<div className={styles.detailHead}>
 					<div>
 						<span className={styles.detailBadge} style={{ background: `${detail.color}20`, color: detail.color }}>
 							{detail.typeLabel || detail.statusLabel || 'Sự kiện'}

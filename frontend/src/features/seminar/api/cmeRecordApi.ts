@@ -44,8 +44,6 @@ export const rejectCmeRecord = (id: string, reason: string) =>
 	apiClient.post<CmeRecord>(`/cme-records/${seg(id)}/reject`, { reason });
 
 export const deleteCmeRecord = (id: string) => apiClient.delete<null>(`/cme-records/${seg(id)}`);
-export const deleteCmeRecords = (ids: string[]) =>
-	apiClient.post<{ deleted: number }>('/cme-records/bulk-delete', { ids });
 
 /** Sửa đồng loạt — chỉ trường có trong patch bị ghi đè, còn lại giữ nguyên. */
 export type CmeRecordBulkPatch = Partial<{

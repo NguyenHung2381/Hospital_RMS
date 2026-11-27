@@ -14,8 +14,8 @@
 	align-items: center;
 	gap: 16px;
 	padding: 16px 32px;
-	background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
-	color: #fff;
+	background: var(--color-primary-dark);
+	color: var(--color-white);
 	flex-shrink: 0;
 }
 
@@ -32,7 +32,6 @@
 	font-family: var(--font-heading);
 	font-size: clamp(16px, 2.2vw, 26px);
 	font-weight: 700;
-	text-transform: uppercase;
 	letter-spacing: 0.02em;
 }
 

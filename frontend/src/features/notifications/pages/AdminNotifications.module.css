@@ -57,9 +57,6 @@
 .formLabel {
 	composes: formLabel from '../../../shared/components/Modal/Modal.module.css';
 }
-.req {
-	color: var(--tone-red-fg);
-}
 
 .formInput {
 	width: 100%;

@@ -81,15 +81,17 @@ router.get(
 	}),
 );
 
-router.get(
+// POST (không GET): CCCD + ngày sinh + họ tên đi trong body, không lọt vào URL,
+// lịch sử trình duyệt, log proxy hay header Referer.
+router.post(
 	'/lookup',
 	training,
 	lookupLimiter,
 	[
-		query('national_id').trim().notEmpty().withMessage('Vui lòng nhập số CCCD/CMND'),
+		body('national_id').trim().notEmpty().withMessage('Vui lòng nhập số CCCD/CMND'),
 		// Yếu tố thứ 2: chỉ CCCD thì dò quét được dữ liệu người khác
-		query('dob').isISO8601().withMessage('Vui lòng nhập ngày sinh'),
-		query('full_name')
+		body('dob').isISO8601().withMessage('Vui lòng nhập ngày sinh'),
+		body('full_name')
 			.trim()
 			.notEmpty()
 			.withMessage('Vui lòng nhập họ và tên')

@@ -1,4 +1,5 @@
 import { notify } from '../../../shared/utils/feedback';
+import { confirmDialog } from '../../../shared/components/Dialog';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getStoredUser, type StoredUser } from '../../../shared/utils/storage';
 import {
@@ -150,7 +151,7 @@ export function useCouncilProgress() {
 			percent != null &&
 			(!Number.isInteger(percent) || percent < 0 || percent > 100)
 		) {
-			alert('Tiến độ phải là số nguyên từ 0 đến 100 (%)');
+			notify.error('Tiến độ phải là số nguyên từ 0 đến 100 (%)');
 			return;
 		}
 		setSavingId(t.id);
@@ -188,7 +189,7 @@ export function useCouncilProgress() {
 	};
 
 	const handleDeleteFile = async (t: ProgressTopic, fileId: string) => {
-		if (!confirm('Xóa file đánh giá này?')) return;
+		if (!(await confirmDialog({ title: 'Xóa file đánh giá này?', tone: 'danger', confirmLabel: 'Xóa' }))) return;
 		try {
 			await deleteEvaluationFile(t.id, fileId);
 			notify.success('Đã xóa file đánh giá');
@@ -240,7 +241,7 @@ export function useCouncilProgress() {
 	};
 
 	const handleDeleteMinutes = async (t: ProgressTopic, fileId: string) => {
-		if (!confirm('Xóa biên bản này?')) return;
+		if (!(await confirmDialog({ title: 'Xóa biên bản này?', tone: 'danger', confirmLabel: 'Xóa' }))) return;
 		try {
 			await deleteMinutesFile(t.id, fileId);
 			notify.success('Đã xóa biên bản');

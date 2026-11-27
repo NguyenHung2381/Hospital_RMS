@@ -52,7 +52,7 @@ export function ConfirmDeleteFileModal({
 					: 'Hành động này không thể hoàn tác'
 			}
 			icon={<IcWarn />}
-			iconStyle={{ background: '#fef2f2', color: '#dc2626' }}
+			iconStyle={{ background: 'var(--tone-red-bg)', color: 'var(--tone-red-fg)' }}
 			size='sm'
 			closeOnBackdrop={!loading}
 			bodyClassName={styles.cfmModalBody}
@@ -84,7 +84,7 @@ export function ConfirmDeleteFileModal({
 							<>
 								<span
 									className={styles.spinner}
-									style={{ borderTopColor: '#791F1F' }}
+									style={{ borderTopColor: 'var(--color-error)' }}
 								/>
 								Đang xóa...
 							</>

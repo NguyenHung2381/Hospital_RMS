@@ -128,6 +128,14 @@ export default function MemberFormFields({
 				/>
 				{open && query.trim().length >= 2 && (
 					<div
+						// Tab từ ô tìm xuống gợi ý: giữ danh sách mở; rời hẳn danh sách thì đóng
+						onFocus={() => {
+							if (blurRef.current) clearTimeout(blurRef.current);
+						}}
+						onBlur={(e) => {
+							if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+							blurRef.current = setTimeout(() => setOpen(false), 150);
+						}}
 						style={{
 							position: 'absolute',
 							top: 'calc(100% + 4px)',
@@ -165,27 +173,13 @@ export default function MemberFormFields({
 							</div>
 						) : (
 							results.map((u) => (
-								<div
+								<button
 									key={u.id}
-									onMouseDown={(e) => {
-										e.preventDefault();
-										pickUser(u);
-									}}
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 10,
-										padding: '8px 14px',
-										cursor: 'pointer',
-										borderBottom: '1px solid var(--color-gray-100)',
-									}}
-									onMouseEnter={(e) => {
-										(e.currentTarget as HTMLDivElement).style.background =
-											'#f0fbf5';
-									}}
-									onMouseLeave={(e) => {
-										(e.currentTarget as HTMLDivElement).style.background = '';
-									}}
+									type='button'
+									className={styles.suggestRow}
+									// Giữ focus ở ô tìm khi bấm chuột (ô mất focus sẽ đóng danh sách)
+									onMouseDown={(e) => e.preventDefault()}
+									onClick={() => pickUser(u)}
 								>
 									<div
 										className={styles.memberAvatar}
@@ -218,7 +212,7 @@ export default function MemberFormFields({
 									>
 										+ Chọn
 									</span>
-								</div>
+								</button>
 							))
 						)}
 					</div>
@@ -321,7 +315,7 @@ export default function MemberFormFields({
 				inputClassName={styles.formInput}
 			/>
 			{err && (
-				<p style={{ color: '#ef4444', fontSize: 13, margin: 0 }}>{err}</p>
+				<p style={{ color: 'var(--tone-red-fg)', fontSize: 13, margin: 0 }}>{err}</p>
 			)}
 			<div style={{ display: 'flex', gap: 8 }}>
 				<button

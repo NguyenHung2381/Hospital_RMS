@@ -43,7 +43,7 @@ export function ConfirmUploadModal({
 			title='Xác nhận tải lên'
 			subtitle={`${files.length} file • ${formatFileSize(totalSize)}`}
 			icon={<IcDownload />}
-			iconStyle={{ background: '#eff6ff', color: '#2563eb' }}
+			iconStyle={{ background: 'var(--tone-blue-bg)', color: 'var(--tone-blue-fg)' }}
 			closeOnBackdrop={!loading}
 			bodyClassName={styles.cfmModalBodyTight}
 			footer={

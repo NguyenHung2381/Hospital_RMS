@@ -5,7 +5,7 @@
 }
 .icon {
 	composes: emptyIcon from '../Table/Table.module.css';
-	color: var(--color-error);
+	color: var(--tone-red-fg);
 }
 .title {
 	composes: emptyTitle from '../Table/Table.module.css';

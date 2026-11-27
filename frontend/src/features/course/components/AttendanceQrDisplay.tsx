@@ -27,7 +27,7 @@ export function AttendanceQrDisplay({ sessionId }: { sessionId: string }) {
 
 	return (
 		<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '12px 0' }}>
-			{error && <div style={{ color: '#e24b4a', fontSize: 13 }}>{error}</div>}
+			{error && <div style={{ color: 'var(--tone-red-fg)', fontSize: 13 }}>{error}</div>}
 			{token && <QRCode
 					value={token}
 					size={300}
