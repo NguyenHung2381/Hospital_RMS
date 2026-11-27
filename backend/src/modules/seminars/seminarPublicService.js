@@ -115,8 +115,9 @@ const lookupStaff = async (token, fullName, staffNumber) => {
 
 // Mất / chưa lưu được ảnh QR: quét lại QR đăng ký, chọn nội viện / ngoại viện ⇒ trả lại mã vé.
 // - Nội viện: họ tên + mã NV (như lúc đăng ký — findStaff) ⇒ vé đứng tên nhân viên đó.
-// - Ngoại viện: họ tên + ngày sinh đã khai. Họ tên so bỏ dấu / hoa thường; trùng nhiều
-//   người (cùng tên + ngày sinh) thì không trả vé nào — tránh đưa nhầm vé người khác.
+// - Ngoại viện: họ tên + ngày sinh đã khai, CHỈ khớp đăng ký ngoại viện (nội viện phải tra
+//   bằng mã NV). Họ tên so bỏ dấu / hoa thường; trùng nhiều người (cùng tên + ngày sinh)
+//   thì không trả vé nào — tránh đưa nhầm vé người khác.
 // Đánh đổi (quyết định nghiệp vụ): ai biết các thông tin đó của người đã đăng ký cũng xem
 // được vé; route chặn dò bằng captcha + giới hạn lượt tra sai theo IP.
 const lookupTicket = async (token, { source, full_name: fullName, staff_number, dob }) => {
@@ -129,7 +130,7 @@ const lookupTicket = async (token, { source, full_name: fullName, staff_number, 
 			.input('sid', sql.VarChar(20), seminar.id)
 			.input('uid', sql.VarChar(20), u.id).query(`
         SELECT ticket_code FROM seminar_participants
-        WHERE seminar_id = @sid AND user_id = @uid AND ticket_code IS NOT NULL`);
+        WHERE seminar_id = @sid AND user_id = @uid AND source = 'internal' AND ticket_code IS NOT NULL`);
 		if (!r.recordset[0])
 			throw httpError(
 				404,
@@ -141,10 +142,17 @@ const lookupTicket = async (token, { source, full_name: fullName, staff_number, 
 		.request()
 		.input('sid', sql.VarChar(20), seminar.id)
 		.input('dob', sql.Date, String(dob).slice(0, 10)).query(`
-      SELECT full_name, ticket_code FROM seminar_participants
+      SELECT full_name, source, ticket_code FROM seminar_participants
       WHERE seminar_id = @sid AND ticket_code IS NOT NULL AND CAST(dob AS DATE) = @dob`);
 	const key = norm(fullName);
-	const found = r.recordset.filter((p) => norm(p.full_name) === key);
+	const matched = r.recordset.filter((p) => norm(p.full_name) === key);
+	const found = matched.filter((p) => p.source === 'external');
+	// Khớp tên + ngày sinh nhưng là đăng ký nội viện ⇒ chỉ đường sang tra bằng mã NV (không trả vé)
+	if (!found.length && matched.length)
+		throw httpError(
+			404,
+			'Đăng ký này là của nhân viên nội viện — vui lòng chọn "Nhân viên nội viện" và nhập họ tên + mã nhân viên.',
+		);
 	if (!found.length)
 		throw httpError(
 			404,

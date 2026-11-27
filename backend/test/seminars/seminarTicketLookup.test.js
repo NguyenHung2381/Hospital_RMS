@@ -14,7 +14,7 @@ const log = install(async (text, inputs) => {
 	if (/WHERE s.public_token = @token/.test(text)) return inputs.token === 'tok' ? [SEMINAR] : [];
 	if (/FROM users u/.test(text))
 		return inputs.sn === 1234 ? [{ id: 'U1', full_name: 'Lê Văn Cường', staff_number: 1234 }] : [];
-	if (/WHERE seminar_id = @sid AND user_id = @uid/.test(text))
+	if (/WHERE seminar_id = @sid AND user_id = @uid AND source = 'internal'/.test(text))
 		return inputs.sid === 'HN1' && inputs.uid === 'U1' ? staffTickets : [];
 	if (/WHERE seminar_id = @sid AND ticket_code IS NOT NULL AND CAST\(dob/.test(text))
 		return inputs.sid === 'HN1' && inputs.dob === '1990-05-17' ? people : [];
@@ -28,8 +28,8 @@ const internal = (full_name, staff_number) => ({ source: 'internal', full_name, 
 
 test('ngoại viện: khớp họ tên bỏ dấu / hoa thường + ngày sinh → mã vé (kể cả đã hết hạn đăng ký)', async () => {
 	people = [
-		{ full_name: 'Nguyễn Văn An', ticket_code: 'a'.repeat(32) },
-		{ full_name: 'Trần Thị Bình', ticket_code: 'b'.repeat(32) },
+		{ full_name: 'Nguyễn Văn An', source: 'external', ticket_code: 'a'.repeat(32) },
+		{ full_name: 'Trần Thị Bình', source: 'external', ticket_code: 'b'.repeat(32) },
 	];
 	assert.deepEqual(await lookupTicket('tok', external('  nguyen van  AN ', '1990-05-17')), {
 		ticket_code: 'a'.repeat(32),
@@ -40,7 +40,7 @@ test('ngoại viện: khớp họ tên bỏ dấu / hoa thường + ngày sinh �
 });
 
 test('ngoại viện: sai ngày sinh hoặc họ tên → 404', async () => {
-	people = [{ full_name: 'Nguyễn Văn An', ticket_code: 'a'.repeat(32) }];
+	people = [{ full_name: 'Nguyễn Văn An', source: 'external', ticket_code: 'a'.repeat(32) }];
 	await assert.rejects(lookupTicket('tok', external('Nguyễn Văn An', '1990-05-18')), {
 		statusCode: 404,
 	});
@@ -51,11 +51,27 @@ test('ngoại viện: sai ngày sinh hoặc họ tên → 404', async () => {
 
 test('ngoại viện: trùng họ tên + ngày sinh nhiều người → 409, không trả vé nào', async () => {
 	people = [
-		{ full_name: 'Nguyễn Văn An', ticket_code: 'a'.repeat(32) },
-		{ full_name: 'NGUYỄN VĂN AN', ticket_code: 'c'.repeat(32) },
+		{ full_name: 'Nguyễn Văn An', source: 'external', ticket_code: 'a'.repeat(32) },
+		{ full_name: 'NGUYỄN VĂN AN', source: 'external', ticket_code: 'c'.repeat(32) },
 	];
 	await assert.rejects(lookupTicket('tok', external('Nguyễn Văn An', '1990-05-17')), {
 		statusCode: 409,
+	});
+});
+
+test('ngoại viện: chỉ khớp đăng ký ngoại viện — trùng tên + ngày sinh với nội viện thì chỉ đường sang mã NV', async () => {
+	people = [{ full_name: 'Lê Văn Cường', source: 'internal', ticket_code: 'd'.repeat(32) }];
+	await assert.rejects(lookupTicket('tok', external('Lê Văn Cường', '1990-05-17')), {
+		statusCode: 404,
+		message: /nội viện/,
+	});
+	// Có cả nội viện lẫn ngoại viện cùng tên + ngày sinh ⇒ trả vé ngoại viện, không 409
+	people = [
+		{ full_name: 'Lê Văn Cường', source: 'internal', ticket_code: 'd'.repeat(32) },
+		{ full_name: 'Lê Văn Cường', source: 'external', ticket_code: 'e'.repeat(32) },
+	];
+	assert.deepEqual(await lookupTicket('tok', external('Lê Văn Cường', '1990-05-17')), {
+		ticket_code: 'e'.repeat(32),
 	});
 });
 
