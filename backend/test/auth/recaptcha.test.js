@@ -113,6 +113,15 @@ test('kiểm tra: cặp khóa đúng nhưng tên miền ngoài danh sách → b�
 	assert.match(r.message, /10\.0\.0\.5.*rms\.benhvien\.vn, localhost/);
 });
 
+// Secret TEST của Google nhận mọi token, luôn trả testkey.google.com — gặp thật trên máy chủ:
+// khóa thật không được xác minh, "Chỉ nhận từ tên miền" chặn mọi lượt đăng ký.
+test('kiểm tra: đang dùng khóa TEST của Google → báo rõ, không nhầm thành lỗi tên miền', async () => {
+	mockFetch(() => ({ json: async () => ({ success: true, hostname: 'testkey.google.com' }) }));
+	const r = await testRecaptcha('g-token');
+	assert.equal(r.ok, false);
+	assert.match(r.message, /^Secret key đang là khóa TEST công khai của Google/);
+});
+
 test('kiểm tra: cặp khóa + tên miền đúng → ok', async () => {
 	mockFetch(() => ({ json: async () => ({ success: true, hostname: 'rms.benhvien.vn' }) }));
 	const r = await testRecaptcha('g-token');

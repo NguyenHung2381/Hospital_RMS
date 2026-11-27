@@ -187,6 +187,18 @@ const RECAPTCHA_ERROR_HINTS = {
 	'bad-request': 'yêu cầu gửi Google bị lỗi',
 };
 
+// Cặp khóa TEST công khai của Google (developers.google.com/recaptcha/docs/faq): secret TEST
+// nhận MỌI token và luôn trả hostname testkey.google.com ⇒ không chặn được bot, khóa thật thì
+// không bao giờ được xác minh (Google Console báo "site is not verifying reCAPTCHA solutions"),
+// và đặt "Chỉ nhận từ tên miền" thì mọi lượt đăng ký bị từ chối.
+// Chỉ secret TEST mới trả hostname này ⇒ thấy nó là biết secret là khóa TEST. Không chép chuỗi
+// khóa TEST nào vào code: gitleaks (generic-api-key) báo nhầm. Site key TEST thì người dùng tự
+// nhận ra bằng dòng chữ đỏ Google vẽ trên ô tích.
+const GOOGLE_TEST_HOSTNAME = 'testkey.google.com';
+
+const testKeyMessage = () =>
+	`Secret key đang là khóa TEST công khai của Google (xác minh luôn trả tên miền ${GOOGLE_TEST_HOSTNAME}): không chặn được bot, khóa thật không được dùng, và có đặt "Chỉ nhận từ tên miền" thì mọi lượt đăng ký bị từ chối. Thay CẢ Site key lẫn Secret key bằng cặp khóa thật của cùng 1 khóa (loại v2 "Tôi không phải người máy") ở trang quản trị reCAPTCHA. Ô tích có dòng chữ đỏ "for testing purposes only" nghĩa là Site key cũng đang là khóa TEST.`;
+
 const recaptchaHints = (codes) =>
 	codes
 		.map((c) => RECAPTCHA_ERROR_HINTS[c])
@@ -239,6 +251,7 @@ const testRecaptcha = async (token) => {
 	}
 	const hosts = parseHostnames(config.hostnames);
 	const hostname = String(json.hostname || '').toLowerCase();
+	if (hostname === GOOGLE_TEST_HOSTNAME) return { ok: false, message: testKeyMessage() + note };
 	if (hosts.length && !hosts.includes(hostname))
 		return {
 			ok: false,
@@ -272,6 +285,7 @@ const verifyRecaptcha = async (token, ip) => {
 		logger.warn('[captcha] reCAPTCHA từ chối:', codes.join(','), hints ? `— ${hints}` : '');
 		return false;
 	}
+	if (json.hostname === GOOGLE_TEST_HOSTNAME) logger.warn(`[captcha] ${testKeyMessage()}`);
 	return hostnameAllowed('reCAPTCHA', config.hostnames, json.hostname);
 };
 
