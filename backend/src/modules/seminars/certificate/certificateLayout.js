@@ -29,6 +29,18 @@ const toHex = (rgb) =>
 		)
 		.join('');
 
+// '#2e3192' → [r, g, b] (0–1); sai định dạng → null
+const fromHex = (hex) => {
+	const m = /^#([0-9a-f]{6})$/i.exec(String(hex ?? ''));
+	if (!m) return null;
+	const n = parseInt(m[1], 16);
+	return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round((v / 255) * 1000) / 1000);
+};
+
+// Kiểu chữ có chân: `font` do người dùng chọn; ô lưu trước đó chỉ ô Số dùng Times (tự dò)
+const isSerif = (key, s) => (s.font ? s.font === 'serif' : key === 'so' && !!s.serif);
+const isBold = (key, s) => s.bold ?? BOLD_KEYS.has(key);
+
 /** Ô lưu trong template.json → dạng màn chỉnh. */
 const toEditable = (key, s) => {
 	const center = s.align === 'center';
@@ -41,11 +53,24 @@ const toEditable = (key, s) => {
 		align: center ? 'center' : 'left',
 		hidden: !!s.hidden,
 		color: toHex(s.color),
-		bold: BOLD_KEYS.has(key),
+		bold: isBold(key, s),
 		italic: !!s.italic,
 		suffix: s.suffix || '',
-		serif: !!s.serif,
+		serif: isSerif(key, s),
 	};
+};
+
+const MAX_SUFFIX = 80;
+// Kiểu chữ người dùng chọn (màu, đậm, nghiêng, có chân) — trường không gửi thì giữ nguyên
+const styleEdits = (e, what) => {
+	const out = {};
+	if (e.color !== undefined) {
+		const c = fromHex(e.color);
+		if (!c) throw httpError(400, `Màu chữ của ${what} không hợp lệ.`);
+		out.color = c;
+	}
+	for (const k of ['bold', 'italic', 'serif']) if (e[k] !== undefined) out[k] = !!e[k];
+	return out;
 };
 
 // Ô mẫu không có (vd thiếu dãy chấm) mà người dùng thêm vào: giữa trang, cùng màu ô khác
@@ -104,6 +129,15 @@ const applyEdits = (meta, edits) => {
 		const baseline = num(e.baseline, 'vị trí dọc', size * 0.5, height);
 		const align = e.align === 'center' ? 'center' : 'left';
 		const s = slots[key] || newSlot(key, meta.page, slots);
+		const { serif, ...style } = styleEdits(e, `ô "${key}"`);
+		if (e.suffix !== undefined) {
+			// Chữ in liền sau giá trị (vd "/GCN/2024" sau số giấy) — giữ dấu cách đầu
+			const suffix = String(e.suffix ?? '').replace(/\s+/g, ' ');
+			if (suffix.length > MAX_SUFFIX) {
+				throw httpError(400, `Chữ in kèm dài quá ${MAX_SUFFIX} ký tự.`);
+			}
+			s.suffix = suffix.trim() ? suffix : '';
+		}
 		Object.assign(s, {
 			x: x0,
 			x1,
@@ -112,6 +146,8 @@ const applyEdits = (meta, edits) => {
 			align,
 			hidden: !!e.hidden,
 			box: { ...s.box, x0, x1, y0: baseline - size, y1: baseline + size * 0.3 },
+			...style,
+			...(serif !== undefined ? { font: serif ? 'serif' : 'sans' } : {}),
 			edited: true,
 		});
 		slots[key] = s;
@@ -132,9 +168,22 @@ const textEditable = (t, o) => ({
 	baseline: o ? o.baseline : t.baseline,
 	size: o ? o.size : t.size,
 	align: o ? o.align : t.align,
-	color: toHex(t.color),
-	bold: !!t.bold,
-	italic: !!t.italic,
+	color: toHex(o?.color ?? t.color),
+	bold: o?.bold ?? !!t.bold,
+	italic: o?.italic ?? !!t.italic,
+	// Mẫu nét vẽ thường là giấy hành chính chữ Times → mặc định có chân
+	serif: o?.serif ?? !!t.vector,
+	// Dòng chữ dạng nét vẽ: không đọc được chữ — giao diện hiện ảnh cắt từ khung gốc
+	vector: !!t.vector,
+	box: { x0: t.x0, y0: t.y0, x1: t.x1, y1: t.y1 },
+	// Vị trí gốc — để "Trả về chữ gốc" ngay trên màn chỉnh
+	base: {
+		x0: t.x0,
+		x1: Math.max(t.x1, t.x0 + MIN_WIDTH),
+		baseline: t.baseline,
+		size: t.size,
+		align: t.align,
+	},
 	edited: !!o,
 });
 
@@ -168,6 +217,7 @@ const applyTextEdits = (meta, edits) => {
 			baseline: num(e.baseline, 'vị trí dọc', size * 0.5, height),
 			size,
 			align: e.align === 'center' ? 'center' : 'left',
+			...styleEdits(e, `dòng "${id}"`),
 		};
 	}
 	return out;
@@ -225,6 +275,8 @@ module.exports = {
 	toEditable,
 	applyTextEdits,
 	textEditable,
+	isSerif,
+	isBold,
 	BOLD_KEYS,
-	_test: { toHex, newSlot },
+	_test: { toHex, fromHex, newSlot },
 };

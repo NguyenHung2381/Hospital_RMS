@@ -5,6 +5,7 @@
  *   preview     → chỉ ảnh xem trước
  *   texts       → chỉ danh sách dòng chữ
  *   removeTexts → xoá các dòng (extra = khung) khỏi bản gốc + ảnh xem trước mới
+ *   patchRegions → mẫu nét vẽ: dán miếng vá nền lên các vùng (extra) + ảnh xem trước mới
  * Trả { result } hoặc { error: { message, statusCode } }.
  */
 const { isMainThread, parentPort, workerData } = require('worker_threads');
@@ -15,6 +16,7 @@ const JOBS = {
 	preview: (buf) => T.renderPreviewCore(buf),
 	texts: (buf) => T.extractTextsCore(buf),
 	removeTexts: (buf, extra) => T.removeTextsCore(buf, extra || []),
+	patchRegions: (buf, extra) => T.patchRegionsCore(buf, extra || []),
 };
 
 // Bị require() ở luồng chính (vd scripts/check-requires.js) thì không làm gì

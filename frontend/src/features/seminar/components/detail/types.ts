@@ -1,4 +1,4 @@
-import type { Seminar, SeminarParticipant } from '../../types/seminar.type';
+import type { Seminar, SeminarParticipant, SeminarTest } from '../../types/seminar.type';
 import type { useSeminarPerms } from '../../utils/perms';
 import type { DetailCounts } from './detailUtils';
 
@@ -24,7 +24,9 @@ export interface DetailActions {
 	/** Giấy chứng nhận cho danh sách đã có số CME; selectedCount = số dòng đang chọn (0 = tất cả) */
 	openCertificates: (targets: SeminarParticipant[], selectedCount: number) => void;
 	openRegQr: () => void;
-	openTest: () => void;
+	/** null = thêm đề mới */
+	openTest: (test: SeminarTest | null) => void;
+	deleteTest: (test: SeminarTest) => void;
 	openAgenda: () => void;
 	openImport: () => void;
 	openStaff: () => void;

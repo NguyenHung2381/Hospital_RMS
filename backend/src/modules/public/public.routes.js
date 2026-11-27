@@ -371,6 +371,10 @@ const ticketCode = param('code')
 	.isString()
 	.matches(/^[a-f0-9]{32}$/)
 	.withMessage('Mã vé không đúng');
+const seminarTestId = param('testId')
+	.isString()
+	.matches(/^[A-Za-z0-9]{1,20}$/)
+	.withMessage('Mã đề kiểm tra không đúng');
 
 router.get('/seminars/:token', seminar, seminarLimiter, [seminarToken], validate, ctrl.getSeminar);
 router.post(
@@ -436,18 +440,18 @@ router.get(
 	ctrl.getSeminarTicket,
 );
 router.post(
-	'/seminar-tickets/:code/test/start',
+	'/seminar-tickets/:code/tests/:testId/start',
 	seminar,
 	seminarLimiter,
-	[ticketCode],
+	[ticketCode, seminarTestId],
 	validate,
 	ctrl.startSeminarTest,
 );
 router.post(
-	'/seminar-tickets/:code/test',
+	'/seminar-tickets/:code/tests/:testId',
 	seminar,
 	seminarLimiter,
-	[ticketCode, body('answers').isArray({ max: 200 })],
+	[ticketCode, seminarTestId, body('answers').isArray({ max: 200 })],
 	validate,
 	ctrl.submitSeminarTest,
 );

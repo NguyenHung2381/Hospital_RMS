@@ -14,7 +14,7 @@ import {
 	UsersSvg,
 } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { ConfirmDeleteModal } from '@/shared/components';
+import { ConfirmDeleteModal, confirmDialog } from '@/shared/components';
 import { InlineLoading } from '../../../shared/components/Loading';
 import { cx } from '@/shared/utils/cx';
 import { DepartmentStaffModal } from '../components/DepartmentStaffModal';
@@ -44,9 +44,10 @@ import {
 	isHospitalTraining,
 	SCOPE_LABELS,
 	type SeminarParticipant,
+	type SeminarTest,
 } from '../types/seminar.type';
 import { parseAgenda } from '../utils/agenda';
-import { exportSeminarDetailExcel } from '../api/seminarApi';
+import { deleteSeminarTest, exportSeminarDetailExcel } from '../api/seminarApi';
 import { fileSlug, saveBlob } from '@/shared/utils/saveBlob';
 import { showToast } from '@/shared/utils/feedback';
 import styles from './Seminar.module.css';
@@ -101,7 +102,8 @@ export default function SeminarDetail() {
 	const [presentOpen, setPresentOpen] = useState(false);
 	// Vé QR của người tự đăng ký — mở lại khi người tham dự mất vé (SeminarTicketQrModal)
 	const [ticketOf, setTicketOf] = useState<(SeminarParticipant & { ticket_code: string }) | null>(null);
-	const [testOpen, setTestOpen] = useState(false);
+	// Form đề kiểm tra: { test: null } = thêm đề mới
+	const [testEdit, setTestEdit] = useState<{ test: SeminarTest | null } | null>(null);
 	const [agendaOpen, setAgendaOpen] = useState(false);
 	const [exporting, setExporting] = useState(false);
 
@@ -183,7 +185,20 @@ export default function SeminarDetail() {
 		revokeCme: (p) => void d.revoke(p.id),
 		openCertificates: (targets, selectedCount) => setCert({ targets, selectedCount }),
 		openRegQr: () => setRegQrOpen(true),
-		openTest: () => setTestOpen(true),
+		openTest: (test) => setTestEdit({ test }),
+		deleteTest: (test) =>
+			void confirmDialog({
+				title: `Xoá đề "${test.title}"?`,
+				message: 'Chỉ xoá được đề chưa có ai làm bài. Ảnh câu hỏi của đề cũng bị xoá.',
+				tone: 'danger',
+				confirmLabel: 'Xoá đề',
+				onConfirm: async () => {
+					if (!sem) return;
+					await deleteSeminarTest(sem.id, test.id);
+					showToast('success', `Đã xoá đề "${test.title}"`);
+					d.refresh();
+				},
+			}),
 		openAgenda: () => setAgendaOpen(true),
 		openImport: () => setImportOpen(true),
 		openStaff: () => setStaffOpen(true),
@@ -405,10 +420,11 @@ export default function SeminarDetail() {
 				/>
 			)}
 
-			{testOpen && sem && (
+			{testEdit && sem && (
 				<SeminarTestModal
 					seminar={sem}
-					onClose={() => setTestOpen(false)}
+					test={testEdit.test}
+					onClose={() => setTestEdit(null)}
 					onSaved={d.refresh}
 				/>
 			)}

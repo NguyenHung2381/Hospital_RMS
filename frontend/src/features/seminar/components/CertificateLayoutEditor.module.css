@@ -94,6 +94,7 @@
 	background: var(--color-white);
 	cursor: ew-resize;
 }
+.handleLeft { right: auto; left: -5px; }
 
 /* ── Bảng bên phải ── */
 .panel {
@@ -332,3 +333,56 @@
 	.resetBtn { margin-right: 0; }
 }
 .missing { font-size: var(--font-size-2xs); color: var(--tone-amber-fg); }
+
+/* Mẫu nét vẽ: ảnh cắt của dòng thay cho chữ */
+.thumb {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 100%;
+	height: 16px;
+	margin-right: auto; /* đẩy nhãn "Đã sửa" về mép phải như dòng chữ thường */
+	border-radius: var(--radius-xs);
+}
+.thumbStruck { opacity: 0.35; }
+
+.textInput {
+	width: 100%;
+	box-sizing: border-box;
+	height: 30px;
+	padding: 0 8px;
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-md);
+	font: inherit;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-900);
+}
+.textInput:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -1px; }
+
+/* Kiểu chữ: Đậm / Nghiêng / Có chân + màu */
+.styleRow { display: inline-flex; align-items: center; gap: 4px; }
+.styleBtn {
+	min-width: 28px;
+	height: 28px;
+	padding: 0 6px;
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-sm);
+	line-height: 1;
+	cursor: pointer;
+}
+.styleBtn:hover { background: var(--color-gray-50); }
+.styleBtn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.styleOn,
+.styleOn:hover { border-color: var(--color-primary); background: var(--color-primary-pale); color: var(--color-primary-dark); }
+.colorInput {
+	width: 28px;
+	height: 28px;
+	padding: 2px;
+	border: 1px solid var(--color-gray-300);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	cursor: pointer;
+}
+.colorInput:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }

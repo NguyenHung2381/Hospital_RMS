@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { BadgeSvg, ClipboardCheckSvg, FileTextSvg, QrSvg, UsersSvg } from '@/assets/icons';
 import sem from '../../pages/Seminar.module.css';
 import s from './Detail.module.css';
-import { parseTestQuestions } from './detailUtils';
+import { activeTests } from './detailUtils';
 import type { TabProps } from './types';
 
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
@@ -10,7 +10,7 @@ const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
 /** Tab "Tổng quan": thông tin chung + số liệu + tiến độ tổ chức (bấm để sang tab tương ứng). */
 export function OverviewTab({ seminar: sm, counts, actions, ht }: TabProps) {
 	const hosted = sm.scope === 'hosted';
-	const hasTest = parseTestQuestions(sm).length > 0;
+	const hasTest = activeTests(sm).length > 0;
 
 	// Thông tin phụ — chỉ hiện ô có dữ liệu
 	const details = [
@@ -107,7 +107,7 @@ export function OverviewTab({ seminar: sm, counts, actions, ht }: TabProps) {
 				{hosted && (
 					<Kpi
 						icon={<FileTextSvg />}
-						label='Nộp bài kiểm tra'
+						label='Nộp đủ bài kiểm tra'
 						value={hasTest ? counts.submitted : '—'}
 						of={hasTest ? counts.total : undefined}
 						sub={hasTest ? undefined : 'Chưa soạn bài kiểm tra'}

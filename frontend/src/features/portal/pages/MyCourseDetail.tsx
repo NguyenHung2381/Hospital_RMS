@@ -5,6 +5,7 @@ import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/compone
 import { FileViewerModal } from '@/shared/components/FileViewerModal';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
+import { saveBlob } from '@/shared/utils/saveBlob';
 import UserLayout from '../../../layouts/UserLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { DISPLAY_STATUS_CFG, DOC_TYPE_CFG, ENROLLMENT_STATUS_CFG, EXAM_TYPE_CFG } from '../../course/types/course.type';
@@ -84,9 +85,28 @@ export default function MyCourseDetail() {
 	const passed = data?.rotations.filter((r) => r.result === 'pass').length ?? 0;
 	const currentRound = data?.rotations.find((r) => r.phase === 'current');
 
-	const openDoc: OpenDoc = (doc, kind = 'course') => {
-		void markDocumentOpened(doc.id, kind).catch(() => {});
+	const openDoc: OpenDoc = async (doc, kind = 'course') => {
 		const name = doc.file_name ?? doc.title;
+		if (doc.source_type === 'file' && /\.xlsx?$/i.test(name)) {
+			try {
+				if (!doc.file_url) {
+					notify.error('Không tìm thấy tệp Excel. Vui lòng liên hệ giảng viên.');
+					return;
+				}
+				const response = await fetch(doc.file_url);
+				if (response.status === 404) {
+					notify.error('Không tìm thấy tệp Excel. Vui lòng liên hệ giảng viên.');
+					return;
+				}
+				if (!response.ok) throw new Error('Không thể tải tệp Excel');
+				saveBlob(await response.blob(), name);
+				void markDocumentOpened(doc.id, kind).catch(() => {});
+			} catch {
+				notify.error('Không thể tải tệp Excel. Vui lòng thử lại.');
+			}
+			return;
+		}
+		void markDocumentOpened(doc.id, kind).catch(() => {});
 		if (doc.source_type === 'file' && doc.file_url && VIEWABLE.test(name)) {
 			setViewer({ url: doc.file_url, name, isWord: /\.docx$/i.test(name) });
 			return;

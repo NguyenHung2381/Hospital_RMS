@@ -38,3 +38,9 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # Major Node đổi bằng tay, cùng lúc với NODE_VERSION trong workflow CI và chỉ
+      # sang bản LTS (số chẵn). Dependabot từng nâng 24 → 25 (không LTS, hết hỗ trợ
+      # 6/2026) trong khi CI vẫn test 24 — check-stable-versions.mjs nay chặn việc này.
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']

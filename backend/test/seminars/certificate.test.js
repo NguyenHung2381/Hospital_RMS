@@ -305,3 +305,122 @@ endbfrange`;
 	const inter = Object.entries(charsets).find(([k]) => k.includes('inter'));
 	assert.ok(inter && inter[1].length > 50, 'đọc được bảng ký tự font nhúng');
 });
+
+// Mẫu "chữ nét vẽ" giả lập: không có ký tự nào — mỗi "chữ" là 1 hình chữ nhật nhỏ tô
+// đặc; nền là mảng màu lớn + 1 lớp mờ trong suốt (như hình chìm logo)
+const makeVectorTemplate = async () => {
+	const doc = await PDFDocument.create();
+	const page = doc.addPage([595, 842]);
+	page.drawRectangle({ x: 0, y: 0, width: 595, height: 842, color: rgb(0.85, 0.93, 0.98) });
+	page.drawRectangle({
+		x: 150,
+		y: 400,
+		width: 300,
+		height: 200,
+		color: rgb(0.9, 0.3, 0.6),
+		opacity: 0.2,
+	});
+	const navy = rgb(0.18, 0.19, 0.57);
+	const glyphs = (x, yTop, n, color) => {
+		for (let i = 0; i < n; i++) {
+			page.drawRectangle({ x: x + i * 9, y: 842 - yTop, width: 6, height: 9, color });
+		}
+	};
+	glyphs(75, 300, 20, navy); // "Chứng nhận: Ông …"
+	glyphs(75, 330, 12, navy); // "Sinh ngày: …"
+	glyphs(300, 600, 15, rgb(0, 0, 0)); // "Nghệ An, ngày …"
+	return Buffer.from(await doc.save());
+};
+
+const pixelAt = async (pdf, x, y) => {
+	const mupdf = await import('mupdf');
+	const page = mupdf.Document.openDocument(pdf, 'application/pdf').loadPage(0);
+	const pix = page.toPixmap(mupdf.Matrix.identity, mupdf.ColorSpace.DeviceRGB, false, true);
+	const i = Math.round(y) * pix.getStride() + Math.round(x) * 3;
+	const px = pix.getPixels();
+	return [px[i], px[i + 1], px[i + 2]];
+};
+
+test('mẫu chữ nét vẽ: dò dòng, xoá vùng bằng miếng vá nền, in ô có kiểu chữ + chữ kèm sau', async () => {
+	const {
+		applyEdits,
+		toEditable,
+		applyTextEdits,
+		textEditable,
+	} = require('../../src/modules/seminars/certificate/certificateLayout');
+	const { patchRegions } = require('../../src/modules/seminars/certificate/certificateTemplate');
+	const tpl = await prepareTemplate(await makeVectorTemplate());
+	assert.equal(tpl.vector, true);
+	assert.deepEqual(Object.keys(tpl.slots), []);
+	assert.equal(tpl.texts.length, 3, 'dò đúng 3 dòng');
+	const [l1, l2, l3] = tpl.texts;
+	assert.ok(l1.vector && l1.text === '', 'dòng nét vẽ không có chữ');
+	assert.ok(
+		Math.abs(l1.y1 - 300) < 1 && Math.abs(l1.x0 - 75) < 1,
+		`khung dòng 1 (${l1.x0}, ${l1.y1})`,
+	);
+	assert.ok(l1.x1 > 75 + 19 * 9, 'dòng 1 gồm cả 20 chữ');
+	assert.ok(l2.y0 > l1.y1 && l3.x0 > 290, 'thứ tự dòng theo chiều dọc');
+	assert.ok(l1.color[2] > 0.4 && l1.color[0] < 0.3, `màu dòng 1 xanh đậm (${l1.color})`);
+
+	// Ô Số giấy đè lên nửa sau dòng 1: kiểu chữ, màu, chữ kèm sau
+	const meta = { page: tpl.page, slots: {}, texts: tpl.texts, vector: true };
+	meta.slots = applyEdits(meta, {
+		so: {
+			x0: 160,
+			x1: 260,
+			baseline: l1.baseline,
+			size: 12,
+			align: 'left',
+			hidden: false,
+			color: '#2e3192',
+			bold: true,
+			italic: false,
+			serif: true,
+			suffix: '/GCN/2025',
+		},
+	});
+	const so = toEditable('so', meta.slots.so);
+	assert.equal(so.color, '#2e3192');
+	assert.equal(so.serif, true);
+	assert.equal(so.bold, true);
+	assert.equal(so.suffix, '/GCN/2025');
+	assert.throws(() => applyEdits(meta, { so: { ...so, color: 'red' } }), /Màu chữ/);
+
+	// Dòng 2: sửa cả dòng; kiểu chữ người dùng chọn
+	const overrides = applyTextEdits(meta, {
+		[l2.id]: { ...textEditable(l2), text: 'Sinh ngày: 01/01/1990', bold: true, color: '#000000' },
+	});
+	assert.deepEqual(overrides[l2.id].color, [0, 0, 0]);
+	assert.equal(textEditable(l2, overrides[l2.id]).bold, true);
+
+	// Xoá: nửa sau dòng 1 + cả dòng 2
+	const rects = [
+		{ x0: 158, y0: l1.y0 - 1, x1: 262, y1: l1.y1 + 1 },
+		{ x0: l2.x0 - 1, y0: l2.y0 - 1, x1: l2.x1 + 1, y1: l2.y1 + 1 },
+	];
+	const patched = await patchRegions(tpl.pdf, rects);
+	assert.ok(patched.preview.length > 1000, 'có ảnh xem trước mới');
+	// Nền thật ở cùng hàng: khe giữa 2 chữ (có cả lớp mờ phía sau)
+	const bg = await pixelAt(tpl.pdf, 75 + 10 * 9 + 7.5, l1.y1 - 4);
+	const erased = await pixelAt(patched.pdf, 75 + 10 * 9 + 3, l1.y1 - 4); // chữ thứ 11 của dòng 1
+	const kept = await pixelAt(patched.pdf, 75 + 3, l1.y1 - 4); // chữ đầu dòng 1 — ngoài vùng xoá
+	assert.ok(
+		erased.every((v, i) => Math.abs(v - bg[i]) <= 6),
+		`vùng xoá liền nền (${erased} ≈ ${bg})`,
+	);
+	assert.ok(kept[0] < 100 && kept[2] > 100, `chữ ngoài vùng giữ nguyên (${kept})`);
+	// Vùng xoá đè lên lớp mờ trong suốt: lớp mờ vẫn còn
+	const wm = await pixelAt(tpl.pdf, 160, 842 - 450);
+	const wmPatched = await patchRegions(tpl.pdf, [
+		{ x0: 155, y0: 842 - 460, x1: 170, y1: 842 - 440 },
+	]);
+	assert.deepEqual(await pixelAt(wmPatched.pdf, 160, 842 - 450), wm);
+
+	const render = await createRenderer(patched.pdf, { ...meta, text_overrides: overrides });
+	const text = await pageText(
+		await render(fieldValues({ so: '0261', full_name: 'Ngô Vi Tiến', credits: 3 })),
+	);
+	assert.ok(text.includes('0261/GCN/2025'), 'số giấy kèm chữ in sau');
+	assert.ok(text.includes('Sinh ngày: 01/01/1990'), 'dòng sửa được in');
+});

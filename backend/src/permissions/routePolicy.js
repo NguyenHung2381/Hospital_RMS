@@ -93,10 +93,10 @@ module.exports = {
 			'Cổng công khai — đăng ký hội nghị qua QR (có captcha, rate-limit)',
 		[`GET ${API}/public/seminar-tickets/:code`]:
 			'Cổng công khai — xem vé QR (mã vé 128-bit, có rate-limit)',
-		[`POST ${API}/public/seminar-tickets/:code/test/start`]:
-			'Cổng công khai — bắt đầu tính giờ làm bài test bằng mã vé (có rate-limit)',
-		[`POST ${API}/public/seminar-tickets/:code/test`]:
-			'Cổng công khai — nộp bài test cuối buổi bằng mã vé (có rate-limit)',
+		[`POST ${API}/public/seminar-tickets/:code/tests/:testId/start`]:
+			'Cổng công khai — bắt đầu tính giờ làm 1 đề kiểm tra bằng mã vé (có rate-limit)',
+		[`POST ${API}/public/seminar-tickets/:code/tests/:testId`]:
+			'Cổng công khai — nộp 1 đề kiểm tra hội nghị bằng mã vé (có rate-limit)',
 	},
 
 	// ─── Chỉ cần đăng nhập ───────────────────────────────────────────────────

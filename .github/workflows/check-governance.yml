@@ -1,0 +1,162 @@
+# Tuân thủ + kiểm duyệt thay đổi. ci.yml gọi ở mọi PR / push / lịch tuần; chạy tay
+# được ở Actions → "Kiểm tra · Tuân thủ".
+#
+#   Giấy phép   gói production không mang giấy phép cấm (AGPL/GPL/SSPL...) — .github/license-policy.json
+#   Vệ sinh     xung đột merge, file lớn/dữ liệu, quyền chạy .sh, JSON hỏng, test .only, biến môi trường mới
+#   Migration   không sửa/xoá file đã chạy, file mới xếp sau cùng, lệnh phá huỷ phải ghi lý do
+#   Duyệt       (push vào main) mỗi commit có PR được người KHÁC tác giả duyệt chưa →
+#               ghi vết kiểm toán; biến repo REQUIRE_REVIEWED_CHANGES=true thì chặn
+# Báo cáo giấy phép + vết duyệt lưu thành artifact 365 ngày (bằng chứng khi kiểm tra).
+name: Kiểm tra · Tuân thủ
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  licenses:
+    name: Giấy phép thư viện
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: node scripts/ci/check-licenses.mjs --report license-report.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && github.event_name != 'pull_request'
+        with:
+          name: license-report-${{ github.sha }}
+          path: license-report.json
+          retention-days: 365
+          if-no-files-found: ignore
+
+  # Dấu xung đột merge, file trùng tên khác hoa/thường, file lớn / file dữ liệu,
+  # quyền chạy + LF của .sh, JSON hỏng, test .only, biến môi trường mới chưa khai báo
+  hygiene:
+    name: Vệ sinh repo
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in pull_request) base="$PR_BASE" ;; push) base="$BEFORE" ;; *) base="" ;; esac
+          if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then base=""; fi
+          node scripts/ci/check-hygiene.mjs ${base:+"$base"}
+
+  migrations:
+    name: Quy tắc migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # so với commit gốc của PR / commit trước của lần push
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: So với commit gốc
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" ;;
+            push) base="$BEFORE" ;;
+            *) echo "Không có phần thay đổi để so ($EVENT) — bỏ qua"; exit 0 ;;
+          esac
+          if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "::warning::Không có commit gốc hợp lệ ($base) — không kiểm được migration của lần này"
+            exit 0
+          fi
+          node scripts/ci/check-migrations.mjs "$base" HEAD
+
+  # Vết kiểm toán: thay đổi nào vào main mà không qua PR được người khác duyệt
+  # (push thẳng, admin vượt branch protection, tự merge). Chỉ đọc API, không checkout.
+  review-audit:
+    name: Duyệt trước khi vào main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Mỗi commit có PR được duyệt không
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+          ENFORCE: ${{ vars.REQUIRE_REVIEWED_CHANGES }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          if [[ "$BEFORE" =~ ^[0-9a-f]{40}$ ]] && ! [[ "$BEFORE" =~ ^0+$ ]] &&
+             commits=$(gh api "repos/$repo/compare/$BEFORE...$GITHUB_SHA" --jq '.commits[].sha' 2>/dev/null) && [ -n "$commits" ]; then
+            :
+          else
+            commits="$GITHUB_SHA"
+          fi
+
+          declare -A approvers_of=() author_of=()
+          : > review-audit.jsonl
+          unreviewed=0
+          {
+            echo "### Duyệt trước khi vào main"
+            echo ""
+            echo "| Commit | PR | Tác giả PR | Người duyệt | Kết quả |"
+            echo "|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for c in $commits; do
+            pr=$(gh api "repos/$repo/commits/$c/pulls" \
+              --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0] | if . == null then "" else "\(.number) \(.user.login)" end')
+            number="${pr%% *}" author="${pr#* }" approvers=""
+            if [ -n "$number" ]; then
+              if [ -z "${approvers_of[$number]+x}" ]; then
+                # Trạng thái cuối của mỗi người duyệt (bỏ COMMENTED), khác tác giả PR, đang là APPROVED
+                approvers_of[$number]=$(gh api --paginate "repos/$repo/pulls/$number/reviews" --jq '.[] | [.user.login, .state] | @tsv' |
+                  awk -F'\t' -v a="$author" '$2 != "COMMENTED" && $2 != "PENDING" && $1 != a { last[$1] = $2 }
+                    END { for (u in last) if (last[u] == "APPROVED") printf "%s ", u }')
+                author_of[$number]="$author"
+              fi
+              approvers="${approvers_of[$number]% }"
+            fi
+            if [ -n "$approvers" ]; then status=reviewed; label="đã duyệt"; else status=unreviewed; label="**chưa duyệt**"; unreviewed=$((unreviewed + 1)); fi
+            echo "| \`${c::7}\` | ${number:+#$number} | ${number:+${author_of[$number]}} | $approvers | $label |" >> "$GITHUB_STEP_SUMMARY"
+            jq -nc --arg commit "$c" --arg pr "$number" --arg author "${number:+${author_of[$number]}}" \
+              --arg approvers "$approvers" --arg status "$status" --arg pusher "$GITHUB_ACTOR" \
+              '{commit: $commit, pr: $pr, prAuthor: $author, approvers: ($approvers | split(" ") | map(select(. != ""))), status: $status, pushedBy: $pusher}' >> review-audit.jsonl
+          done
+
+          if [ "$unreviewed" -gt 0 ]; then
+            msg="$unreviewed commit vào main không qua PR được người khác duyệt (người push: $GITHUB_ACTOR)"
+            if [ "$ENFORCE" = true ]; then echo "::error::$msg — REQUIRE_REVIEWED_CHANGES=true"; exit 1; fi
+            echo "::warning::$msg — đã ghi vết kiểm toán"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: review-audit-${{ github.sha }}
+          path: review-audit.jsonl
+          retention-days: 365
+          if-no-files-found: ignore

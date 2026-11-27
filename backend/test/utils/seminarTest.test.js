@@ -155,7 +155,8 @@ test('isPassed + scaledScore: điểm đạt tính theo thang', () => {
 });
 
 test('SCALED_SCORE_SQL: dùng cột thang, giữ điểm thô khi không đặt thang', () => {
-	assert.match(t.SCALED_SCORE_SQL, /s\.test_score_scale IS NULL/);
-	assert.match(t.SCALED_SCORE_SQL, /THEN COALESCE\(p\.test_score, p\.test_correct\)/);
-	assert.match(t.SCALED_SCORE_SQL, /ROUND\(.*s\.test_score_scale/s);
+	assert.match(t.SCALED_SCORE_SQL, /t\.test_score_scale IS NULL/);
+	assert.match(t.SCALED_SCORE_SQL, /THEN COALESCE\(r\.test_score, r\.test_correct\)/);
+	assert.match(t.SCALED_SCORE_SQL, /ROUND\(.*t\.test_score_scale/s);
+	assert.match(t.scaledScoreSql('x', 'y'), /COALESCE\(y\.test_max_score, y\.test_total\)/);
 });

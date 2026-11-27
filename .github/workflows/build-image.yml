@@ -11,6 +11,9 @@
 #     node/nginx alpine) và quét Trivy lại.
 # Image gắn lại giữ nguyên SBOM + provenance + GIT_SHA của lần build gốc (cùng mã
 # nguồn app). scripts/deploy.sh so /health với GIT_SHA trong image nên vẫn đúng.
+#
+# Bằng chứng (artifact 365 ngày): báo cáo Trivy JSON mỗi app. SBOM + provenance gắn
+# vào image trên GHCR. Cuối cùng ký image bằng cosign (job sign) — deploy.yml xác minh.
 name: Build image
 
 on:
@@ -115,16 +118,46 @@ jobs:
           # Cache chỉ ghi từ main (workflow này chỉ chạy trên main) → PR không đầu độc được
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
-      - name: Quét image (Trivy)
-        # In mọi lỗ hổng HIGH+, chỉ chặn CRITICAL đã có bản vá. Image Trivy ghim digest.
+      - name: Quét image (Trivy — lỗ hổng + bí mật)
+        # Quét 1 lần ra báo cáo JSON đầy đủ (lưu làm bằng chứng), rồi xét từ báo cáo:
+        #  - in lỗ hổng HIGH+ đã có bản vá;
+        #  - CHẶN: lỗ hổng CRITICAL đã có bản vá; bí mật HIGH+ nằm trong image (khoá,
+        #    token, mật khẩu lọt qua .dockerignore).
+        # Image Trivy ghim digest.
         env:
+          APP: ${{ matrix.app }}
           IMAGE: ${{ steps.name.outputs.image }}
           TRIVY: aquasec/trivy:0.57.1@sha256:5c59e08f980b5d4d503329773480fcea2c9bdad7e381d846fbf9f2ecb8050f6b
         run: |
-          trivy() { docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache \
-            "$TRIVY" image --no-progress --ignore-unfixed "$@" "$IMAGE"; }
-          trivy --severity HIGH,CRITICAL --exit-code 0
-          trivy --severity CRITICAL --exit-code 1 --quiet
+          out="$RUNNER_TEMP/evidence"; mkdir -p "$out"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache -v "$out:/out" \
+            "$TRIVY" image --no-progress --quiet --scanners vuln,secret --format json --output "/out/trivy-$APP.json" "$IMAGE"
+          report="$out/trivy-$APP.json"
+          # $t là biến của jq, không phải của shell
+          # shellcheck disable=SC2016
+          fixed='[.Results[]? | .Target as $t | .Vulnerabilities[]? | select((.FixedVersion // "") != "") | . + {Target: $t}]'
+          jq -r "$fixed | map(select(.Severity == \"HIGH\" or .Severity == \"CRITICAL\"))[]
+            | \"\(.Severity)\t\(.VulnerabilityID)\t\(.PkgName) \(.InstalledVersion) → \(.FixedVersion)\t\(.Target)\"" "$report"
+          critical=$(jq "$fixed | map(select(.Severity == \"CRITICAL\")) | length" "$report")
+          secrets=$(jq '[.Results[]? | .Target as $t | .Secrets[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")
+            | "\(.Severity) \(.RuleID) \($t):\(.StartLine)"]' "$report")
+          nsecrets=$(jq length <<<"$secrets")
+          {
+            echo "### Trivy · $APP"
+            jq -r '[.Results[]?.Vulnerabilities[]?.Severity] | group_by(.) | map("- \(.[0]): \(length)") | .[]' "$report"
+            echo "- CRITICAL có bản vá: $critical · bí mật HIGH+: $nsecrets"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$nsecrets" -gt 0 ]; then echo "::error::Image có bí mật:"; jq -r '.[]' <<<"$secrets"; fi
+          if [ "$critical" -gt 0 ]; then echo "::error::$critical lỗ hổng CRITICAL đã có bản vá — nâng gói / base image"; fi
+          [ "$critical" -eq 0 ] && [ "$nsecrets" -eq 0 ]
+      - name: Lưu báo cáo quét (bằng chứng)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trivy-${{ matrix.app }}-${{ github.sha }}
+          path: ${{ runner.temp }}/evidence/
+          retention-days: 365
+          if-no-files-found: ignore
       - name: Push (kèm SBOM + provenance)
         # Cùng tham số với bước Build → dùng lại cache, không build khác đi
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -173,3 +206,64 @@ jobs:
           docker buildx imagetools create --tag "$repo:$GITHUB_SHA" "$repo:$BEFORE"
           digest=$(docker buildx imagetools inspect "$repo:$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
           echo "- Gắn tag: $repo:$GITHUB_SHA ← ${BEFORE::7} ($digest)" >> "$GITHUB_STEP_SUMMARY"
+
+  # Ký image của commit này bằng cosign (khoá riêng của bệnh viện, KHÔNG đẩy lên log
+  # minh bạch công khai Rekor → không lộ tên repo private). Job deploy xác minh chữ ký
+  # bằng khoá công khai (biến COSIGN_PUBLIC_KEY) trước khi chạy → image không do
+  # pipeline này build/ký thì không lên được server.
+  # Khoá riêng nằm ở environment "image-signing" (chỉ nhánh main) — PR, kể cả PR
+  # sửa workflow, không đọc được. Job này không checkout / không chạy mã của repo.
+  # Image gắn lại tag (cùng digest) đã ký từ lần build gốc thì bỏ qua.
+  sign:
+    name: Ký image (cosign)
+    needs: [build, retag]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: image-signing
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Ký
+        env:
+          COSIGN: ghcr.io/sigstore/cosign/cosign:v2.6.5@sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          COSIGN_PUBLIC_KEY: ${{ vars.COSIGN_PUBLIC_KEY }}
+          TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$COSIGN_PRIVATE_KEY" ]; then
+            echo "::warning::Chưa cấu hình khoá ký image (secret COSIGN_PRIVATE_KEY ở environment image-signing) — xem .github/CICD.md"
+            echo "- Ký image: **chưa bật**" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Cấu hình đăng nhập riêng cho container cosign (không dùng credential helper của máy)
+          dc="$RUNNER_TEMP/cosign-docker"
+          (umask 077; mkdir -p "$dc"
+           printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "$GITHUB_ACTOR" "$TOKEN" | base64 -w0)" > "$dc/config.json")
+          cosign() { docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOCKER_CONFIG=/dc -v "$dc:/dc:ro" \
+            -e COSIGN_PRIVATE_KEY -e COSIGN_PASSWORD -e COSIGN_PUBLIC_KEY "$COSIGN" "$@"; }
+          verify() { cosign verify --key env://COSIGN_PUBLIC_KEY --insecure-ignore-tlog=true "$1" >/dev/null 2>&1; }
+          for app in backend frontend; do
+            repo="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hospital_rms-$app"
+            digest=$(docker buildx imagetools inspect "$repo:$GITHUB_SHA" --format '{{json .Manifest}}' | jq -r .digest)
+            ref="$repo@$digest"
+            if [ -n "$COSIGN_PUBLIC_KEY" ] && verify "$ref"; then
+              echo "- Đã ký từ trước: $ref" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            cosign sign --yes --key env://COSIGN_PRIVATE_KEY --tlog-upload=false "$ref"
+            # Khoá công khai đặt sai cặp → deploy sẽ hỏng; báo ngay ở đây
+            if [ -n "$COSIGN_PUBLIC_KEY" ] && ! verify "$ref"; then
+              echo "::error::Ký xong nhưng COSIGN_PUBLIC_KEY không xác minh được — khoá công khai không cùng cặp với COSIGN_PRIVATE_KEY"
+              exit 1
+            fi
+            echo "- Đã ký: $ref" >> "$GITHUB_STEP_SUMMARY"
+          done
+          rm -rf "$dc"

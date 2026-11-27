@@ -3,6 +3,16 @@
 #  - Chạy tay (Actions → Deploy → Run workflow) để ROLLBACK: chọn môi trường,
 #    nhập SHA của bản cũ (xem tab Environments hoặc logs/deploy-history.log).
 # Production cần người duyệt (Environment protection rules, xem .github/CICD.md).
+#
+# Các lớp kiểm soát trước khi đụng vào server:
+#   gate    commit SHA hợp lệ, NẰM TRÊN main, có lần chạy CI (push vào main) với
+#           "CI · kết quả" xanh — chặn deploy mã chưa review / chưa qua kiểm tra,
+#           kể cả khi chạy tay.
+#   deploy  xác minh chữ ký cosign của cả 2 image (khi đã đặt COSIGN_PUBLIC_KEY)
+#           → image không do pipeline ký thì không chạy.
+# Mỗi lần deploy (đạt hay hỏng) ghi 1 bản ghi kiểm toán JSON (ai, khi nào, SHA,
+# digest image, lần chạy CI, kết quả) → artifact 365 ngày, cùng với
+# logs/deploy-history.log trên server và tab Environments.
 name: Deploy
 
 on:
@@ -30,8 +40,55 @@ permissions:
   packages: read
 
 jobs:
+  gate:
+    name: Điều kiện deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      ci_run: ${{ steps.check.outputs.ci_run }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          fail() { echo "::error::$1"; echo "- ❌ $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          pass() { echo "$1"; echo "- ✅ $1" >> "$GITHUB_STEP_SUMMARY"; }
+          echo "### Điều kiện deploy \`$ENVIRONMENT\`" >> "$GITHUB_STEP_SUMMARY"
+
+          [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || fail "tag phải là commit SHA đầy đủ 40 ký tự hex"
+          pass "commit \`$TAG\`"
+
+          # base=TAG, head=main: "ahead"/"identical" ⇔ TAG là tổ tiên của main
+          status=$(gh api "repos/$repo/compare/$TAG...main" --jq .status 2>/dev/null) || fail "không tìm thấy commit ${TAG::7} trong repo"
+          case "$status" in
+            identical | ahead) pass "commit nằm trên nhánh main" ;;
+            *) fail "commit ${TAG::7} không nằm trên main ($status) — chỉ deploy mã đã vào main" ;;
+          esac
+
+          # Chỉ tin lần chạy CI do push vào main (PR không giả được event này)
+          ci_run=""
+          for id in $(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$TAG&event=push&branch=main&per_page=20" --jq '.workflow_runs[].id'); do
+            # Lấy hết output rồi mới xét (grep -q + pipefail có thể báo sai do SIGPIPE)
+            ok=$(gh api --paginate "repos/$repo/actions/runs/$id/jobs?filter=all" \
+              --jq '.jobs[] | select(.name == "CI · kết quả" and .conclusion == "success") | .id')
+            if [ -n "$ok" ]; then
+              ci_run="$id"
+              break
+            fi
+          done
+          [ -n "$ci_run" ] || fail "commit ${TAG::7} chưa có lần chạy CI (push vào main) với \"CI · kết quả\" xanh"
+          pass "CI xanh: $GITHUB_SERVER_URL/$repo/actions/runs/$ci_run"
+          echo "ci_run=$ci_run" >> "$GITHUB_OUTPUT"
+
   deploy:
     name: Deploy ${{ inputs.environment }}
+    needs: gate
     # Runner cài trên chính server Ubuntu (mạng nội bộ bệnh viện, GitHub không gọi
     # vào được) — runner tự kết nối ra ngoài để nhận job. Mỗi môi trường 1 nhãn.
     # User chạy runner phải thuộc nhóm docker; backup trước migration cần pg_dump
@@ -69,7 +126,59 @@ jobs:
           done
           echo "::error::Không đăng nhập được ghcr.io — kiểm tra mạng máy chủ ra ghcr.io (infra/cai-dat-may-ao-ubuntu.md mục 1.1)"
           exit 1
+      - name: Xác minh image (chữ ký cosign + digest)
+        id: verify
+        # Có COSIGN_PUBLIC_KEY: cosign xác minh chữ ký trên registry, lấy digest đã
+        # xác minh, kéo đúng digest đó và gắn tag SHA cho nó trên máy. Chưa có: chỉ
+        # kéo image và ghi digest (cảnh báo). Không dùng jq — máy chủ có thể không cài.
+        env:
+          TAG: ${{ inputs.tag }}
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COSIGN_PUBLIC_KEY: ${{ vars.COSIGN_PUBLIC_KEY }}
+          COSIGN: ghcr.io/sigstore/cosign/cosign:v2.6.5@sha256:ad281047f85c5e1fc6ffbc30c2b55be3b07b4032bef715a12122ce5829619aca
+        run: |
+          registry="${REGISTRY,,}"
+          pull() {
+            for i in 1 2 3; do docker pull -q "$1" >/dev/null && return 0; echo "Thử lại pull $1 ($i)..."; sleep 15; done
+            return 1
+          }
+          if [ -n "$COSIGN_PUBLIC_KEY" ]; then
+            dc="$RUNNER_TEMP/cosign-docker"
+            (umask 077; mkdir -p "$dc"
+             printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$(printf '%s:%s' "$GITHUB_ACTOR" "$TOKEN" | base64 -w0)" > "$dc/config.json")
+            trap 'rm -rf "$dc"' EXIT
+            pull "$COSIGN" || { echo "::error::Không kéo được image cosign"; exit 1; }
+          else
+            echo "::warning::Chưa đặt biến COSIGN_PUBLIC_KEY — KHÔNG xác minh chữ ký image (xem .github/CICD.md, mục Ký image)"
+          fi
+          echo "### Image" >> "$GITHUB_STEP_SUMMARY"
+          for app in backend frontend; do
+            repo="$registry/hospital_rms-$app"
+            if [ -n "$COSIGN_PUBLIC_KEY" ]; then
+              if ! out=$(docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOCKER_CONFIG=/dc -v "$dc:/dc:ro" \
+                -e COSIGN_PUBLIC_KEY "$COSIGN" verify --key env://COSIGN_PUBLIC_KEY --insecure-ignore-tlog=true \
+                -o json "$repo:$TAG" 2>"$RUNNER_TEMP/cosign.err"); then
+                cat "$RUNNER_TEMP/cosign.err"
+                echo "::error::$app: image $repo:$TAG KHÔNG có chữ ký hợp lệ của pipeline — dừng deploy"
+                exit 1
+              fi
+              digest=$(printf '%s' "$out" | grep -o '"docker-manifest-digest":"sha256:[0-9a-f]\{64\}"' | head -n 1 | grep -o 'sha256:[0-9a-f]*' || true)
+              [ -n "$digest" ] || { echo "::error::$app: không đọc được digest từ kết quả cosign"; exit 1; }
+              pull "$repo@$digest" || { echo "::error::$app: không kéo được $repo@$digest"; exit 1; }
+              docker tag "$repo@$digest" "$repo:$TAG"
+              signed="đã xác minh chữ ký"
+            else
+              pull "$repo:$TAG" || { echo "::error::$app: không kéo được $repo:$TAG"; exit 1; }
+              digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$repo:$TAG" | { grep "^$repo@" || true; } | head -n 1 | sed 's/.*@//')
+              signed="chưa xác minh chữ ký"
+            fi
+            echo "$app=$digest" >> "$GITHUB_OUTPUT"
+            echo "- $app: \`$repo@$digest\` — $signed" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "signed=$([ -n "$COSIGN_PUBLIC_KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Triển khai + smoke test (tự rollback khi hỏng)
+        id: deploy
         env:
           TAG: ${{ inputs.tag }}
           REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -84,3 +193,36 @@ jobs:
       - name: Đăng xuất registry
         if: always()
         run: docker logout ghcr.io
+      - name: Bản ghi kiểm toán
+        id: audit
+        if: always()
+        # Giá trị đều do GitHub sinh (SHA, login, digest, số) → không cần escape JSON
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          TAG: ${{ inputs.tag }}
+          CI_RUN: ${{ needs.gate.outputs.ci_run }}
+          BACKEND_DIGEST: ${{ steps.verify.outputs.backend }}
+          FRONTEND_DIGEST: ${{ steps.verify.outputs.frontend }}
+          SIGNED: ${{ steps.verify.outputs.signed || 'false' }}
+          VERIFY: ${{ steps.verify.outcome }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/audit"
+          file="$RUNNER_TEMP/audit/deploy-$ENVIRONMENT-${TAG:0:12}-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.json"
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs"
+          printf '{"time":"%s","environment":"%s","commit":"%s","result":"%s","verify":"%s","signatureVerified":%s,' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ENVIRONMENT" "$TAG" "${DEPLOY:-skipped}" "${VERIFY:-skipped}" "$SIGNED" > "$file"
+          printf '"images":{"backend":"%s","frontend":"%s"},"actor":"%s","triggeringActor":"%s","event":"%s",' \
+            "$BACKEND_DIGEST" "$FRONTEND_DIGEST" "$GITHUB_ACTOR" "$TRIGGERING_ACTOR" "$GITHUB_EVENT_NAME" >> "$file"
+          printf '"workflowRef":"%s","run":"%s/%s/attempts/%s","ciRun":"%s/%s","runner":"%s"}\n' \
+            "$GITHUB_WORKFLOW_REF" "$url" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$url" "$CI_RUN" "$RUNNER_NAME" >> "$file"
+          cat "$file"
+          echo "audit_file=$file" >> "$GITHUB_OUTPUT"
+      - name: Lưu bản ghi kiểm toán
+        if: always() && steps.audit.outputs.audit_file
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deploy-audit-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.audit.outputs.audit_file }}
+          retention-days: 365

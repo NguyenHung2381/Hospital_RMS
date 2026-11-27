@@ -30,7 +30,19 @@ const BOLD_KEYS = new Set(['name', 'credits']);
 type Kind = 'slot' | 'text';
 type Geo = { x0: number; x1: number; baseline: number; size: number; align: 'left' | 'center' };
 type Sel = { kind: Kind; id: string } | null;
-type Drag = { sel: { kind: Kind; id: string }; mode: 'move' | 'resize'; px: number; py: number; k: number; start: Geo };
+type Drag = {
+	sel: { kind: Kind; id: string };
+	/** resize: kéo mép phải; resizeL: kéo mép trái (giữ mép phải) */
+	mode: 'move' | 'resize' | 'resizeL';
+	px: number;
+	py: number;
+	k: number;
+	start: Geo;
+};
+const SERIF_STACK = "'Times New Roman', Tinos, 'Liberation Serif', serif";
+// Vị trí ô / đoạn dòng đã lưu — mẫu nét vẽ chỉ xoá chữ cũ ở vùng ĐÃ LƯU
+const slotSig = (s: CertificateSlot) => `${s.x0},${s.x1},${s.baseline},${s.size},${s.hidden}`;
+const textSig = (t: CertificateText) => `${t.x0},${t.x1}`;
 
 /**
  * Chỉnh mẫu giấy chứng nhận, 2 thẻ:
@@ -38,6 +50,9 @@ type Drag = { sel: { kind: Kind; id: string }; mode: 'move' | 'resize'; px: numb
  *    1pt (Shift 5pt); cỡ chữ, căn lề, ẩn/hiện, thêm ô mẫu không có.
  *  - Chữ trên mẫu: sửa các dòng in sẵn (tên hội nghị, ngày tháng, người ký...) —
  *    khi lưu, dòng gốc bị xoá khỏi mẫu và bản in viết dòng mới (font Inter).
+ * Mẫu chữ nét vẽ (layout.vector — không có lớp chữ): dòng chữ là các khối dò theo
+ * hình, không đọc được nội dung → kéo 2 mép chọn đoạn cần thay rồi gõ chữ mới; mỗi
+ * ô dữ liệu cũng xoá chữ mẫu nằm dưới nó. Kiểu chữ (đậm, nghiêng, có chân, màu) chọn tay.
  * Chữ minh hoạ dùng Inter như bản in; "Xem thử" ở hộp thoại ngoài cho bản in thật.
  */
 export function CertificateLayoutEditor({
@@ -52,8 +67,9 @@ export function CertificateLayoutEditor({
 	const [layout, setLayout] = useState<CertificateLayout | null>(null);
 	const [slots, setSlots] = useState<Record<string, CertificateSlot | null>>({});
 	const [texts, setTexts] = useState<Record<string, CertificateText>>({});
-	// Dòng đã sửa và ĐÃ LƯU → ảnh nền không còn chữ gốc
-	const [removedInImage, setRemovedInImage] = useState<Set<string>>(new Set());
+	// Dòng đã sửa / ô và ĐÃ LƯU (kèm vị trí lúc lưu) → ảnh nền không còn chữ gốc ở đó
+	const [removedInImage, setRemovedInImage] = useState<Map<string, string>>(new Map());
+	const [savedSlots, setSavedSlots] = useState<Map<string, string>>(new Map());
 	const [tab, setTab] = useState<Kind>('slot');
 	const [sel, setSel] = useState<Sel>(null);
 	const [dirty, setDirty] = useState(false);
@@ -69,7 +85,8 @@ export function CertificateLayoutEditor({
 		});
 		setSlots(Object.fromEntries(l.fields.map((f) => [f.key, f.slot])));
 		setTexts(Object.fromEntries(l.texts.map((t) => [t.id, t])));
-		setRemovedInImage(new Set(l.texts.filter((t) => t.edited).map((t) => t.id)));
+		setRemovedInImage(new Map(l.texts.filter((t) => t.edited).map((t) => [t.id, l.vector ? textSig(t) : ''])));
+		setSavedSlots(new Map(l.fields.flatMap((f) => (f.slot ? [[f.key, slotSig(f.slot)] as const] : []))));
 		setDirty(false);
 	};
 
@@ -103,9 +120,17 @@ export function CertificateLayoutEditor({
 		setDirty(true);
 	};
 
+	// Màu chữ hay gặp nhất trên mẫu nét vẽ (thân bài) — màu mặc định cho ô mới
+	const bodyColor = () => {
+		const count = new Map<string, number>();
+		for (const t of layout?.texts ?? []) count.set(t.color, (count.get(t.color) ?? 0) + (t.box.x1 - t.box.x0));
+		return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+	};
+
 	// Ô mẫu không có: đặt giữa trang, cùng màu ô khác — người dùng kéo tới chỗ cần
 	const addField = (key: string) => {
 		const ref = Object.values(slots).find(Boolean);
+		const vector = !!layout?.vector;
 		const x0 = r1(page.width * 0.35);
 		setSlots((prev) => ({
 			...prev,
@@ -116,24 +141,26 @@ export function CertificateLayoutEditor({
 				size: 12,
 				align: 'left',
 				hidden: false,
-				color: ref?.color ?? '#049240',
-				bold: BOLD_KEYS.has(key),
+				color: ref?.color ?? (vector ? bodyColor() : undefined) ?? '#049240',
+				bold: ref && vector ? ref.bold : BOLD_KEYS.has(key),
 				italic: false,
 				suffix: '',
-				serif: false,
+				// Mẫu nét vẽ hay là giấy hành chính chữ Times
+				serif: ref ? ref.serif : vector,
 			},
 		}));
 		setSel({ kind: 'slot', id: key });
 		setDirty(true);
 	};
 
-	// Trả dòng chữ về như mẫu gốc (bỏ bản sửa)
+	// Trả dòng chữ về như mẫu gốc (bỏ bản sửa): chữ, vị trí, kiểu chữ của dòng gốc
 	const revertText = (id: string) => {
 		const orig = layout?.texts.find((t) => t.id === id);
 		if (!orig) return;
-		// Bản gốc từ server: nếu đang sửa thì toạ độ trong layout là toạ độ đã sửa — lấy chữ gốc
-		// và đánh dấu chưa sửa; toạ độ gốc được server trả lại sau khi lưu.
-		setTexts((prev) => ({ ...prev, [id]: { ...prev[id], text: orig.original, edited: false } }));
+		setTexts((prev) => ({
+			...prev,
+			[id]: { ...prev[id], ...orig.base, text: orig.original, edited: false },
+		}));
 		setDirty(true);
 	};
 
@@ -159,6 +186,8 @@ export function CertificateLayoutEditor({
 			const w = g.x1 - g.x0;
 			const x0 = clamp(g.x0 + dx, 0, page.width - w);
 			update(d.sel, { x0: r1(x0), x1: r1(x0 + w), baseline: r1(clamp(g.baseline + dy, g.size, page.height)) });
+		} else if (d.mode === 'resizeL') {
+			update(d.sel, { x0: r1(clamp(g.x0 + dx, 0, g.x1 - MIN_W)) });
 		} else {
 			update(d.sel, { x1: r1(clamp(g.x1 + dx, g.x0 + MIN_W, page.width)) });
 		}
@@ -189,12 +218,18 @@ export function CertificateLayoutEditor({
 	const save = async () => {
 		const slotEdits: Record<string, CertificateSlotEdit> = {};
 		for (const [key, s] of Object.entries(slots)) {
-			if (s) slotEdits[key] = { x0: s.x0, x1: s.x1, baseline: s.baseline, size: s.size, align: s.align, hidden: s.hidden };
+			if (!s) continue;
+			const { x0, x1, baseline, size, align, hidden, color, bold, italic, serif, suffix } = s;
+			slotEdits[key] = { x0, x1, baseline, size, align, hidden, color, bold, italic, serif, suffix };
 		}
 		const textEdits: Record<string, CertificateTextEdit> = {};
 		for (const t of Object.values(texts)) {
 			if (t.edited) {
-				textEdits[t.id] = { text: t.text, x0: t.x0, x1: t.x1, baseline: t.baseline, size: t.size, align: t.align };
+				const { text, x0, x1, baseline, size, align, color, bold, italic, serif } = t;
+				// Dòng nét vẽ: kiểu chữ do người dùng chọn; dòng thường in bằng font của dòng gốc
+				textEdits[t.id] = t.vector
+					? { text, x0, x1, baseline, size, align, color, bold, italic, serif }
+					: { text, x0, x1, baseline, size, align };
 			}
 		}
 		setBusy('save');
@@ -254,6 +289,24 @@ export function CertificateLayoutEditor({
 	});
 
 	const isSel = (kind: Kind, id: string) => sel?.kind === kind && sel.id === id;
+	const vector = !!layout?.vector;
+	const imageUrl = layout ? `${BASE_URL}${layout.image_url}` : '';
+	// Tay nắm 2 mép của mục đang chọn
+	const handles = (s: { kind: Kind; id: string }) => (
+		<>
+			{(['resizeL', 'resize'] as const).map((mode) => (
+				<span
+					key={mode}
+					className={mode === 'resizeL' ? `${css.handle} ${css.handleLeft}` : css.handle}
+					onPointerDown={(e) => startDrag(e, s, mode)}
+					onPointerMove={onDrag}
+					onPointerUp={endDrag}
+					onPointerCancel={endDrag}
+					aria-hidden
+				/>
+			))}
+		</>
+	);
 	const selGeo = sel ? geoOf(sel) : null;
 	const selSlotField = sel?.kind === 'slot' ? fields.find((f) => f.key === sel.id) : undefined;
 	const selText = sel?.kind === 'text' ? texts[sel.id] : undefined;
@@ -318,7 +371,7 @@ export function CertificateLayoutEditor({
 							aria-label='Trang mẫu giấy chứng nhận — chọn rồi dùng phím mũi tên để dịch'
 						>
 							<img
-								src={`${BASE_URL}${layout.image_url}`}
+								src={imageUrl}
 								alt='Mẫu giấy chứng nhận'
 								className={css.bg}
 								draggable={false}
@@ -331,8 +384,8 @@ export function CertificateLayoutEditor({
 								const interactive = tab === 'text';
 								if (!interactive && !t.edited) return null;
 								const active = interactive && isSel('text', t.id);
-								// Sửa nhưng chưa lưu: ảnh nền vẫn còn chữ gốc → che tạm bằng nền trắng
-								const cover = t.edited && !removedInImage.has(t.id);
+								// Sửa nhưng chưa lưu (mẫu nét vẽ: hoặc đổi đoạn xoá): ảnh nền vẫn còn chữ gốc → che tạm
+								const cover = t.edited && removedInImage.get(t.id) !== (vector ? textSig(t) : '');
 								return (
 									<div
 										key={t.id}
@@ -348,24 +401,17 @@ export function CertificateLayoutEditor({
 											color: t.color,
 											fontWeight: t.bold ? 700 : 400,
 											fontStyle: t.italic ? 'italic' : 'normal',
+											...(t.serif ? { fontFamily: SERIF_STACK } : {}),
 										}}
 										onPointerDown={interactive ? (e) => startDrag(e, { kind: 'text', id: t.id }, 'move') : undefined}
 										onPointerMove={interactive ? onDrag : undefined}
 										onPointerUp={interactive ? endDrag : undefined}
 										onPointerCancel={interactive ? endDrag : undefined}
-										title={interactive ? t.original : undefined}
+										title={interactive ? t.original || 'Dòng chữ trên mẫu' : undefined}
 									>
 										{t.edited && <span className={css.fieldText}>{t.text}</span>}
-										{active && t.edited && (
-											<span
-												className={css.handle}
-												onPointerDown={(e) => startDrag(e, { kind: 'text', id: t.id }, 'resize')}
-												onPointerMove={onDrag}
-												onPointerUp={endDrag}
-												onPointerCancel={endDrag}
-												aria-hidden
-											/>
-										)}
+										{/* Dòng nét vẽ: chọn đoạn cần thay bằng 2 mép ngay cả khi chưa gõ chữ */}
+										{active && (t.edited || t.vector) && handles({ kind: 'text', id: t.id })}
 									</div>
 								);
 							})}
@@ -384,12 +430,15 @@ export function CertificateLayoutEditor({
 											interactive ? '' : css.fieldPassive,
 											active ? css.fieldActive : '',
 											s.hidden ? css.fieldHidden : '',
+											// Mẫu nét vẽ: ô mới / vừa dời chưa lưu → chữ mẫu bên dưới chưa bị xoá, che tạm
+											vector && !s.hidden && savedSlots.get(f.key) !== slotSig(s) ? css.lineCover : '',
 										].join(' ')}
 										style={{
 											...geoStyle(s),
 											color: s.color,
 											fontWeight: s.bold ? 700 : 400,
 											fontStyle: s.italic ? 'italic' : 'normal',
+											...(s.serif ? { fontFamily: SERIF_STACK } : {}),
 										}}
 										onPointerDown={interactive ? (e) => startDrag(e, { kind: 'slot', id: f.key }, 'move') : undefined}
 										onPointerMove={interactive ? onDrag : undefined}
@@ -397,18 +446,12 @@ export function CertificateLayoutEditor({
 										onPointerCancel={interactive ? endDrag : undefined}
 										title={interactive ? f.label : undefined}
 									>
-										<span className={css.fieldText}>{f.sample}</span>
+										<span className={css.fieldText}>
+											{f.sample}
+											{s.suffix}
+										</span>
 										{interactive && <span className={css.fieldTag}>{f.label}</span>}
-										{active && (
-											<span
-												className={css.handle}
-												onPointerDown={(e) => startDrag(e, { kind: 'slot', id: f.key }, 'resize')}
-												onPointerMove={onDrag}
-												onPointerUp={endDrag}
-												onPointerCancel={endDrag}
-												aria-hidden
-											/>
-										)}
+										{active && handles({ kind: 'slot', id: f.key })}
 									</div>
 								);
 							})}
@@ -481,7 +524,9 @@ export function CertificateLayoutEditor({
 						) : (
 							<>
 								<p className={css.note}>
-									Bấm một dòng trên mẫu hoặc trong danh sách để sửa — vd tên hội nghị, ngày tháng, người ký.
+									{vector
+										? 'Mẫu này không có lớp chữ (chữ đã chuyển thành nét vẽ). Chọn một dòng, kéo 2 mép để khoanh đoạn cần thay, rồi gõ chữ mới — đoạn đó bị xoá khỏi mẫu khi lưu.'
+										: 'Bấm một dòng trên mẫu hoặc trong danh sách để sửa — vd tên hội nghị, ngày tháng, người ký.'}
 								</p>
 								<ul className={`${css.list} ${css.listScroll}`}>
 									{textList.map((t) => (
@@ -490,11 +535,21 @@ export function CertificateLayoutEditor({
 												type='button'
 												className={`${css.item} ${isSel('text', t.id) ? css.itemActive : ''}`}
 												onClick={() => setSel({ kind: 'text', id: t.id })}
-												title={t.original}
+												title={t.original || undefined}
+												aria-label={t.vector && !t.text ? `Dòng ${t.id.slice(1)} trên mẫu` : undefined}
 											>
-												<span className={`${css.itemLabel} ${t.edited && !t.text ? css.itemStrike : ''}`}>
-													{t.edited ? t.text || t.original : t.original}
-												</span>
+												{t.vector && !(t.edited && t.text) ? (
+													<LineThumb
+														url={imageUrl}
+														page={page}
+														box={t.box}
+														struck={t.edited}
+													/>
+												) : (
+													<span className={`${css.itemLabel} ${t.edited && !t.text ? css.itemStrike : ''}`}>
+														{t.edited ? t.text || t.original : t.original}
+													</span>
+												)}
 												{t.edited && (
 													<span className={css.itemAdd}>
 														<EditSvg /> Đã sửa
@@ -519,9 +574,11 @@ export function CertificateLayoutEditor({
 											rows={2}
 											value={selText.text}
 											onChange={(e) => update(sel, { text: e.target.value })}
-											placeholder='Để trống để xoá dòng này'
+											placeholder={
+												selText.vector ? 'Chữ mới thay cho đoạn đã khoanh — để trống để chỉ xoá' : 'Để trống để xoá dòng này'
+											}
 										/>
-										{selText.edited && selText.text !== selText.original && (
+										{selText.edited && selText.original && selText.text !== selText.original && (
 											<span className={css.original}>Gốc: {selText.original}</span>
 										)}
 										{missingChars(selText.text, selText.charset).length > 0 && (
@@ -536,7 +593,7 @@ export function CertificateLayoutEditor({
 									</label>
 								)}
 
-								{(selSlotField || selText?.edited) && (
+								{(selSlotField || selText?.edited || selText?.vector) && (
 									<>
 										<div className={css.prop}>
 											<span>Cỡ chữ</span>
@@ -618,6 +675,28 @@ export function CertificateLayoutEditor({
 									</>
 								)}
 
+								{/* Kiểu chữ: ô dữ liệu và dòng nét vẽ (dòng thường dùng font của mẫu) */}
+								{(selSlotField || selText?.vector) && (
+									<StyleRow
+										value={selSlotField ? slots[selSlotField.key]! : selText!}
+										onChange={(patch) => update(sel, patch)}
+										serifMissing={!layout.serif_font}
+									/>
+								)}
+
+								{selSlotField && slots[selSlotField.key] && (
+									<label className={css.textEdit}>
+										<span>Chữ in kèm sau</span>
+										<input
+											className={css.textInput}
+											value={slots[selSlotField.key]!.suffix}
+											onChange={(e) => update(sel, { suffix: e.target.value })}
+											placeholder={selSlotField.key === 'so' ? 'vd /GCN/2025' : 'vd  giờ tín chỉ)'}
+											maxLength={80}
+										/>
+									</label>
+								)}
+
 								{selSlotField && slots[selSlotField.key] && (
 									<button
 										type='button'
@@ -640,9 +719,13 @@ export function CertificateLayoutEditor({
 								)}
 
 								<p className={css.note}>
-									{selText
-										? 'Dòng sửa dùng lại font, cỡ, màu của dòng gốc trên mẫu. Bấm "Xem thử" sau khi lưu để kiểm tra bản in.'
-										: `Đơn vị: điểm (pt) trên khổ ${Math.round(page.width)}×${Math.round(page.height)}. Bấm "Xem thử" sau khi lưu để kiểm tra bản in.`}
+									{selText?.vector
+										? 'Chữ mẫu trong khung (từ mép trái tới mép phải) bị xoá khi lưu, chữ mới in từ mép trái. Bấm "Xem thử" sau khi lưu để kiểm tra bản in.'
+										: selText
+											? 'Dòng sửa dùng lại font, cỡ, màu của dòng gốc trên mẫu. Bấm "Xem thử" sau khi lưu để kiểm tra bản in.'
+											: vector
+												? 'Kéo ô đè lên chữ mẫu cần thay (vd tên người trên giấy mẫu) và kéo 2 mép phủ hết đoạn đó — chữ mẫu dưới ô bị xoá khi lưu.'
+												: `Đơn vị: điểm (pt) trên khổ ${Math.round(page.width)}×${Math.round(page.height)}. Bấm "Xem thử" sau khi lưu để kiểm tra bản in.`}
 								</p>
 							</div>
 						)}
@@ -650,5 +733,102 @@ export function CertificateLayoutEditor({
 				</div>
 			)}
 		</Modal>
+	);
+}
+
+const THUMB_H = 16;
+
+/** Ảnh cắt đúng khung 1 dòng chữ nét vẽ từ ảnh mẫu — thay cho chữ (không đọc được). */
+function LineThumb({
+	url,
+	page,
+	box,
+	struck,
+}: {
+	url: string;
+	page: { width: number; height: number };
+	box: CertificateText['box'];
+	struck: boolean;
+}) {
+	const pad = 1;
+	const w = box.x1 - box.x0 + 2 * pad;
+	const h = box.y1 - box.y0 + 2 * pad;
+	return (
+		// Cùng chiều cao cho mọi dòng (chữ cùng cỡ); dòng dài quá thì cắt bớt bên phải
+		<svg
+			className={`${css.thumb} ${struck ? css.thumbStruck : ''}`}
+			style={{ width: `${(w / h) * THUMB_H}px` }}
+			viewBox={`${box.x0 - pad} ${box.y0 - pad} ${w} ${h}`}
+			preserveAspectRatio='xMinYMid slice'
+			aria-hidden
+		>
+			<image
+				href={url}
+				x={0}
+				y={0}
+				width={page.width}
+				height={page.height}
+			/>
+		</svg>
+	);
+}
+
+/** Đậm / nghiêng / có chân + màu chữ của ô hoặc dòng nét vẽ đang chọn. */
+function StyleRow({
+	value,
+	onChange,
+	serifMissing,
+}: {
+	value: { bold: boolean; italic: boolean; serif: boolean; color: string };
+	onChange: (patch: Partial<{ bold: boolean; italic: boolean; serif: boolean; color: string }>) => void;
+	serifMissing: boolean;
+}) {
+	const toggles = [
+		['bold', 'Đậm', 'B'],
+		['italic', 'Nghiêng', 'I'],
+		['serif', 'Chữ có chân (Times)', 'Tt'],
+	] as const;
+	return (
+		<>
+			<div className={css.prop}>
+				<span>Kiểu chữ</span>
+				<div className={css.styleRow}>
+					{toggles.map(([k, label, glyph]) => (
+						<button
+							key={k}
+							type='button'
+							className={`${css.styleBtn} ${value[k] ? css.styleOn : ''}`}
+							aria-pressed={value[k]}
+							aria-label={label}
+							title={label}
+							onClick={() => onChange({ [k]: !value[k] })}
+							style={
+								k === 'bold'
+									? { fontWeight: 700 }
+									: k === 'italic'
+										? { fontStyle: 'italic', fontFamily: SERIF_STACK }
+										: { fontFamily: SERIF_STACK }
+							}
+						>
+							{glyph}
+						</button>
+					))}
+					<input
+						type='color'
+						className={css.colorInput}
+						value={value.color}
+						onChange={(e) => onChange({ color: e.target.value })}
+						aria-label='Màu chữ'
+						title='Màu chữ'
+					/>
+				</div>
+			</div>
+			{value.serif && serifMissing && (
+				<span className={css.missing}>
+					Máy chủ chưa có font Times New Roman — chữ có chân tạm in bằng Inter. Chép các file times*.ttf vào thư mục font
+					giấy chứng nhận trên máy chủ.
+				</span>
+			)}
+		</>
 	);
 }

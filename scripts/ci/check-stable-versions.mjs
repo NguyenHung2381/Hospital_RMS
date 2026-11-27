@@ -16,6 +16,8 @@
 //     latest/beta/rc/nightly/edge... Tag trôi không có số (alpine, stable) → cảnh báo.
 //  4. .github/workflows/*.yml: action bên ngoài phải ghim theo commit SHA (40 ký
 //     tự) kèm chú thích phiên bản chính thức, vd `@<sha> # v5.1.0`.
+//  5. Node.js trong Dockerfile là bản LTS (major chẵn) và cùng major với
+//     NODE_VERSION của các workflow CI.
 //
 // Thoát mã 1 nếu có lỗi. Cảnh báo in dạng ::warning:: (hiện trên GitHub).
 
@@ -28,6 +30,7 @@ const NPM_DIRS = ['.', 'backend', 'frontend'];
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
 const REGISTRY = 'https://registry.npmjs.org/';
 const ALLOWLIST_FILE = '.github/prerelease-allowlist.json';
+const wfDir = join(ROOT, '.github', 'workflows');
 
 // Từ khoá đánh dấu bản không chính thức (trong tag image, chú thích action...)
 const UNSTABLE_WORD = /(^|[^a-z])(alpha|beta|rc|pre|preview|canary|next|nightly|edge|dev|snapshot|unstable|experimental|insiders)([^a-z]|$)/i;
@@ -202,6 +205,37 @@ function checkWorkflow(path) {
     });
 }
 
+// ---------- 5: Node.js production = bản LTS, khớp với CI ----------
+// Node số lẻ (23, 25...) không bao giờ thành LTS và hết hỗ trợ sau ~8 tháng → không
+// còn bản vá bảo mật. CI test bằng NODE_VERSION nào thì image phải chạy đúng major đó.
+
+const nodeMajors = new Map(); // major → [nơi khai báo]
+const addMajor = (major, where) => nodeMajors.set(major, [...(nodeMajors.get(major) ?? []), where]);
+
+function checkNodeRuntime() {
+  for (const dir of ['backend', 'frontend']) {
+    const p = join(ROOT, dir, 'Dockerfile');
+    if (!existsSync(p)) continue;
+    for (const line of readFileSync(p, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*FROM\s+(?:--\S+\s+)*(?:docker\.io\/)?(?:library\/)?node:(\d+)/i);
+      if (!m) continue;
+      const major = Number(m[1]);
+      if (major % 2 === 1)
+        error(rel(p), `node:${major} là bản không LTS (số lẻ) — dùng bản LTS (số chẵn) giống NODE_VERSION trên CI`);
+      addMajor(major, rel(p));
+    }
+  }
+  if (existsSync(wfDir))
+    for (const f of readdirSync(wfDir).filter((f) => /\.ya?ml$/.test(f))) {
+      const m = readFileSync(join(wfDir, f), 'utf8').match(/^\s*NODE_VERSION:\s*['"]?(\d+)/m);
+      if (m) addMajor(Number(m[1]), `.github/workflows/${f}`);
+    }
+  if (nodeMajors.size > 1) {
+    const detail = [...nodeMajors].map(([v, w]) => `${v}: ${w.join(', ')}`).join(' | ');
+    error('Node.js', `major khác nhau giữa Dockerfile và CI (${detail}) — CI phải test đúng bản chạy production`);
+  }
+}
+
 // ---------- chạy ----------
 
 const allowlist = loadAllowlist();
@@ -218,8 +252,8 @@ for (const dir of ['backend', 'frontend']) {
 }
 for (const f of readdirSync(ROOT).filter((f) => /^docker-compose.*\.ya?ml$/.test(f))) checkCompose(join(ROOT, f));
 
-const wfDir = join(ROOT, '.github', 'workflows');
 if (existsSync(wfDir)) for (const f of readdirSync(wfDir).filter((f) => /\.ya?ml$/.test(f))) checkWorkflow(join(wfDir, f));
+checkNodeRuntime();
 
 const gh = process.env.GITHUB_ACTIONS === 'true';
 for (const w of warnings) console.log(gh ? `::warning::${w}` : `CẢNH BÁO  ${w}`);

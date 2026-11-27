@@ -21,6 +21,7 @@ const {
 	renderPreview,
 	extractTexts,
 	removeTexts,
+	patchRegions,
 	SLOT_LABELS,
 	SLOT_KEYS,
 } = require('./certificate/certificateTemplate');
@@ -33,7 +34,12 @@ const {
 	INFO_FIELDS,
 } = require('./certificate/certificateLayout');
 const { createRenderer, fieldValues } = require('./certificate/certificateRender');
-const { fontCharsets, hasFullFont, normFontName } = require('./certificate/certificateFonts');
+const {
+	fontCharsets,
+	hasFullFont,
+	hasSerifFont,
+	normFontName,
+} = require('./certificate/certificateFonts');
 const participantService = require('./seminarParticipantService');
 const importService = require('./seminarImportService');
 
@@ -77,6 +83,8 @@ const publicInfo = (meta) =>
 			found: !!meta.slots[key] && !meta.slots[key].hidden,
 		})),
 		unknown: meta.unknown || [],
+		// Mẫu không có lớp chữ (chữ là nét vẽ): đặt ô / sửa chữ ở màn chỉnh mẫu
+		vector: !!meta.vector,
 		edited:
 			Object.values(meta.slots).some((s) => s.edited) ||
 			Object.keys(meta.text_overrides || {}).length > 0,
@@ -128,6 +136,7 @@ const saveTemplate = async (seminarId, file, actorId) => {
 		auto_slots: out.slots,
 		unknown: out.unknown,
 		preview_file: previewFile,
+		vector: !!out.vector,
 		// Dòng chữ in sẵn (tên hội nghị, ngày...) + bản sửa của người dùng
 		texts: out.texts,
 		text_overrides: {},
@@ -172,13 +181,15 @@ const layoutOf = (seminarId, meta) => {
 	const sample = fieldValues(SAMPLE_PERSON);
 	return {
 		page: meta.page,
+		vector: !!meta.vector,
+		// Máy chủ có font có chân (Times...) để in chữ kiểu có chân
+		serif_font: hasSerifFont(),
 		image_url: `/uploads/seminars/${seminarId}/certificate/${meta.preview_file}`,
 		fields: SLOT_KEYS.map((key) => ({
 			key,
 			label: SLOT_LABELS[key],
-			// Chữ minh hoạ (số giấy kèm đuôi "/C33.01" như khi in)
-			sample:
-				key === 'so' && meta.slots.so?.suffix ? sample.so + meta.slots.so.suffix : sample[key],
+			// Chữ minh hoạ — giao diện tự ghép chữ in kèm sau (slot.suffix) như khi in
+			sample: sample[key],
 			auto: !!meta.auto_slots?.[key],
 			slot: meta.slots[key] ? toEditable(key, meta.slots[key]) : null,
 		})),
@@ -223,12 +234,56 @@ const backfill = async (seminarId, meta, pdf) => {
 	return changed;
 };
 
-// Dựng lại template.pdf từ bản gốc, xoá các dòng chữ đang bị sửa (bản in viết dòng mới)
+// ─── Mẫu chữ nét vẽ: vùng phải xoá chữ cũ ──────────────────────────────────
+// Chữ là hình vẽ nên không xoá theo dòng được — xoá đúng vùng: đoạn dòng đã sửa
+// ([x0, x1] của bản sửa, cao theo khung dòng gốc) và chỗ đặt mỗi ô đang in.
+const ERASE_PAD = 1.2;
+const ASCENT = 0.969; // khớp khung hiển thị ở màn chỉnh mẫu (số đo font Inter)
+const r1 = (v) => Math.round(v * 10) / 10;
+
+/** @returns {{ x0: number, y0: number, x1: number, y1: number }[]} */
+const eraseRects = (meta) => {
+	if (!meta.vector) return [];
+	const lines = meta.texts || [];
+	const rects = [];
+	for (const [id, o] of Object.entries(meta.text_overrides || {})) {
+		const t = lines.find((x) => x.id === id);
+		if (t)
+			rects.push({ x0: o.x0 - 0.5, x1: o.x1 + 0.5, y0: t.y0 - ERASE_PAD, y1: t.y1 + ERASE_PAD });
+	}
+	for (const s of Object.values(meta.slots || {})) {
+		if (s.hidden) continue;
+		const x0 = s.align === 'center' ? s.box.x0 : s.x;
+		const x1 = s.align === 'center' ? s.box.x1 : s.x1;
+		const size = s.textSize ?? s.size;
+		// Ô đặt đè lên 1 dòng chữ mẫu → xoá theo chiều cao dòng đó (đủ dấu, chân chữ)
+		const line = lines.find(
+			(t) => s.baseline >= t.y0 && s.baseline <= t.y1 + size * 0.3 && x0 < t.x1 && x1 > t.x0,
+		);
+		rects.push(
+			line
+				? { x0: x0 - 0.5, x1: x1 + 0.5, y0: line.y0 - ERASE_PAD, y1: line.y1 + ERASE_PAD }
+				: { x0, x1, y0: s.baseline - ASCENT * size, y1: s.baseline + 0.3 * size },
+		);
+	}
+	return rects.map((r) => ({ x0: r1(r.x0), y0: r1(r.y0), x1: r1(r.x1), y1: r1(r.y1) }));
+};
+const rectsSig = (meta) => JSON.stringify(eraseRects(meta));
+
+// Dựng lại template.pdf từ bản gốc, xoá các dòng chữ đang bị sửa (bản in viết dòng mới).
+// Mẫu nét vẽ: dán miếng vá nền lên các vùng cần xoá.
 const rebuildFromBase = async (seminarId, meta) => {
-	const boxes = Object.keys(meta.text_overrides || {})
-		.map((id) => meta.texts.find((t) => t.id === id))
-		.filter(Boolean);
-	const out = await removeTexts(await fs.readFile(basePath(seminarId)), boxes);
+	const base = await fs.readFile(basePath(seminarId));
+	let out;
+	if (meta.vector) {
+		out = await patchRegions(base, eraseRects(meta));
+		meta.patch_sig = rectsSig(meta);
+	} else {
+		const boxes = Object.keys(meta.text_overrides || {})
+			.map((id) => meta.texts.find((t) => t.id === id))
+			.filter(Boolean);
+		out = await removeTexts(base, boxes);
+	}
 	const oldPreview = meta.preview_file;
 	meta.preview_file = await writePreview(seminarId, out.preview);
 	meta.size = out.pdf.length;
@@ -266,7 +321,11 @@ const saveLayout = async (seminarId, { slots, texts } = {}) => {
 		const changedSet = overrideIds(next) !== overrideIds(meta.text_overrides);
 		meta.text_overrides = next;
 		// Chỉ dựng lại PDF khi tập dòng bị xoá thay đổi; sửa chữ/vị trí dòng đã sửa thì không cần
-		if (changedSet) oldPreview = await rebuildFromBase(seminarId, meta);
+		if (changedSet && !meta.vector) oldPreview = await rebuildFromBase(seminarId, meta);
+	}
+	// Mẫu nét vẽ: vùng xoá đổi theo cả vị trí ô lẫn đoạn dòng đã sửa
+	if (meta.vector && rectsSig(meta) !== (meta.patch_sig ?? '[]')) {
+		oldPreview = await rebuildFromBase(seminarId, meta);
 	}
 	await writeAtomic(metaPath(seminarId), JSON.stringify(meta));
 	if (oldPreview) await removeOldPreview(seminarId, oldPreview);
@@ -279,7 +338,11 @@ const resetLayout = async (seminarId) => {
 	await backfill(seminarId, meta, pdf);
 	meta.slots = meta.auto_slots;
 	let oldPreview = null;
-	if (Object.keys(meta.text_overrides || {}).length) {
+	if (meta.vector) {
+		meta.text_overrides = {};
+		if (rectsSig(meta) !== (meta.patch_sig ?? '[]'))
+			oldPreview = await rebuildFromBase(seminarId, meta);
+	} else if (Object.keys(meta.text_overrides || {}).length) {
 		meta.text_overrides = {};
 		oldPreview = await rebuildFromBase(seminarId, meta);
 	}
@@ -502,5 +565,5 @@ module.exports = {
 	peopleFromParticipants,
 	peopleFromExcel,
 	streamZip,
-	_test: { fmtDob, fileNameOf },
+	_test: { fmtDob, fileNameOf, eraseRects },
 };

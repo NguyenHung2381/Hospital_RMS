@@ -129,15 +129,18 @@ const participantScore = (s, p) =>
 	scaledScore(s, p.test_score ?? p.test_correct, p.test_max_score ?? p.test_total);
 
 /**
- * Bản SQL của participantScore (p = seminar_participants, s = seminars) — dùng trong điều
- * kiện cấp CME. Phép chia trên NUMERIC rồi ROUND 2 chữ số, khớp scaledScore.
+ * Bản SQL của participantScore — `t` = bảng có cấu hình đề (test_score_scale), `r` = bảng
+ * có bài làm (test_score, test_correct, test_max_score, test_total). Dùng trong điều kiện
+ * cấp CME. Phép chia trên NUMERIC rồi ROUND 2 chữ số, khớp scaledScore.
  */
-const SCALED_SCORE_SQL = `CASE
-    WHEN s.test_score_scale IS NULL OR COALESCE(p.test_max_score, p.test_total, 0) <= 0
-      THEN COALESCE(p.test_score, p.test_correct)
-    ELSE ROUND(COALESCE(p.test_score, p.test_correct) * s.test_score_scale
-      / COALESCE(p.test_max_score, p.test_total), 2)
+const scaledScoreSql = (t, r) => `CASE
+    WHEN ${t}.test_score_scale IS NULL OR COALESCE(${r}.test_max_score, ${r}.test_total, 0) <= 0
+      THEN COALESCE(${r}.test_score, ${r}.test_correct)
+    ELSE ROUND(COALESCE(${r}.test_score, ${r}.test_correct) * ${t}.test_score_scale
+      / COALESCE(${r}.test_max_score, ${r}.test_total), 2)
   END`;
+/** seminar_tests t + seminar_test_submissions r */
+const SCALED_SCORE_SQL = scaledScoreSql('t', 'r');
 
 /** Đạt điểm tối thiểu để được cấp CME (chưa đặt điểm đạt = nộp bài là đạt). `score` là điểm ĐÃ quy đổi. */
 const isPassed = (s, score) =>
@@ -154,6 +157,7 @@ module.exports = {
 	scaledScore,
 	scaleMax,
 	participantScore,
+	scaledScoreSql,
 	SCALED_SCORE_SQL,
 	isPassed,
 };

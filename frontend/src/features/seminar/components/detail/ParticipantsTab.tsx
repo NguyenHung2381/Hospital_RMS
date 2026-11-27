@@ -16,12 +16,13 @@ import sem from '../../pages/Seminar.module.css';
 import {
 	PARTICIPATION_LABELS,
 	type ParticipationType,
-	type Seminar,
 	type SeminarParticipant,
+	type SeminarTest,
+	type SeminarTestResult,
 } from '../../types/seminar.type';
 import s from './Detail.module.css';
 import { CmeStatusBadge } from './ParticipantDrawer';
-import { cmeEligible, fullName, testMax, testPassed, testScore, unitOf } from './detailUtils';
+import { activeTests, cmeEligible, fullName, resultOf, testMax, testPassed, testScore, unitOf } from './detailUtils';
 import type { TabProps } from './types';
 
 const ROLES: { key: 'all' | ParticipationType; label: string }[] = [
@@ -56,7 +57,8 @@ export function ParticipantsTab({
 	const [role, setRole] = useState<'all' | ParticipationType>('all');
 	const [q, setQ] = useState('');
 	const hosted = sm.scope === 'hosted';
-	const hasTest = !!sm.test_questions;
+	const tests = activeTests(sm);
+	const hasTest = tests.length > 0;
 
 	const roleCount = useMemo(() => {
 		const m: Record<string, number> = { all: participants.length };
@@ -294,7 +296,7 @@ export function ParticipantsTab({
 										{hosted && hasTest && (
 											<td className={s.nowrap}>
 												<TestCell
-													s={sm}
+													tests={tests}
 													p={p}
 												/>
 											</td>
@@ -359,17 +361,17 @@ export function CheckinCell({ p }: { p: SeminarParticipant }) {
 	return <span className={sem.muted}>Chưa điểm danh</span>;
 }
 
-/** Kết quả bài kiểm tra trên 1 ô */
-export function TestCell({ s: sm, p }: { s: Seminar; p: SeminarParticipant }) {
-	if (p.test_submitted_at) {
-		const ok = testPassed(sm, p);
+/** Kết quả 1 đề của 1 người (r trống = chưa làm) */
+export function TestResultCell({ t, r }: { t: SeminarTest; r: SeminarTestResult | undefined }) {
+	if (r?.test_submitted_at) {
+		const ok = testPassed(t, r);
 		return (
 			<span
 				className={s.score}
-				title={`Đúng ${p.test_correct}/${p.test_total} câu`}
+				title={`Đúng ${r.test_correct}/${r.test_total} câu`}
 			>
-				<b>{testScore(sm, p)}</b>/{testMax(sm, p)}
-				{sm.test_pass_score != null && (
+				<b>{testScore(t, r)}</b>/{testMax(t, r)}
+				{t.test_pass_score != null && (
 					<span
 						className={ok ? sem.okText : sem.badText}
 						style={{ marginLeft: 6 }}
@@ -380,6 +382,21 @@ export function TestCell({ s: sm, p }: { s: Seminar; p: SeminarParticipant }) {
 			</span>
 		);
 	}
-	if (p.test_started_at) return <span className={sem.muted}>Đang làm</span>;
+	if (r?.test_started_at) return <span className={sem.muted}>Đang làm</span>;
 	return <span className={sem.muted}>—</span>;
+}
+
+/** Ô "Bài kiểm tra": mỗi đề một dòng (nhiều đề thì kèm tên đề) */
+export function TestCell({ tests, p }: { tests: SeminarTest[]; p: SeminarParticipant }) {
+	if (tests.length === 1) return <TestResultCell t={tests[0]} r={resultOf(p, tests[0])} />;
+	return (
+		<div style={{ display: 'grid', gap: 2 }}>
+			{tests.map((t) => (
+				<div key={t.id}>
+					<span className={s.sub}>{t.title}: </span>
+					<TestResultCell t={t} r={resultOf(p, t)} />
+				</div>
+			))}
+		</div>
+	);
 }

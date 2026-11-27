@@ -103,7 +103,11 @@ export function CertificateModal({
 			const missing = info.fields.filter((f) => !f.found).length;
 			showToast(
 				missing ? 'info' : 'success',
-				missing ? `Đã lưu mẫu — còn ${missing} ô chưa tìm thấy chỗ điền` : 'Đã lưu mẫu giấy chứng nhận',
+				info.vector
+					? 'Đã lưu mẫu — chữ trên mẫu là nét vẽ: mở "Chỉnh mẫu" để đặt các ô và sửa chữ'
+					: missing
+						? `Đã lưu mẫu — còn ${missing} ô chưa tìm thấy chỗ điền`
+						: 'Đã lưu mẫu giấy chứng nhận',
 			);
 		} catch (e) {
 			showToast('error', errMsg(e, 'Tải mẫu lên thất bại'));
@@ -324,12 +328,19 @@ export function CertificateModal({
 							<div className={css.notice}>
 								<InfoSvg />
 								<div>
-									{missing.length > 0 && (
-										<p>
-											Ô chưa tìm thấy sẽ để trống. Muốn điền, sửa mẫu cho ô đó là dãy dấu chấm "....."
-											ngay sau nhãn rồi tải lại.
-										</p>
-									)}
+									{missing.length > 0 &&
+										(tpl?.vector ? (
+											<p>
+												Mẫu này không có lớp chữ (chữ đã chuyển thành nét vẽ) nên không tự dò được ô. Bấm{' '}
+												<b>Chỉnh mẫu</b> → <b>Ô dữ liệu</b> → <b>Thêm</b> để đặt từng ô đè lên chỗ cần điền
+												(chữ mẫu dưới ô sẽ được xoá); thẻ <b>Chữ trên mẫu</b> để thay chủ đề, thời gian, ngày ký…
+											</p>
+										) : (
+											<p>
+												Ô chưa tìm thấy sẽ để trống. Muốn điền, sửa mẫu cho ô đó là dãy dấu chấm "....." ngay
+												sau nhãn rồi tải lại — hoặc bấm <b>Chỉnh mẫu</b> → <b>Thêm</b> để tự đặt ô.
+											</p>
+										))}
 									{(tpl?.unknown.length ?? 0) > 0 && (
 										<p>Giữ nguyên dãy chấm không rõ là ô nào: {tpl?.unknown.join('; ')}</p>
 									)}
@@ -354,7 +365,8 @@ export function CertificateModal({
 									<p className={css.lead}>
 										Tải lên file PDF 1 trang đã thiết kế sẵn (tên hội nghị, ngày, chữ ký, con dấu). Chỗ
 										cần điền để dãy dấu chấm <b>"....."</b> sau nhãn: Chứng nhận, Sinh ngày, Đơn vị công
-										tác, Vai trò, Quy đổi tương đương, Bằng chữ, Số.
+										tác, Vai trò, Quy đổi tương đương, Bằng chữ, Số. Mẫu đã điền sẵn 1 người (kể cả chữ
+										đã chuyển thành nét vẽ) cũng dùng được — đặt ô và sửa chữ ở <b>Chỉnh mẫu</b>.
 									</p>
 								)}
 								<FileDropzone

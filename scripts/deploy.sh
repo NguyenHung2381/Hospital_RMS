@@ -7,6 +7,7 @@
 #   scripts/deploy.sh <commit sha 40 ký tự> [registry]
 #   scripts/deploy.sh <sha bản cũ>                     # rollback tay
 #
+#   0. Kiểm tra máy chủ: Docker, ổ đĩa, file env, compose với cấu hình thật, thư mục backup.
 #   1. Ghi nhớ image đang chạy (để tự quay lại khi hỏng).
 #   2. Kéo image backend/frontend tag = commit SHA từ registry (không build lại).
 #   3. Có migration mới + đặt MIGRATION_BACKUP_DIR: pg_dump DB ra thư mục đó (trên
@@ -28,6 +29,8 @@
 #   BACKEND_URL         mặc định http://127.0.0.1:3001
 #   FRONTEND_URL        mặc định http://127.0.0.1:8081
 #   SOAK_SECONDS        mặc định 60
+#   SMOKE_TIMEOUT       giây chờ bản mới khoẻ trước khi coi là hỏng, mặc định 180
+#   MIN_FREE_GB         dung lượng trống tối thiểu ở thư mục dữ liệu Docker, mặc định 3
 #   MIGRATION_DB_USER / MIGRATION_DB_PASSWORD
 #                       role có quyền ALTER (rms_migrate), chỉ dùng cho bước migration
 #                       và pg_dump. Trống: migration chạy bằng DB_USER trong backend/.env.
@@ -100,7 +103,7 @@ health_error() {
 
 # In mô tả lỗi nếu hỏng sau timeout; khoẻ thì không in gì
 wait_healthy() {
-	local expect="$1" timeout="${2:-180}" deadline err before after
+	local expect="$1" timeout="${2:-${SMOKE_TIMEOUT:-180}}" deadline err before after
 	deadline=$((SECONDS + timeout))
 	while :; do
 		sleep 5
@@ -186,6 +189,57 @@ pin_default_tags() {
 		docker tag "$FRONTEND_IMAGE" hospital_rms-frontend:latest ||
 		echo "::warning::Không gắn được tag mặc định — lệnh compose chạy tay có thể dùng image cũ" >&2
 }
+
+# Kiểm tra máy chủ TRƯỚC khi kéo image / đụng DB — lỗi hay gặp lúc deploy mà
+# trước đây chỉ lộ ra giữa chừng (đầy ổ, thiếu file env, compose hỏng với .env
+# thật, thư mục backup không ghi được). Hỏng ở đây thì bản đang chạy không bị đụng.
+preflight() {
+	local problems=() warn=() root free_kb need_kb f key err
+	docker info >/dev/null 2>&1 || problems+=("không gọi được Docker (daemon tắt, hoặc user không thuộc nhóm docker)")
+	[ -d "$DEPLOY_DIR" ] || problems+=("DEPLOY_DIR=$DEPLOY_DIR không tồn tại")
+	if [ ! -f "$DEPLOY_DIR/backend/.env.production" ] && [ ! -f "$DEPLOY_DIR/backend/.env" ]; then
+		problems+=("thiếu $DEPLOY_DIR/backend/.env.production (và backend/.env) — backend sẽ không có cấu hình DB")
+	fi
+	# Đủ chỗ cho image mới (~1 GB) + log; mặc định cần MIN_FREE_GB=3 trống ở thư mục dữ liệu Docker
+	need_kb=$(( ${MIN_FREE_GB:-3} * 1024 * 1024 ))
+	root="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)"
+	free_kb="$(df -Pk "$root" 2>/dev/null | awk 'NR == 2 { print $4 }')"
+	if [ -n "$free_kb" ] && [ "$free_kb" -lt "$need_kb" ]; then
+		problems+=("ổ chứa $root còn $((free_kb / 1024)) MB, cần ≥ ${MIN_FREE_GB:-3} GB — dọn: docker image prune -a --filter until=720h")
+	fi
+	if [ -n "${MIGRATION_BACKUP_DIR:-}" ]; then
+		mkdir -p "$MIGRATION_BACKUP_DIR" 2>/dev/null && [ -w "$MIGRATION_BACKUP_DIR" ] ||
+			problems+=("MIGRATION_BACKUP_DIR=$MIGRATION_BACKUP_DIR không ghi được bằng user $(id -un)")
+		command -v pg_dump >/dev/null || problems+=("MIGRATION_BACKUP_DIR đã đặt nhưng máy không có pg_dump (apt install postgresql-client-18)")
+	fi
+	# Compose đọc .env + env_file THẬT trên máy: sai cú pháp / thiếu biến bắt buộc lộ ra ở đây
+	if [ -d "$DEPLOY_DIR" ] && ! err="$(BACKEND_IMAGE=x FRONTEND_IMAGE=x compose config --quiet 2>&1)"; then
+		problems+=("docker-compose.prod.yml lỗi với cấu hình trên máy: $err")
+	fi
+	# Biến khai báo (không chú thích) trong .env.example mà file env trên máy không có → cảnh báo
+	if [ -f "$REPO_DIR/backend/.env.example" ]; then
+		for key in $(sed -n 's/^\([A-Z][A-Z0-9_]*\)=.*/\1/p' "$REPO_DIR/backend/.env.example" | tr -d '\r'); do
+			for f in "$DEPLOY_DIR/backend/.env.production" "$DEPLOY_DIR/backend/.env"; do
+				[ -f "$f" ] && grep -q "^$key=" "$f" && continue 2
+			done
+			grep -q "^\s*$key:" "$COMPOSE_FILE" || warn+=("$key")
+		done
+	fi
+	if [ "${#warn[@]}" -gt 0 ]; then
+		echo "::warning::Biến có trong backend/.env.example nhưng chưa đặt trên máy (dùng mặc định): ${warn[*]}"
+	fi
+	if [ "${#problems[@]}" -gt 0 ]; then
+		printf '::error::Kiểm tra máy chủ trước deploy: %s\n' "${problems[@]}"
+		return 1
+	fi
+	echo "Máy chủ sẵn sàng (Docker, ổ đĩa, file env, compose)"
+}
+
+echo "── Kiểm tra máy chủ"
+if ! preflight; then
+	write_history FAILED-PREFLIGHT "$(running_image backend)"
+	exit 1
+fi
 
 prev_backend="$(running_image backend)"
 prev_frontend="$(running_image frontend)"

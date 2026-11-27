@@ -6,10 +6,12 @@
 #   check-secrets.yml       Không commit bí mật (file nhạy cảm, chuỗi bí mật, gitleaks)
 #   check-sast.yml          Quét lỗ hổng mã nguồn (Semgrep)
 #   check-infra.yml         Lint workflow (actionlint, zizmor), Dockerfile (hadolint), shell (shellcheck)
+#   check-governance.yml    Tuân thủ: giấy phép thư viện, quy tắc migration, vết duyệt thay đổi vào main
 #   check-backend.yml       Lint/format/kiểu · kiến trúc · test theo nhóm · coverage · PostgreSQL
 #   check-frontend.yml      Lint + kiểu · build production
-#   build-image.yml         Build image 1 lần (tag = SHA), Trivy, SBOM + provenance → GHCR
-#   deploy.yml              Deploy 1 SHA lên 1 môi trường (chạy tay = rollback)
+#   check-image.yml         Chạy thử bản production: image prod + compose + deploy.sh + tự rollback
+#   build-image.yml         Build image 1 lần (tag = SHA), Trivy (lỗ hổng + bí mật), SBOM + provenance → GHCR, ký cosign
+#   deploy.yml              Cổng (SHA trên main + CI xanh) → xác minh chữ ký → deploy → bản ghi kiểm toán
 #
 # PR chỉ chạy backend/frontend khi có file thuộc phần đó đổi; các kiểm tra bảo
 # mật luôn chạy. Push vào main / lịch tuần: chạy tất cả.
@@ -47,6 +49,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      runtime: ${{ steps.filter.outputs.runtime }}
     steps:
       - id: filter
         env:
@@ -55,8 +58,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           if [ "$EVENT" != pull_request ]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            printf '%s\n' backend=true frontend=true runtime=true >> "$GITHUB_OUTPUT"
             exit 0
           fi
           files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
@@ -65,10 +67,10 @@ jobs:
           all=$(has '^(\.github/workflows/|scripts/ci/)')
           backend=$(has '^(backend/|infra/postgresql/)')
           frontend=$(has '^frontend/')
-          [ "$all" = true ] && backend=true && frontend=true
-          echo "backend=$backend" >> "$GITHUB_OUTPUT"
-          echo "frontend=$frontend" >> "$GITHUB_OUTPUT"
-          echo "backend=$backend frontend=$frontend"
+          # Thứ gì vào image / cách chạy image trên server → chạy thử bản production
+          runtime=$(has '^(backend/|frontend/|infra/postgresql/|docker-compose\.prod\.yml$|scripts/deploy\.sh$)')
+          [ "$all" = true ] && backend=true && frontend=true && runtime=true
+          printf '%s\n' "backend=$backend" "frontend=$frontend" "runtime=$runtime" | tee -a "$GITHUB_OUTPUT"
 
   dependencies:
     name: Phụ thuộc
@@ -94,6 +96,13 @@ jobs:
     permissions:
       contents: read
 
+  governance:
+    name: Tuân thủ
+    uses: ./.github/workflows/check-governance.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   backend:
     name: Backend
     needs: changes
@@ -110,11 +119,19 @@ jobs:
     permissions:
       contents: read
 
+  smoke:
+    name: Chạy thử production
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    uses: ./.github/workflows/check-image.yml
+    permissions:
+      contents: read
+
   # Check bắt buộc duy nhất cho branch protection. Phần bị bỏ qua (PR không
   # đụng tới) tính là đạt; hỏng hoặc bị huỷ thì đỏ.
   result:
     name: CI · kết quả
-    needs: [changes, dependencies, secrets, sast, infra, backend, frontend]
+    needs: [changes, dependencies, secrets, sast, infra, governance, backend, frontend, smoke]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -143,6 +160,7 @@ jobs:
     if: vars.ENABLE_STAGING == 'true'
     uses: ./.github/workflows/deploy.yml
     permissions:
+      actions: read # cổng deploy đọc kết quả CI của commit
       contents: read
       packages: read
     with:
@@ -160,18 +178,55 @@ jobs:
       (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
     uses: ./.github/workflows/deploy.yml
     permissions:
+      actions: read # cổng deploy đọc kết quả CI của commit
       contents: read
       packages: read
     with:
       environment: production
       tag: ${{ github.sha }}
 
-  # Pipeline trên main / lịch tuần hỏng → mở issue giao cho người kích hoạt
-  # (GitHub cũng gửi email). PR hỏng thì tác giả đã thấy ngay trên PR.
+  # Pipeline trên main / lịch tuần hỏng → 1 issue nhãn "ci-hong" ghi rõ job nào hỏng,
+  # giao người kích hoạt (GitHub cũng gửi email). Đang có issue mở thì bình luận vào
+  # đó thay vì mở thêm. PR hỏng thì tác giả đã thấy ngay trên PR.
   notify:
     name: Báo lỗi pipeline
     needs: [result, image, deploy-staging, deploy-production]
     if: failure() && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          failed=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- \(.name) (\(.conclusion)): \(.html_url)"')
+          body="Lần chạy: $RUN_URL
+          Commit: $GITHUB_SHA ($GITHUB_EVENT_NAME, $GITHUB_REF_NAME)
+          Người kích hoạt: @$GITHUB_ACTOR
+
+          Job hỏng:
+          ${failed:-"(không lấy được danh sách — xem lần chạy)"}
+
+          Người nhận xử lý hoặc chuyển đúng người (.github/CICD.md → Trách nhiệm). Issue tự đóng khi pipeline main xanh lại."
+          gh label create ci-hong --color B60205 --description "Pipeline CI/CD trên main hỏng" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-hong --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "Vẫn hỏng — $body"
+            gh issue edit "$open" --repo "$GITHUB_REPOSITORY" --add-assignee "$GITHUB_ACTOR" || true
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --label ci-hong --assignee "$GITHUB_ACTOR" \
+              --title "CI/CD hỏng: ${GITHUB_SHA::7} ($GITHUB_EVENT_NAME)" --body "$body"
+          fi
+
+  # main / lịch tuần xanh lại → đóng issue "ci-hong" đang mở
+  recovered:
+    name: Đóng issue lỗi cũ
+    needs: [result, image]
+    if: success() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -181,10 +236,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh issue create --repo "$GITHUB_REPOSITORY" --assignee "$GITHUB_ACTOR" \
-            --title "CI/CD hỏng: ${GITHUB_SHA::7} ($GITHUB_EVENT_NAME)" \
-            --body "Lần chạy: $RUN_URL
-          Commit: $GITHUB_SHA
-          Người kích hoạt: @$GITHUB_ACTOR
-
-          Người nhận xử lý hoặc chuyển đúng người (.github/CICD.md → Trách nhiệm)."
+          for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-hong --state open --json number --jq '.[].number' 2>/dev/null); do
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Pipeline xanh lại ở ${GITHUB_SHA::7}: $RUN_URL"
+          done

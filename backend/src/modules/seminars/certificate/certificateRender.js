@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 const { lazyRequire } = require('../../../utils/lazyRequire');
-const { BOLD_KEYS } = require('./certificateLayout');
+const { isBold, isSerif } = require('./certificateLayout');
 const {
 	readEmbeddedFonts,
 	splitRuns,
@@ -18,6 +18,7 @@ const {
 	toCidHex,
 	normFontName,
 	fullFontPath,
+	serifFont,
 } = require('./certificateFonts');
 
 /** @type {Map<string, Buffer>} */
@@ -140,8 +141,12 @@ const createRenderer = async (templatePdf, meta) => {
 		doc.registerFontkit(fontkit);
 		const fReg = await doc.embedFont(regular, { subset: true });
 		const fBold = await doc.embedFont(bold, { subset: true });
-		/** @type {import('pdf-lib').PDFFont | undefined} */
-		let fTimes;
+		/** @type {Map<string, import('pdf-lib').PDFFont>} */
+		const stdFonts = new Map();
+		const stdFont = async (name) => {
+			if (!stdFonts.has(name)) stdFonts.set(name, await doc.embedFont(name));
+			return stdFonts.get(name);
+		};
 		const page = doc.getPage(0);
 		// Gắn font nhúng vào Resources của trang (1 lần / font / tài liệu) → tên dùng trong Tf
 		const fontKeys = new Map();
@@ -168,18 +173,41 @@ const createRenderer = async (templatePdf, meta) => {
 		const box = page.getCropBox();
 		const pageW = meta.page.width;
 
+		// Font có chân (Times...) theo kiểu đậm / nghiêng; máy chủ chưa có font → null
+		const serifFor = async (bold, italic) => {
+			const sf = serifFont(bold, italic);
+			return sf ? { font: await embedFull(sf.path), italic: sf.italic } : null;
+		};
+
 		for (const [key, s] of Object.entries(meta.slots)) {
 			if (s.hidden) continue; // người dùng tắt ô này ở màn chỉnh vị trí
 			let text = String(values[key] ?? '').trim();
-			if (key === 'so' && s.suffix) text = text ? text + s.suffix : '';
+			// Chữ in kèm sau giá trị: đuôi "/C33.01" của số giấy, hoặc người dùng tự đặt
+			if (s.suffix) text = text ? text + s.suffix : '';
 			if (!text) continue;
 
-			let font;
-			if (s.serif && key === 'so') {
-				// Số giấy chỉ có chữ số + đuôi ASCII → font chuẩn Times là đủ, khớp mẫu
-				font = fTimes ??= await doc.embedFont(StandardFonts.TimesRoman);
-			} else {
-				font = BOLD_KEYS.has(key) ? fBold : fReg;
+			const bold = isBold(key, s);
+			let font = bold ? fBold : fReg;
+			// Inter không có bản nghiêng → xiên
+			let skew = !!s.italic;
+			if (isSerif(key, s)) {
+				const sf = await serifFor(bold, !!s.italic);
+				if (sf) {
+					font = sf.font;
+					skew = !!s.italic && !sf.italic;
+				} else if (/^[\x20-\x7e]*$/.test(text)) {
+					// Chưa có font Times đầy đủ: chữ ASCII (số giấy...) dùng Times chuẩn của PDF
+					font = await stdFont(
+						bold && s.italic
+							? StandardFonts.TimesRomanBoldItalic
+							: bold
+								? StandardFonts.TimesRomanBold
+								: s.italic
+									? StandardFonts.TimesRomanItalic
+									: StandardFonts.TimesRoman,
+					);
+					skew = false;
+				}
 			}
 			// textSize: cỡ đã chỉnh / tính lúc dò; mẫu lưu trước đó thì suy như cũ
 			let size =
@@ -200,7 +228,7 @@ const createRenderer = async (templatePdf, meta) => {
 				size,
 				font,
 				color: colorOf(s),
-				...(s.italic ? { ySkew: degrees(12) } : {}),
+				...(skew ? { ySkew: degrees(12) } : {}),
 			});
 		}
 
@@ -210,11 +238,16 @@ const createRenderer = async (templatePdf, meta) => {
 		for (const [id, o] of Object.entries(meta.text_overrides || {})) {
 			const t = (meta.texts || []).find((x) => x.id === id);
 			if (!t || !o.text) continue;
-			// Ưu tiên font ĐẦY ĐỦ đặt sẵn (in được mọi ký tự) → font nhúng của mẫu → Inter
+			// Kiểu chữ: người dùng chọn (dòng nét vẽ) hoặc theo dòng gốc
+			const bold = o.bold ?? !!t.bold;
+			const italic = o.italic ?? !!t.italic;
+			// Ưu tiên font ĐẦY ĐỦ đặt sẵn (in được mọi ký tự) → font nhúng của mẫu → Inter.
+			// Dòng nét vẽ không có font gốc: chọn có chân → font Times đặt sẵn (nếu có).
 			const fullPath = t.font ? fullFontPath(normFontName(t.font)) : null;
-			const full = fullPath ? await embedFull(fullPath) : null;
+			const serif = !fullPath && o.serif ? await serifFor(bold, italic) : null;
+			const full = fullPath ? await embedFull(fullPath) : (serif?.font ?? null);
 			const emb = full || !t.font ? undefined : embFonts.get(normFontName(t.font));
-			const fallback = full || (t.bold ? fBold : fReg);
+			const fallback = full || (bold ? fBold : fReg);
 			const runs = splitRuns(o.text, emb);
 			const widthAt = (size) =>
 				runs.reduce(
@@ -230,7 +263,7 @@ const createRenderer = async (templatePdf, meta) => {
 			while (widthAt(size) > maxW && size > MIN_SIZE) size -= 0.25;
 			let x = box.x + (o.align === 'center' ? (o.x0 + o.x1) / 2 - widthAt(size) / 2 : o.x0);
 			const y = box.y + box.height - o.baseline;
-			const color = colorOf(t);
+			const color = colorOf(o.color ? o : t);
 			// Viền mảnh cùng màu như dòng gốc (mẫu dùng để chữ dày hơn) — Tr 2 = tô + viền
 			const ol = t.outline;
 			const olColor = ol ? rgbOf(ol.color) : null;
@@ -238,8 +271,9 @@ const createRenderer = async (templatePdf, meta) => {
 				const useEmb = r.embedded;
 				const key = useEmb ? fontKey(emb) : fallbackKey(fallback);
 				const hex = useEmb ? PDFHexString.of(toCidHex(emb, r.text)) : fallback.encodeText(r.text);
-				// Inter không có bản nghiêng — xiên khi dòng gốc là chữ nghiêng
-				const skew = !useEmb && !full && t.italic ? Math.tan((12 * Math.PI) / 180) : 0;
+				// Inter / font thiếu bản nghiêng — xiên khi cần chữ nghiêng
+				const fakeItalic = full ? !!serif && italic && !serif.italic : italic;
+				const skew = !useEmb && fakeItalic ? Math.tan((12 * Math.PI) / 180) : 0;
 				page.pushOperators(
 					pushGraphicsState(),
 					beginText(),

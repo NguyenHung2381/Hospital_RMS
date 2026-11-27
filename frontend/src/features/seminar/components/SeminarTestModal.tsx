@@ -1,10 +1,10 @@
 import { DatePicker, Modal, QuestionImageField, TimePicker } from '@/shared/components';
 import { formatDateOr } from '@/shared/utils/formatDate';
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { CheckSvg, PlusSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { ImportQuestionsModal, type ImportedQuestion } from '@/features/exam/components/ImportQuestionsModal';
-import { updateSeminarTest, uploadSeminarTestImage } from '../api/seminarApi';
-import type { Seminar, SeminarTestQuestion } from '../types/seminar.type';
+import { createSeminarTest, updateSeminarTest, uploadSeminarTestImage } from '../api/seminarApi';
+import type { Seminar, SeminarTest, SeminarTestInput, SeminarTestQuestion } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
 
 const parse = (json: string | null): SeminarTestQuestion[] => {
@@ -22,39 +22,48 @@ const pointsOf = (q: SeminarTestQuestion) => (q.points && q.points > 0 ? q.point
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 
-// Soạn bài kiểm tra trắc nghiệm cuối buổi + cấu hình (giờ mở / dừng tiếp nhận, thời gian
-// làm bài, điểm từng câu, điểm đạt, trộn đề). Người tự đăng ký qua QR phải điểm
-// danh + nộp bài (và đạt điểm đạt nếu có) mới được cấp CME.
+// Soạn 1 đề kiểm tra trắc nghiệm của hội nghị (một hội nghị có nhiều đề) + cấu hình (giờ mở /
+// dừng tiếp nhận, thời gian làm bài, điểm từng câu, điểm đạt, trộn đề). Người tự đăng ký
+// qua QR phải điểm danh + nộp (và đạt điểm đạt nếu có) mọi đề "tính điều kiện CME" mới
+// được cấp CME. test = null → thêm đề mới.
 export function SeminarTestModal({
 	seminar,
+	test,
 	onClose,
 	onSaved,
 }: {
 	seminar: Seminar;
+	test: SeminarTest | null;
 	onClose: () => void;
 	onSaved: () => void;
 }) {
+	const existing = seminar.tests ?? [];
+	const [title, setTitle] = useState(
+		() => test?.title ?? (existing.length ? `Bài kiểm tra ${existing.length + 1}` : 'Bài kiểm tra cuối buổi'),
+	);
+	const [countsForCme, setCountsForCme] = useState(test?.counts_for_cme ?? true);
 	const [questions, setQuestions] = useState<SeminarTestQuestion[]>(() => {
-		const list = parse(seminar.test_questions);
+		const list = parse(test?.test_questions ?? null);
 		return list.length ? list : [blank()];
 	});
-	const [open, setOpen] = useState(seminar.test_open);
-	const [testDate, setTestDate] = useState(seminar.test_date?.slice(0, 10) ?? '');
-	const [startTime, setStartTime] = useState(seminar.test_start_time ?? '');
-	const [endDate, setEndDate] = useState(seminar.test_end_date?.slice(0, 10) ?? '');
-	const [endTime, setEndTime] = useState(seminar.test_end_time ?? '');
-	const [duration, setDuration] = useState(seminar.test_duration_minutes?.toString() ?? '');
-	const [passScore, setPassScore] = useState(seminar.test_pass_score?.toString() ?? '');
+	const [open, setOpen] = useState(test?.test_open ?? false);
+	const [testDate, setTestDate] = useState(test?.test_date?.slice(0, 10) ?? '');
+	const [startTime, setStartTime] = useState(test?.test_start_time ?? '');
+	const [endDate, setEndDate] = useState(test?.test_end_date?.slice(0, 10) ?? '');
+	const [endTime, setEndTime] = useState(test?.test_end_time ?? '');
+	const [duration, setDuration] = useState(test?.test_duration_minutes?.toString() ?? '');
+	const [passScore, setPassScore] = useState(test?.test_pass_score?.toString() ?? '');
 	// Thang điểm tối đa (vd 10, 100) — trống = thang là tổng điểm các câu
-	const [scale, setScale] = useState(seminar.test_score_scale?.toString() ?? '');
-	const [shuffleQuestions, setShuffleQuestions] = useState(!!seminar.test_shuffle_questions);
-	const [shuffleOptions, setShuffleOptions] = useState(!!seminar.test_shuffle_options);
+	const [scale, setScale] = useState(test?.test_score_scale?.toString() ?? '');
+	const [shuffleQuestions, setShuffleQuestions] = useState(!!test?.test_shuffle_questions);
+	const [shuffleOptions, setShuffleOptions] = useState(!!test?.test_shuffle_options);
 	// Ngày mở bài mặc định khi để trống — khớp testWindow() ở backend
 	const defaultDate = (seminar.end_date || seminar.start_date || '').slice(0, 10);
 	const openDay = testDate || defaultDate;
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const [importing, setImporting] = useState(false);
+	const titleId = useId();
 
 	const filled = questions.filter((q) => !isBlank(q));
 	const totalPoints = round2(filled.reduce((s, q) => s + pointsOf(q), 0));
@@ -66,6 +75,7 @@ export function SeminarTestModal({
 		setQuestions((qs) => qs.map((q, k) => (k === i ? { ...q, ...p } : q)));
 
 	const validate = () => {
+		if (!title.trim()) return 'Chưa nhập tên đề kiểm tra.';
 		if (open && !filled.length) return 'Chưa có câu hỏi nào để mở bài kiểm tra.';
 		if (endDate && !endTime) return 'Chọn giờ dừng tiếp nhận (hoặc bỏ trống ngày dừng tiếp nhận).';
 		if (startTime && endTime && `${endDate || openDay} ${endTime}` <= `${openDay} ${startTime}`)
@@ -93,7 +103,9 @@ export function SeminarTestModal({
 		if (msg) return;
 		setSaving(true);
 		try {
-			await updateSeminarTest(seminar.id, {
+			const data: SeminarTestInput = {
+				title: title.trim(),
+				counts_for_cme: countsForCme,
 				test_questions: filled.map((q) => ({ ...q, points: pointsOf(q) })),
 				test_open: open,
 				test_date: testDate || null,
@@ -105,7 +117,8 @@ export function SeminarTestModal({
 				test_score_scale: scaleNum,
 				test_shuffle_questions: shuffleQuestions,
 				test_shuffle_options: shuffleOptions,
-			});
+			};
+			await (test ? updateSeminarTest(seminar.id, test.id, data) : createSeminarTest(seminar.id, data));
 			onSaved();
 			onClose();
 		} catch (e) {
@@ -115,7 +128,7 @@ export function SeminarTestModal({
 		}
 	};
 
-	// Câu nhập từ file nối vào cuối (bỏ câu trống sẵn có); bấm Lưu mới ghi vào hội nghị
+	// Câu nhập từ file nối vào cuối (bỏ câu trống sẵn có); bấm Lưu mới ghi vào đề
 	const handleImport = async (imported: ImportedQuestion[]) => {
 		const added: SeminarTestQuestion[] = [];
 		for (const x of imported) {
@@ -137,7 +150,7 @@ export function SeminarTestModal({
 				open
 				// Esc khi đang mở modal nhập file chỉ đóng modal đó
 				onClose={importing ? () => {} : onClose}
-				title='Bài kiểm tra cuối buổi'
+				title={test ? `Sửa đề — ${test.title}` : 'Thêm đề kiểm tra'}
 				subtitle='Trắc nghiệm 1 đáp án · chấm tự động'
 				size='lg'
 				bodyClassName={styles.modalBody}
@@ -163,6 +176,25 @@ export function SeminarTestModal({
 					</>
 				}
 			>
+				{/* ── Tên đề ── */}
+				<div className={styles.formGroup}>
+					<label
+						className={styles.formLabel}
+						htmlFor={titleId}
+					>
+						Tên đề <span className={styles.required}>*</span>
+					</label>
+					<input
+						id={titleId}
+						className={styles.formInput}
+						value={title}
+						maxLength={255}
+						aria-required='true'
+						onChange={(e) => setTitle(e.target.value)}
+						placeholder='VD: Bài trước buổi, Bài cuối buổi, Phiên 1...'
+					/>
+				</div>
+
 				{/* ── Thiết lập ── */}
 				<label className={`${styles.testSwitch} ${open ? styles.testSwitchOn : ''}`}>
 					<input
@@ -266,6 +298,23 @@ export function SeminarTestModal({
 							aria-label='Điểm đạt'
 						/>
 						<span className={styles.testUnit}>/ {passMax} điểm</span>
+					</SettingRow>
+					<SettingRow
+						label='Điều kiện CME'
+						hint={
+							countsForCme
+								? 'Người tự đăng ký phải nộp (và đạt điểm đạt nếu đặt) đề này mới được cấp CME.'
+								: 'Đề tham khảo — làm hay không không ảnh hưởng việc cấp CME.'
+						}
+					>
+						<label className={styles.checkFilter}>
+							<input
+								type='checkbox'
+								checked={countsForCme}
+								onChange={(e) => setCountsForCme(e.target.checked)}
+							/>
+							Tính vào điều kiện cấp CME
+						</label>
 					</SettingRow>
 					<SettingRow label='Trộn đề'>
 						<label className={styles.checkFilter}>

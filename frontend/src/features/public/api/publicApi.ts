@@ -600,8 +600,17 @@ export interface SeminarTicket {
 		PublicSeminar,
 		'title' | 'location' | 'start_date' | 'end_date' | 'start_time' | 'end_time' | 'date_text' | 'grants_cme'
 	>;
-	test: {
-		has_test: boolean;
+	/** Các đề kiểm tra của hội nghị (đã soạn câu hỏi), theo thứ tự */
+	tests: SeminarTicketTest[];
+	cme: { certificate_no: string; year: number; credits: number | null } | null;
+}
+
+/** 1 đề kiểm tra trên vé */
+export interface SeminarTicketTest {
+		id: string;
+		title: string;
+		/** Phải nộp (và đạt) đề này mới đủ điều kiện CME */
+		counts_for_cme: boolean;
 		open: boolean;
 		/** off = BTC chưa bật · scheduled = chưa tới giờ · open · closed = quá giờ */
 		state?: 'off' | 'scheduled' | 'open' | 'closed';
@@ -626,8 +635,6 @@ export interface SeminarTicket {
 		passed?: boolean | null;
 		/** Chỉ có khi đang làm bài (đã điểm danh + bài kiểm tra đang mở + chưa nộp) — đã trộn theo vé */
 		questions: { q: string; image: string | null; options: string[]; points?: number }[] | null;
-	};
-	cme: { certificate_no: string; year: number; credits: number | null } | null;
 }
 
 export const getPublicSeminar = (token: string) =>
@@ -650,11 +657,14 @@ export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
 	});
 export const getSeminarTicket = (code: string) =>
 	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}`);
-export const startSeminarTest = (code: string) =>
-	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}/test/start`, { method: 'POST' });
+export const startSeminarTest = (code: string, testId: string) =>
+	request<SeminarTicket>(
+		`/seminar-tickets/${encodeURIComponent(code)}/tests/${encodeURIComponent(testId)}/start`,
+		{ method: 'POST' },
+	);
 /** answers theo thứ tự hiển thị; null = bỏ trống (hết giờ tự nộp) */
-export const submitSeminarTest = (code: string, answers: (number | null)[]) =>
-	request<{ correct: number; total: number; score: number; max_score: number; passed: boolean }>(`/seminar-tickets/${encodeURIComponent(code)}/test`, {
+export const submitSeminarTest = (code: string, testId: string, answers: (number | null)[]) =>
+	request<{ correct: number; total: number; score: number; max_score: number; passed: boolean }>(`/seminar-tickets/${encodeURIComponent(code)}/tests/${encodeURIComponent(testId)}`, {
 		method: 'POST',
 		body: JSON.stringify({ answers }),
 	});

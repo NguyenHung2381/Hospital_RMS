@@ -209,3 +209,89 @@ jobs:
             cat result.txt 2>/dev/null || echo "không có kết quả"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Nâng cấp như production: DB đang ở schema của bản TRƯỚC (migration tại commit
+  # gốc của PR / commit trước của lần push) → chạy `migrate` của bản này (đúng lệnh
+  # deploy.sh gọi). Bắt lỗi mà DB trống (job postgres) không bắt được: migration mới
+  # phụ thuộc thứ tự, sai với schema cũ, đổi tên file. Sau đó:
+  #   - chạy lại `migrate` phải "Không có migration mới", `status` không cảnh báo;
+  #   - mỗi file migration mới chạy lại lần 2 không lỗi (quy ước: viết idempotent —
+  #     deploy hỏng giữa chừng thì chạy lại được).
+  upgrade:
+    name: PostgreSQL (nâng cấp từ bản trước)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      DB_SERVER: 127.0.0.1
+      DB_USER: rms_migrate
+      JWT_SECRET: ci-only-access
+      JWT_REFRESH_SECRET: ci-only-refresh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - name: Commit gốc
+        id: base
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in pull_request) base="$PR_BASE" ;; push) base="$BEFORE" ;; *) base="" ;; esac
+          if [[ "$base" =~ ^[0-9a-f]{40}$ ]] && ! [[ "$base" =~ ^0+$ ]] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "sha=$base" >> "$GITHUB_OUTPUT"
+            echo "Nâng cấp từ ${base::7}"
+          else
+            echo "Không có commit gốc ($EVENT) — dựng từ đầu rồi kiểm tra chạy lại"
+          fi
+      - name: Tạo DB + role
+        run: |
+          psql -U postgres -d postgres -q -v ON_ERROR_STOP=1 \
+            -v migrate_password="$(openssl rand -hex 16)" -v app_password="$(openssl rand -hex 16)" \
+            -f ../infra/postgresql/01_tao_db_va_role.sql
+      - name: Schema của bản trước
+        env:
+          BASE: ${{ steps.base.outputs.sha }}
+        run: |
+          if [ -z "$BASE" ]; then npm run -s migrate -- init; exit 0; fi
+          dir="$RUNNER_TEMP/base"; mkdir -p "$dir"
+          git -C .. archive "$BASE" backend/database/migrations | tar -x -C "$dir"
+          MIGRATIONS_DIR="$dir/backend/database/migrations" npm run -s migrate -- init
+      - name: Nâng cấp lên bản này (lệnh deploy.sh chạy)
+        run: npm run -s migrate
+      - name: Chạy lại không làm gì, trạng thái sạch
+        run: |
+          out=$(npm run -s migrate 2>&1); echo "$out"
+          grep -q 'Không có migration mới' <<<"$out" || { echo "::error::Chạy migrate lần 2 vẫn còn việc — migration không ghi nhận đúng"; exit 1; }
+          st=$(npm run -s migrate -- status 2>&1); tail -n 5 <<<"$st"
+          if grep -qE 'Chờ chạy|⚠️' <<<"$st"; then echo "::error::migrate status còn file chờ / cảnh báo:"; grep -E 'Chờ chạy|⚠️' <<<"$st"; exit 1; fi
+      - name: Migration mới chạy lại lần 2 không lỗi
+        env:
+          BASE: ${{ steps.base.outputs.sha }}
+        run: |
+          [ -n "$BASE" ] || { echo "Không có commit gốc — bỏ qua"; exit 0; }
+          mapfile -t files < <(git -C .. diff --name-only --diff-filter=A "$BASE" HEAD -- backend/database/migrations/ | grep '\.sql$' || true)
+          [ "${#files[@]}" -gt 0 ] || { echo "Không có migration mới"; exit 0; }
+          for f in "${files[@]}"; do
+            echo "── $f"
+            psql -U rms_migrate -d rms_hospital -q -v ON_ERROR_STOP=1 -1 -f "../$f" ||
+              { echo "::error file=$f::Chạy lại lần 2 lỗi — viết idempotent (IF NOT EXISTS, ON CONFLICT, kiểm tra trước khi đổi)"; exit 1; }
+          done

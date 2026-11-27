@@ -1,6 +1,6 @@
 /**
  * seminarDetailExcelService.js — Xuất Excel MỘT hội thảo / hội nghị:
- *   - sheet "Thông tin"      : thời gian (kèm giờ), địa điểm, khung giờ bài test...
+ *   - sheet "Thông tin"      : thời gian (kèm giờ), địa điểm, các đề kiểm tra...
  *   - sheet "Người tham dự"  : cột đầu trùng file mẫu nhập (seminarImportService)
  *                              → sửa rồi nhập lại được; thêm cột điểm danh,
  *                              bài test, CME.
@@ -63,6 +63,39 @@ const seminarWhen = (s) => {
 	return range || s.date_text || '';
 };
 
+// ─── Đề kiểm tra (nhiều đề / hội nghị: s.tests, p.test_results — seminarService.getById) ──
+const testsWithQuestions = (s) => (s.tests || []).filter((t) => t.test_questions);
+const resultOf = (p, t) => (p.test_results || []).find((r) => r.test_id === t.id);
+
+const testSummary = (s, t) => {
+	const questions = parseAgenda(t.test_questions); // cũng là mảng JSON
+	const w = testWindow({ ...t, start_date: s.start_date, end_date: s.end_date });
+	return [
+		`${questions.length} câu · ${maxScore(questions)} điểm`,
+		t.test_score_scale != null ? `quy về thang ${Number(t.test_score_scale)} điểm` : null,
+		w?.start ? `mở ${withTime(w.date, t.test_start_time)}` : null,
+		w?.end ? `dừng nhận bài ${withTime(w.end_date, t.test_end_time)}` : null,
+		t.test_duration_minutes ? `làm bài ${t.test_duration_minutes} phút` : null,
+		t.test_pass_score != null ? `điểm đạt ${t.test_pass_score}` : null,
+		t.counts_for_cme ? 'tính điều kiện CME' : 'không tính điều kiện CME',
+		t.test_open ? 'đang bật' : 'chưa bật',
+	]
+		.filter(Boolean)
+		.join(' · ');
+};
+
+// Điểm đã quy về thang của đề (nếu đặt); bài nộp trước khi có điểm theo trọng số: mỗi câu đúng 1 điểm
+const testCells = (t, r) => {
+	const done = !!r?.test_submitted_at;
+	const score = done ? participantScore(t, r) : null;
+	return {
+		[`test_${t.id}_score`]: done ? `${score}/${scaleMax(t, r.test_max_score ?? r.test_total)}` : '',
+		[`test_${t.id}_correct`]: done ? `${r.test_correct}/${r.test_total}` : '',
+		[`test_${t.id}_passed`]: done ? (isPassed(t, score) ? 'Đạt' : 'Chưa đạt') : '',
+		[`test_${t.id}_submitted_at`]: done ? fmtDateTime(r.test_submitted_at) : '',
+	};
+};
+
 // ─── Sheet thông tin ─────────────────────────────────────────────────────────
 const addInfoSheet = (wb, s, agendaCount) => {
 	const ws = wb.addWorksheet('Thông tin');
@@ -73,10 +106,8 @@ const addInfoSheet = (wb, s, agendaCount) => {
 	ws.getCell(1, 1).alignment = { wrapText: true };
 	ws.getRow(1).height = 36;
 
-	const w = testWindow(s);
-	const questions = parseAgenda(s.test_questions); // cũng là mảng JSON
-	const questionCount = questions.length;
 	const participants = s.participants || [];
+	const tests = testsWithQuestions(s);
 	const rows = [
 		['Hình thức', EVENT_TYPE_LABELS[s.event_type] ?? s.event_type_raw ?? ''],
 		['Phạm vi', SCOPE_LABELS[s.scope] ?? ''],
@@ -93,25 +124,15 @@ const addInfoSheet = (wb, s, agendaCount) => {
 				? `Có${s.cme_default_credits ? ` · ${s.cme_default_credits} tín chỉ` : ''}`
 				: 'Không',
 		],
-		[
-			'Bài kiểm tra cuối buổi',
-			questionCount
-				? [
-						`${questionCount} câu · ${maxScore(questions)} điểm`,
-						s.test_score_scale != null ? `quy về thang ${Number(s.test_score_scale)} điểm` : null,
-						w?.start ? `mở ${withTime(w.date, s.test_start_time)}` : null,
-						w?.end ? `dừng nhận bài ${withTime(w.end_date, s.test_end_time)}` : null,
-						s.test_duration_minutes ? `làm bài ${s.test_duration_minutes} phút` : null,
-						s.test_pass_score != null ? `điểm đạt ${s.test_pass_score}` : null,
-						s.test_open ? 'đang bật' : 'chưa bật',
-					]
-						.filter(Boolean)
-						.join(' · ')
-				: 'Không có',
-		],
+		...(tests.length
+			? tests.map((t) => [`Đề kiểm tra: ${t.title}`, testSummary(s, t)])
+			: [['Đề kiểm tra', 'Không có']]),
 		['Số người tham dự (danh sách)', participants.length],
 		['Đã điểm danh', participants.filter((p) => p.checked_in_at).length],
-		['Đã nộp bài kiểm tra', participants.filter((p) => p.test_submitted_at).length],
+		...tests.map((t) => [
+			`Đã nộp: ${t.title}`,
+			participants.filter((p) => resultOf(p, t)?.test_submitted_at).length,
+		]),
 		['Đã cấp CME', participants.filter((p) => p.cme_seq != null).length],
 		['Số bài học', agendaCount],
 		['Ghi chú', s.notes ?? ''],
@@ -152,16 +173,15 @@ const participantColumns = (s) => {
 		...(hosted
 			? [
 					{ key: 'checked_in_at', header: 'Điểm danh lúc', width: 17 },
-					...(s.test_questions
-						? [
-								{ key: 'test_score', header: 'Điểm bài kiểm tra', width: 12 },
-								{ key: 'test_correct', header: 'Số câu đúng', width: 10 },
-								...(s.test_pass_score != null
-									? [{ key: 'test_passed', header: 'Kết quả', width: 10 }]
-									: []),
-								{ key: 'test_submitted_at', header: 'Nộp bài lúc', width: 17 },
-							]
-						: []),
+					// Mỗi đề kiểm tra một nhóm cột (khoá test_<mã đề>_*)
+					...testsWithQuestions(s).flatMap((t) => [
+						{ key: `test_${t.id}_score`, header: `Điểm: ${t.title}`, width: 12 },
+						{ key: `test_${t.id}_correct`, header: `Số câu đúng: ${t.title}`, width: 10 },
+						...(t.test_pass_score != null
+							? [{ key: `test_${t.id}_passed`, header: `Kết quả: ${t.title}`, width: 10 }]
+							: []),
+						{ key: `test_${t.id}_submitted_at`, header: `Nộp bài lúc: ${t.title}`, width: 17 },
+					]),
 				]
 			: []),
 		...(s.grants_cme
@@ -183,6 +203,7 @@ const addParticipantSheet = (wb, s) => {
 		subtitle: [s.title, seminarWhen(s), `${list.length} người`].filter(Boolean).join(' · '),
 		columns,
 	});
+	const tests = s.scope === 'hosted' ? testsWithQuestions(s) : [];
 	list.forEach((p, i) => {
 		ws.addRow({
 			stt: i + 1,
@@ -202,18 +223,7 @@ const addParticipantSheet = (wb, s) => {
 			phone: p.phone ?? '',
 			email: p.email ?? '',
 			checked_in_at: fmtUtcDateTime(p.checked_in_at),
-			// Điểm đã quy về thang của hội nghị (nếu đặt); bài nộp trước khi có điểm theo
-			// trọng số: mỗi câu đúng 1 điểm
-			test_score: p.test_submitted_at
-				? `${participantScore(s, p)}/${scaleMax(s, p.test_max_score ?? p.test_total)}`
-				: '',
-			test_correct: p.test_submitted_at ? `${p.test_correct}/${p.test_total}` : '',
-			test_passed: p.test_submitted_at
-				? isPassed(s, participantScore(s, p))
-					? 'Đạt'
-					: 'Chưa đạt'
-				: '',
-			test_submitted_at: fmtDateTime(p.test_submitted_at),
+			...Object.assign({}, ...tests.map((t) => testCells(t, resultOf(p, t)))),
 			cme_certificate_no: p.cme_certificate_no ?? '',
 			cme_year: p.cme_year ?? '',
 			cme_status: CME_STATUS_LABELS[p.cme_status] ?? '',

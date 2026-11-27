@@ -5,3 +5,11 @@
 /scripts/deploy.sh    @NguyenHung2381
 /scripts/ci/          @NguyenHung2381
 /.hadolint.yaml       @NguyenHung2381
+# Vùng ảnh hưởng dữ liệu / bảo mật / tuân thủ — luôn cần Code Owner duyệt
+/backend/database/               @NguyenHung2381
+/infra/                          @NguyenHung2381
+/backend/Dockerfile              @NguyenHung2381
+/frontend/Dockerfile             @NguyenHung2381
+/frontend/nginx.conf             @NguyenHung2381
+/docker-compose.prod.yml         @NguyenHung2381
+/.gitleaksignore                 @NguyenHung2381

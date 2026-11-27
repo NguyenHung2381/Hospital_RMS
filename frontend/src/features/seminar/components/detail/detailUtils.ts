@@ -1,28 +1,43 @@
-import type { Seminar, SeminarParticipant } from '../../types/seminar.type';
+import type { Seminar, SeminarParticipant, SeminarTest, SeminarTestResult } from '../../types/seminar.type';
 
 // Làm tròn 2 chữ số kiểu thập phân (khớp ROUND của SQL và utils/seminarTest.scaledScore ở backend)
 const round2 = (n: number) => Number(`${Math.round(Number(`${n.toFixed(9)}e2`))}e-2`);
 
+// ─── Đề kiểm tra (nhiều đề / hội nghị) ───────────────────────────────────────
+
+/** Đề đã soạn câu hỏi — đề trống không hiện trên vé, không tính điều kiện CME */
+export const activeTests = (s: Seminar): SeminarTest[] => (s.tests ?? []).filter((t) => !!t.test_questions);
+
+/** Bài làm của người này cho đề `t` (chưa làm = undefined) */
+export const resultOf = (p: SeminarParticipant, t: SeminarTest): SeminarTestResult | undefined =>
+	p.test_results?.find((r) => r.test_id === t.id);
+
 /** Điểm tối đa của bài người này đã làm — bài cũ chưa có điểm từng câu: tổng số câu */
-const rawMax = (p: SeminarParticipant) => p.test_max_score ?? p.test_total;
+const rawMax = (r: SeminarTestResult) => r.test_max_score ?? r.test_total;
 
 /**
- * Điểm bài kiểm tra ĐÃ quy về thang của hội nghị (test_score_scale): điểm thô ÷ điểm tối đa
+ * Điểm bài kiểm tra ĐÃ quy về thang của đề (test_score_scale): điểm thô ÷ điểm tối đa
  * của bài × thang. Chưa đặt thang = điểm thô như cũ. Bài nộp trước khi có điểm từng câu:
  * mỗi câu đúng 1 điểm. Khớp utils/seminarTest.participantScore ở backend.
  */
-export const testScore = (s: Seminar, p: SeminarParticipant): number | null => {
-	const raw = p.test_score ?? p.test_correct;
+export const testScore = (t: SeminarTest, r: SeminarTestResult): number | null => {
+	const raw = r.test_score ?? r.test_correct;
 	if (raw == null) return null;
-	const max = Number(rawMax(p));
-	if (!s.test_score_scale || !(max > 0)) return round2(Number(raw));
-	return round2((Number(raw) * Number(s.test_score_scale)) / max);
+	const max = Number(rawMax(r));
+	if (!t.test_score_scale || !(max > 0)) return round2(Number(raw));
+	return round2((Number(raw) * Number(t.test_score_scale)) / max);
 };
-/** Mẫu số khi hiện "điểm / tối đa": thang của hội nghị nếu đặt, không thì điểm tối đa của bài */
-export const testMax = (s: Seminar, p: SeminarParticipant) =>
-	s.test_score_scale != null ? Number(s.test_score_scale) : rawMax(p);
-export const testPassed = (s: Seminar, p: SeminarParticipant) =>
-	s.test_pass_score == null || (testScore(s, p) ?? -1) >= s.test_pass_score;
+/** Mẫu số khi hiện "điểm / tối đa": thang của đề nếu đặt, không thì điểm tối đa của bài */
+export const testMax = (t: SeminarTest, r: SeminarTestResult) =>
+	t.test_score_scale != null ? Number(t.test_score_scale) : rawMax(r);
+export const testPassed = (t: SeminarTest, r: SeminarTestResult) =>
+	t.test_pass_score == null || (testScore(t, r) ?? -1) >= t.test_pass_score;
+
+/** Đã nộp và đạt (điểm đạt nếu đặt) đề `t` */
+const testCleared = (p: SeminarParticipant, t: SeminarTest) => {
+	const r = resultOf(p, t);
+	return !!r?.test_submitted_at && testPassed(t, r);
+};
 
 /**
  * Dòng do chính người tham dự tạo: tự đăng ký qua QR (có vé) hoặc tự đăng ký tập huấn trên
@@ -32,18 +47,20 @@ export const testPassed = (s: Seminar, p: SeminarParticipant) =>
 export const selfCreated = (p: SeminarParticipant) =>
 	!!p.ticket_code || (!!p.user_id && !!p.created_by && p.created_by === p.user_id);
 
-// Người tự đăng ký phải điểm danh + nộp bài kiểm tra (nếu có, và đạt điểm đạt nếu đặt)
-// mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarCmeService.
+// Người tự đăng ký phải điểm danh + nộp (và đạt điểm đạt nếu đặt) mọi đề kiểm tra tính
+// điều kiện CME mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarCmeService.
 export const cmeEligible = (p: SeminarParticipant, s: Seminar) =>
-	!selfCreated(p) || (!!p.checked_in_at && (!s.test_questions || (!!p.test_submitted_at && testPassed(s, p))));
+	!selfCreated(p) ||
+	(!!p.checked_in_at && activeTests(s).every((t) => !t.counts_for_cme || testCleared(p, t)));
 
 /** Lý do chưa đủ điều kiện cấp CME (null = đủ / không áp dụng) — hiện trong drawer người tham dự. */
 export const cmeBlockReason = (p: SeminarParticipant, s: Seminar): string | null => {
 	if (!selfCreated(p) || cmeEligible(p, s)) return null;
 	if (!p.checked_in_at)
 		return p.ticket_code ? 'Tự đăng ký qua QR nhưng chưa điểm danh' : 'Tự đăng ký trên cổng nhưng chưa điểm danh';
-	if (!p.test_submitted_at) return 'Chưa nộp bài kiểm tra';
-	return 'Bài kiểm tra chưa đạt điểm đạt';
+	const t = activeTests(s).find((x) => x.counts_for_cme && !testCleared(p, x));
+	if (!t) return null;
+	return resultOf(p, t)?.test_submitted_at ? `"${t.title}" chưa đạt điểm đạt` : `Chưa nộp "${t.title}"`;
 };
 
 export const fmtDate = (s: string | null | undefined) => {
@@ -70,22 +87,22 @@ export const seminarWhen = (s: Seminar) => {
 	return range || s.date_text || '';
 };
 
-// Khung giờ làm bài kiểm tra — ngày mở trống = ngày kết thúc (hoặc bắt đầu), ngày dừng
+// Khung giờ làm 1 đề — ngày mở trống = ngày kết thúc (hoặc bắt đầu) hội nghị, ngày dừng
 // tiếp nhận trống = ngày mở; khớp backend testWindow()
-export const testWhen = (s: Seminar) => {
-	if (!s.test_start_time && !s.test_end_time) return '';
-	const day = s.test_date || s.end_date || s.start_date;
-	const endDay = s.test_end_date || day;
-	if (s.test_end_time && endDay && endDay.slice(0, 10) !== day?.slice(0, 10))
-		return [withTime(s.test_start_time ? day : null, s.test_start_time), withTime(endDay, s.test_end_time)]
+export const testWhen = (t: SeminarTest, s: Seminar) => {
+	if (!t.test_start_time && !t.test_end_time) return '';
+	const day = t.test_date || s.end_date || s.start_date;
+	const endDay = t.test_end_date || day;
+	if (t.test_end_time && endDay && endDay.slice(0, 10) !== day?.slice(0, 10))
+		return [withTime(t.test_start_time ? day : null, t.test_start_time), withTime(endDay, t.test_end_time)]
 			.filter(Boolean)
 			.join(' – ');
-	return `${timeRange(s.test_start_time, s.test_end_time)}${day ? ` · ${fmtDate(day)}` : ''}`;
+	return `${timeRange(t.test_start_time, t.test_end_time)}${day ? ` · ${fmtDate(day)}` : ''}`;
 };
 
-export const parseTestQuestions = (s: Seminar): { points?: number }[] => {
+export const parseTestQuestions = (t: SeminarTest): { points?: number }[] => {
 	try {
-		const list = JSON.parse(s.test_questions || '[]');
+		const list = JSON.parse(t.test_questions || '[]');
 		return Array.isArray(list) ? list : [];
 	} catch {
 		return [];
@@ -103,9 +120,8 @@ export interface DetailCounts {
 	total: number;
 	registered: number;
 	checkedIn: number;
+	/** Đã nộp đủ mọi đề kiểm tra (đã soạn câu hỏi) */
 	submitted: number;
-	testing: number;
-	passed: number;
 	cmeIssued: number;
 	cmeSigned: number;
 	/** Chưa có số CME và đủ điều kiện cấp */
@@ -120,20 +136,16 @@ export const computeCounts = (s: Seminar, list: SeminarParticipant[]): DetailCou
 		registered: 0,
 		checkedIn: 0,
 		submitted: 0,
-		testing: 0,
-		passed: 0,
 		cmeIssued: 0,
 		cmeSigned: 0,
 		cmeReady: 0,
 		cmeBlocked: 0,
 	};
+	const tests = activeTests(s);
 	for (const p of list) {
 		if (p.ticket_code) c.registered++;
 		if (p.checked_in_at) c.checkedIn++;
-		if (p.test_submitted_at) {
-			c.submitted++;
-			if (testPassed(s, p)) c.passed++;
-		} else if (p.test_started_at) c.testing++;
+		if (tests.length && tests.every((t) => !!resultOf(p, t)?.test_submitted_at)) c.submitted++;
 		if (p.cme_seq != null) {
 			c.cmeIssued++;
 			if (p.cme_status === 'signed') c.cmeSigned++;

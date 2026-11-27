@@ -29,12 +29,18 @@ const { SCALED_SCORE_SQL } = require('../../utils/seminarTest');
 // qua QR (có vé) hoặc tự đăng ký tập huấn trên cổng (created_by = user_id, M-08 audit
 // run-5) — phải điểm danh (SELF_CREATED_SQL, khớp requiredAbsentees và selfCreated /
 // cmeEligible ở frontend features/seminar/components/detail/detailUtils.ts).
-// Có bài test thì phải nộp bài và đạt điểm đạt (nếu đặt) — so điểm ĐÃ quy về thang
-// điểm của hội nghị (test_score_scale, xem utils/seminarTest.SCALED_SCORE_SQL); bài nộp
+// Hội nghị có nhiều đề kiểm tra (seminar_tests): mọi đề đã soạn câu hỏi và được đánh dấu
+// "tính điều kiện CME" (counts_for_cme) đều phải nộp bài và đạt điểm đạt của đề (nếu đặt)
+// — so điểm ĐÃ quy về thang điểm của đề (xem utils/seminarTest.SCALED_SCORE_SQL); bài nộp
 // trước khi có điểm theo trọng số (test_score NULL) tính mỗi câu đúng 1 điểm.
 const CME_ELIGIBLE_SQL = `${boolExpr(`NOT ${SELF_CREATED_SQL} OR (p.checked_in_at IS NOT NULL
-  AND (s.test_questions IS NULL OR (p.test_submitted_at IS NOT NULL
-    AND (s.test_pass_score IS NULL OR ${SCALED_SCORE_SQL} >= s.test_pass_score))))`)}`;
+  AND NOT EXISTS (
+    SELECT 1 FROM seminar_tests t
+    WHERE t.seminar_id = p.seminar_id AND t.test_questions IS NOT NULL AND t.counts_for_cme
+      AND NOT EXISTS (
+        SELECT 1 FROM seminar_test_submissions r
+        WHERE r.test_id = t.id AND r.participant_id = p.id AND r.test_submitted_at IS NOT NULL
+          AND (t.test_pass_score IS NULL OR ${SCALED_SCORE_SQL} >= t.test_pass_score))))`)}`;
 
 // Cấp số CME cho 1 hoặc nhiều người (tuần tự, giữ dãy liền mạch).
 /**
@@ -61,7 +67,7 @@ const issueCme = async (seminarId, participantIds, actorId, { year } = {}) => {
 
 		// chỉ người chưa có số, giữ đúng thứ tự gửi lên. Người tự đăng ký (QR có
 		// ticket_code, hoặc tự đăng ký tập huấn trên cổng) phải điểm danh + nộp bài
-		// test (nếu hội nghị có bài test) mới đủ điều kiện — còn lại bỏ qua, báo về `skipped`.
+		// các đề kiểm tra tính điều kiện CME (nếu có) mới đủ điều kiện — còn lại bỏ qua, báo về `skipped`.
 		const listReq = new sql.Request(tx).input('sid', sql.VarChar(20), seminarId);
 		const inParams = ids
 			.map((id, i) => {
@@ -144,6 +150,7 @@ const setCmeStatus = async (seminarId, ids, status, actorId) => {
 };
 
 module.exports = {
+	CME_ELIGIBLE_SQL,
 	issueCme,
 	revokeCme,
 	setCmeStatus,

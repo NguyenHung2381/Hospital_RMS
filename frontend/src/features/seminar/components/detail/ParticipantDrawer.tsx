@@ -26,7 +26,7 @@ import {
 	type SeminarParticipant,
 } from '../../types/seminar.type';
 import s from './Detail.module.css';
-import { cmeBlockReason, cmeEligible, fmtDate, fullName, testMax, testPassed, testScore } from './detailUtils';
+import { activeTests, cmeBlockReason, cmeEligible, fmtDate, fullName, resultOf, testMax, testPassed, testScore } from './detailUtils';
 import type { DetailActions, SeminarPerms } from './types';
 
 export function CmeStatusBadge({ p }: { p: SeminarParticipant }) {
@@ -58,12 +58,11 @@ export function ParticipantDrawer({
 }) {
 	if (!p) return null;
 	const hosted = sm.scope === 'hosted';
-	const hasTest = !!sm.test_questions;
+	const tests = activeTests(sm);
 	const eligible = cmeEligible(p, sm);
 	const block = cmeBlockReason(p, sm);
 	const cmeOps = perms.canCme && sm.grants_cme;
 	const staffNo = p.staff_number ?? p.user_staff_number;
-	const passed = p.test_submitted_at ? testPassed(sm, p) : null;
 
 	return (
 		<Drawer
@@ -179,42 +178,50 @@ export function ParticipantDrawer({
 				</DrawerSection>
 			)}
 
-			{hosted && hasTest && (
-				<DrawerSection
-					title='Bài kiểm tra'
-					icon={<FileTextSvg />}
-				>
-					{p.test_submitted_at ? (
-						<DrawerFields
-							items={[
-								[
-									'Điểm',
-									<span className={s.score}>
-										<b>{testScore(sm, p)}</b>/{testMax(sm, p)}
-									</span>,
-								],
-								['Số câu đúng', `${p.test_correct ?? 0}/${p.test_total ?? 0} câu`],
-								[
-									'Kết quả',
-									sm.test_pass_score == null ? (
-										'Đã nộp (không đặt điểm đạt)'
-									) : (
-										<span className={passed ? sem.okText : sem.badText}>
-											{passed ? 'Đạt' : 'Chưa đạt'} (điểm đạt {sm.test_pass_score})
-										</span>
-									),
-								],
-								['Bắt đầu làm', p.test_started_at ? formatDateTimeVN(p.test_started_at) : null],
-								['Nộp bài lúc', formatDateTimeVN(p.test_submitted_at)],
-							]}
-						/>
-					) : (
-						<span className={sem.muted}>
-							{p.test_started_at ? `Đang làm — bắt đầu ${formatDateTimeVN(p.test_started_at)}` : 'Chưa làm bài'}
-						</span>
-					)}
-				</DrawerSection>
-			)}
+			{hosted &&
+				tests.map((t) => {
+					const r = resultOf(p, t);
+					const passed = r?.test_submitted_at ? testPassed(t, r) : null;
+					return (
+						<DrawerSection
+							key={t.id}
+							title={tests.length > 1 ? t.title : 'Bài kiểm tra'}
+							icon={<FileTextSvg />}
+						>
+							{r?.test_submitted_at ? (
+								<DrawerFields
+									items={[
+										[
+											'Điểm',
+											<span className={s.score}>
+												<b>{testScore(t, r)}</b>/{testMax(t, r)}
+											</span>,
+										],
+										['Số câu đúng', `${r.test_correct ?? 0}/${r.test_total ?? 0} câu`],
+										[
+											'Kết quả',
+											t.test_pass_score == null ? (
+												'Đã nộp (không đặt điểm đạt)'
+											) : (
+												<span className={passed ? sem.okText : sem.badText}>
+													{passed ? 'Đạt' : 'Chưa đạt'} (điểm đạt {t.test_pass_score})
+												</span>
+											),
+										],
+										['Bắt đầu làm', r.test_started_at ? formatDateTimeVN(r.test_started_at) : null],
+										['Nộp bài lúc', formatDateTimeVN(r.test_submitted_at)],
+									]}
+								/>
+							) : (
+								<span className={sem.muted}>
+									{r?.test_started_at
+										? `Đang làm — bắt đầu ${formatDateTimeVN(r.test_started_at)}`
+										: 'Chưa làm bài'}
+								</span>
+							)}
+						</DrawerSection>
+					);
+				})}
 
 			{(sm.grants_cme || p.cme_seq != null) && (
 				<DrawerSection

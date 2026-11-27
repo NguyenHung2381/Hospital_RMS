@@ -79,3 +79,7 @@ legacy_users_created_CHUA_MAT_KHAU.csv
 # Danh sách tài khoản mới cấp cho nhân viên (họ tên thật + tên đăng nhập, mật khẩu ban đầu
 # = tên đăng nhập) — không bao giờ được commit.
 tai-khoan-moi*.xlsx
+
+# Impeccable: trạng thái cục bộ của máy
+.impeccable/config.local.json
+.impeccable/hook.cache.json

@@ -20,6 +20,7 @@ const path = require('path');
 const zlib = require('zlib');
 const { Worker } = require('worker_threads');
 const { shrinkFlateImage } = require('./flateImageShrink');
+const { readVectorTexts, applyPatches } = require('./certificateVector');
 const { norm } = require('../../../utils/vietnameseText');
 const { httpError } = require('../../../utils/httpError');
 const logger = require('../../../config/logger');
@@ -333,7 +334,8 @@ const smallShrink = (mupdf, doc, obj, nw, nh) => {
 
 /**
  * @typedef {{ pdf: Buffer, page: { width: number, height: number },
- *   slots: Record<string, Slot>, unknown: string[], missing: string[], preview: Buffer, texts: TemplateText[] }} PreparedTemplate
+ *   slots: Record<string, Slot>, unknown: string[], missing: string[], preview: Buffer, texts: TemplateText[],
+ *   vector: boolean }} PreparedTemplate  vector: mẫu không có lớp chữ (chữ là nét vẽ)
  */
 
 /**
@@ -360,21 +362,27 @@ const prepareTemplateCore = async (buffer) => {
 		}
 		const page = /** @type {import('mupdf').PDFPage} */ (doc.loadPage(0));
 		const [bx0, by0, bx1, by1] = page.getBounds();
-		const { slots, unknown } = findSlots(readLines(page));
+		const lines = readLines(page);
+		// Không còn ký tự nào: chữ đã chuyển thành nét vẽ → người dùng tự đặt ô / sửa chữ
+		const vector = !lines.some((l) => l.chars.some((c) => c.c.trim()));
+		const { slots, unknown } = findSlots(lines);
 		const found = Object.values(slots);
-		if (!found.length) {
+		const vectorTexts = vector ? readVectorTexts(mupdf, page) : [];
+		if (!found.length && (vector ? !vectorTexts.length : !lines.length)) {
 			throw httpError(
 				400,
-				'Không tìm thấy chỗ điền nào trong mẫu. Các ô cần điền phải là dãy dấu chấm "....." đặt sau nhãn (Chứng nhận, Sinh ngày, Đơn vị công tác, Vai trò, Quy đổi tương đương, Bằng chữ, Số).',
+				'Không tìm thấy chỗ điền nào trong mẫu. Các ô cần điền phải là dãy dấu chấm "....." đặt sau nhãn (Chứng nhận, Sinh ngày, Đơn vị công tác, Vai trò, Quy đổi tương đương, Bằng chữ, Số), hoặc mẫu phải có chữ để đặt ô ở màn chỉnh mẫu.',
 			);
 		}
-		// Lượt 1: xoá chữ (dấu chấm + đuôi "/C33.01" sẽ viết lại) — thu hẹp 0,4pt mỗi
-		// bên để không ăn sang ký tự liền kề ("Số:" và "/").
-		const textBoxes = found.flatMap((s) => [s.box, ...(s.suffixBox ? [s.suffixBox] : [])]);
-		redact(mupdf, page, textBoxes, { textPad: [0.4, -0.4], artPad: 0, text: true });
-		// Lượt 2: chỉ nét vẽ (lớp outline trùng bên dưới), vùng nới rộng — nét vẽ phải
-		// nằm GỌN trong vùng mới bị xoá nên không đụng chữ bên cạnh.
-		redact(mupdf, page, textBoxes, { textPad: [-2.5, 2.5], artPad: 1, text: false });
+		if (found.length) {
+			// Lượt 1: xoá chữ (dấu chấm + đuôi "/C33.01" sẽ viết lại) — thu hẹp 0,4pt mỗi
+			// bên để không ăn sang ký tự liền kề ("Số:" và "/").
+			const textBoxes = found.flatMap((s) => [s.box, ...(s.suffixBox ? [s.suffixBox] : [])]);
+			redact(mupdf, page, textBoxes, { textPad: [0.4, -0.4], artPad: 0, text: true });
+			// Lượt 2: chỉ nét vẽ (lớp outline trùng bên dưới), vùng nới rộng — nét vẽ phải
+			// nằm GỌN trong vùng mới bị xoá nên không đụng chữ bên cạnh.
+			redact(mupdf, page, textBoxes, { textPad: [-2.5, 2.5], artPad: 1, text: false });
+		}
 		await shrinkImages(mupdf, doc);
 		// File xuất từ Illustrator nhúng kèm bản .ai gốc (PieceInfo/AIPrivateData, mẫu
 		// thật ~11MB) để mở lại chỉnh sửa — không cần khi in; garbage=compact dọn object mồ côi.
@@ -384,7 +392,9 @@ const prepareTemplateCore = async (buffer) => {
 		return {
 			pdf,
 			preview: await renderPreviewCore(pdf),
-			texts: await extractTextsCore(pdf),
+			// Thu nhỏ ảnh không đổi toạ độ → dòng nét vẽ dò trên trang gốc vẫn đúng
+			texts: vector ? vectorTexts : await extractTextsCore(pdf),
+			vector,
 			page: { width: bx1 - bx0, height: by1 - by0 },
 			slots,
 			unknown,
@@ -418,8 +428,8 @@ const renderPreviewCore = async (pdf) => {
 /**
  * @typedef {{ id: string, text: string, x0: number, y0: number, x1: number, y1: number,
  *   baseline: number, size: number, color: number[], font: string, bold: boolean, italic: boolean,
- *   outline: { width: number, color: number[] } | null,
- *   align: 'left' | 'center' }} TemplateText
+ *   outline: { width: number, color: number[] } | null, vector?: boolean,
+ *   align: 'left' | 'center' }} TemplateText  vector: dòng chữ dạng nét vẽ (text rỗng — không đọc được)
  */
 const r1 = (v) => Math.round(v * 10) / 10;
 
@@ -537,6 +547,28 @@ const removeTextsCore = async (basePdf, boxes) => {
 	}
 };
 
+// ─── Mẫu chữ dạng nét vẽ (certificateVector.js) ──────────────────────────────
+/**
+ * Xoá các vùng chữ trên mẫu nét vẽ: mỗi vùng dán đè 1 ảnh nền (vẽ lại vùng đó
+ * không có chữ). Trả PDF mới + ảnh xem trước.
+ * @param {Buffer | Uint8Array} basePdf
+ * @param {{ x0: number, y0: number, x1: number, y1: number }[]} rects  toạ độ mupdf (gốc trên-trái)
+ */
+const patchRegionsCore = async (basePdf, rects) => {
+	const mupdf = await loadMupdf();
+	const doc = mupdf.Document.openDocument(basePdf, 'application/pdf').asPDF();
+	try {
+		if (rects.length) {
+			const page = /** @type {import('mupdf').PDFPage} */ (doc.loadPage(0));
+			applyPatches(mupdf, doc, page, rects);
+		}
+		const pdf = Buffer.from(doc.saveToBuffer('garbage=compact,compress').asUint8Array());
+		return { pdf, preview: await renderPreviewCore(pdf) };
+	} finally {
+		doc.destroy?.();
+	}
+};
+
 // ─── Chạy trong worker thread ────────────────────────────────────────────────
 // Bộ nhớ WASM của mupdf chỉ tăng không giảm: xử lý mẫu thật (ảnh nền 7680px)
 // đẩy RSS lên ~400MB và giữ nguyên tới khi tiến trình chết — trong container
@@ -556,7 +588,7 @@ const toBuffers = (r) => {
 };
 
 /**
- * @typedef {'prepare' | 'preview' | 'texts' | 'removeTexts'} WorkerMode
+ * @typedef {'prepare' | 'preview' | 'texts' | 'removeTexts' | 'patchRegions'} WorkerMode
  * @param {WorkerMode} mode
  * @param {Buffer} buffer
  * @param {any} [extra]  removeTexts: danh sách khung cần xoá
@@ -605,6 +637,8 @@ const renderPreview = (pdf) => enqueue('preview', pdf);
 const extractTexts = (pdf) => enqueue('texts', pdf);
 /** @type {(basePdf: Buffer, boxes: { x0: number, y0: number, x1: number, y1: number }[]) => Promise<{ pdf: Buffer, preview: Buffer }>} */
 const removeTexts = (basePdf, boxes) => enqueue('removeTexts', basePdf, boxes);
+/** Mẫu nét vẽ: xoá các vùng bằng miếng vá nền. @type {(basePdf: Buffer, rects: { x0: number, y0: number, x1: number, y1: number }[]) => Promise<{ pdf: Buffer, preview: Buffer }>} */
+const patchRegions = (basePdf, rects) => enqueue('patchRegions', basePdf, rects);
 
 module.exports = {
 	prepareTemplate,
@@ -615,6 +649,8 @@ module.exports = {
 	extractTextsCore,
 	removeTexts,
 	removeTextsCore,
+	patchRegions,
+	patchRegionsCore,
 	SLOT_LABELS,
 	SLOT_KEYS,
 	_test: { classify, findSlots },

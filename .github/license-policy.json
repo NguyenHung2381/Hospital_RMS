@@ -1,0 +1,28 @@
+{
+  "$comment": "Chính sách giấy phép thư viện chạy production (scripts/ci/check-licenses.mjs). Chỉ áp dụng cho gói KHÔNG phải dev (đi vào image backend hoặc bundle frontend). Mẫu dùng * cho phần đuôi. Biểu thức SPDX 'A OR B' đạt khi một vế đạt. File này có Code Owner review.",
+  "deny": [
+    { "pattern": "AGPL-*", "reason": "Copyleft mạng: người dùng truy cập qua mạng có quyền đòi mã nguồn toàn bộ ứng dụng" },
+    { "pattern": "GPL-*", "reason": "Copyleft mạnh: phân phối image/bundle kéo theo nghĩa vụ công bố mã nguồn" },
+    { "pattern": "SSPL-*", "reason": "Không phải giấy phép mã nguồn mở (OSI), điều khoản dịch vụ" },
+    { "pattern": "BUSL-*", "reason": "Giới hạn dùng cho mục đích sản xuất" },
+    { "pattern": "CC-BY-NC-*", "reason": "Cấm dùng thương mại / tổ chức" },
+    { "pattern": "Commons-Clause", "reason": "Giới hạn bán / cung cấp dịch vụ" },
+    { "pattern": "UNLICENSED", "reason": "Mã độc quyền, không được cấp quyền dùng" }
+  ],
+  "review": [
+    { "pattern": "LGPL-*", "reason": "Copyleft yếu: được dùng như thư viện, không sửa mã của gói" },
+    { "pattern": "MPL-*", "reason": "Copyleft theo file: sửa file của gói thì phải công bố file đó" },
+    { "pattern": "EPL-*", "reason": "Copyleft theo module" },
+    { "pattern": "CDDL-*", "reason": "Copyleft theo file" },
+    { "pattern": "SEE LICENSE IN *", "reason": "Giấy phép riêng, cần đọc file LICENSE của gói" }
+  ],
+  "exceptions": [
+    {
+      "name": "mupdf",
+      "license": "AGPL-3.0-or-later",
+      "via": "backend: kiểm tra hồ sơ (docCheck) — dựng trang PDF thành ảnh",
+      "reason": "TẠM CHẤP NHẬN, CHƯA CÓ QUYẾT ĐỊNH. AGPL buộc cung cấp mã nguồn toàn bộ backend cho người dùng qua mạng (gồm cả cổng công khai). Chọn 1: mua giấy phép thương mại của Artifex; thay bằng thư viện giấy phép dễ dãi (pdfjs-dist Apache-2.0 + canvas); hoặc lãnh đạo chấp thuận công bố mã nguồn. Ghi quyết định vào đây rồi gia hạn hoặc gỡ mục này.",
+      "expires": "2027-01-31"
+    }
+  ]
+}

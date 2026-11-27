@@ -19,15 +19,10 @@ const { paging } = require('../../utils/paging');
 const { splitList, inClause, buildWhere } = require('../../utils/sqlFilters');
 const fs = require('fs');
 const path = require('path');
-const { httpError, badRequest } = require('../../utils/httpError');
-const {
-	UPLOADS_ROOT,
-	SAFE_ID,
-	removeUploadedFile,
-	toStoredUploadPath,
-} = require('../../utils/uploadPaths');
+const { httpError } = require('../../utils/httpError');
+const { UPLOADS_ROOT, SAFE_ID } = require('../../utils/uploadPaths');
 const { normalizeTime, normalizeAgenda } = require('../../utils/seminarSchedule');
-const { maxScore } = require('../../utils/seminarTest');
+const seminarTests = require('./seminarTestService');
 const ht = require('./hospitalTraining');
 const {
 	countSelect,
@@ -104,6 +99,36 @@ const getAll = async ({
 	};
 };
 
+// Cột bài kiểm tra cũ (1 bài / hội nghị) — dữ liệu đã chuyển sang seminar_tests /
+// seminar_test_submissions (migration 2027-01-11), cột còn trong DB nhưng không trả ra.
+const LEGACY_SEMINAR_TEST = [
+	'test_questions',
+	'test_open',
+	'test_date',
+	'test_start_time',
+	'test_end_date',
+	'test_end_time',
+	'test_duration_minutes',
+	'test_pass_score',
+	'test_score_scale',
+	'test_shuffle_questions',
+	'test_shuffle_options',
+];
+const LEGACY_PARTICIPANT_TEST = [
+	'test_answers',
+	'test_correct',
+	'test_total',
+	'test_score',
+	'test_max_score',
+	'test_started_at',
+	'test_submitted_at',
+];
+const omitLegacyTest = (row, keys) => {
+	const out = { ...row };
+	for (const k of keys) delete out[k];
+	return out;
+};
+
 const getById = async (id) => {
 	const pool = await getPool();
 	const sets = await queryAll(pool.request().input('id', sql.VarChar(20), id), [
@@ -124,11 +149,27 @@ const getById = async (id) => {
              WHEN 'organizer' THEN 2 WHEN 'attendee' THEN 3 ELSE 4 END,
         p.cme_seq, p.full_name
 		`,
+		`SELECT ${seminarTests.TEST_COLS} FROM seminar_tests t WHERE t.seminar_id = @id ${seminarTests.ORDER}`,
+		`
+      SELECT ${seminarTests.SUBMISSION_COLS}
+      FROM seminar_test_submissions r JOIN seminar_tests t ON t.id = r.test_id
+      WHERE t.seminar_id = @id
+		`,
 	]);
 	const seminar = sets[0][0] && ht.parseTraining(sets[0][0]);
 	if (!seminar) return null;
-	seminar.participants = sets[1];
-	return seminar;
+	// Đề kiểm tra + bài làm (nhiều đề / hội nghị) — participants[].test_results theo đề
+	const results = new Map();
+	for (const r of sets[3]) {
+		if (!results.has(r.participant_id)) results.set(r.participant_id, []);
+		results.get(r.participant_id).push(r);
+	}
+	seminar.tests = sets[2];
+	seminar.participants = sets[1].map((p) => ({
+		...omitLegacyTest(p, LEGACY_PARTICIPANT_TEST),
+		test_results: results.get(p.id) ?? [],
+	}));
+	return omitLegacyTest(seminar, LEGACY_SEMINAR_TEST);
 };
 
 // ─── Chuẩn hóa payload ───────────────────────────────────────────────────────
@@ -141,57 +182,10 @@ const yearOf = (data) => {
 	return m ? parseInt(m[1], 10) : null;
 };
 
-// Bài test cuối buổi: [{ q, image?, options: [..≥2], answer: index }] — trắc
-// nghiệm 1 đáp án, chấm tự động khi nộp (seminarParticipantService.submitTest).
-// image: ảnh minh họa, tải lên qua POST /seminars/:id/test-image.
-const testImageDir = (seminarId) => `/uploads/seminars/${seminarId}/test/`;
-const testImages = (json) => {
-	try {
-		return (JSON.parse(json || '[]') || []).map((x) => x?.image).filter(Boolean);
-	} catch {
-		return [];
-	}
-};
-const normalizeTestQuestions = (raw, seminarId) => {
-	if (raw === null || raw === '') return null;
-	if (!Array.isArray(raw)) throw badRequest('Danh sách câu hỏi không hợp lệ.');
-	if (!raw.length) return null;
-	const out = raw.map((x, i) => {
-		const q = String(x?.q ?? '').trim();
-		const options = (Array.isArray(x?.options) ? x.options : []).map((o) => String(o ?? '').trim());
-		const answer = Number(x?.answer);
-		if (!q) throw badRequest(`Câu ${i + 1}: chưa nhập nội dung câu hỏi.`);
-		if (options.length < 2) throw badRequest(`Câu ${i + 1}: cần ít nhất 2 phương án.`);
-		// Không tự lọc phương án trống — lọc sẽ làm lệch chỉ số đáp án đúng
-		if (options.some((o) => !o)) throw badRequest(`Câu ${i + 1}: có phương án để trống.`);
-		if (!Number.isInteger(answer) || answer < 0 || answer >= options.length)
-			throw badRequest(`Câu ${i + 1}: chưa chọn đáp án đúng.`);
-		const points = x?.points == null || x.points === '' ? 1 : Number(x.points);
-		if (!Number.isFinite(points) || points <= 0 || points > 1000)
-			throw badRequest(`Câu ${i + 1}: điểm phải lớn hơn 0 (tối đa 1000).`);
-		const image = toStoredUploadPath(x?.image, testImageDir(seminarId));
-		const out = { q, options, answer, points: Math.round(points * 100) / 100 };
-		return image ? { ...out, image } : out;
-	});
-	return JSON.stringify(out);
-};
-
-// Giờ 'HH:mm': hội nghị (start/end_time) và khung giờ bài test cuối buổi
+// Giờ 'HH:mm' của hội nghị. Đề kiểm tra (nhiều đề / hội nghị) sửa qua seminarTestService.
 const TIME_FIELDS = {
 	start_time: 'Giờ bắt đầu',
 	end_time: 'Giờ kết thúc',
-	test_start_time: 'Giờ mở bài kiểm tra',
-	test_end_time: 'Giờ dừng tiếp nhận bài kiểm tra',
-};
-
-// Thời gian làm bài (phút) / điểm đạt: '' / null → null; sai → 400
-const optionalNumber = (v, label, { min, max, integer = false }) => {
-	if (v === undefined) return undefined;
-	if (v === null || v === '') return null;
-	const n = Number(v);
-	if (!Number.isFinite(n) || n < min || n > max || (integer && !Number.isInteger(n)))
-		throw badRequest(`${label} phải là ${integer ? 'số nguyên' : 'số'} từ ${min} đến ${max}.`);
-	return integer ? n : Math.round(n * 100) / 100;
 };
 
 const create = async (input, actorId) => {
@@ -261,8 +255,6 @@ const FIELD_TYPES = {
 	location: sql.NVarChar(255),
 	start_date: sql.Date,
 	end_date: sql.Date,
-	test_date: sql.Date,
-	test_end_date: sql.Date,
 	date_text: sql.NVarChar(100),
 	host_chair: sql.NVarChar(255),
 	speakers: sql.NVarChar(sql.MAX),
@@ -281,7 +273,6 @@ const FIELD_TYPES = {
 
 const update = async (id, input, actorId) => {
 	const data = ht.applyLessonCredits(input);
-	const pool = await getPool();
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
@@ -301,41 +292,6 @@ const update = async (id, input, actorId) => {
 			req.input(key, sql.VarChar(5), times[key]);
 		}
 	}
-	// Ngày trống = mặc định (xem seminarSchedule.testWindow); chỉ so được khi biết ngày
-	if (times.test_start_time && times.test_end_time) {
-		const openDay = String(data.test_date || '').slice(0, 10);
-		const closeDay = String(data.test_end_date || '').slice(0, 10) || openDay;
-		if (`${closeDay} ${times.test_end_time}` <= `${openDay} ${times.test_start_time}`)
-			throw badRequest('Thời điểm dừng tiếp nhận bài kiểm tra phải sau thời điểm mở bài.');
-	}
-	const duration = optionalNumber(data.test_duration_minutes, 'Thời gian làm bài (phút)', {
-		min: 1,
-		max: 1440,
-		integer: true,
-	});
-	if (duration !== undefined) {
-		sets.push('test_duration_minutes = @test_duration_minutes');
-		req.input('test_duration_minutes', sql.Int, duration);
-	}
-	const passScore = optionalNumber(data.test_pass_score, 'Điểm đạt', { min: 0, max: 100000 });
-	if (passScore !== undefined) {
-		sets.push('test_pass_score = @test_pass_score');
-		req.input('test_pass_score', sql.Decimal(7, 2), passScore);
-	}
-	// Thang điểm tối đa (vd 10, 100): điểm bài làm được quy về thang này trước khi so điểm đạt.
-	// Trống = thang là tổng điểm các câu (cách cũ).
-	const scale = optionalNumber(data.test_score_scale, 'Thang điểm tối đa', { min: 1, max: 10000 });
-	if (scale !== undefined) {
-		sets.push('test_score_scale = @test_score_scale');
-		req.input('test_score_scale', sql.Decimal(7, 2), scale);
-		if (scale != null && passScore != null && passScore > scale)
-			throw badRequest(`Điểm đạt (${passScore}) lớn hơn thang điểm tối đa (${scale}).`);
-	}
-	for (const key of ['test_shuffle_questions', 'test_shuffle_options']) {
-		if (data[key] === undefined) continue;
-		sets.push(`${key} = @${key}`);
-		req.input(key, sql.Bit, data[key] ? 1 : 0);
-	}
 	if (data.agenda !== undefined) {
 		sets.push('agenda = @agenda');
 		req.input('agenda', sql.NVarChar(sql.MAX), normalizeAgenda(data.agenda));
@@ -352,27 +308,6 @@ const update = async (id, input, actorId) => {
 		sets.push('grants_cme = @grants_cme');
 		req.input('grants_cme', sql.Bit, data.grants_cme ? 1 : 0);
 	}
-	if (data.test_open !== undefined) {
-		sets.push('test_open = @test_open');
-		req.input('test_open', sql.Bit, data.test_open ? 1 : 0);
-	}
-	let removedImages = [];
-	if (data.test_questions !== undefined) {
-		const next = normalizeTestQuestions(data.test_questions, id);
-		const max = maxScore(JSON.parse(next || '[]'));
-		if (passScore != null && next && !scale && passScore > max)
-			throw badRequest(`Điểm đạt (${passScore}) lớn hơn tổng điểm bài kiểm tra (${max}).`);
-		const prev = (
-			await pool
-				.request()
-				.input('id', sql.VarChar(20), id)
-				.query('SELECT test_questions FROM seminars WHERE id = @id')
-		).recordset[0]?.test_questions;
-		const kept = new Set(testImages(next));
-		removedImages = testImages(prev).filter((img) => !kept.has(img));
-		sets.push('test_questions = @test_questions');
-		req.input('test_questions', sql.NVarChar(sql.MAX), next);
-	}
 	if (data.event_year !== undefined || data.start_date !== undefined) {
 		sets.push('event_year = @event_year');
 		req.input('event_year', sql.Int, yearOf(data));
@@ -383,7 +318,6 @@ const update = async (id, input, actorId) => {
 		await withActorTransaction(actorId, (tx) =>
 			ht.setRequiredDepartments(tx, id, data.required_department_ids),
 		);
-	removedImages.forEach(removeUploadedFile);
 	broadcast('update', { entity: 'seminar' });
 	return getById(id);
 };

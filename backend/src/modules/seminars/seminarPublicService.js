@@ -57,10 +57,11 @@ const parseQuestions = (json) => {
 
 const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date, s.start_time, s.end_time,
   s.date_text, s.grants_cme, s.cme_default_credits, s.scope`;
-// Bài test: câu hỏi + công tắc mở + khung giờ (utils/seminarSchedule.testState) + cấu hình (utils/seminarTest)
-const SEMINAR_TEST_COLS = `s.test_questions, s.test_open, s.test_date, s.test_end_date, s.test_start_time,
-  s.test_end_time, s.test_duration_minutes, s.test_pass_score, s.test_score_scale, s.test_shuffle_questions,
-  s.test_shuffle_options`;
+// Đề kiểm tra (seminar_tests t): câu hỏi + công tắc mở + khung giờ (utils/seminarSchedule.testState)
+// + cấu hình (utils/seminarTest)
+const TEST_PUBLIC_COLS = `t.id, t.title, t.counts_for_cme, t.test_questions, t.test_open, t.test_date,
+  t.test_end_date, t.test_start_time, t.test_end_time, t.test_duration_minutes, t.test_pass_score,
+  t.test_score_scale, t.test_shuffle_questions, t.test_shuffle_options`;
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
 const REG_OPEN_SQL = `${boolExpr(`s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
   >= CAST(${nowSql} AS DATE)`)}`;
@@ -240,42 +241,67 @@ const sendBadgeMail = async (seminar, data, code) => {
 	});
 };
 
-// Vé + bài test của 1 người (p.id đặt tên khác vì trùng s.id). test_elapsed_sec tính trong SQL vì test_started_at
-// ghi bằng nowSql (giờ VN do CSDL tính) — tránh lệch múi giờ khi so ở Node.
+// Vé của 1 người + mọi đề kiểm tra của hội nghị (đã soạn câu hỏi) kèm bài làm của người đó.
+// test_elapsed_sec tính trong SQL vì test_started_at ghi bằng nowSql (giờ VN do CSDL tính)
+// — tránh lệch múi giờ khi so ở Node.
 const loadTicket = async (code) => {
 	const pool = await getPool();
 	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
       SELECT p.id AS participant_id, p.ticket_code, p.title_prefix, p.full_name, p.organization, p.checked_in_at,
-             p.test_started_at, ${dateDiff('SECOND', 'p.test_started_at', nowSql)} AS test_elapsed_sec,
-             p.test_submitted_at, p.test_correct, p.test_total, p.test_score, p.test_max_score,
-             p.cme_certificate_no, p.cme_year, p.cme_credits,
-             ${SEMINAR_TEST_COLS}, ${SEMINAR_PUBLIC_COLS}
+             p.cme_certificate_no, p.cme_year, p.cme_credits, ${SEMINAR_PUBLIC_COLS}
       FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
       WHERE p.ticket_code = @code;
     `);
 	const row = r.recordset[0];
 	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
+	const tests = await pool
+		.request()
+		.input('sid', sql.VarChar(20), row.id)
+		.input('pid', sql.VarChar(24), row.participant_id).query(`
+      SELECT ${TEST_PUBLIC_COLS},
+             x.test_started_at, ${dateDiff('SECOND', 'x.test_started_at', nowSql)} AS test_elapsed_sec,
+             x.test_submitted_at, x.test_correct, x.test_total, x.test_score, x.test_max_score
+      FROM seminar_tests t
+      LEFT JOIN seminar_test_submissions x ON x.test_id = t.id AND x.participant_id = @pid
+      WHERE t.seminar_id = @sid AND t.test_questions IS NOT NULL
+      ORDER BY t.sort_order, t.created_at, t.id;
+    `);
+	// Dòng đề + ngày hội nghị (ngày mở mặc định của testWindow) + vé (điểm danh, hạt giống trộn đề)
+	row.tests = tests.recordset.map((t) => ({
+		...t,
+		start_date: row.start_date,
+		end_date: row.end_date,
+		ticket_code: row.ticket_code,
+		checked_in_at: row.checked_in_at,
+	}));
 	return row;
 };
 
-// Trạng thái lượt làm bài của 1 vé lúc `now`
-const testAttempt = (row, now = Date.now()) => {
-	const questions = parseQuestions(row.test_questions);
-	const state = testState(row, now);
-	const started = !!row.test_started_at;
-	const deadline = attemptDeadline(row, started ? row.test_elapsed_sec : null, now);
+const findTest = (row, testId) => {
+	const t = row.tests.find((x) => x.id === testId);
+	if (!t) throw httpError(404, 'Đề kiểm tra không tồn tại.');
+	return t;
+};
+
+// Trạng thái lượt làm 1 đề của 1 vé lúc `now`. `t` = dòng đề đã ghép (loadTicket).
+const testAttempt = (t, now = Date.now()) => {
+	const questions = parseQuestions(t.test_questions);
+	const state = testState(t, now);
+	const started = !!t.test_started_at;
+	const deadline = attemptDeadline(t, started ? t.test_elapsed_sec : null, now);
 	const expired = deadline != null && now > deadline;
 	// Có giới hạn thời gian làm bài thì phải bấm "Bắt đầu" mới nhận đề và bắt đầu tính giờ
-	const needsStart = !!row.test_duration_minutes && !started;
+	const needsStart = !!t.test_duration_minutes && !started;
 	const eligible = !!(
 		questions.length &&
-		row.checked_in_at &&
-		!row.test_submitted_at &&
+		t.checked_in_at &&
+		!t.test_submitted_at &&
 		state === 'open'
 	);
-	const order = testOrder(questions, row.ticket_code, {
-		shuffleQuestions: !!row.test_shuffle_questions,
-		shuffleOptions: !!row.test_shuffle_options,
+	// Mỗi đề trộn riêng: cùng vé + cùng đề luôn ra cùng một thứ tự
+	const order = testOrder(questions, `${t.ticket_code}:${t.id}`, {
+		shuffleQuestions: !!t.test_shuffle_questions,
+		shuffleOptions: !!t.test_shuffle_options,
 	});
 	return {
 		questions,
@@ -290,28 +316,63 @@ const testAttempt = (row, now = Date.now()) => {
 };
 
 // Lỗi chung khi bắt đầu / nộp bài
-const assertCanTest = (row, a) => {
-	if (!a.questions.length) throw httpError(409, 'Hội nghị này không có bài kiểm tra.');
-	if (!row.checked_in_at)
+const assertCanTest = (t, a) => {
+	if (!a.questions.length) throw httpError(409, 'Đề kiểm tra này chưa có câu hỏi.');
+	if (!t.checked_in_at)
 		throw httpError(
 			409,
 			'Bạn chưa được điểm danh — vui lòng đưa mã QR cho ban tổ chức quét trước.',
 		);
-	if (row.test_submitted_at) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
-	if (a.state === 'off') throw httpError(409, 'Bài kiểm tra chưa mở hoặc đã đóng.');
+	if (t.test_submitted_at) throw httpError(409, `Bạn đã nộp bài "${t.title}" rồi.`);
+	if (a.state === 'off') throw httpError(409, `Bài "${t.title}" chưa mở hoặc đã đóng.`);
 	if (a.state === 'scheduled')
-		throw httpError(409, `Chưa tới giờ làm bài kiểm tra (mở lúc ${row.test_start_time}).`);
+		throw httpError(409, `Chưa tới giờ làm bài "${t.title}" (mở lúc ${t.test_start_time}).`);
+};
+
+// 1 đề trên vé — không bao giờ gửi đáp án đúng ra cổng công khai
+const ticketTest = (t, now) => {
+	const a = testAttempt(t, now);
+	const window = testWindow(t, now);
+	const submitted = !!t.test_submitted_at;
+	// Điểm đã quy về thang của đề (nếu đặt); bài nộp trước khi có điểm theo trọng số:
+	// mỗi câu đúng 1 điểm
+	const score = participantScore(t, t);
+	return {
+		id: t.id,
+		title: t.title,
+		counts_for_cme: !!t.counts_for_cme,
+		open: a.state === 'open',
+		state: a.state,
+		window: window
+			? {
+					date: window.date,
+					end_date: window.end_date,
+					start_time: t.test_start_time,
+					end_time: t.test_end_time,
+				}
+			: null,
+		question_count: a.questions.length,
+		max_score: scaleMax(t, submitted ? (t.test_max_score ?? t.test_total) : maxScore(a.questions)),
+		duration_minutes: t.test_duration_minutes,
+		pass_score: t.test_pass_score,
+		can_start: a.canStart,
+		// Đã bắt đầu nhưng quá hạn mà chưa nộp (đóng trang trước khi tự nộp)
+		expired: a.started && !submitted && a.expired,
+		// Giây còn lại tới hạn nộp — trang vé đếm ngược, hết giờ thì tự nộp
+		remaining_seconds:
+			a.canTake && a.deadline != null ? Math.max(0, Math.floor((a.deadline - now) / 1000)) : null,
+		submitted_at: t.test_submitted_at,
+		correct: t.test_correct,
+		total: t.test_total,
+		score: submitted ? score : null,
+		passed: submitted ? isPassed(t, score) : null,
+		questions: a.canTake ? publicQuestions(a.questions, a.order) : null,
+	};
 };
 
 const getTicket = async (code) => {
 	const row = await loadTicket(code);
 	const now = Date.now();
-	const a = testAttempt(row, now);
-	const window = testWindow(row, now);
-	const submitted = !!row.test_submitted_at;
-	// Điểm đã quy về thang của hội nghị (nếu đặt); bài nộp trước khi có điểm theo
-	// trọng số: mỗi câu đúng 1 điểm
-	const score = participantScore(row, row);
 	return {
 		title_prefix: row.title_prefix,
 		full_name: row.full_name,
@@ -327,71 +388,42 @@ const getTicket = async (code) => {
 			date_text: row.date_text,
 			grants_cme: row.grants_cme,
 		},
-		test: {
-			has_test: a.questions.length > 0,
-			open: a.state === 'open',
-			state: a.state,
-			window: window
-				? {
-						date: window.date,
-						end_date: window.end_date,
-						start_time: row.test_start_time,
-						end_time: row.test_end_time,
-					}
-				: null,
-			question_count: a.questions.length,
-			max_score: scaleMax(
-				row,
-				submitted ? (row.test_max_score ?? row.test_total) : maxScore(a.questions),
-			),
-			duration_minutes: row.test_duration_minutes,
-			pass_score: row.test_pass_score,
-			can_start: a.canStart,
-			// Đã bắt đầu nhưng quá hạn mà chưa nộp (đóng trang trước khi tự nộp)
-			expired: a.started && !submitted && a.expired,
-			// Giây còn lại tới hạn nộp — trang vé đếm ngược, hết giờ thì tự nộp
-			remaining_seconds:
-				a.canTake && a.deadline != null ? Math.max(0, Math.floor((a.deadline - now) / 1000)) : null,
-			submitted_at: row.test_submitted_at,
-			correct: row.test_correct,
-			total: row.test_total,
-			score: submitted ? score : null,
-			passed: submitted ? isPassed(row, score) : null,
-			// Không bao giờ gửi đáp án đúng ra cổng công khai
-			questions: a.canTake ? publicQuestions(a.questions, a.order) : null,
-		},
+		tests: row.tests.map((t) => ticketTest(t, now)),
 		cme: row.cme_certificate_no
 			? { certificate_no: row.cme_certificate_no, year: row.cme_year, credits: row.cme_credits }
 			: null,
 	};
 };
 
-// Bấm "Bắt đầu làm bài" (chỉ khi có giới hạn thời gian) — ghi giờ bắt đầu 1 lần duy nhất
-const startTest = async (code) => {
+// Bấm "Bắt đầu làm bài" (chỉ khi đề có giới hạn thời gian) — ghi giờ bắt đầu 1 lần duy nhất
+const startTest = async (code, testId) => {
 	const row = await loadTicket(code);
-	const a = testAttempt(row);
-	assertCanTest(row, a);
+	const t = findTest(row, testId);
+	const a = testAttempt(t);
+	assertCanTest(t, a);
 	if (a.state === 'closed') throw httpError(409, 'Đã hết thời gian nhận bài kiểm tra.');
-	if (row.test_duration_minutes && !row.test_started_at) {
+	if (t.test_duration_minutes && !t.test_started_at) {
 		const pool = await getPool();
 		await pool
 			.request()
-			.input('id', sql.VarChar(24), row.participant_id)
-			.query(
-				`UPDATE seminar_participants SET test_started_at = ${nowSql} WHERE id = @id AND test_started_at IS NULL`,
-			);
+			.input('tid', sql.VarChar(20), t.id)
+			.input('pid', sql.VarChar(24), row.participant_id).query(`
+        INSERT INTO seminar_test_submissions (test_id, participant_id, test_started_at)
+        VALUES (@tid, @pid, ${nowSql})
+        ON CONFLICT (test_id, participant_id) DO NOTHING`);
 		broadcast('update', { entity: 'seminar' });
 	}
 	return getTicket(code);
 };
 
 // `answers` theo thứ tự câu/phương án hiển thị trên vé; null = bỏ trống (hết giờ tự nộp)
-const submitTest = async (code, answers) => {
+const submitTest = async (code, testId, answers) => {
 	const row = await loadTicket(code);
+	const t = findTest(row, testId);
 	const now = Date.now();
-	const a = testAttempt(row, now);
-	assertCanTest(row, a);
-	if (row.test_duration_minutes && !a.started)
+	const a = testAttempt(t, now);
+	assertCanTest(t, a);
+	if (t.test_duration_minutes && !a.started)
 		throw httpError(409, 'Bạn chưa bấm "Bắt đầu làm bài".');
 	// Hạn đã gồm giờ dừng tiếp nhận; cho trễ SUBMIT_GRACE_MS cho bài tự nộp lúc hết giờ
 	if (a.deadline != null && now > a.deadline + SUBMIT_GRACE_MS)
@@ -400,29 +432,36 @@ const submitTest = async (code, answers) => {
 		throw httpError(400, 'Đề bài đã thay đổi — vui lòng tải lại trang.');
 	const g = gradeTest(a.questions, a.order, answers);
 
+	// Đề không giới hạn giờ chưa có dòng bài làm → INSERT; đã bấm bắt đầu → cập nhật dòng đó.
 	// WHERE test_submitted_at IS NULL: 2 lần bấm nộp song song chỉ ghi 1 lần
 	const pool = await getPool();
 	const u = await pool
 		.request()
-		.input('id', sql.VarChar(24), row.participant_id)
+		.input('tid', sql.VarChar(20), t.id)
+		.input('pid', sql.VarChar(24), row.participant_id)
 		.input('answers', sql.NVarChar(sql.MAX), JSON.stringify(g.picked))
 		.input('correct', sql.Int, g.correct)
 		.input('total', sql.Int, g.total)
 		.input('score', sql.Decimal(7, 2), g.score)
 		.input('max_score', sql.Decimal(7, 2), g.max_score).query(`
-      UPDATE seminar_participants
-      SET test_answers = @answers, test_correct = @correct, test_total = @total,
-          test_score = @score, test_max_score = @max_score, test_submitted_at = ${nowSql}
-      WHERE id = @id AND test_submitted_at IS NULL
+      INSERT INTO seminar_test_submissions AS x (test_id, participant_id, test_answers, test_correct,
+        test_total, test_score, test_max_score, test_submitted_at)
+      VALUES (@tid, @pid, @answers, @correct, @total, @score, @max_score, ${nowSql})
+      ON CONFLICT (test_id, participant_id) DO UPDATE
+      SET test_answers = EXCLUDED.test_answers, test_correct = EXCLUDED.test_correct,
+          test_total = EXCLUDED.test_total, test_score = EXCLUDED.test_score,
+          test_max_score = EXCLUDED.test_max_score, test_submitted_at = EXCLUDED.test_submitted_at
+      WHERE x.test_submitted_at IS NULL
     `);
-	if (!u.rowsAffected[0]) throw httpError(409, 'Bạn đã nộp bài kiểm tra rồi.');
+	if (!u.rowsAffected[0]) throw httpError(409, `Bạn đã nộp bài "${t.title}" rồi.`);
 	broadcast('update', { entity: 'seminar' });
+	const score = scaledScore(t, g.score, g.max_score);
 	return {
 		correct: g.correct,
 		total: g.total,
-		score: scaledScore(row, g.score, g.max_score),
-		max_score: scaleMax(row, g.max_score),
-		passed: isPassed(row, scaledScore(row, g.score, g.max_score)),
+		score,
+		max_score: scaleMax(t, g.max_score),
+		passed: isPassed(t, score),
 	};
 };
 

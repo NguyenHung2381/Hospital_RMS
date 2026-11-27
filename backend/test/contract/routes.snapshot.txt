@@ -336,8 +336,8 @@ GET    /api/v1/public/featured-topics  public
 GET    /api/v1/public/levels  public
 POST   /api/v1/public/lookup  public
 GET    /api/v1/public/seminar-tickets/:code  public
-POST   /api/v1/public/seminar-tickets/:code/test  public
-POST   /api/v1/public/seminar-tickets/:code/test/start  public
+POST   /api/v1/public/seminar-tickets/:code/tests/:testId  public
+POST   /api/v1/public/seminar-tickets/:code/tests/:testId/start  public
 GET    /api/v1/public/seminars/:token  public
 POST   /api/v1/public/seminars/:token/register  public
 POST   /api/v1/public/seminars/:token/staff-lookup  public
@@ -403,6 +403,9 @@ POST   /api/v1/seminars/:id/participants/import-excel  seminars:import
 POST   /api/v1/seminars/:id/participants/issue-cme  seminars:cme_manage
 GET    /api/v1/seminars/:id/required-absentees  seminars:read
 POST   /api/v1/seminars/:id/test-image  seminars:update
+POST   /api/v1/seminars/:id/tests  seminars:update
+PUT    /api/v1/seminars/:id/tests/:testId  seminars:update
+DELETE /api/v1/seminars/:id/tests/:testId  seminars:update
 POST   /api/v1/seminars/checkin  authOnly
 GET    /api/v1/seminars/cme-compliance  seminars:cme_manage
 GET    /api/v1/seminars/cme-cycle-compliance  seminars:cme_manage

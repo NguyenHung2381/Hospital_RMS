@@ -14,7 +14,8 @@ import type {
 	SeminarListResponse,
 	SeminarAgendaItem,
 	SeminarParticipant,
-	SeminarTestQuestion,
+	SeminarTest,
+	SeminarTestInput,
 } from '../types/seminar.type';
 import { seg } from '../../../shared/api/path';
 
@@ -125,23 +126,13 @@ export interface TicketCheckIn {
 export const checkInTicket = (seminarId: string, code: string) =>
 	apiClient.post<TicketCheckIn>(`/seminars/${seg(seminarId)}/checkin-ticket`, { code });
 
-export const updateSeminarTest = (
-	id: string,
-	data: {
-		test_questions?: SeminarTestQuestion[] | null;
-		test_open?: boolean;
-		test_date?: string | null;
-		test_start_time?: string | null;
-		test_end_date?: string | null;
-		test_end_time?: string | null;
-		test_duration_minutes?: number | null;
-		test_pass_score?: number | null;
-		/** Thang điểm tối đa — trống = tổng điểm các câu */
-		test_score_scale?: number | null;
-		test_shuffle_questions?: boolean;
-		test_shuffle_options?: boolean;
-	},
-) => apiClient.put<Seminar>(`/seminars/${seg(id)}`, data);
+// Đề kiểm tra — nhiều đề / hội nghị
+export const createSeminarTest = (seminarId: string, data: SeminarTestInput) =>
+	apiClient.post<SeminarTest>(`/seminars/${seg(seminarId)}/tests`, data);
+export const updateSeminarTest = (seminarId: string, testId: string, data: SeminarTestInput) =>
+	apiClient.put<SeminarTest>(`/seminars/${seg(seminarId)}/tests/${seg(testId)}`, data);
+export const deleteSeminarTest = (seminarId: string, testId: string) =>
+	apiClient.delete(`/seminars/${seg(seminarId)}/tests/${seg(testId)}`);
 
 export const updateSeminarAgenda = (id: string, agenda: SeminarAgendaItem[] | null) =>
 	apiClient.put<Seminar>(`/seminars/${seg(id)}`, { agenda });
@@ -246,6 +237,8 @@ export interface CertificateTemplateInfo {
 	fields: { key: string; label: string; found: boolean }[];
 	/** Dãy "....." không nhận ra là ô nào — giữ nguyên trên giấy */
 	unknown: string[];
+	/** Mẫu không có lớp chữ (chữ đã chuyển thành nét vẽ) — đặt ô / sửa chữ ở màn chỉnh mẫu */
+	vector?: boolean;
 }
 
 export const getCertificateTemplate = (seminarId: string) =>
@@ -272,7 +265,9 @@ export interface CertificateSlot {
 	color: string;
 	bold: boolean;
 	italic: boolean;
+	/** Chữ in liền sau giá trị (vd "/GCN/2025" sau số giấy) */
 	suffix: string;
+	/** Kiểu chữ có chân (Times) */
 	serif: boolean;
 }
 export interface CertificateLayoutField {
@@ -298,6 +293,13 @@ export interface CertificateText {
 	color: string;
 	bold: boolean;
 	italic: boolean;
+	serif: boolean;
+	/** Dòng chữ dạng nét vẽ: không đọc được chữ (original rỗng) — hiện ảnh cắt theo `box` */
+	vector: boolean;
+	/** Khung dòng gốc trên mẫu */
+	box: { x0: number; y0: number; x1: number; y1: number };
+	/** Vị trí / cỡ của dòng gốc (trước khi sửa) */
+	base: Pick<CertificateText, 'x0' | 'x1' | 'baseline' | 'size' | 'align'>;
 	/** Đã sửa (dòng gốc đã bị xoá khỏi ảnh nền) */
 	edited: boolean;
 	/** Ký tự font của mẫu in được; null = in được mọi ký tự (có font đầy đủ) */
@@ -309,12 +311,20 @@ export const missingChars = (text: string, charset: string | null) =>
 	charset == null ? [] : [...new Set([...text.normalize('NFC')])].filter((c) => c.trim() && !charset.includes(c));
 export interface CertificateLayout {
 	page: { width: number; height: number };
+	/** Mẫu chữ nét vẽ: ô / dòng sửa xoá chữ cũ đúng vùng của nó */
+	vector: boolean;
+	/** Máy chủ có font có chân (Times...) để in kiểu có chân */
+	serif_font: boolean;
 	image_url: string;
 	fields: CertificateLayoutField[];
 	texts: CertificateText[];
 }
-export type CertificateSlotEdit = Pick<CertificateSlot, 'x0' | 'x1' | 'baseline' | 'size' | 'align' | 'hidden'>;
-export type CertificateTextEdit = Pick<CertificateText, 'text' | 'x0' | 'x1' | 'baseline' | 'size' | 'align'>;
+export type CertificateSlotEdit = Pick<
+	CertificateSlot,
+	'x0' | 'x1' | 'baseline' | 'size' | 'align' | 'hidden' | 'color' | 'bold' | 'italic' | 'serif' | 'suffix'
+>;
+export type CertificateTextEdit = Pick<CertificateText, 'text' | 'x0' | 'x1' | 'baseline' | 'size' | 'align'> &
+	Partial<Pick<CertificateText, 'color' | 'bold' | 'italic' | 'serif'>>;
 
 export const getCertificateLayout = (seminarId: string) =>
 	apiClient.get<CertificateLayout>(`/seminars/${seg(seminarId)}/certificate-template/layout`);

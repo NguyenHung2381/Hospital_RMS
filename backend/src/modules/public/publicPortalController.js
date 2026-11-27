@@ -191,13 +191,17 @@ const getSeminarTicket = asyncHandler(async (req, res) => {
 });
 
 const startSeminarTest = asyncHandler(async (req, res) => {
-	success(res, await seminarPublicService.startTest(req.params.code), 'Bắt đầu làm bài');
+	success(
+		res,
+		await seminarPublicService.startTest(req.params.code, req.params.testId),
+		'Bắt đầu làm bài',
+	);
 });
 
 const submitSeminarTest = asyncHandler(async (req, res) => {
 	success(
 		res,
-		await seminarPublicService.submitTest(req.params.code, req.body.answers),
+		await seminarPublicService.submitTest(req.params.code, req.params.testId, req.body.answers),
 		'Đã nộp bài kiểm tra',
 	);
 });

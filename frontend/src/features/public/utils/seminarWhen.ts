@@ -1,5 +1,5 @@
 import { formatDateOr } from '../../../shared/utils/formatDate';
-import type { PublicSeminar, SeminarTicket } from '../api/publicApi';
+import type { PublicSeminar, SeminarTicketTest } from '../api/publicApi';
 
 type When = Pick<PublicSeminar, 'date_text' | 'start_date' | 'end_date' | 'start_time' | 'end_time'>;
 
@@ -25,7 +25,7 @@ export const seminarWhen = (s: When) => {
 };
 
 /** Khung giờ làm bài kiểm tra: "16:00 – 16:30 ngày 16/10/2026" (rỗng nếu chưa đặt giờ). */
-export const testWindowText = (w: SeminarTicket['test']['window']) => {
+export const testWindowText = (w: SeminarTicketTest['window']) => {
 	if (!w) return '';
 	// Dừng tiếp nhận ở ngày khác ngày mở bài
 	if (w.end_date && w.end_date !== w.date && w.end_time) {

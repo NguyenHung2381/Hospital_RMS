@@ -1,7 +1,8 @@
 const router = require('express').Router();
-const { body } = require('express-validator');
+const { body, param } = require('express-validator');
 const ctrl = require('./seminarController');
 const participantService = require('./seminarParticipantService');
+const testService = require('./seminarTestService');
 const cmeRequirementService = require('../cme/cmeRequirementService');
 const cmeCycleService = require('../cme/cmeCycleService');
 const { cycleComplianceQuery } = require('../cme/cmeCycleValidators');
@@ -185,7 +186,7 @@ router.put(
 	ctrl.updateOne,
 );
 router.delete('/:id', authenticate, canDelete, ctrl.removeOne);
-// Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu bài test
+// Tải ảnh trước, rồi gửi `image` trả về trong test_questions khi lưu đề kiểm tra
 router.post(
 	'/:id/test-image',
 	authenticate,
@@ -197,6 +198,43 @@ router.post(
 		const url = signUploadPath(`/uploads/seminars/${req.params.id}/test/${req.file.filename}`);
 		return created(res, { url });
 	},
+);
+
+// ─── Đề kiểm tra (nhiều đề / hội nghị — seminarTestService) ──────────────────
+
+const testIdParam = param('testId')
+	.matches(/^[A-Za-z0-9]{1,20}$/)
+	.withMessage('Mã đề không hợp lệ');
+router.post(
+	'/:id/tests',
+	authenticate,
+	canUpdate,
+	[body('title').isString().trim().notEmpty().withMessage('Chưa nhập tên đề kiểm tra')],
+	validate,
+	asyncHandler(async (req, res) =>
+		created(res, await testService.create(req.params.id, req.body, req.user.id)),
+	),
+);
+router.put(
+	'/:id/tests/:testId',
+	authenticate,
+	canUpdate,
+	[testIdParam],
+	validate,
+	asyncHandler(async (req, res) =>
+		success(res, await testService.update(req.params.id, req.params.testId, req.body, req.user.id)),
+	),
+);
+router.delete(
+	'/:id/tests/:testId',
+	authenticate,
+	canUpdate,
+	[testIdParam],
+	validate,
+	asyncHandler(async (req, res) => {
+		await testService.remove(req.params.id, req.params.testId, req.user.id);
+		return success(res, null, 'Đã xoá đề kiểm tra');
+	}),
 );
 
 // ─── Người tham dự ───────────────────────────────────────────────────────────

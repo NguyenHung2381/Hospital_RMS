@@ -88,14 +88,8 @@ export interface SeminarParticipant {
 	 */
 	created_by?: string | null;
 	checked_in_at: string | null;
-	test_correct: number | null;
-	test_total: number | null;
-	/** Điểm theo trọng số từng câu — null với bài nộp trước khi có điểm từng câu (dùng test_correct) */
-	test_score: number | null;
-	test_max_score: number | null;
-	/** Lúc bấm "Bắt đầu làm bài" (chỉ khi có giới hạn thời gian) */
-	test_started_at: string | null;
-	test_submitted_at: string | null;
+	/** Bài làm theo từng đề kiểm tra (chỉ đề đã bắt đầu / đã nộp) */
+	test_results?: SeminarTestResult[];
 	user_full_name?: string | null;
 	user_staff_number?: number | null;
 	user_department_name?: string | null;
@@ -130,23 +124,8 @@ export interface Seminar {
 	manual_cme_count: number | null;
 	/** Mã trong link/QR đăng ký công khai /hoi-nghi/<public_token> */
 	public_token: string | null;
-	/** JSON SeminarTestQuestion[] */
-	test_questions: string | null;
-	test_open: boolean;
-	/** Mở bài: test_date + test_start_time — trống ngày = ngày kết thúc (hoặc bắt đầu) hội nghị */
-	test_date: string | null;
-	test_start_time: string | null;
-	/** Dừng tiếp nhận: test_end_date (trống = ngày mở bài) + test_end_time */
-	test_end_date: string | null;
-	test_end_time: string | null;
-	/** Thời gian làm bài (phút) tính từ lúc bấm "Bắt đầu" — null = không giới hạn */
-	test_duration_minutes: number | null;
-	/** Điểm đạt để được cấp CME — null = chỉ cần nộp bài */
-	test_pass_score: number | null;
-	/** Thang điểm tối đa (vd 10, 100): điểm bài làm quy về thang này rồi mới so điểm đạt — null = tổng điểm các câu */
-	test_score_scale: number | null;
-	test_shuffle_questions: boolean;
-	test_shuffle_options: boolean;
+	/** Các đề kiểm tra (nhiều đề / hội nghị) — chỉ có ở chi tiết */
+	tests?: SeminarTest[];
 	/** JSON SeminarAgendaItem[] — chương trình / danh sách bài học */
 	agenda: string | null;
 	/** Tập huấn bệnh viện (event_type 'training' + scope 'hosted') */
@@ -165,6 +144,52 @@ export interface Seminar {
 	external_count?: number;
 	foreign_count?: number;
 	participants?: SeminarParticipant[];
+}
+
+/** 1 đề kiểm tra của hội nghị (bảng seminar_tests) */
+export interface SeminarTest {
+	id: string;
+	seminar_id: string;
+	title: string;
+	sort_order: number;
+	/** Người tự đăng ký phải nộp (và đạt điểm đạt nếu đặt) đề này mới được cấp CME */
+	counts_for_cme: boolean;
+	/** JSON SeminarTestQuestion[] */
+	test_questions: string | null;
+	test_open: boolean;
+	/** Mở bài: test_date + test_start_time — trống ngày = ngày kết thúc (hoặc bắt đầu) hội nghị */
+	test_date: string | null;
+	test_start_time: string | null;
+	/** Dừng tiếp nhận: test_end_date (trống = ngày mở bài) + test_end_time */
+	test_end_date: string | null;
+	test_end_time: string | null;
+	/** Thời gian làm bài (phút) tính từ lúc bấm "Bắt đầu" — null = không giới hạn */
+	test_duration_minutes: number | null;
+	/** Điểm đạt — null = chỉ cần nộp bài */
+	test_pass_score: number | null;
+	/** Thang điểm tối đa (vd 10, 100): điểm bài làm quy về thang này rồi mới so điểm đạt — null = tổng điểm các câu */
+	test_score_scale: number | null;
+	test_shuffle_questions: boolean;
+	test_shuffle_options: boolean;
+}
+
+/** Payload tạo / sửa đề kiểm tra */
+export type SeminarTestInput = Partial<
+	Omit<SeminarTest, 'id' | 'seminar_id' | 'sort_order' | 'test_questions'>
+> & { test_questions?: SeminarTestQuestion[] | null };
+
+/** Bài làm của 1 người cho 1 đề */
+export interface SeminarTestResult {
+	test_id: string;
+	participant_id: string;
+	test_correct: number | null;
+	test_total: number | null;
+	/** Điểm theo trọng số từng câu — null với bài nộp trước khi có điểm từng câu (dùng test_correct) */
+	test_score: number | null;
+	test_max_score: number | null;
+	/** Lúc bấm "Bắt đầu làm bài" (chỉ khi có giới hạn thời gian) */
+	test_started_at: string | null;
+	test_submitted_at: string | null;
 }
 
 export interface SeminarTestQuestion {

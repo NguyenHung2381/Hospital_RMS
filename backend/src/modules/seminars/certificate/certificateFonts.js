@@ -176,6 +176,70 @@ const fullFonts = () => {
 const hasFullFont = (normName) => fullFonts().has(normName);
 const fullFontPath = (normName) => fullFonts().get(normName);
 
+// Font có chân (kiểu Times New Roman) cho chữ in lên mẫu — mẫu chữ nét vẽ không có font
+// nhúng để dùng lại. Không đóng kèm được (bản quyền) → tìm trong thư mục font đầy đủ
+// theo tên file hay gặp (Windows: times/timesbd/timesi/timesbi; Tinos, Liberation, Noto).
+const SERIF_NAMES = {
+	regular: [
+		'timesnewroman',
+		'timesnewromanpsmt',
+		'times',
+		'tinos',
+		'tinosregular',
+		'liberationserif',
+		'liberationserifregular',
+		'notoserif',
+		'notoserifregular',
+	],
+	bold: [
+		'timesnewromanbold',
+		'timesnewromanpsboldmt',
+		'timesbd',
+		'tinosbold',
+		'liberationserifbold',
+		'notoserifbold',
+	],
+	italic: [
+		'timesnewromanitalic',
+		'timesnewromanpsitalicmt',
+		'timesi',
+		'tinositalic',
+		'liberationserifitalic',
+		'notoserifitalic',
+	],
+	bolditalic: [
+		'timesnewromanbolditalic',
+		'timesnewromanpsbolditalicmt',
+		'timesbi',
+		'tinosbolditalic',
+		'liberationserifbolditalic',
+		'notoserifbolditalic',
+	],
+};
+
+/**
+ * File font có chân gần nhất với kiểu yêu cầu (thiếu bản đậm / nghiêng thì lùi về bản thường).
+ * @returns {{ path: string, bold: boolean, italic: boolean } | null}
+ */
+const serifFont = (bold, italic) => {
+	const order =
+		bold && italic
+			? ['bolditalic', 'bold', 'italic', 'regular']
+			: bold
+				? ['bold', 'regular']
+				: italic
+					? ['italic', 'regular']
+					: ['regular', 'bold'];
+	for (const v of order) {
+		for (const name of SERIF_NAMES[v]) {
+			const p = fullFontPath(name);
+			if (p) return { path: p, bold: v.includes('bold'), italic: v.includes('italic') };
+		}
+	}
+	return null;
+};
+const hasSerifFont = () => !!serifFont(false, false);
+
 /**
  * Chia chữ thành các đoạn: in được bằng font nhúng / phải dùng font thay thế.
  * Khoảng trắng đi theo đoạn đứng trước (không tạo đoạn lẻ chỉ có dấu cách).
@@ -216,6 +280,8 @@ module.exports = {
 	fontCharsets,
 	hasFullFont,
 	fullFontPath,
+	serifFont,
+	hasSerifFont,
 	normFontName,
 	_test: { parseToUnicode, hexToText },
 };
