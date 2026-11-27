@@ -123,3 +123,29 @@ Tất cả các file đều dùng `test/auth/fakeDb.js` (CSDL giả) theo cùng 
 - `permissions/moduleRouteGuards.test.js`: xem mục 2.
 
 **Lưu ý khi gộp:** nếu backend-cleanup đổi các câu SQL mà test đang khớp chuỗi (`INSERT INTO survey_answers`, `DELETE FROM round_deadlines`, `UPDATE topics SET council_id`...), cần sửa phần khớp chuỗi đó trong test tương ứng. Riêng `addSets` (commit `464ad62f`) đã được kiểm trên bản gộp thử và không làm vỡ test nào.
+
+## 5. Bổ sung 27/11: dashboard, attendance, system
+
+Số test tăng từ 1188 lên 1292 (1288 pass, 1 skip vì thiếu Tesseract, 3 todo, 0 fail). Lint, typecheck và format:check đều xanh.
+
+Ba module này trước đây gần như chưa có test riêng. Phạm vi khoa của phân ca đã có test ở `permissions/staffAttendanceScope.test.js`; kill switch của dashboard có test ở `security/moduleKillSwitchMounts.test.js`.
+
+| File mới | Số test | Kiểm gì |
+| --- | --- | --- |
+| `dashboard/dashboardService.test.js` | 8 | gộp theo trạng thái/khoa/loại bài/năm, lọc theo `@year`, cache theo năm (không làm bẩn cache), tỷ lệ lấp đầy lớp, đủ 12 tháng cho dashboard hội thảo và dashboard chung |
+| `dashboard/overviewMonthsTimezone.test.js` | 2 (1 todo) | nhãn 12 tháng so với `@from` khi server chạy giờ UTC |
+| `dashboard/dashboardExport.test.js` | 6 | sheet theo `sections`, tên sheet hợp lệ và không trùng, dòng tiến độ hội đồng, năm/sections rác thì dùng mặc định |
+| `attendance/leaveRequestService.test.js` | 16 | giới hạn ngày theo cấu hình, chỉ học viên đang học khóa, ca phải có trong lịch, đơn trùng ⇒ 409, thông báo đúng người duyệt, duyệt theo phạm vi khoa, không tự duyệt, đơn đã xử lý ⇒ 409 |
+| `attendance/shiftService.test.js` | 14 | kiểm dữ liệu ca, ký hiệu trùng, không xóa ca đang dùng, đổi mẫu mặc định trong transaction, phân ca theo lô (giới hạn ô, ca ngừng dùng ⇒ rollback) |
+| `attendance/staffAttendanceService.test.js` | 11 | bảng điểm danh 1 ngày (vắng / chưa điểm danh / nghỉ có phép, đơn đã duyệt được ưu tiên), điểm danh chỉ cho học viên, gộp lý do từ chối |
+| `system/systemRoutes.test.js` | 12 | `/health/db` không lộ lỗi CSDL, `/csp-report` (che token, cắt 300 ký tự, tối đa 10 báo cáo, 16kb ⇒ 413, quá 100 lần ⇒ 429), `/modules`, `/modules/menus`, `/excel/build` (tên file/sheet an toàn, chuỗi `=...` không thành công thức), `/excel/parse` |
+| `permissions/dashboardAttendanceSystemGuards.test.js` | 35 | quyền cần có ở từng route của dashboard/báo cáo, điểm danh và hệ thống; route công khai |
+
+**Lỗi thật mới (chưa sửa, thuộc backend-cleanup):**
+
+10. `dashboardService.js:385-412` (`getOverviewStats`): `@from` tính theo ngày giờ VN (`todayVN()`), còn nhãn 12 tháng lại tính theo giờ máy (`new Date()`). Server chạy giờ UTC (Docker) thì trong 7 giờ đầu mỗi tháng (00:00–07:00 giờ VN), biểu đồ bỏ mất tháng hiện tại và hiện thêm một tháng ngoài cửa sổ truy vấn. Có test todo; sửa xong thì bỏ `todo`. Cách sửa: tính nhãn tháng từ `todayVN()` bằng getter UTC.
+
+**Điểm yếu nhỏ (không viết test todo vì không giả lập ổn định được):**
+
+- `leaveRequestService.createMine`: bước kiểm đơn trùng và bước INSERT không nằm trong transaction và không có khóa. Nếu học viên bấm gửi 2 lần cùng lúc thì có thể tạo ra 2 đơn trùng thời gian.
+- `shiftService.removeShift`: bước kiểm "ca đang dùng" và bước DELETE cũng không nằm trong transaction. Nếu có người phân ca đúng lúc ca đang bị xóa, khóa ngoại sẽ báo lỗi 500.
