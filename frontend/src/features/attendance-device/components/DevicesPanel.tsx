@@ -64,7 +64,11 @@ export function DevicesPanel({
 	const toggleActive = (d: AttendanceDevice) =>
 		run(
 			() => attendanceDeviceApi.update(d.id, { status: d.status === 'active' ? 'disabled' : 'active' }),
-			d.status === 'active' ? 'Đã tắt máy — server ngừng nhận dữ liệu của máy này' : 'Đã bật lại máy',
+			d.status === 'active'
+				? 'Đã tắt máy — server ngừng nhận dữ liệu của máy này'
+				: d.status === 'suspended'
+					? 'Đã mở khoá máy — máy sẽ gửi lại lượt chấm đang giữ trong ít phút'
+					: 'Đã bật lại máy',
 			'Không đổi được trạng thái',
 		);
 
@@ -140,6 +144,12 @@ export function DevicesPanel({
 											>
 												{st.label}
 											</Badge>
+											{d.status === 'suspended' && (
+												<div className={tbl.cellSub}>
+													{d.suspend_reason ?? 'Nghi máy giả số serial'}
+													{d.suspended_at ? ` · ${formatDateTimeVN(d.suspended_at)}` : ''}
+												</div>
+											)}
 										</td>
 										<td className={base.td}>
 											<div className={online ? styles.online : styles.offline}>
@@ -222,8 +232,13 @@ export function DevicesPanel({
 															className={styles.textAction}
 															onClick={() => toggleActive(d)}
 															disabled={busy}
+															title={
+																d.status === 'suspended'
+																	? 'Kiểm tra máy thật vẫn ở đúng chỗ rồi mở khoá. Máy giả còn gửi thì sẽ bị khoá lại.'
+																	: undefined
+															}
 														>
-															{d.status === 'active' ? 'Tắt' : 'Bật'}
+															{d.status === 'active' ? 'Tắt' : d.status === 'suspended' ? 'Mở khoá' : 'Bật'}
 														</button>
 														<div
 															className={`${base.actionBtn} ${base.danger}`}

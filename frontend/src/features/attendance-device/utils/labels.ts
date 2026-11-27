@@ -13,6 +13,8 @@ export const DEVICE_STATUS: Record<DeviceStatus, Label> = {
 	// Máy lạ chờ quản trị duyệt = việc đang chờ bạn xử lý (magenta)
 	pending: { label: 'Chờ duyệt', tone: 'pink' },
 	disabled: { label: 'Đã tắt', tone: 'gray' },
+	// Nghi giả số serial — quản trị phải kiểm tra rồi mở lại (magenta = chờ bạn xử lý)
+	suspended: { label: 'Tạm khoá', tone: 'pink' },
 };
 
 export const PUNCH_STATUS: Record<PunchMatchStatus, Label & { hint?: string }> = {

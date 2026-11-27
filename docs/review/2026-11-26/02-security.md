@@ -6,7 +6,7 @@ Phiên `security`, nhánh `claude/review-security-479bca`.
 
 | Mức độ | Số lỗi | Đã sửa | Chưa sửa |
 |---|---|---|---|
-| Cao | 2 | 1 (S-02) | 1 (S-01, cần người dùng quyết) |
+| Cao | 2 | 2 (S-01, S-02) | 0 |
 | Trung bình | 3 | 2 (S-03, S-04) | 1 (S-05) |
 | Thấp | 5 | 3 (S-06, S-07, S-09) | 2 (S-08, S-10) |
 
@@ -16,8 +16,21 @@ Mỗi lỗi đã sửa có test tái hiện trong `backend/test/security/`. Test
 - `tuitionPendingScope.test.js`: S-04
 - `tuitionPaymentRace.test.js`: S-06, S-07
 - `passwordEventLog.test.js`: S-09
+- `iclockDeviceGuard.test.js`: S-01 (6 ca lỗi, 3 ca đối chứng)
 
-Các mục S-01, S-05, S-10 và migration FK `RESTRICT` của S-02 đang chờ người dùng quyết.
+Các mục S-05, S-08, S-10 và phần chặn ở DB của S-02 chưa làm, đang chờ người dùng quyết.
+
+**Đợt S-01 (máy chấm công)** sửa trong vùng `attendanceDevices` của phiên `backend-cleanup` (nhánh đó chỉ đổi dòng `module.exports` của `iclockService.js`, gộp sẽ xung đột nhỏ):
+
+- `backend/src/modules/attendanceDevices/iclockGuard.js` (file mới): `ipGate` (lớp 1), `ipChange` (lớp 2)
+- `backend/src/modules/attendanceDevices/iclock.routes.js`: `ipGate` đặt trước mọi xử lý; giới hạn theo số serial; `/ping` chuyển lên trước
+- `backend/src/modules/attendanceDevices/iclockService.js`: `findDevice` đọc thêm cờ đổi IP; `resolveDevice` ghi `prev_ip` / `ip_changed_at`, tạm khoá khi xung đột (`suspendForConflict`); `getRequest` giữ lệnh khi vừa đổi IP
+- `backend/src/modules/attendanceDevices/deviceAdminService.js`: mở lại máy thì xoá dấu vết đổi IP; danh sách máy trả `suspended_at`, `suspend_reason`, máy tạm khoá xếp lên đầu
+- `backend/src/modules/audit/securityAlertService.js`: `iclock_serial_conflict` (cảnh báo ngay), `iclock_ip_blocked` (cảnh báo khi dồn dập)
+- `backend/src/utils/attendancePolicy.js`: export thêm `parseCidr`, `splitList`
+- `backend/database/migrations/2027-01-10_may_cham_cong_chong_gia_serial.sql` (mới). Đã thử áp lên schema DB dev trong 1 transaction rồi rollback; **chưa áp thật** (container dev chạy code của nhánh `main`, chưa có file này). Áp bằng `npm run migrate` sau khi gộp nhánh
+- Frontend (vùng `frontend-cleanup`): `features/attendance-device/` — trạng thái **Tạm khoá**, lý do, nút **Mở khoá**
+- Tài liệu: `infra/may-cham-cong.md` (mục 3.1, bảng xử lý sự cố), `backend/.env.example`
 
 **File ngoài vùng `security` đã sửa** (thuộc vùng `training-cleanup`; mỗi chỗ chỉ sửa đúng các dòng cần thiết):
 
@@ -48,19 +61,22 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
 
 ## Phát hiện
 
-### S-01 — Cao — Máy chấm công `/iclock` chỉ nhận diện bằng số serial: lộ mẫu vân tay, giả được lượt chấm — CHƯA SỬA (cần quyết)
+### S-01 — Cao — Máy chấm công `/iclock` chỉ nhận diện bằng số serial: lộ mẫu vân tay, giả được lượt chấm — ĐÃ SỬA (3 lớp)
 
-- **Vị trí:** `backend/src/modules/attendanceDevices/iclockService.js:41` (`resolveDevice`), `:173` (`getRequest`), `:86` (`requireActive`); `frontend/nginx.conf:151`; `infra/may-cham-cong.md` (đường đi qua proxy HTTPS công khai `nckh.bvnghean.vn`).
-- **Mô tả:** Giao thức ADMS không có xác thực. Server chỉ kiểm số serial (SN) đã được duyệt. SN in trên tem máy, máy gửi nó trong mọi URL (`?SN=`), và trong LAN máy gọi bằng HTTP thường. Ai biết SN của một máy đã duyệt và gọi được tới `/iclock/` (qua proxy công khai, hoặc trong LAN) thì làm được ba việc:
-  1. Gọi `GET /iclock/getrequest?SN=<sn>` để nhận các lệnh đang chờ, gồm `DATA UPDATE FINGERTMP ... TMP=<mẫu vân tay>` và thông tin học viên. Đây là dữ liệu sinh trắc học, thuộc nhóm dữ liệu cá nhân nhạy cảm theo NĐ 13/2023. Lệnh bị "lấy" mất nên máy thật cũng không nhận được.
-  2. Gọi `POST /iclock/cdata?SN=<sn>&table=ATTLOG` để tạo lượt chấm giả, khiến hệ thống tự điểm danh hộ học viên.
+- **Vị trí:** `backend/src/modules/attendanceDevices/iclockService.js` (`resolveDevice`, `getRequest`, `requireActive`); `iclock.routes.js`; `frontend/nginx.conf:151`; `infra/may-cham-cong.md`.
+- **Mô tả:** Giao thức ADMS của máy (firmware Ver 6.60) không có xác thực. Server chỉ kiểm số serial (SN) đã được duyệt. SN in trên tem máy và nằm trong mọi URL (`?SN=`). Ai biết SN của một máy đã duyệt và gọi được tới `/iclock/` thì làm được ba việc:
+  1. Gọi `GET /iclock/getrequest?SN=<sn>` để nhận các lệnh đang chờ, gồm `DATA UPDATE FINGERTMP ... TMP=<mẫu vân tay>` và thông tin học viên (dữ liệu sinh trắc học, NĐ 13/2023). Lệnh bị "lấy" mất nên máy thật không nhận được.
+  2. Gọi `POST /iclock/cdata?SN=<sn>&table=ATTLOG` để tạo lượt chấm giả.
   3. Gửi `OPERLOG`/`BIODATA` để gắn mẫu vân tay của người khác vào mã học viên.
-- **Đề xuất (người dùng chọn):**
-  - (a) Thêm `ICLOCK_ALLOWED_CIDRS` (hoặc cột `allowed_ip` cho từng máy, chốt lúc duyệt): chỉ nhận `/iclock` từ dải IP của máy chấm công. Điều kiện là proxy của viện chuyển đúng `X-Forwarded-For` và `TRUST_PROXY` đặt đúng.
-  - (b) Chặn `location /iclock/` ở proxy công khai; chỉ mở trong VLAN của máy chấm công.
-  - (c) Nếu firmware hỗ trợ, đặt đường dẫn bí mật hoặc "comm key".
-  - Ngoài ra nên giới hạn tốc độ theo SN, và báo động khi một SN gọi từ IP khác với IP lúc duyệt.
-- **Lý do chưa sửa:** Cần quyết về hạ tầng (IP của máy, cấu hình proxy). Vùng file là `attendanceDevices`, thuộc phiên `backend-cleanup`.
+- **Điều kiện thực tế (người dùng xác nhận):** máy di chuyển giữa các khoa, IP đổi liên tục, nhưng **chỉ gửi từ trong mạng nội bộ của viện**. Không giới hạn được theo IP từng máy. Đã tìm hiểu: cơ chế khoá chung / đăng ký máy của "Security PUSH" chưa được xác nhận trên Ver 6.60; "Comm Key" chỉ dùng cho kết nối SDK cổng 4370.
+- **Đã sửa:**
+  - **Lớp 1 — dải IP:** `iclockGuard.ipGate` chỉ nhận `/iclock` từ `ICLOCK_ALLOWED_CIDRS` (mặc định `192.168.0.0/16`; theo yêu cầu người dùng **không** gồm dải máy chủ `172.16.0.0/12`, cũng không gồm `10.0.0.0/8` hay `127.0.0.1`). Request mang IP của chính proxy (`ICLOCK_PROXY_IPS`) bị chặn: backend chưa nhận được IP thật thì không cho qua (fail-closed). Ghi `security_events` `iclock_ip_blocked` (mỗi IP tối đa 1 lần / 10 phút). `/iclock/ping` vẫn mở, chỉ trả `OK`.
+  - **Lớp 2 — một serial ở hai nơi:** lưu `prev_ip`, `ip_changed_at`. IP cũ quay lại trong `ICLOCK_IP_FLIP_MIN` (10) phút sau khi đổi ⇒ máy chuyển sang `suspended` (không giao lệnh, không nhận lượt chấm; máy giữ dữ liệu), ghi `security_events` `iclock_serial_conflict` và gửi email cảnh báo ngay. Máy chuyển chỗ (đổi IP một lần) không bị khoá. Quản trị bấm **Mở khoá** thì dấu vết đổi IP được xoá để theo dõi lại.
+  - **Lớp 3 — giữ lệnh:** `ICLOCK_IP_HOLD_MIN` (5) phút sau khi đổi IP, `getRequest` chưa giao lệnh, nên máy giả không lấy được mẫu vân tay trước khi lớp 2 kịp khoá (nếu máy thật đang chạy). Thêm giới hạn `ICLOCK_SN_RATE_LIMIT` (240) lượt/phút theo số serial.
+- **Giữ nguyên:** chỉ máy đã duyệt mới gửi/nhận dữ liệu; máy lạ vẫn vào *Chờ duyệt* (tối đa `MAX_PENDING`); giới hạn theo IP; kiểm phân hệ `TRAINING`; giới hạn body 10 MB.
+- **Test:** `test/security/iclockDeviceGuard.test.js` — IP Internet và dải `172.16.x` bị chặn; IP của proxy bị chặn; giới hạn theo serial; tạm khoá khi IP cũ quay lại; giữ lệnh khi vừa đổi IP; mở lại xoá dấu vết. Đối chứng: máy `192.168.x` vẫn gửi được, `/ping` mở, máy chuyển chỗ không bị khoá, IP không đổi thì giao lệnh bình thường.
+- **Việc vận hành bắt buộc (production):** đặt `TRUSTED_PROXIES=192.168.34.20` (nginx) và `ICLOCK_PROXY_IPS=192.168.34.20` (backend), rồi kiểm cột IP trên trang Máy chấm công là IP riêng của từng máy. Thiếu `TRUSTED_PROXIES` thì mọi máy bị chặn (đúng thiết kế fail-closed). Hướng dẫn: `infra/may-cham-cong.md` mục 3.1.
+- **Còn hở:** người trong mạng viện biết SN vẫn giả được máy lúc máy thật tắt. Muốn chặn hẳn cần mã bí mật riêng từng máy (ví dụ tên miền con bí mật, cần DNS và chứng chỉ wildcard ở proxy, phải thử trên máy thật trước). Nên cân nhắc thêm: chặn `/iclock/` ở proxy viện với nguồn ngoài mạng nội bộ.
 
 ### S-02 — Cao — Xoá lượt ghi danh / khoá học xoá luôn khoản học phí đã cấp biên lai — ĐÃ SỬA
 
@@ -139,5 +155,5 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
   - `approvers(row.course_id)`.
   
   Đợt S-06/S-07/S-09 không đụng thêm vào `courseService.js`.
-- `backend-cleanup`: S-01 (`attendanceDevices`) và S-08 (`surveys`) thuộc vùng của bạn; chưa sửa.
-- `frontend-cleanup`: S-05 cần đổi lời gọi `GET /public/lookup` sang POST, nếu người dùng đồng ý.
+- `backend-cleanup`: S-01 đã sửa trong `attendanceDevices` (xem đầu báo cáo). Khi gộp giữ `ipGate`, `snLimiter`, phần `prev_ip` / `ip_changed_at` / `ip_hold` trong `iclockService`. S-08 (`surveys`) chưa sửa.
+- `frontend-cleanup`: `features/attendance-device/` có thêm trạng thái `suspended` (S-01). S-05 cần đổi lời gọi `GET /public/lookup` sang POST, nếu người dùng đồng ý.

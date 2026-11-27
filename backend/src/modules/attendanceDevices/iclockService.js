@@ -2,11 +2,17 @@
 // Máy nhận diện bằng số serial (SN) — giao thức không có xác thực, nên chỉ máy đã được
 // quản trị duyệt (status = 'active') mới được nhận dữ liệu. Máy lạ được ghi 'pending'
 // (tối đa MAX_PENDING) và nhận câu trả lời lỗi ⇒ máy giữ dữ liệu, gửi lại sau khi duyệt.
+// Chống giả số serial (S-01): chặn theo dải IP ở iclock.routes (iclockGuard.ipGate); ở đây
+// phát hiện 1 serial gọi từ 2 nơi ⇒ tạm khoá máy ('suspended'), và giữ lệnh vài phút sau
+// khi máy đổi IP (iclockGuard).
 const { getPool, sql } = require('../../config/db');
 const logger = require('../../config/logger');
 const { broadcast } = require('../events/eventService');
 const protocol = require('./iclockProtocol');
 const commands = require('./deviceCommandService');
+const guard = require('./iclockGuard');
+const securityEvents = require('../audit/securityEventService');
+const { normalizeIp } = require('../../utils/activityDescribe');
 
 // require muộn — tránh vòng require qua courseAttendanceService
 const matcher = () => require('./punchMatcher');
@@ -30,16 +36,43 @@ const findDevice = async (pool, sn) =>
 		await pool
 			.request()
 			.input('sn', sql.VarChar(40), sn)
-			.query('SELECT * FROM attendance_devices WHERE serial_no = @sn')
+			.input('flip', sql.Int, guard.flipMinutes())
+			.input('hold', sql.Int, guard.holdMinutes()).query(`
+        SELECT *,
+          COALESCE(ip_changed_at > (now() AT TIME ZONE 'UTC') - make_interval(mins => @flip), false) AS ip_change_recent,
+          COALESCE(ip_changed_at > (now() AT TIME ZONE 'UTC') - make_interval(mins => @hold), false) AS ip_hold_active
+        FROM attendance_devices WHERE serial_no = @sn`)
 	).recordset[0] || null;
+
+/** 1 serial gọi xen kẽ từ 2 IP ⇒ tạm khoá máy, ghi security_events (cảnh báo email ngay) */
+const suspendForConflict = async (pool, device, ip) => {
+	const reason = `Số serial gọi xen kẽ từ ${device.last_ip} và ${ip} trong ${guard.flipMinutes()} phút — có thể bị giả`;
+	await pool
+		.request()
+		.input('id', sql.Int, device.id)
+		.input('reason', sql.NVarChar(255), reason.slice(0, 255)).query(`
+      UPDATE attendance_devices SET status = 'suspended',
+        suspended_at = (now() AT TIME ZONE 'UTC'), suspend_reason = @reason
+      WHERE id = @id AND status = 'active'`);
+	logger.error(`[iclock] Tạm khoá máy ${device.serial_no}: ${reason}`);
+	broadcast('update', { entity: 'attendance_device' });
+	await securityEvents.log({
+		eventType: 'iclock_serial_conflict',
+		targetType: 'attendance_device',
+		targetId: device.serial_no,
+		ip,
+		detail: `Đã tạm khoá máy ${device.serial_no}. ${reason}`,
+	});
+};
 
 /**
  * Máy theo SN (tạo 'pending' nếu chưa có) + cập nhật lần liên lạc cuối.
  * @param {string} sn
  * @param {{ ip?: string|null, pushVersion?: string|null, info?: ReturnType<typeof protocol.parseInfo> }} meta
  */
-const resolveDevice = async (sn, { ip = null, pushVersion = null, info = null } = {}) => {
+const resolveDevice = async (sn, { ip: rawIp = null, pushVersion = null, info = null } = {}) => {
 	if (!protocol.isValidSerial(sn)) throw new DeviceRejected('SN không hợp lệ');
+	const ip = normalizeIp(rawIp);
 	const pool = await getPool();
 	let device = await findDevice(pool, sn);
 	if (!device) {
@@ -61,9 +94,15 @@ const resolveDevice = async (sn, { ip = null, pushVersion = null, info = null } 
 		broadcast('update', { entity: 'attendance_device' });
 		device = await findDevice(pool, sn);
 	}
+	const change = guard.ipChange(device, ip);
+	if (change.conflict && device.status === 'active') {
+		await suspendForConflict(pool, device, ip);
+		throw new DeviceRejected(`Máy ${sn} tạm khoá: số serial đang được dùng ở hai nơi`);
+	}
 	const r = await pool
 		.request()
 		.input('id', sql.Int, device.id)
+		.input('ip_changed', sql.Bit, change.changed)
 		.input('ip', sql.VarChar(45), ip ? String(ip).slice(0, 45) : null)
 		.input('push', sql.VarChar(20), pushVersion ? String(pushVersion).slice(0, 20) : null)
 		.input('fw', sql.VarChar(100), info?.firmware ?? null)
@@ -72,6 +111,8 @@ const resolveDevice = async (sn, { ip = null, pushVersion = null, info = null } 
 		.input('algo', sql.VarChar(20), info?.fpAlgorithm ?? null).query(`
       UPDATE attendance_devices SET
         last_seen_at = (now() AT TIME ZONE 'UTC'),
+        prev_ip = CASE WHEN CAST(@ip_changed AS boolean) THEN last_ip ELSE prev_ip END,
+        ip_changed_at = CASE WHEN CAST(@ip_changed AS boolean) THEN (now() AT TIME ZONE 'UTC') ELSE ip_changed_at END,
         last_ip = COALESCE(@ip, last_ip),
         push_version = COALESCE(@push, push_version),
         firmware = COALESCE(@fw, firmware),
@@ -80,7 +121,8 @@ const resolveDevice = async (sn, { ip = null, pushVersion = null, info = null } 
         fp_algorithm = COALESCE(@algo, fp_algorithm)
       WHERE id = @id
       RETURNING *`);
-	return r.recordset[0];
+	// Lớp 3: vừa đổi IP (lần này hoặc trong ICLOCK_IP_HOLD_MIN phút) ⇒ getRequest giữ lệnh
+	return { ...r.recordset[0], ip_hold: change.changed || !!device.ip_hold_active };
 };
 
 const requireActive = (device) => {
@@ -175,6 +217,9 @@ const getRequest = async (sn, query, ip) => {
 	const device = await resolveDevice(sn, { ip, info });
 	if (info) logRaw(sn, 'INFO', query.INFO);
 	if (device.status !== 'active') return 'OK';
+	// Máy vừa đổi IP: chưa giao lệnh (mẫu vân tay, thông tin học viên). Nếu là máy giả, máy
+	// thật gọi lại trong lúc giữ ⇒ resolveDevice tạm khoá trước khi lệnh bị lấy mất.
+	if (device.ip_hold) return 'OK';
 	const cmds = await commands.takePending(device.id);
 	if (cmds.length) logger.info(`[iclock] ${sn}: gửi ${cmds.length} lệnh`);
 	// CHECK: máy hỏi lại cấu hình — trả OPERLOGStamp=None để máy gửi lại toàn bộ người dùng
