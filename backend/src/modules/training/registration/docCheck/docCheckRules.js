@@ -357,14 +357,9 @@ const WARNING_MESSAGES = {
 
 module.exports = {
 	normalize,
-	alnum,
-	levenshtein,
 	fuzzyHas,
 	parseCccdQr,
-	hasMrz,
 	isReadable,
-	scoreKinds,
-	nameFound,
 	decide,
 	evaluate,
 	CHECKABLE_KINDS,

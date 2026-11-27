@@ -4,22 +4,8 @@
  * họ tên với chuyên gia ngoài viện không có mã.
  */
 const { norm } = require('../../../utils/vietnameseText');
+const { tidy, groupBy } = require('../importText');
 const { splitTitle } = require('../programs/programLessonLecturerImportService');
-
-const tidy = (s) =>
-	String(s || '')
-		.replace(/\s+/g, ' ')
-		.trim();
-
-const groupBy = (items, keyOf) => {
-	const map = new Map();
-	for (const item of items) {
-		const key = keyOf(item);
-		if (!map.has(key)) map.set(key, []);
-		map.get(key).push(item);
-	}
-	return map;
-};
 
 const isOn = (v) => v === true || v === 1 || v === 'true';
 const nameKeyOf = (fullName) => norm(splitTitle(fullName).name);
@@ -100,10 +86,4 @@ const splitStaffCell = (raw) =>
 		.map(tidy)
 		.filter(Boolean);
 
-module.exports = {
-	nameKeyOf,
-	createStaffResolver,
-	createLecturerResolver,
-	splitLecturerCell,
-	splitStaffCell,
-};
+module.exports = { createStaffResolver, createLecturerResolver, splitLecturerCell, splitStaffCell };

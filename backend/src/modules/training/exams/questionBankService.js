@@ -10,7 +10,13 @@ const { randomId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { removeUploadedFile, toStoredUploadPath } = require('../../../utils/uploadPaths');
 const { httpError } = require('../../../utils/httpError');
-const { QUESTION_TYPES, POOLS, parseOptions } = require('./examShared');
+const {
+	QUESTION_TYPES,
+	POOLS,
+	ANSWER_IN_OPTIONS_MSG,
+	answerInOptions,
+	parseOptions,
+} = require('./examShared');
 
 // Ảnh minh họa câu hỏi — tải lên qua POST /exams/questions/image (modules/training/exams/exams.routes.js)
 const QUESTION_IMAGE_DIR = '/uploads/questions/';
@@ -133,6 +139,21 @@ const updateQuestion = async (id, data, actorId) => {
 		data.question_type && QUESTION_TYPES.includes(data.question_type)
 			? data.question_type
 			: current.question_type;
+	// Đụng tới loại câu / phương án / đáp án ⇒ kiểm đáp án ∈ phương án trên giá trị SAU khi sửa
+	// (gộp với giá trị đang lưu như các câu SET bên dưới). Không đụng thì không kiểm, để sửa
+	// điểm / kho / chương trình của câu cũ không bị chặn.
+	if (
+		data.question_type !== undefined ||
+		data.options !== undefined ||
+		data.correct_option !== undefined
+	) {
+		const next = {
+			question_type: type,
+			options: data.options ?? current.options ?? [],
+			correct_option: data.correct_option ?? current.correct_option ?? null,
+		};
+		if (!answerInOptions(next)) throw httpError(400, ANSWER_IN_OPTIONS_MSG);
+	}
 	const sets = [
 		`updated_at = ${nowSql}`,
 		'updated_by = @actor_id',
@@ -218,7 +239,6 @@ const removeQuestion = async (id) => {
 
 module.exports = {
 	listQuestions,
-	getQuestion,
 	createQuestion,
 	createQuestionsBulk,
 	updateQuestion,

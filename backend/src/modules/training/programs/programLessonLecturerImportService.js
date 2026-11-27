@@ -25,6 +25,7 @@ const { lazyRequire } = require('../../../utils/lazyRequire');
 const ExcelJS = lazyRequire('exceljs');
 const { getPool, sql } = require('../../../config/db');
 const { norm } = require('../../../utils/vietnameseText');
+const { tidy, cleanCode, groupBy } = require('../importText');
 const { readSheet } = require('../../../utils/excelImport');
 const {
 	addLecturerTotals,
@@ -66,15 +67,6 @@ const TITLE_TOKENS = new Set(
 // "CK I", "BSCK 2": cấp chuyên khoa viết rời sau ck / bsck / dsck
 const LEVEL_TOKENS = new Set(['i', 'ii', '1', '2']);
 const TAKES_LEVEL = new Set(['ck', 'bsck', 'dsck']);
-
-const cleanCode = (s) =>
-	String(s || '')
-		.replace(/\s+/g, '')
-		.toUpperCase();
-const tidy = (s) =>
-	String(s || '')
-		.replace(/\s+/g, ' ')
-		.trim();
 
 /** "ThS.BS Nguyễn Văn A" → { degree: 'ThS.BS', name: 'Nguyễn Văn A' }. Không có học vị → degree null. */
 const splitTitle = (raw) => {
@@ -136,16 +128,6 @@ const parseWorkbook = async (buffer) => {
 		main: splitNames(raw(row, 'main')),
 		assistants: splitNames(raw(row, 'assistants')),
 	}));
-};
-
-const groupBy = (items, keyOf) => {
-	const map = new Map();
-	for (const item of items) {
-		const key = keyOf(item);
-		if (!map.has(key)) map.set(key, []);
-		map.get(key).push(item);
-	}
-	return map;
 };
 
 const loadProgram = async (programId) => {

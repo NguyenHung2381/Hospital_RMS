@@ -447,7 +447,6 @@ module.exports = {
 	lockWaitlist,
 	classesOf,
 	mailTrainees,
-	isInternalTrainee,
 	assertRoomForTrainee,
 	refreshCourse,
 	openClass,

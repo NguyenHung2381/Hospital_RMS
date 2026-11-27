@@ -93,13 +93,6 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 				continue;
 			}
 			rooms.set(e.program_id, room - 1);
-			await q()
-				.input('id', sql.VarChar(20), e.id)
-				.input('course_id', sql.VarChar(20), courseId)
-				.input('actor_id', sql.VarChar(20), actorId).query(`
-          UPDATE course_enrollments
-          SET course_id = @course_id, status = 'approved', updated_at = ${nowSql}, updated_by = @actor_id
-          WHERE id = @id AND status = 'waitlisted'`);
 			moved.push(e.id);
 			added.set(e.program_id, (added.get(e.program_id) ?? 0) + 1);
 		}
@@ -111,6 +104,15 @@ const transfer = async (courseId, enrollmentIds, actorId) => {
 					: 'Không còn hồ sơ chờ hợp lệ để chuyển (có thể đã được chuyển trước đó).',
 			);
 		}
+		// 1 câu UPDATE cho các hồ sơ còn chỗ (trước đây 1 round-trip / hồ sơ), vẫn trong giao
+		// dịch và khóa danh sách chờ ở trên
+		await q()
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(moved))
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('actor_id', sql.VarChar(20), actorId).query(`
+        UPDATE course_enrollments
+        SET course_id = @course_id, status = 'approved', updated_at = ${nowSql}, updated_by = @actor_id
+        WHERE id IN ${jsonValues('@ids', { type: 'VARCHAR(20)' })} AND status = 'waitlisted'`);
 	});
 	broadcast('update', { entity: 'course' });
 	broadcast('update', { entity: 'course_enrollment' });

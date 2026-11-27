@@ -470,4 +470,4 @@ const importBook = async (courseId, { buffer, dry_run }, actorId) => {
 	};
 };
 
-module.exports = { importBook, parseBook, buildPreview, inferProgramCode, findRotationGroups };
+module.exports = { importBook, parseBook, buildPreview, inferProgramCode };

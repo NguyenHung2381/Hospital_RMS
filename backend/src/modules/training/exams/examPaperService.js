@@ -83,13 +83,15 @@ const setPaperGraders = async (paperId, lecturerIds, actorId) => {
 		await new sql.Request(tx)
 			.input('paper_id', sql.VarChar(20), paperId)
 			.query('DELETE FROM exam_paper_graders WHERE paper_id = @paper_id');
-		for (const lecturerId of ids)
+		// 1 câu INSERT cho cả danh sách; id không có trong danh mục giảng viên thì bỏ qua
+		if (ids.length)
 			await new sql.Request(tx)
 				.input('paper_id', sql.VarChar(20), paperId)
-				.input('lecturer_id', sql.VarChar(20), lecturerId)
+				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
 				.input('actor_id', sql.VarChar(20), actorId || null).query(`
           INSERT INTO exam_paper_graders (paper_id, lecturer_id, created_by)
-          SELECT @paper_id, id, @actor_id FROM lecturers WHERE id = @lecturer_id
+          SELECT @paper_id, l.id, @actor_id
+          FROM ${jsonValues('@ids', { type: 'VARCHAR(20)' })} j JOIN lecturers l ON l.id = j.value
         `);
 	});
 };

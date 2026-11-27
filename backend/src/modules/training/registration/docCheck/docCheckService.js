@@ -500,7 +500,6 @@ const withTraineeDocumentChecks = async (traineeId, checklist) => {
 
 module.exports = {
 	MAX_ATTEMPTS,
-	isCheckable,
 	isEnabled,
 	isSignatureEnabled,
 	getSignatureConfig,
@@ -514,6 +513,5 @@ module.exports = {
 	requeueSignatures,
 	present,
 	presentAll,
-	presentTraineeDocument,
 	withTraineeDocumentChecks,
 };

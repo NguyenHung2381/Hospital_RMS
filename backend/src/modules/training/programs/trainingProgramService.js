@@ -3,11 +3,11 @@ const {
 	getPool,
 	sql,
 	withActorTransaction,
-	actorRequest,
 	queryAll,
 	nowSql,
 	stringAgg,
 	jsonArray,
+	jsonValues,
 	ilike,
 	likeCi,
 } = require('../../../config/db');
@@ -132,28 +132,25 @@ const traineeTypeIdsOf = (data) => {
 const withTraineeType = (data, typeIds) =>
 	typeIds ? { ...data, trainee_type_id: typeIds[0] ?? null } : data;
 
-// Gán lại toàn bộ đối tượng của 1 chương trình (thứ tự = vị trí trong mảng).
-const setProgramTraineeTypes = async (programId, typeIds) => {
-	const pool = await getPool();
-	await pool
+// Gán lại toàn bộ đối tượng của 1 chương trình (thứ tự = vị trí trong mảng). Chạy trong
+// transaction của create / update (`tx`): INSERT lỗi thì rollback cả câu DELETE và câu ghi
+// chương trình, không để chương trình mất hết đối tượng.
+const setProgramTraineeTypes = async (tx, programId, typeIds) => {
+	await tx
 		.request()
 		.input('program_id', sql.VarChar(20), programId)
 		.query('DELETE FROM program_trainee_types WHERE program_id = @program_id');
-	for (let i = 0; i < typeIds.length; i++) {
-		const req = () => pool.request().input('trainee_type_id', sql.VarChar(20), typeIds[i]);
-		// Mã đối tượng không tồn tại thì bỏ qua
-		if (
-			!(await req().query('SELECT 1 AS x FROM trainee_types WHERE id = @trainee_type_id')).recordset
-				.length
-		)
-			continue;
-		await req()
+	// 1 câu INSERT cho cả danh sách (trước đây 2 round-trip / đối tượng). display_order = vị
+	// trí trong mảng gửi lên; mã đối tượng không tồn tại thì bỏ qua.
+	if (typeIds.length)
+		await tx
+			.request()
 			.input('program_id', sql.VarChar(20), programId)
-			.input('display_order', sql.Int, i)
-			.query(
-				'INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order) VALUES (@program_id, @trainee_type_id, @display_order)',
-			);
-	}
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(typeIds)).query(`
+        INSERT INTO program_trainee_types (program_id, trainee_type_id, display_order)
+        SELECT @program_id, tt.id, j.idx
+        FROM ${jsonValues('@ids', { type: 'VARCHAR(20)', withIndex: true })} j
+        JOIN trainee_types tt ON tt.id = j.value`);
 };
 
 const getAll = async ({
@@ -217,55 +214,63 @@ const rethrowDuplicateCode = (err) => {
 	throw err;
 };
 
+// Ghi chương trình và đối tượng chung 1 transaction có người thao tác.
 const create = async (data, actorId) => {
 	const typeIds = traineeTypeIdsOf(data);
 	const input = withDurationText(withTraineeType(data, typeIds));
-	const req = actorRequest(actorId).input('actor_id', sql.VarChar(20), actorId);
-	const cols = [];
-	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
-		cols.push(field);
-		req.input(
-			field,
-			type,
-			field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]),
-		);
-	}
-	const newId = randomId('CT', 18);
-	await req
-		.input('new_id', sql.VarChar(20), newId)
-		.query(
-			`
+	const id = randomId('CT', 18);
+	await withActorTransaction(actorId, async (tx) => {
+		const req = tx.request().input('actor_id', sql.VarChar(20), actorId);
+		const cols = [];
+		for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
+			cols.push(field);
+			req.input(
+				field,
+				type,
+				field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]),
+			);
+		}
+		await req
+			.input('new_id', sql.VarChar(20), id)
+			.query(
+				`
       INSERT INTO training_programs (id, ${cols.join(', ')}, created_by)
       VALUES (@new_id, ${cols.map((c) => `@${c}`).join(', ')}, @actor_id);
     `,
-		)
-		.catch(rethrowDuplicateCode);
-	const id = newId;
-	if (typeIds) await setProgramTraineeTypes(id, typeIds);
+			)
+			.catch(rethrowDuplicateCode);
+		if (typeIds) await setProgramTraineeTypes(tx, id, typeIds);
+	});
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };
 
+// Sửa chương trình và gán lại đối tượng chung 1 transaction có người thao tác (trigger audit
+// của training_programs đọc người thao tác). Không có gì để ghi thì không mở transaction.
 const update = async (id, data, actorId) => {
 	const typeIds = traineeTypeIdsOf(data);
 	const input = withDurationText(withTraineeType(data, typeIds));
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
-	const req = actorRequest(actorId)
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId);
+	const fields = Object.entries(PROGRAM_FIELDS).filter(([field]) => input[field] !== undefined);
+	for (const [field] of fields) sets.push(`${field} = @${field}`);
 
-	for (const [field, type] of Object.entries(PROGRAM_FIELDS)) {
-		if (input[field] === undefined) continue;
-		sets.push(`${field} = @${field}`);
-		const value = field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]);
-		req.input(field, type, value);
-	}
-
-	if (sets.length > 2)
-		await req
-			.query(`UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`)
-			.catch(rethrowDuplicateCode);
-	if (typeIds) await setProgramTraineeTypes(id, typeIds);
+	if (sets.length > 2 || typeIds)
+		await withActorTransaction(actorId, async (tx) => {
+			if (sets.length > 2) {
+				const req = tx
+					.request()
+					.input('id', sql.VarChar(20), id)
+					.input('actor_id', sql.VarChar(20), actorId);
+				for (const [field, type] of fields) {
+					const value = field === 'display_order' ? input[field] || 0 : emptyToNull(input[field]);
+					req.input(field, type, value);
+				}
+				await req
+					.query(`UPDATE training_programs SET ${sets.join(', ')} WHERE id = @id`)
+					.catch(rethrowDuplicateCode);
+			}
+			if (typeIds) await setProgramTraineeTypes(tx, id, typeIds);
+		});
 	broadcast('update', { entity: 'training_program' });
 	return getById(id);
 };

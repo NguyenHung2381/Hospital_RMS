@@ -23,4 +23,4 @@ const { registrationFormUpload, registrationFileUpload } = createRegistrationUpl
 	maxFiles: FORM_MAX_FILES,
 });
 
-module.exports = { registrationFormUpload, registrationFileUpload, FORM_MAX_FILES };
+module.exports = { registrationFormUpload, registrationFileUpload };

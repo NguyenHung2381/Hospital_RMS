@@ -227,15 +227,15 @@ const writeAssistants = async (sessionId, wanted, actorId) => {
 			.request()
 			.input('session_id', sql.VarChar(20), sessionId)
 			.query('DELETE FROM session_lecturers WHERE session_id = @session_id');
-		for (const id of wanted) {
+		// 1 câu INSERT cho cả danh sách (trước đây 1 round-trip / trợ giảng)
+		if (wanted.length)
 			await tx
 				.request()
 				.input('session_id', sql.VarChar(20), sessionId)
-				.input('lecturer_id', sql.VarChar(20), id)
+				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(wanted))
 				.input('actor_id', sql.VarChar(20), actorId)
 				.query(`INSERT INTO session_lecturers (session_id, lecturer_id, created_by)
-                VALUES (@session_id, @lecturer_id, @actor_id)`);
-		}
+                SELECT @session_id, j.value, @actor_id FROM ${jsonValues('@ids', { type: 'VARCHAR(20)' })} j`);
 	});
 };
 
@@ -469,5 +469,4 @@ module.exports = {
 	updateSession,
 	removeSession,
 	createSessionsBulk,
-	ASSISTANTS_SQL,
 };

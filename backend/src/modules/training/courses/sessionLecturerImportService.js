@@ -23,6 +23,7 @@
  */
 const { getPool, sql } = require('../../../config/db');
 const { norm } = require('../../../utils/vietnameseText');
+const { tidy, cleanCode, groupBy } = require('../importText');
 const {
 	readSheet,
 	cellText,
@@ -61,14 +62,6 @@ const MATCHERS = [
 ];
 const PEOPLE = ['main_code', 'main', 'asst_code', 'asst'];
 
-const tidy = (s) =>
-	String(s || '')
-		.replace(/\s+/g, ' ')
-		.trim();
-const cleanCode = (s) =>
-	String(s || '')
-		.replace(/\s+/g, '')
-		.toUpperCase();
 const pad2 = (n) => String(n).padStart(2, '0');
 
 /** "LT" / "Lý thuyết" → 'theory'; "TH" / "Thực hành" → 'practice'; trống → ''; khác → null. */
@@ -149,16 +142,6 @@ const parseWorkbook = async (buffer) => {
 		});
 	}
 	return out;
-};
-
-const groupBy = (items, keyOf) => {
-	const map = new Map();
-	for (const item of items) {
-		const key = keyOf(item);
-		if (!map.has(key)) map.set(key, []);
-		map.get(key).push(item);
-	}
-	return map;
 };
 
 // Cột DATE đọc về là Date hoặc chuỗi → 'YYYY-MM-DD'

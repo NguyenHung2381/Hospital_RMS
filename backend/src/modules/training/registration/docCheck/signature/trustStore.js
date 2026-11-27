@@ -81,4 +81,4 @@ function loadTrustStore(dir = DEFAULT_DIR) {
 	return store;
 }
 
-module.exports = { createTrustStore, loadTrustStore, splitCerts, DEFAULT_DIR };
+module.exports = { createTrustStore, loadTrustStore, DEFAULT_DIR };

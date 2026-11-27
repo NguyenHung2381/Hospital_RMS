@@ -220,13 +220,10 @@ const buildCourseEnrollmentWorkbook = (data) => {
 
 module.exports = {
 	buildCourseEnrollmentWorkbook,
-	STATUS_LABEL,
 	STATUSES,
 	UNASSIGNED_SHEET,
 	fmtDate,
-	slugify,
 	fileNameOf,
-	givenName,
 	sortByName,
 	safeSheetName,
 };

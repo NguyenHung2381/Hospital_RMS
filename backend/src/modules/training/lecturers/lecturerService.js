@@ -245,19 +245,15 @@ const createFromStaff = async (userIds, actorId) => {
 // đoạn 4: lecturer_assignments), chỉ vô hiệu hóa để giữ tên hiển thị ở lịch sử.
 const remove = async (id, actorId) => {
 	const pool = await getPool();
-	let used = { recordset: [] };
-	try {
-		used = await pool
-			.request()
-			.input('id', sql.VarChar(20), id)
-			.query(
-				`SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM lecturer_assignments WHERE lecturer_id = @id)
-           OR EXISTS (SELECT 1 FROM class_sessions WHERE lecturer_id = @id)
-           OR EXISTS (SELECT 1 FROM session_lecturers WHERE lecturer_id = @id)`,
-			);
-	} catch {
-		// Bảng lecturer_assignments chưa tồn tại (Giai đoạn 4 chưa chạy) ⇒ coi như chưa dùng.
-	}
+	// Lỗi DB ở đây ném ra luôn (trước đây bị nuốt và coi như "chưa dùng" ⇒ DELETE cứng).
+	const used = await pool
+		.request()
+		.input('id', sql.VarChar(20), id)
+		.query(
+			`SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM lecturer_assignments WHERE lecturer_id = @id)
+         OR EXISTS (SELECT 1 FROM class_sessions WHERE lecturer_id = @id)
+         OR EXISTS (SELECT 1 FROM session_lecturers WHERE lecturer_id = @id)`,
+		);
 	if (used.recordset.length) {
 		await withActorTransaction(actorId, (tx) =>
 			tx

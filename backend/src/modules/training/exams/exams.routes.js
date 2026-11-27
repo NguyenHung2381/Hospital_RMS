@@ -7,6 +7,7 @@ const { makeImageUpload } = require('../../../middlewares/uploadImage');
 const { getPool, sql } = require('../../../config/db');
 const { httpError } = require('../../../utils/httpError');
 const coursePolicy = require('../courses/coursePolicy');
+const { questionRules } = require('./questionValidators');
 
 // Ảnh minh họa câu hỏi — dùng chung thư mục vì 1 câu hỏi nằm được trong nhiều đề
 const uploadQuestionImage = makeImageUpload(() => ['questions']);
@@ -76,19 +77,8 @@ router.post(
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
 router.get('/questions', canManage, ctrl.listQuestions);
-router.post(
-	'/questions',
-	canManage,
-	[
-		body('question_text').trim().notEmpty().withMessage('Nội dung câu hỏi không được để trống'),
-		body('question_type').optional().isIn(['single_choice', 'essay']),
-		body('points').optional().isFloat({ min: 0.1 }),
-		body('program_id').notEmpty().withMessage('Vui lòng chọn chương trình cho câu hỏi'),
-		body('pool').optional().isIn(['entrance', 'final']),
-	],
-	validate,
-	ctrl.createQuestion,
-);
+// Tạo lẻ / nhập hàng loạt / sửa dùng chung 1 bộ kiểm (questionValidators.js)
+router.post('/questions', canManage, questionRules(), validate, ctrl.createQuestion);
 router.post(
 	'/questions/bulk',
 	canManage,
@@ -96,30 +86,7 @@ router.post(
 		body('questions')
 			.isArray({ min: 1, max: 500 })
 			.withMessage('Danh sách câu hỏi phải có 1–500 câu'),
-		body('questions.*.question_text')
-			.isString()
-			.trim()
-			.notEmpty()
-			.withMessage('Có câu hỏi bị trống nội dung'),
-		body('questions.*.question_type').isIn(['single_choice', 'essay']),
-		body('questions.*.points').optional().isFloat({ min: 0.1, max: 999 }),
-		body('questions.*.options').optional().isArray({ max: 20 }),
-		body('questions.*.program_id').notEmpty().withMessage('Vui lòng chọn chương trình cho câu hỏi'),
-		body('questions.*.pool').optional().isIn(['entrance', 'final']),
-		body('questions.*.correct_option')
-			.optional({ values: 'null' })
-			.isString()
-			.isLength({ max: 255 })
-			.withMessage('Đáp án quá dài (tối đa 255 ký tự)'),
-		body('questions')
-			.custom((qs) =>
-				qs.every(
-					(q) =>
-						q.question_type === 'essay' ||
-						(Array.isArray(q.options) && q.options.includes(q.correct_option)),
-				),
-			)
-			.withMessage('Câu trắc nghiệm phải có đáp án đúng nằm trong các phương án'),
+		...questionRules({ bulk: true }),
 	],
 	validate,
 	ctrl.createQuestionsBulk,
@@ -131,7 +98,13 @@ router.post(
 	uploadQuestionImage.single('image'),
 	ctrl.uploadQuestionImage,
 );
-router.put('/questions/:id', canManage, ctrl.updateQuestion);
+router.put(
+	'/questions/:id',
+	canManage,
+	questionRules({ partial: true }),
+	validate,
+	ctrl.updateQuestion,
+);
 router.delete('/questions/:id', canManage, ctrl.removeQuestion);
 
 // ─── Đề thi ──────────────────────────────────────────────────────────────────
