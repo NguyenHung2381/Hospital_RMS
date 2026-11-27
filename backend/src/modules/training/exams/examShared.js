@@ -15,6 +15,17 @@ const PAPER_QUESTION_TYPE = { multiple_choice: 'single_choice', essay: 'essay' }
 const parseOptions = (row) =>
 	row.options === undefined ? row : { ...row, options: parseJsonArray(row.options) };
 
+// Câu trắc nghiệm phải có đáp án đúng (khác rỗng) nằm trong các phương án — so với danh sách
+// đã bỏ phương án rỗng như lúc lưu (questionBankService). Thiếu loại câu = trắc nghiệm (mặc
+// định khi lưu). Không thỏa thì chấm tự động luôn cho 0 điểm (examAttemptService.submitAttempt).
+const ANSWER_IN_OPTIONS_MSG = 'Câu trắc nghiệm phải có đáp án đúng nằm trong các phương án';
+const answerInOptions = ({ question_type, options, correct_option }) =>
+	question_type === 'essay' ||
+	(Array.isArray(options) &&
+		typeof correct_option === 'string' &&
+		correct_option !== '' &&
+		options.filter(Boolean).includes(correct_option));
+
 const isRandom = (p) => (p.gen_mc_count ?? 0) + (p.gen_essay_count ?? 0) > 0;
 
 // ─── Sinh đề ngẫu nhiên từ ngân hàng của chương trình ───────────────────────
@@ -85,6 +96,8 @@ module.exports = {
 	POOLS,
 	CODE_MODES,
 	PAPER_QUESTION_TYPE,
+	ANSWER_IN_OPTIONS_MSG,
+	answerInOptions,
 	parseOptions,
 	isRandom,
 	bankOf,

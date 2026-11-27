@@ -8,8 +8,8 @@
 
 | Chỉ số | Trước | Sau |
 |---|---|---|
-| Dòng trong `src/modules/training` | 24.491 | 24.396 (**−95**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm, D1 thêm 16 dòng chú thích/bọc transaction) |
-| `npm test` | 1080 qua / 0 lỗi* | 1110 qua / 0 lỗi (thêm 30 test đơn vị) |
+| Dòng trong `src/modules/training` | 24.491 | 24.457 (**−34**; tính cả 4 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js`, `questionValidators.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm, D1 thêm 16 dòng, bộ validate câu hỏi (thay đổi 12) thêm 61 dòng chủ yếu là chú thích và quy tắc mới cho PUT) |
+| `npm test` | 1080 qua / 0 lỗi* | 1115 qua / 0 lỗi (thêm 35 test đơn vị) |
 | `npm run lint` | 0 lỗi, 1 cảnh báo | 0 lỗi, 0 cảnh báo |
 | Smoke trên DB dev (`test-integration/**`, so baseline dựng từ `60d56a71`) | — | 218 test, 216 qua, 2 bỏ qua (thiếu dữ liệu mẫu), 0 lỗi; 192 route GET giữ nguyên mã HTTP và tập trường JSON |
 
@@ -139,6 +139,23 @@ Vẫn giữ nguyên: câu kiểm (3 bảng), chưa dùng ⇒ DELETE cứng + xo�
 Phần "xoá trường tuỳ chỉnh khi xoá cứng giảng viên" của D4 (F5) **đã có sẵn** từ commit `a8541222` (2026-10-27): F5 là phát hiện nhầm, không cần sửa.
 
 Test cho 9–11: `test/training/traineeLecturerDecisions.test.js` (5 test) và thêm 1 test vào `customFormCrud.test.js` (`{ actor }` chỉ truyền khi `scoped`). Chạy trên bản cũ của 4 file nguồn: 5/6 test lỗi; test còn lại (nhánh xoá cứng / vô hiệu hoá của giảng viên) giữ hành vi cũ nên qua ở cả hai bản.
+
+### Rủi ro thấp — chặt thêm validate (yêu cầu của phiên điều phối, lỗi do phiên tests tìm ra)
+
+**12. Một bộ validate chung cho câu hỏi ngân hàng đề** (`exams/questionValidators.js` mới, `exams.routes.js`, `questionBankService.updateQuestion`)
+Lỗi (`01-tests.md` của phiên tests, mục 12 và 13):
+- `POST /exams/questions` (tạo lẻ) không kiểm đáp án đúng nằm trong các phương án, trong khi `/questions/bulk` có kiểm. Lưu được câu mà chấm tự động luôn cho 0 điểm (`examAttemptService` so `selected === correct_option`).
+- `PUT /exams/questions/:id` không validate gì: sửa được thành nội dung rỗng, điểm âm, đáp án ngoài phương án.
+
+Sau:
+- `questionRules({ bulk, partial })` dùng cho cả ba route: nội dung khác rỗng, loại câu ∈ `QUESTION_TYPES`, điểm 0,1–999 (cột `DECIMAL(4,1)`), tối đa 20 phương án, đáp án ≤ 255 ký tự, `program_id` khác rỗng, kho ∈ `POOLS`. Tạo lẻ và hàng loạt kiểm thêm đáp án ∈ phương án.
+- `answerInOptions` (`examShared.js`) là quy tắc duy nhất: câu tự luận bỏ qua; câu trắc nghiệm (kể cả khi không gửi loại câu, vì lúc lưu mặc định là trắc nghiệm) phải có đáp án là chuỗi khác rỗng, nằm trong danh sách phương án đã bỏ phương án rỗng như lúc lưu.
+- PUT là cập nhật một phần: route chỉ kiểm trường có gửi. Đáp án ∈ phương án cần giá trị đang lưu nên kiểm trong `updateQuestion`, trên giá trị sau khi gộp (cùng cách gộp với các câu SET), trả 400 và không ghi. Chỉ kiểm khi request đụng tới loại câu / phương án / đáp án, để sửa điểm, kho hay chương trình của câu cũ đã lỗi sẵn không bị chặn. Đổi sang tự luận vẫn bỏ phương án và đáp án như trước.
+
+Chặt hơn trước ở các điểm: tạo lẻ có giới hạn điểm tối đa 999 (trước chỉ có tối thiểu; quá 999 thì DB báo lỗi 500), có giới hạn số phương án và độ dài đáp án như hàng loạt. Hàng loạt không còn nhận đáp án rỗng khi danh sách phương án có phần tử rỗng (trước qua được, rồi lưu thành câu không có đáp án). PUT không còn gỡ được chương trình bằng `program_id: ''`. Frontend (`QuestionFormModal`, nhập Excel, chuyển ngân hàng, sửa điểm hàng loạt) đã tự kiểm các điều này và không gửi `program_id` rỗng, nên luồng đang dùng không bị ảnh hưởng.
+Vẫn giữ nguyên: `authenticate`, `authorizePermission(['exams','manage'])` và thứ tự route (`routeInventory` khớp snapshot); thông điệp lỗi cũ; câu SQL và giá trị mặc định khi lưu; dạng response.
+
+Test: `test/training/questionValidation.test.js` (5 test, dựng app Express với route thật, bỏ qua đăng nhập). Chạy trước khi sửa thì 3/5 đỏ (đúng 2 lỗi trên, cộng trường hợp đáp án rỗng của hàng loạt); sau khi sửa thì 5/5 xanh. Đã chạy thử file `test/training/questionBank.test.js` của nhánh tests trên code này, bật 2 test todo: 11/11 qua. Khi gộp có thể bỏ đánh dấu `todo` của 2 test đó.
 
 ## Phát hiện chưa sửa
 
