@@ -223,20 +223,19 @@ const getById = async (id, actor = null) => {
 	return topic;
 };
 
-// Ghi đè danh sách chuyên ngành liên quan của đề tài
-const setRelatedDepartments = async (topicId, ids) => {
-	const pool = await getPool();
-	const req = pool.request().input('topic_id', sql.VarChar(15), topicId);
+// Ghi đè danh sách chuyên ngành liên quan của đề tài. DELETE và INSERT là 2 lần
+// query trên cùng tx — PostgreSQL không nhận nhiều câu trong 1 prepared statement (42601).
+const setRelatedDepartments = async (tx, topicId, ids) => {
+	await tx
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId)
+		.query('DELETE FROM topic_related_departments WHERE topic_id = @topic_id');
+	if (!ids.length) return;
+	const req = tx.request().input('topic_id', sql.VarChar(15), topicId);
 	ids.forEach((d, i) => req.input(`d${i}`, sql.VarChar(20), d));
 	await req.query(`
-    DELETE FROM topic_related_departments WHERE topic_id = @topic_id;
-    ${
-			ids.length
-				? `INSERT INTO topic_related_departments (topic_id, department_id)
-           VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')};`
-				: ''
-		}
-  `);
+    INSERT INTO topic_related_departments (topic_id, department_id)
+    VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')}`);
 };
 
 // Cấp độ đề tài lấy theo đợt (mỗi đợt đúng 1 cấp độ) — form không hỏi nữa;
@@ -274,10 +273,11 @@ const create = async (data, actorId) => {
               @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date)
     `);
 		await ensureApproval(tx, id, actorId); // đề tài mới luôn 'submitted'
+		// cùng transaction: lỗi ở đây không để lại đề tài đã tạo mà người dùng tưởng chưa lưu
+		if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
+			await setRelatedDepartments(tx, id, data.related_department_ids);
 		return id;
 	});
-	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
-		await setRelatedDepartments(newId, data.related_department_ids);
 	const topic = await getById(newId);
 	broadcast('update', { entity: 'topic' });
 	return topic;
@@ -418,7 +418,10 @@ const update = async (id, data, actorId, actor = null) => {
 	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);
-	if (relatedChanged) await setRelatedDepartments(id, data.related_department_ids);
+	if (relatedChanged)
+		await withActorTransaction(actorId, (tx) =>
+			setRelatedDepartments(tx, id, data.related_department_ids),
+		);
 
 	if (!sets.length) {
 		if (relatedChanged) broadcast('update', { entity: 'topic' });

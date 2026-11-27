@@ -69,8 +69,9 @@ const scan = () =>
 		),
 	);
 
-// Đã biết, chưa sửa (đã thử trên DB dev trong transaction rồi rollback: cả hai báo 42601)
-const KNOWN = ['modules/seminars/hospitalTraining.js', 'modules/topics/topicService.js'];
+// Đã biết, chưa sửa. Hai chỗ cũ (hospitalTraining, topicService) đã tách thành 2 lần query.
+/** @type {string[]} */
+const KNOWN = [];
 
 test('bộ quét: nhận ra lô nhiều câu (kể cả câu nằm trong ${…}), bỏ qua dấu ; trong chuỗi / chú thích / cuối câu', () => {
 	const src = [
@@ -90,9 +91,6 @@ test('không có query ghép nhiều câu mới (ngoài các chỗ đã biết)'
 
 test(
 	'mọi query chỉ 1 câu SQL',
-	{
-		todo: 'Lỗi thật: hospitalTraining.setRequiredDepartments (lưu khoa bắt buộc của buổi tập huấn) và topicService.setRelatedDepartments (chuyên ngành liên quan khi tạo/sửa đề tài — đề tài đã tạo xong mới lỗi 500) gửi "DELETE …; INSERT …" trong 1 query',
-	},
 	() => {
 		assert.deepEqual(scan(), []);
 	},
