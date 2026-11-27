@@ -18,7 +18,7 @@ Deploy (deploy.yml):
    cổng: SHA nằm trên main + có lần CI push-main xanh  (GitHub-hosted)
    ──► runner tại server: xác minh chữ ký cosign → kéo đúng digest → scripts/deploy.sh:
        kiểm tra máy chủ (Docker, ổ đĩa, file env, compose) → backup DB + migration → up --no-build → smoke test + theo dõi → hỏng thì tự rollback
-   ──► bản ghi kiểm toán JSON (artifact 365 ngày) + logs/deploy-history.log
+   ──► bản ghi kiểm toán JSON (artifact 365 ngày + logs/deploy-audit.jsonl trên máy chủ) + logs/deploy-history.log
 ```
 
 | File | Vai trò |
@@ -87,7 +87,7 @@ Deploy (deploy.yml):
   - Viết idempotent như các file hiện có.
   - Migration hỏng thì deploy dừng **trước** khi đổi container (bản cũ vẫn chạy). Cần khôi phục thì `pg_restore` file `.dump` mới nhất trong `MIGRATION_BACKUP_DIR` (tên có 8 ký tự đầu của SHA).
 - **Lịch sử deploy**: tab *Environments* trên GitHub (ai, SHA, lúc nào, link lần chạy), `logs/deploy-history.log` trên server, và artifact `deploy-audit-<môi trường>-<run>` (JSON: thời điểm UTC, commit, digest 2 image, đã xác minh chữ ký chưa, người kích hoạt, lần chạy CI, kết quả).
-- **Bằng chứng kiểm tra** (artifact 365 ngày, tải ở trang lần chạy hoặc `gh run download`): `trivy-<app>-<sha>` (báo cáo quét image đầy đủ), `license-report-<sha>` (danh mục giấy phép), `review-audit-<sha>` (commit nào qua PR, ai duyệt), `deploy-audit-*`. Thời hạn thực tế không vượt cài đặt repo (Settings → Actions → General → *Artifact and log retention*); cần giữ lâu hơn thì tải về lưu trữ của bệnh viện định kỳ.
+- **Bằng chứng kiểm tra** (artifact 365 ngày, tải ở trang lần chạy hoặc `gh run download`): `trivy-<app>-<sha>` (báo cáo quét image đầy đủ), `license-report-<sha>` (danh mục giấy phép), `review-audit-<sha>` (commit nào qua PR, ai duyệt), `deploy-audit-*` (bản ghi này còn được ghi thêm vào `$DEPLOY_DIR/logs/deploy-audit.jsonl` trên máy chủ và Summary của lần chạy — máy chủ không tải được artifact lên GitHub thì job chỉ cảnh báo, không đỏ). Thời hạn thực tế không vượt cài đặt repo (Settings → Actions → General → *Artifact and log retention*); cần giữ lâu hơn thì tải về lưu trữ của bệnh viện định kỳ.
 - **Tự xác minh 1 image**: `docker run --rm -e COSIGN_PUBLIC_KEY="$(cat cosign.pub)" ghcr.io/sigstore/cosign/cosign:v2.6.5 verify --key env://COSIGN_PUBLIC_KEY --insecure-ignore-tlog=true ghcr.io/nguyenhung2381/hospital_rms-backend:<sha>` (cần `docker login ghcr.io`).
 - **Truy vết**: production → `GET /health` trả `version` = commit SHA đã build image backend (bằng SHA deploy, hoặc commit gần nhất đổi `backend/` nếu image được gắn lại tag) → image `ghcr.io/…:<sha>` (label `org.opencontainers.image.url` trỏ về lần chạy CI có kết quả test, coverage, quét) → commit.
 

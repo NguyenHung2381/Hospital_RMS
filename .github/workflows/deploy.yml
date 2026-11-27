@@ -207,6 +207,7 @@ jobs:
           VERIFY: ${{ steps.verify.outcome }}
           DEPLOY: ${{ steps.deploy.outcome }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || github.workspace }}
         run: |
           mkdir -p "$RUNNER_TEMP/audit"
           file="$RUNNER_TEMP/audit/deploy-$ENVIRONMENT-${TAG:0:12}-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.json"
@@ -219,10 +220,45 @@ jobs:
             "$GITHUB_WORKFLOW_REF" "$url" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$url" "$CI_RUN" "$RUNNER_NAME" >> "$file"
           cat "$file"
           echo "audit_file=$file" >> "$GITHUB_OUTPUT"
+          # Bản lưu trên chính máy chủ (cạnh logs/deploy-history.log của deploy.sh): vẫn còn
+          # khi không tải được artifact lên GitHub (mạng bệnh viện chập chờn)
+          if mkdir -p "$DEPLOY_DIR/logs" && cat "$file" >> "$DEPLOY_DIR/logs/deploy-audit.jsonl"; then
+            echo "Đã ghi thêm vào $DEPLOY_DIR/logs/deploy-audit.jsonl"
+          else
+            echo "::warning::Không ghi được $DEPLOY_DIR/logs/deploy-audit.jsonl trên máy chủ"
+          fi
+          { echo "### Bản ghi kiểm toán"; echo '```json'; cat "$file"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # Tải artifact cần máy chủ gọi được tới endpoint artifact của GitHub; lỗi mạng ở đây
+      # (vd. "FinalizeArtifact: EHOSTUNREACH") không làm hỏng lần deploy đã xong —
+      # thử lại 1 lần sau 30 giây, vẫn lỗi thì chỉ cảnh báo (bản ghi đã có trên máy chủ).
       - name: Lưu bản ghi kiểm toán
+        id: upload_audit
         if: always() && steps.audit.outputs.audit_file
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deploy-audit-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.audit.outputs.audit_file }}
+          retention-days: 365 # bị cắt theo cài đặt repo (public tối đa 90); bản lâu dài: logs/deploy-audit.jsonl trên máy chủ
+      - name: Chờ trước khi tải lại bản ghi kiểm toán
+        if: always() && steps.upload_audit.outcome == 'failure'
+        run: sleep 30
+      - name: Lưu bản ghi kiểm toán (thử lại)
+        id: upload_audit_retry
+        if: always() && steps.upload_audit.outcome == 'failure'
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: deploy-audit-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.audit.outputs.audit_file }}
           retention-days: 365
+          overwrite: true
+      - name: Báo không tải được bản ghi kiểm toán
+        if: always() && steps.upload_audit_retry.outcome == 'failure'
+        env:
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || github.workspace }}
+        run: |
+          msg="Không tải được bản ghi kiểm toán lên GitHub (máy chủ không gọi tới được endpoint artifact)."
+          msg+=" Bản ghi vẫn có ở Summary của lần chạy này và $DEPLOY_DIR/logs/deploy-audit.jsonl trên máy chủ."
+          msg+=" Kiểm tra máy chủ ra được *.actions.githubusercontent.com và *.blob.core.windows.net."
+          echo "::warning::$msg"
