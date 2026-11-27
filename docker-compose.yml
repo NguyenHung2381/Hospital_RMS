@@ -163,7 +163,7 @@ services:
   # muốn chạy: đặt `CLAMAV_HOST=` trong .env cạnh compose rồi
   #   docker compose up -d --scale clamav=0
   clamav:
-    image: clamav/clamav:stable
+    image: clamav/clamav:1.5 # ghim bản 1.5.x (vẫn nhận bản vá 1.5.*), không dùng tag trôi "stable"
     mem_limit: 2g
     volumes:
       - clamav_db:/var/lib/clamav

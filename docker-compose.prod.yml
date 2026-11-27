@@ -188,14 +188,14 @@ services:
     logging: *default-logging
 
   # Quét virus file upload — chạy MẶC ĐỊNH cùng stack (~1,5GB RAM). Image
-  # clamav/clamav:stable đã kèm sẵn CSDL virus → không cần Internet để khởi
+  # clamav/clamav:1.5 đã kèm sẵn CSDL virus → không cần Internet để khởi
   # động; có Internet thì freshclam trong container tự cập nhật mỗi 2 giờ.
   # clamd nạp CSDL mất ~1 phút sau khi container chạy; trong lúc đó upload bị
   # từ chối (503) vì backend mặc định không nhận file chưa quét được.
   # Máy không đủ RAM: đặt `CLAMAV_HOST=` (file .env cạnh compose) rồi
   #   docker compose -f docker-compose.prod.yml up -d --scale clamav=0
   clamav:
-    image: clamav/clamav:stable
+    image: clamav/clamav:1.5 # ghim bản 1.5.x (vẫn nhận bản vá 1.5.*), không dùng tag trôi "stable"
     mem_limit: 2g
     # clamd quét song song tối đa 10 luồng (MaxThreads) và nạp lại CSDL virus
     # (~1 phút CPU) mỗi lần freshclam cập nhật — không chặn thì có lúc chiếm
