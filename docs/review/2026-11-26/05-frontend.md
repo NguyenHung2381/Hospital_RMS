@@ -8,7 +8,7 @@
 
 | Hạng mục | Số liệu |
 |---|---|
-| Dòng thay đổi trong `frontend/src` | 121 file, +600 / −2.686 (**giảm 2.086 dòng**) |
+| Dòng thay đổi trong `frontend/src` | 125 file, +600 / −2.755 (**giảm 2.155 dòng**) |
 | `package-lock.json` | −386 dòng (gỡ `recharts`, 37 gói con) |
 | Class CSS Module không dùng đã xoá | ~210 rule ở 22 file (2 lượt quét, xem §2) |
 | File xoá | `styles/mixins.css` (424 dòng), `assets/svg/settings.svg`, 2 bản `GrantedAccountsModal` (gộp thành 1) |
@@ -68,7 +68,7 @@ Các mục MD3_AUDIT kiểm lại và **đã được sửa từ trước** (cá
 | P4 | `features/approval/components/ConfirmModal.tsx`, `BulkConfirmModal.tsx` | Thấp | Vẫn dựng bằng `modalBackdrop` thay vì `<Modal>` (đã có focus trap nên không chặn bàn phím) | Chuyển sang `<Modal>` khi chạm tới |
 | P5 | `shared/components/ErrorState` | Thấp | Component của kit không ai dùng; trong khi MD3 F4 ghi nhiều trang danh sách thiếu trạng thái lỗi + "Thử lại" | Dùng ở các trang danh sách, hoặc xoá |
 | P6 | `features/dashboard/utils/dashboardHelpers.ts:16–40`, `features/dashboard/pages/TrainingDashboard.tsx:23`, `features/schedule/types/schedule.type.ts`, `shared/components/BrandedQr/renderBrandedQr.ts`, `app/providers/AntdProvider.tsx`, `features/settings/components/RadiusMap.tsx` | Thấp | 134 mã hex còn lại: màu SVG/canvas/QR/Leaflet/antd phải là giá trị thật (thuộc tính SVG và canvas không đọc `var()`), và màu lịch được ghép độ trong suốt (`${color}20`) | Một file TS nguồn màu duy nhất, sinh cả `variables.css` và hằng TS (MD3 M7) |
-| P7 | `features/course/api/registrationApi.ts:143` `getRegistrationDossier` · `features/public/api/publicApi.ts:461` `downloadDraftApplication` · `features/public/utils/courseRegisterFields.ts:257` `buildDraftPayload` · `features/seminar/api/cmeRecordApi.ts:47` `deleteCmeRecords` | Thấp | Hàm gọi API không ai dùng. 3 hàm đầu mới thêm 19–20/11 (có thể là tính năng đang làm dở) | Người dùng xác nhận rồi xoá |
+| P7 | `features/course/api/registrationApi.ts:143` `getRegistrationDossier` · `features/public/api/publicApi.ts:461` `downloadDraftApplication` · `features/public/utils/courseRegisterFields.ts:257` `buildDraftPayload` · `features/seminar/api/cmeRecordApi.ts:47` `deleteCmeRecords` | Thấp | Hàm gọi API không ai dùng. 3 hàm đầu mới thêm 19–20/11 | **Đã xoá** (người dùng đồng ý 27/11), kèm 2 kiểu chỉ chúng dùng: `RegistrationDossier`, `DraftApplicationPayload`. Endpoint backend giữ nguyên |
 | P8 | `shared/components/Badge/Badge.module.css:53` (`purple`), `features/trainee/components/TraineeProgressPanel.tsx:13` (`violet`) | Thấp | Tên tông "tím" vẫn còn dù hiển thị như xanh dương | Đổi tên thành `blue`/`teal` khi rảnh |
 | P9 | Kit (`Button`, `Table`, `Pagination`, `Modal` đóng, chip) | TB | Vùng chạm vẫn < 48px trên cảm ứng (MD3 A4) | Nâng trong `@media (pointer: coarse)`; cần thử trên điện thoại thật |
 | P10 | `features/portal/components/MemberFormFields.tsx`, `AddMemberForm.tsx` | Thấp | Chọn gợi ý bằng Enter làm danh sách đóng và focus rơi về `body` | Trả focus về ô tìm sau khi chọn (gộp vào P3) |
@@ -77,9 +77,9 @@ Các mục MD3_AUDIT kiểm lại và **đã được sửa từ trước** (cá
 
 1. **P1** — đổi tra cứu công khai sang `POST` (cần sửa backend cùng lúc).
 2. **P2** — có chuyển dần các danh mục sang TanStack Query không (thay đổi lớn, nên làm theo từng feature).
-3. **P7** — 4 hàm API chưa dùng: xoá hay giữ cho tính năng sắp làm.
+3. ~~**P7**~~ — đã quyết 27/11: xoá.
 4. **P5** — dùng `ErrorState` cho các trang danh sách hay xoá.
-5. Nhãn "Chưa lưu" ở Cấu hình form / Cấu hình hệ thống nay dùng tông **hồng** (coi là "việc đang chờ bạn xử lý"); nếu muốn giữ tông vàng thì đổi `navBadgeUnsaved`, `typeTagUnsaved`, `.tabBadge` sang `--tone-amber-bg/fg`.
+5. ~~Nhãn "Chưa lưu"~~ — đã quyết 27/11: giữ tông hồng ("việc đang chờ bạn xử lý") cho `navBadgeUnsaved`, `typeTagUnsaved`, `.tabBadge`.
 
 ## 5. Cách kiểm lại
 
