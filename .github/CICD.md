@@ -163,7 +163,7 @@ Cổng dùng: 55432, 5055, 13001, 18081, 19222 (đổi bằng `PG_PORT`, `REG_PO
 | Deploy nhầm commit chưa merge / CI đỏ, image giả | Cổng deploy · xác minh chữ ký cosign | deploy |
 | Máy chủ đầy ổ, mất file env, thư mục backup không ghi được, Docker tắt | Kiểm tra máy chủ (đầu deploy.sh) | deploy |
 | Bản mới khởi động rồi crash, không kết nối DB | Smoke test + theo dõi trong deploy.sh → tự rollback | deploy |
-| Pipeline main hỏng mà không ai biết | Issue `ci-hong` (gom 1 issue, ghi job hỏng, tự đóng khi xanh lại) | main · hằng tuần |
+| Pipeline main hỏng mà không ai biết | Issue `ci-hong` (gom 1 issue, ghi job + bước hỏng kèm thông báo lỗi, tự đóng khi xanh lại) | main · hằng tuần |
 
 **Chưa tự động được** (cần làm tay / công cụ khác): runner trên server offline (job deploy xếp hàng chờ — xem Settings → Actions → Runners); lỗi chỉ xảy ra với dữ liệu production (chạy migration trên bản sao DB trước khi deploy migration lớn); hiệu năng / tải; trang sau đăng nhập trong trình duyệt (cần tài khoản thử); chứng chỉ HTTPS sắp hết hạn.
 

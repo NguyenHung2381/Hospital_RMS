@@ -8,7 +8,8 @@
 //  - Chỉ xét gói KHÔNG phải dev (đi vào image backend / bundle frontend).
 //  - Biểu thức SPDX: "A OR B" đạt khi một vế đạt; "A AND B" đạt khi mọi vế đạt.
 //  - Gói không khai báo giấy phép trong lockfile: đọc node_modules/<gói>/package.json
-//    nếu có (máy dev), không có thì cảnh báo.
+//    nếu có (máy dev), rồi tới mục "verified" của chính sách (đã đọc tay file LICENSE,
+//    ghim tên + phiên bản); không có thì cảnh báo.
 //  - Ngoại lệ quá hạn "expires" → lỗi (buộc xem xét lại); còn ≤ 14 ngày → cảnh báo.
 // --report ghi danh mục giấy phép (bằng chứng cho kiểm toán) ra file JSON.
 
@@ -30,6 +31,12 @@ const toRegex = (pattern) =>
 const deny = (policy.deny ?? []).map((r) => ({ ...r, re: toRegex(r.pattern) }));
 const review = (policy.review ?? []).map((r) => ({ ...r, re: toRegex(r.pattern) }));
 const exceptions = (policy.exceptions ?? []).map((e) => ({ ...e, used: false }));
+// Gói không khai giấy phép trong package.json nhưng đã đọc tay file LICENSE — ghim theo
+// tên + phiên bản: lên bản mới thì phải đọc lại.
+const verified = (policy.verified ?? []).map((v) => ({ ...v, used: false }));
+for (const v of verified)
+  if (!v.name || !v.version || !v.license || !v.evidence)
+    errors.push(`${POLICY_FILE}: mục verified ${JSON.stringify(v.name)} thiếu name/version/license/evidence`);
 
 for (const e of exceptions) {
   if (!e.name || !e.license || !e.reason || !e.expires)
@@ -95,6 +102,15 @@ for (const dir of NPM_DIRS) {
     const name = meta.name ?? key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length);
     const id = `${name}@${meta.version}`;
     let license = normalize(meta);
+    // Xét "verified" trước node_modules: CI không cài node_modules, máy dev thì có —
+    // cùng thứ tự để kết quả 2 nơi như nhau.
+    if (!license) {
+      const v = verified.find((x) => x.name === name && x.version === meta.version);
+      if (v) {
+        v.used = true;
+        license = v.license;
+      }
+    }
     if (!license) {
       const installed = join(ROOT, dir, key, 'package.json');
       if (existsSync(installed)) license = normalize(JSON.parse(readFileSync(installed, 'utf8')));
@@ -124,6 +140,8 @@ for (const dir of NPM_DIRS) {
 
 for (const e of exceptions)
   if (!e.used && e.expires >= today) warnings.push(`${POLICY_FILE}: ngoại lệ ${e.name} (${e.license}) không còn dùng — xoá khỏi danh sách`);
+for (const v of verified)
+  if (!v.used) warnings.push(`${POLICY_FILE}: mục verified ${v.name}@${v.version} không còn dùng (đã đổi phiên bản / gỡ gói) — xoá hoặc đọc lại LICENSE của bản mới`);
 
 const reportIdx = process.argv.indexOf('--report');
 if (reportIdx > 0 && process.argv[reportIdx + 1])

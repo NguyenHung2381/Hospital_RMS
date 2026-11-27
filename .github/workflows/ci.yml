@@ -185,7 +185,8 @@ jobs:
       environment: production
       tag: ${{ github.sha }}
 
-  # Pipeline trên main / lịch tuần hỏng → 1 issue nhãn "ci-hong" ghi rõ job nào hỏng,
+  # Pipeline trên main / lịch tuần hỏng → 1 issue nhãn "ci-hong" ghi rõ job/bước nào hỏng
+  # kèm thông báo lỗi trích từ annotation hoặc log,
   # giao người kích hoạt (GitHub cũng gửi email). Đang có issue mở thì bình luận vào
   # đó thay vì mở thêm. PR hỏng thì tác giả đã thấy ngay trên PR.
   notify:
@@ -195,15 +196,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: read
+      actions: read # danh sách job + log
+      checks: read # thông báo lỗi (annotation) của từng job
       issues: write
     steps:
       - env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          failed=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | "- \(.name) (\(.conclusion)): \(.html_url)"')
+          # Mỗi job hỏng: tên, bước hỏng, link log và chính thông báo lỗi —
+          # lấy annotation ::error:: trước; không có thì trích đoạn log quanh ##[error].
+          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+              | [.id, .name, .conclusion, .html_url, ([.steps[]? | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", "))]
+              | @tsv')
+          failed=""
+          while IFS=$'\t' read -r id name concl url steps; do
+            [ -n "$id" ] || continue
+            failed+="### ❌ $name ($concl)"$'\n'"Bước hỏng: ${steps:-(không rõ)} · [Xem log]($url)"$'\n'
+            errs=$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$id/annotations" \
+              --jq '.[] | select(.annotation_level == "failure")
+                | select(.message | test("^Process completed with exit code") | not)
+                | (if .path and .path != ".github" then "\(.path):\(.start_line) " else "" end) + .message' \
+              2>/dev/null | head -n 30)
+            if [ -z "$errs" ]; then
+              errs=$(gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$id/logs" 2>/dev/null \
+                | sed -E 's/^[0-9]{4}-[0-9-]+T[0-9:.]+Z ?//' \
+                | grep -B 25 -m 1 -E '^##\[error\]' \
+                | grep -vE '^##\[(group|endgroup)\]' | tail -n 30)
+            fi
+            failed+=$'```text\n'"${errs:-(không trích được lỗi — mở log)}"$'\n```\n\n'
+          done <<< "$jobs"
           body="Lần chạy: $RUN_URL
           Commit: $GITHUB_SHA ($GITHUB_EVENT_NAME, $GITHUB_REF_NAME)
           Người kích hoạt: @$GITHUB_ACTOR

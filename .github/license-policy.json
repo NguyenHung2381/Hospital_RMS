@@ -16,6 +16,20 @@
     { "pattern": "CDDL-*", "reason": "Copyleft theo file" },
     { "pattern": "SEE LICENSE IN *", "reason": "Giấy phép riêng, cần đọc file LICENSE của gói" }
   ],
+  "verified": [
+    {
+      "name": "busboy",
+      "version": "1.6.0",
+      "license": "MIT",
+      "evidence": "package.json không có trường license; file LICENSE của gói là nguyên văn giấy phép MIT (Copyright Brian White). Kéo theo bởi multer."
+    },
+    {
+      "name": "streamsearch",
+      "version": "1.1.0",
+      "license": "MIT",
+      "evidence": "package.json không có trường license; file LICENSE của gói là nguyên văn giấy phép MIT (Copyright Brian White). Kéo theo bởi busboy."
+    }
+  ],
   "exceptions": [
     {
       "name": "mupdf",
