@@ -247,7 +247,7 @@ const sampleLineColors = (mupdf, page, lines) => {
 /**
  * Dòng chữ dạng nét vẽ của trang (dùng khi trang không có lớp chữ). Cùng dạng với
  * TemplateText nhưng `text` rỗng (không đọc được) và `vector: true`.
- * @returns {TemplateText[]}
+ * @returns {import('./certificateTemplate').TemplateText[]}
  */
 const readVectorTexts = (mupdf, page) => {
 	const [px0, , px1] = page.getBounds();
@@ -306,6 +306,7 @@ const applyPatches = (mupdf, doc, page, rects) => {
 	}
 	const ops = ['Q'];
 	rects.forEach((r, i) => {
+		/** @type {import('mupdf').Rect} */
 		const bbox = [
 			Math.floor(Math.max(bx0, r.x0) * z),
 			Math.floor(Math.max(by0, r.y0) * z),
