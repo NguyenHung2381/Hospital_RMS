@@ -174,17 +174,50 @@ export interface StaffMatch {
 export const staffMatches = (staff: StaffMatch | null, form: Pick<RegForm, 'staff_number' | 'full_name'>) =>
 	!!staff && staff.staff_number === form.staff_number.trim() && staff.full_name === form.full_name.trim();
 
+/** Trường gửi lên để cập nhật lại hồ sơ học viên của nhân viên đã đăng nhập (không gồm họ tên /
+ * trình độ / đơn vị — luôn theo hồ sơ nhân sự). */
+export const PROFILE_UPDATE_KEYS = INFO_KEYS.filter((k) => k !== 'full_name' && !FIELD_DEFS[k].externalOnly);
+
+/**
+ * Điền sẵn form nội viện từ hồ sơ của tài khoản đang đăng nhập: mã NV + họ tên theo hồ sơ nhân sự,
+ * các ô khác chỉ điền khi đang trống (không đè chữ người dùng đã gõ / bản nháp).
+ */
+export function prefillFromAccount(
+	form: RegForm,
+	account: { staff_number: string; staff: RegistrationStaff; profile: Partial<Record<InfoKey, string>> },
+): RegForm {
+	const next: RegForm = { ...form, staff_number: account.staff_number, full_name: account.staff.full_name };
+	for (const k of PROFILE_UPDATE_KEYS) {
+		const v = account.profile[k];
+		if (v && !form[k].trim()) next[k] = v;
+	}
+	return next;
+}
+
 export const infoKeysFor = (source: RegForm['source']) =>
 	INFO_KEYS.filter((k) => source === 'external' || !FIELD_DEFS[k].externalOnly);
 
-/** Lỗi của bước "Thông tin học viên" theo Cấu hình form + luật nghiệp vụ (CCCD, ngày tháng). */
-export function validateInfo(cfg: FormConfig, form: RegForm, custom: CustomValues): Record<string, string> {
+/** Nội viện: ô trống mà hồ sơ nhân viên trong CSDL đã có — không bắt nhập, máy chủ tự điền khi gửi */
+export const knownEmpty = (staff: StaffMatch | null, form: RegForm) => {
+	const known = new Set(staff?.info.known_fields ?? []);
+	return (key: string) => known.has(key) && !String(form[key as keyof RegForm] ?? '').trim();
+};
+
+/** Lỗi của bước "Thông tin học viên" theo Cấu hình form + luật nghiệp vụ (CCCD, ngày tháng).
+ * skip(key) = true: bỏ qua ô đó (đã có trong hồ sơ nhân viên). */
+export function validateInfo(
+	cfg: FormConfig,
+	form: RegForm,
+	custom: CustomValues,
+	skip: (key: string) => boolean = () => false,
+): Record<string, string> {
 	const errors: Record<string, string> = {};
 	const internal = form.source === 'internal';
 	const keys: (InfoKey | InvoiceKey)[] = [...infoKeysFor(form.source), ...(internal ? [] : INVOICE_KEYS)];
 	for (const key of keys) {
 		// Nội viện: họ tên đã khớp hồ sơ nhân sự ở bước trước
 		if (internal && key === 'full_name') continue;
+		if (skip(key)) continue;
 		const f = resolveField(cfg, key);
 		if (!f.visible && key !== 'full_name') continue;
 		// Họ tên luôn bắt buộc, dù admin tắt

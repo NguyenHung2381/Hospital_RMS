@@ -7,6 +7,7 @@ import { GENDER_OPTIONS } from '../../../shared/utils/gender';
 import {
 	getPublicSeminar,
 	lookupSeminarStaff,
+	lookupSeminarTicket,
 	registerSeminar,
 	type PublicSeminar,
 	type SeminarStaff,
@@ -27,6 +28,51 @@ const SOURCES = [
 	['internal', 'Nhân viên nội viện', `Nhân viên ${HOSPITAL} — chỉ cần họ tên và mã nhân viên`],
 	['external', 'Ngoại viện', 'Đơn vị khác — nhập đầy đủ thông tin'],
 ] as const;
+// Tra lại vé: nội viện như lúc đăng ký (họ tên + mã NV), ngoại viện họ tên + ngày sinh
+const LOOKUP_HINTS = {
+	internal: 'Nhập họ tên và mã nhân viên',
+	external: 'Nhập họ tên và ngày sinh đã khai khi đăng ký',
+} as const;
+type Source = 'internal' | 'external';
+
+// Chọn nội viện / ngoại viện (thẻ radio) — dùng cho cả đăng ký và tra lại vé
+function SourcePicker({
+	value,
+	onChange,
+	hint,
+}: {
+	value: Source | '';
+	onChange: (v: Source) => void;
+	hint?: (v: Source) => string;
+}) {
+	return (
+		<div
+			className={styles.courseList}
+			role='radiogroup'
+			aria-label='Nội viện / Ngoại viện'
+		>
+			{SOURCES.map(([v, label, defaultHint]) => (
+				<div
+					key={v}
+					className={`${styles.courseCard} ${value === v ? styles.courseCardActive : ''}`}
+					role='radio'
+					aria-checked={value === v}
+					tabIndex={0}
+					onClick={() => onChange(v)}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							onChange(v);
+						}
+					}}
+				>
+					<div className={styles.courseName}>{label}</div>
+					<div className={styles.courseMeta}>{hint ? hint(v) : defaultHint}</div>
+				</div>
+			))}
+		</div>
+	);
+}
 
 const EMPTY_FORM = {
 	title_prefix: '',
@@ -43,10 +89,10 @@ const EMPTY_FORM = {
 	website: '', // honeypot
 };
 
-// Trang mở ra khi quét QR đăng ký hội nghị (QR do ban tổ chức tải ở trang chi
-// tiết hội nghị, gắn vào văn bản). Ngoại viện đăng ký xong chuyển sang trang vé — trang vé
-// tự lưu ảnh QR cá nhân về máy. Nội viện không nhận vé trên trình duyệt (ai biết họ tên +
-// mã NV cũng đăng ký thay được): vé gửi email hồ sơ nhân sự hoặc nhận tại ban tổ chức.
+// Trang mở ra khi quét QR đăng ký hội nghị (QR do ban tổ chức tải ở trang chi tiết hội
+// nghị, gắn vào văn bản). Đăng ký xong chuyển sang trang vé — trang vé tự lưu ảnh QR cá
+// nhân về máy. Mất / chưa lưu được ảnh QR thì quét lại QR này → "Xem lại mã QR đã đăng
+// ký" → họ tên + ngày sinh ⇒ mở lại trang vé (backend seminarPublicService.lookupTicket).
 export default function SeminarRegisterPublic() {
 	const { token = '' } = useParams();
 	const navigate = useNavigate();
@@ -63,6 +109,14 @@ export default function SeminarRegisterPublic() {
 	const cfg = useFormConfig('seminar_participant', 'public');
 	const [custom, setCustomState] = useState<CustomValues>({});
 	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+	// 'lookup': xem lại mã QR đã đăng ký bằng họ tên + ngày sinh
+	const [mode, setMode] = useState<'register' | 'lookup'>('register');
+	const [lookupForm, setLookupForm] = useState({
+		source: '' as Source | '',
+		full_name: '',
+		staff_number: '',
+		dob: '',
+	});
 	const setCustom = (next: CustomValues) => {
 		setCustomState(next);
 		setFieldErrors((errs) => {
@@ -87,7 +141,7 @@ export default function SeminarRegisterPublic() {
 		setFieldErrors((errs) => (errs[field] ? { ...errs, [field]: '' } : errs));
 	};
 
-	const setSource = (source: 'internal' | 'external') => {
+	const setSource = (source: Source) => {
 		setError('');
 		setForm((f) => ({ ...f, source }));
 	};
@@ -153,6 +207,47 @@ export default function SeminarRegisterPublic() {
 		}
 	};
 
+	const switchMode = (next: 'register' | 'lookup') => {
+		setError('');
+		setMode(next);
+		// Đã chọn đối tượng / gõ họ tên ở form đăng ký thì mang sang form tra vé
+		if (next === 'lookup')
+			setLookupForm((f) => ({
+				...f,
+				source: f.source || form.source,
+				full_name: f.full_name || form.full_name,
+				staff_number: f.staff_number || form.staff_number,
+			}));
+		window.scrollTo({ top: 0, behavior: 'smooth' });
+	};
+
+	const handleLookup = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setError('');
+		const { source } = lookupForm;
+		if (!source) return setError('Vui lòng chọn nội viện / ngoại viện');
+		if (!lookupForm.full_name.trim()) return setError('Vui lòng nhập họ tên');
+		if (source === 'internal' && !lookupForm.staff_number.trim()) return setError('Vui lòng nhập mã nhân viên');
+		if (source === 'external' && !lookupForm.dob) return setError('Vui lòng chọn ngày sinh');
+		if (!captcha.payload) return setError('Vui lòng hoàn tất bước xác nhận');
+		setSubmitting(true);
+		try {
+			const res = await lookupSeminarTicket(token, {
+				source,
+				full_name: lookupForm.full_name.trim(),
+				...(source === 'internal' ? { staff_number: lookupForm.staff_number.trim() } : { dob: lookupForm.dob }),
+				...captcha.payload,
+			});
+			// Trang vé tự lưu lại ảnh QR như lúc vừa đăng ký
+			navigate(`/hoi-nghi/ve/${res.ticket_code}`, { state: { recovered: true } });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Không tra cứu được, vui lòng thử lại');
+		} finally {
+			captcha.reload(); // mã xác nhận chỉ dùng 1 lần
+			setSubmitting(false);
+		}
+	};
+
 	if (loadError || !seminar) {
 		return (
 			<PublicLayout
@@ -195,7 +290,134 @@ export default function SeminarRegisterPublic() {
 				</div>
 			</div>
 
-			{!seminar.registration_open ? (
+			{mode === 'register' && (
+				<div className={`${styles.section} ${styles.ticketLookupCard}`}>
+					<span>Đã đăng ký nhưng mất hoặc chưa lưu được mã QR?</span>
+					<button
+						type='button'
+						className={styles.ticketLookupBtn}
+						onClick={() => switchMode('lookup')}
+					>
+						Xem lại mã QR đã đăng ký
+					</button>
+				</div>
+			)}
+
+			{mode === 'lookup' ? (
+				<>
+					{error && (
+						<div
+							className={`${styles.alertBox} ${styles.alertError}`}
+							role='alert'
+						>
+							<AlertSvg /> {error}
+						</div>
+					)}
+					<form
+						onSubmit={handleLookup}
+						noValidate
+					>
+						<FormSection
+							step={1}
+							title='Xem lại mã QR đã đăng ký'
+							description='Chọn đối tượng như lúc đăng ký.'
+						>
+							<SourcePicker
+								value={lookupForm.source}
+								onChange={(source) => {
+									setError('');
+									setLookupForm((f) => ({ ...f, source }));
+								}}
+								hint={(v) => LOOKUP_HINTS[v]}
+							/>
+						</FormSection>
+						{lookupForm.source && (
+							<FormSection
+								step={2}
+								title={lookupForm.source === 'internal' ? 'Thông tin nhân viên' : 'Thông tin người tham dự'}
+								description={
+									lookupForm.source === 'internal'
+										? 'Họ tên và mã nhân viên như lúc đăng ký.'
+										: 'Họ tên và ngày sinh đã khai khi đăng ký.'
+								}
+							>
+								<div className={styles.formGrid}>
+									<div className={styles.formGroup}>
+										<label
+											className={styles.label}
+											htmlFor='l-full_name'
+										>
+											Họ và tên <span className={styles.required}>*</span>
+										</label>
+										<input
+											id='l-full_name'
+											className={styles.input}
+											value={lookupForm.full_name}
+											onChange={(e) => setLookupForm((f) => ({ ...f, full_name: e.target.value }))}
+											placeholder='VD: Nguyễn Văn An'
+											autoComplete='name'
+											required
+										/>
+									</div>
+									{lookupForm.source === 'internal' ? (
+										<div className={styles.formGroup}>
+											<label
+												className={styles.label}
+												htmlFor='l-staff_number'
+											>
+												Mã nhân viên <span className={styles.required}>*</span>
+											</label>
+											<input
+												id='l-staff_number'
+												className={styles.input}
+												inputMode='numeric'
+												value={lookupForm.staff_number}
+												onChange={(e) => setLookupForm((f) => ({ ...f, staff_number: e.target.value }))}
+												placeholder='VD: 1234'
+												required
+											/>
+										</div>
+									) : (
+										<div className={styles.formGroup}>
+											<label
+												className={styles.label}
+												htmlFor='l-dob'
+											>
+												Ngày sinh <span className={styles.required}>*</span>
+											</label>
+											<DatePicker
+												id='l-dob'
+												value={lookupForm.dob}
+												max={new Date().toISOString().slice(0, 10)}
+												onChange={(v) => setLookupForm((f) => ({ ...f, dob: v }))}
+											/>
+										</div>
+									)}
+								</div>
+							</FormSection>
+						)}
+						{lookupForm.source && (
+							<div className={styles.formFooter}>
+								{captcha.field}
+								<button
+									type='submit'
+									className={styles.submitBtn}
+									disabled={submitting}
+								>
+									{submitting ? 'Đang tìm...' : 'Xem mã QR'}
+								</button>
+							</div>
+						)}
+					</form>
+					<button
+						type='button'
+						className={styles.ticketLookupBack}
+						onClick={() => switchMode('register')}
+					>
+						← Quay lại đăng ký
+					</button>
+				</>
+			) : !seminar.registration_open ? (
 				<div
 					className={`${styles.alertBox} ${styles.alertError}`}
 					role='alert'
@@ -236,31 +458,10 @@ export default function SeminarRegisterPublic() {
 							step={1}
 							title='Đối tượng tham dự'
 						>
-							<div
-								className={styles.courseList}
-								role='radiogroup'
-								aria-label='Nội viện / Ngoại viện'
-							>
-								{SOURCES.map(([value, label, hint]) => (
-									<div
-										key={value}
-										className={`${styles.courseCard} ${form.source === value ? styles.courseCardActive : ''}`}
-										role='radio'
-										aria-checked={form.source === value}
-										tabIndex={0}
-										onClick={() => setSource(value)}
-										onKeyDown={(e) => {
-											if (e.key === 'Enter' || e.key === ' ') {
-												e.preventDefault();
-												setSource(value);
-											}
-										}}
-									>
-										<div className={styles.courseName}>{label}</div>
-										<div className={styles.courseMeta}>{hint}</div>
-									</div>
-								))}
-							</div>
+							<SourcePicker
+								value={form.source}
+								onChange={setSource}
+							/>
 						</FormSection>
 
 						{form.source === 'internal' && (

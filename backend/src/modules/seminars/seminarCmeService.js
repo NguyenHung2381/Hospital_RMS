@@ -32,7 +32,8 @@ const { SCALED_SCORE_SQL } = require('../../utils/seminarTest');
 // Hội nghị có nhiều đề kiểm tra (seminar_tests): mọi đề đã soạn câu hỏi và được đánh dấu
 // "tính điều kiện CME" (counts_for_cme) đều phải nộp bài và đạt điểm đạt của đề (nếu đặt)
 // — so điểm ĐÃ quy về thang điểm của đề (xem utils/seminarTest.SCALED_SCORE_SQL); bài nộp
-// trước khi có điểm theo trọng số (test_score NULL) tính mỗi câu đúng 1 điểm.
+// trước khi có điểm theo trọng số (test_score NULL) tính mỗi câu đúng 1 điểm. Bài nộp qua
+// QR chung của đề (via = 'qr', chỉ nhập họ tên) chỉ tính khi đề bật qr_counts_for_cme.
 const CME_ELIGIBLE_SQL = `${boolExpr(`NOT ${SELF_CREATED_SQL} OR (p.checked_in_at IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM seminar_tests t
@@ -40,6 +41,7 @@ const CME_ELIGIBLE_SQL = `${boolExpr(`NOT ${SELF_CREATED_SQL} OR (p.checked_in_a
       AND NOT EXISTS (
         SELECT 1 FROM seminar_test_submissions r
         WHERE r.test_id = t.id AND r.participant_id = p.id AND r.test_submitted_at IS NOT NULL
+          AND (r.via <> 'qr' OR t.qr_counts_for_cme)
           AND (t.test_pass_score IS NULL OR ${SCALED_SCORE_SQL} >= t.test_pass_score))))`)}`;
 
 // Cấp số CME cho 1 hoặc nhiều người (tuần tự, giữ dãy liền mạch).

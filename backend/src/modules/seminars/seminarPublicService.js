@@ -24,6 +24,7 @@ const mailService = require('../notifications/mailService');
 const mailQueue = require('../notifications/mailQueue');
 const { renderSeminarBadgePng } = require('../../utils/seminarBadgeImage');
 const { testState, testWindow } = require('../../utils/seminarSchedule');
+const { buildSeminarIcs } = require('../../utils/seminarCalendar');
 const { httpError } = require('../../utils/httpError');
 const {
 	SUBMIT_GRACE_MS,
@@ -61,7 +62,7 @@ const SEMINAR_PUBLIC_COLS = `s.id, s.title, s.location, s.start_date, s.end_date
 // + cấu hình (utils/seminarTest)
 const TEST_PUBLIC_COLS = `t.id, t.title, t.counts_for_cme, t.test_questions, t.test_open, t.test_date,
   t.test_end_date, t.test_start_time, t.test_end_time, t.test_duration_minutes, t.test_pass_score,
-  t.test_score_scale, t.test_shuffle_questions, t.test_shuffle_options`;
+  t.test_score_scale, t.test_shuffle_questions, t.test_shuffle_options, t.qr_enabled, t.qr_counts_for_cme`;
 // Hết hạn đăng ký sau ngày kết thúc (không có ngày kết thúc thì theo ngày bắt đầu)
 const REG_OPEN_SQL = `${boolExpr(`s.scope = 'hosted' AND COALESCE(s.end_date, s.start_date, '9999-12-31')
   >= CAST(${nowSql} AS DATE)`)}`;
@@ -112,6 +113,51 @@ const lookupStaff = async (token, fullName, staffNumber) => {
 	};
 };
 
+// Mất / chưa lưu được ảnh QR: quét lại QR đăng ký, chọn nội viện / ngoại viện ⇒ trả lại mã vé.
+// - Nội viện: họ tên + mã NV (như lúc đăng ký — findStaff) ⇒ vé đứng tên nhân viên đó.
+// - Ngoại viện: họ tên + ngày sinh đã khai. Họ tên so bỏ dấu / hoa thường; trùng nhiều
+//   người (cùng tên + ngày sinh) thì không trả vé nào — tránh đưa nhầm vé người khác.
+// Đánh đổi (quyết định nghiệp vụ): ai biết các thông tin đó của người đã đăng ký cũng xem
+// được vé; route chặn dò bằng captcha + giới hạn lượt tra sai theo IP.
+const lookupTicket = async (token, { source, full_name: fullName, staff_number, dob }) => {
+	const seminar = await getPublicSeminar(token);
+	const pool = await getPool();
+	if (source === 'internal') {
+		const u = await findStaff(fullName, staff_number);
+		const r = await pool
+			.request()
+			.input('sid', sql.VarChar(20), seminar.id)
+			.input('uid', sql.VarChar(20), u.id).query(`
+        SELECT ticket_code FROM seminar_participants
+        WHERE seminar_id = @sid AND user_id = @uid AND ticket_code IS NOT NULL`);
+		if (!r.recordset[0])
+			throw httpError(
+				404,
+				'Nhân viên này chưa đăng ký hội nghị qua mã QR — vui lòng đăng ký hoặc liên hệ ban tổ chức.',
+			);
+		return { ticket_code: r.recordset[0].ticket_code };
+	}
+	const r = await pool
+		.request()
+		.input('sid', sql.VarChar(20), seminar.id)
+		.input('dob', sql.Date, String(dob).slice(0, 10)).query(`
+      SELECT full_name, ticket_code FROM seminar_participants
+      WHERE seminar_id = @sid AND ticket_code IS NOT NULL AND CAST(dob AS DATE) = @dob`);
+	const key = norm(fullName);
+	const found = r.recordset.filter((p) => norm(p.full_name) === key);
+	if (!found.length)
+		throw httpError(
+			404,
+			'Không tìm thấy đăng ký khớp họ tên và ngày sinh. Nếu lúc đăng ký chưa có ngày sinh, vui lòng liên hệ ban tổ chức.',
+		);
+	if (found.length > 1)
+		throw httpError(
+			409,
+			'Có nhiều đăng ký trùng họ tên và ngày sinh — vui lòng liên hệ ban tổ chức để nhận lại mã QR.',
+		);
+	return { ticket_code: found[0].ticket_code };
+};
+
 // Email tài khoản tự sinh (`...@member.local`) không nhận được thư
 const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
 
@@ -146,7 +192,7 @@ const registerPublic = async (token, data, custom = null) => {
 		if (dup.recordset.length)
 			throw httpError(
 				409,
-				'Nhân viên này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.',
+				'Nhân viên này đã đăng ký hội nghị. Mất mã QR: bấm "Xem lại mã QR đã đăng ký", chọn Nội viện và nhập họ tên + mã nhân viên.',
 			);
 	} else {
 		person = {
@@ -168,7 +214,7 @@ const registerPublic = async (token, data, custom = null) => {
 		if (dup.recordset.length)
 			throw httpError(
 				409,
-				'Số điện thoại này đã đăng ký hội nghị. Nếu mất mã QR, vui lòng liên hệ ban tổ chức.',
+				'Số điện thoại này đã đăng ký hội nghị. Mất mã QR: bấm "Xem lại mã QR đã đăng ký", chọn Ngoại viện và nhập họ tên + ngày sinh.',
 			);
 	}
 
@@ -199,26 +245,33 @@ const registerPublic = async (token, data, custom = null) => {
 // DATE từ mssql (useUTC mặc định) là 00:00 UTC → định dạng theo UTC để không lệch ngày
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN', { timeZone: 'UTC' }) : null);
 
-const sendBadgeMail = async (seminar, data, code) => {
-	if (!(await mailService.isEnabled('SEMINAR_BADGE'))) return; // khỏi vẽ ảnh thẻ khi không gửi
-	const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
-	const ticketUrl = `${appUrl}/hoi-nghi/ve/${code}`;
-	const holder = `${data.title_prefix ? `${data.title_prefix} ` : ''}${String(data.full_name).trim()}`;
-	const when =
+const appTicketUrl = (code) =>
+	`${(process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '')}/hoi-nghi/ve/${code}`;
+const holderName = (p) =>
+	`${p.title_prefix ? `${p.title_prefix} ` : ''}${String(p.full_name).trim()}`;
+
+// Dữ liệu thẻ đại biểu (email + ảnh PNG) — `person`: title_prefix, full_name, organization
+const badgeData = (seminar, person, code) => ({
+	holder: holderName(person),
+	organization: person.organization,
+	seminarTitle: seminar.title,
+	when:
 		seminar.date_text ||
 		[seminar.start_date, +seminar.end_date !== +seminar.start_date ? seminar.end_date : null]
 			.map(fmtDate)
 			.filter(Boolean)
-			.join(' – ');
-	const badge = {
-		holder,
-		organization: data.organization,
-		seminarTitle: seminar.title,
-		when,
-		location: seminar.location,
-		ticketUrl,
-		code,
-	};
+			.join(' – '),
+	location: seminar.location,
+	ticketUrl: appTicketUrl(code),
+	code,
+});
+
+const sendBadgeMail = async (seminar, data, code) => {
+	if (!(await mailService.isEnabled('SEMINAR_BADGE'))) return; // khỏi vẽ ảnh thẻ khi không gửi
+	const badge = badgeData(seminar, data, code);
+	const { holder, ticketUrl } = badge;
+	// Lịch hội nghị (Gmail / Mail của iOS hiện nút thêm vào lịch); chưa có ngày thì bỏ
+	const ics = buildSeminarIcs(seminar, { code, holder, ticketUrl });
 	await mailService.send({
 		event: 'SEMINAR_BADGE',
 		to: data.email,
@@ -237,13 +290,54 @@ const sendBadgeMail = async (seminar, data, code) => {
 				}),
 				cid: 'ticket-qr',
 			},
+			...(ics
+				? [
+						{
+							filename: 'lich-hoi-nghi.ics',
+							content: ics,
+							contentType: 'text/calendar; charset=utf-8; method=PUBLISH',
+						},
+					]
+				: []),
 		],
 	});
 };
 
-// Vé của 1 người + mọi đề kiểm tra của hội nghị (đã soạn câu hỏi) kèm bài làm của người đó.
+// Các đề kiểm tra (đã soạn câu hỏi) của hội nghị kèm bài làm của 1 người; `testId`: chỉ 1 đề.
 // test_elapsed_sec tính trong SQL vì test_started_at ghi bằng nowSql (giờ VN do CSDL tính)
 // — tránh lệch múi giờ khi so ở Node.
+const loadParticipantTests = async (seminarId, participantId, testId = null) => {
+	const pool = await getPool();
+	const req = pool
+		.request()
+		.input('sid', sql.VarChar(20), seminarId)
+		.input('pid', sql.VarChar(24), participantId);
+	if (testId) req.input('tid', sql.VarChar(20), testId);
+	return (
+		await req.query(`
+      SELECT ${TEST_PUBLIC_COLS},
+             x.test_started_at, ${dateDiff('SECOND', 'x.test_started_at', nowSql)} AS test_elapsed_sec,
+             x.test_submitted_at, x.test_correct, x.test_total, x.test_score, x.test_max_score, x.via
+      FROM seminar_tests t
+      LEFT JOIN seminar_test_submissions x ON x.test_id = t.id AND x.participant_id = @pid
+      WHERE t.seminar_id = @sid AND t.test_questions IS NOT NULL ${testId ? 'AND t.id = @tid' : ''}
+      ORDER BY t.sort_order, t.created_at, t.id;
+    `)
+	).recordset;
+};
+
+// Dòng đề + ngày hội nghị (ngày mở mặc định của testWindow) + người làm (điểm danh, hạt giống
+// trộn đề). `p`: dòng có participant_id, ticket_code, checked_in_at, start_date, end_date.
+const withHolder = (t, p) => ({
+	...t,
+	start_date: p.start_date,
+	end_date: p.end_date,
+	participant_id: p.participant_id,
+	ticket_code: p.ticket_code,
+	checked_in_at: p.checked_in_at,
+});
+
+// Vé của 1 người + mọi đề kiểm tra của hội nghị kèm bài làm của người đó.
 const loadTicket = async (code) => {
 	const pool = await getPool();
 	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
@@ -254,26 +348,9 @@ const loadTicket = async (code) => {
     `);
 	const row = r.recordset[0];
 	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
-	const tests = await pool
-		.request()
-		.input('sid', sql.VarChar(20), row.id)
-		.input('pid', sql.VarChar(24), row.participant_id).query(`
-      SELECT ${TEST_PUBLIC_COLS},
-             x.test_started_at, ${dateDiff('SECOND', 'x.test_started_at', nowSql)} AS test_elapsed_sec,
-             x.test_submitted_at, x.test_correct, x.test_total, x.test_score, x.test_max_score
-      FROM seminar_tests t
-      LEFT JOIN seminar_test_submissions x ON x.test_id = t.id AND x.participant_id = @pid
-      WHERE t.seminar_id = @sid AND t.test_questions IS NOT NULL
-      ORDER BY t.sort_order, t.created_at, t.id;
-    `);
-	// Dòng đề + ngày hội nghị (ngày mở mặc định của testWindow) + vé (điểm danh, hạt giống trộn đề)
-	row.tests = tests.recordset.map((t) => ({
-		...t,
-		start_date: row.start_date,
-		end_date: row.end_date,
-		ticket_code: row.ticket_code,
-		checked_in_at: row.checked_in_at,
-	}));
+	row.tests = (await loadParticipantTests(row.id, row.participant_id)).map((t) =>
+		withHolder(t, row),
+	);
 	return row;
 };
 
@@ -283,8 +360,10 @@ const findTest = (row, testId) => {
 	return t;
 };
 
-// Trạng thái lượt làm 1 đề của 1 vé lúc `now`. `t` = dòng đề đã ghép (loadTicket).
-const testAttempt = (t, now = Date.now()) => {
+// Trạng thái lượt làm 1 đề của 1 người lúc `now`. `t` = dòng đề đã ghép (withHolder).
+// requireCheckIn: làm trên vé phải điểm danh trước; QR chung của đề (seminarTestQrService)
+// thì không — điểm danh vẫn là điều kiện cấp CME riêng (CME_ELIGIBLE_SQL).
+const testAttempt = (t, now = Date.now(), { requireCheckIn = true } = {}) => {
 	const questions = parseQuestions(t.test_questions);
 	const state = testState(t, now);
 	const started = !!t.test_started_at;
@@ -294,12 +373,13 @@ const testAttempt = (t, now = Date.now()) => {
 	const needsStart = !!t.test_duration_minutes && !started;
 	const eligible = !!(
 		questions.length &&
-		t.checked_in_at &&
+		(!requireCheckIn || t.checked_in_at) &&
 		!t.test_submitted_at &&
 		state === 'open'
 	);
-	// Mỗi đề trộn riêng: cùng vé + cùng đề luôn ra cùng một thứ tự
-	const order = testOrder(questions, `${t.ticket_code}:${t.id}`, {
+	// Mỗi đề trộn riêng: cùng người + cùng đề luôn ra cùng một thứ tự (vé hay QR chung đều
+	// vậy). Người BTC thêm (không vé) chỉ làm được qua QR chung → hạt giống là mã người tham dự.
+	const order = testOrder(questions, `${t.ticket_code || t.participant_id}:${t.id}`, {
 		shuffleQuestions: !!t.test_shuffle_questions,
 		shuffleOptions: !!t.test_shuffle_options,
 	});
@@ -316,9 +396,9 @@ const testAttempt = (t, now = Date.now()) => {
 };
 
 // Lỗi chung khi bắt đầu / nộp bài
-const assertCanTest = (t, a) => {
+const assertCanTest = (t, a, { requireCheckIn = true } = {}) => {
 	if (!a.questions.length) throw httpError(409, 'Đề kiểm tra này chưa có câu hỏi.');
-	if (!t.checked_in_at)
+	if (requireCheckIn && !t.checked_in_at)
 		throw httpError(
 			409,
 			'Bạn chưa được điểm danh — vui lòng đưa mã QR cho ban tổ chức quét trước.',
@@ -329,9 +409,9 @@ const assertCanTest = (t, a) => {
 		throw httpError(409, `Chưa tới giờ làm bài "${t.title}" (mở lúc ${t.test_start_time}).`);
 };
 
-// 1 đề trên vé — không bao giờ gửi đáp án đúng ra cổng công khai
-const ticketTest = (t, now) => {
-	const a = testAttempt(t, now);
+// 1 đề trên vé / trang QR chung — không bao giờ gửi đáp án đúng ra cổng công khai
+const ticketTest = (t, now, opts) => {
+	const a = testAttempt(t, now, opts);
 	const window = testWindow(t, now);
 	const submitted = !!t.test_submitted_at;
 	// Điểm đã quy về thang của đề (nếu đặt); bài nộp trước khi có điểm theo trọng số:
@@ -362,6 +442,8 @@ const ticketTest = (t, now) => {
 		remaining_seconds:
 			a.canTake && a.deadline != null ? Math.max(0, Math.floor((a.deadline - now) / 1000)) : null,
 		submitted_at: t.test_submitted_at,
+		// Nộp qua QR chung của đề mà đề không tính CME cho kiểu nộp này (CME_ELIGIBLE_SQL)
+		cme_excluded: submitted && t.via === 'qr' && !t.qr_counts_for_cme,
 		correct: t.test_correct,
 		total: t.test_total,
 		score: submitted ? score : null,
@@ -395,34 +477,59 @@ const getTicket = async (code) => {
 	};
 };
 
-// Bấm "Bắt đầu làm bài" (chỉ khi đề có giới hạn thời gian) — ghi giờ bắt đầu 1 lần duy nhất
-const startTest = async (code, testId) => {
-	const row = await loadTicket(code);
-	const t = findTest(row, testId);
-	const a = testAttempt(t);
-	assertCanTest(t, a);
+// Người giữ vé + hội nghị (cho file lịch / ảnh thẻ) — không nạp đề kiểm tra như loadTicket
+const loadTicketHolder = async (code) => {
+	const pool = await getPool();
+	const r = await pool.request().input('code', sql.VarChar(32), code).query(`
+      SELECT p.title_prefix, p.full_name, p.organization, ${SEMINAR_PUBLIC_COLS}
+      FROM seminar_participants p JOIN seminars s ON s.id = p.seminar_id
+      WHERE p.ticket_code = @code;
+    `);
+	const row = r.recordset[0];
+	if (!row) throw httpError(404, 'Mã vé không tồn tại.');
+	return row;
+};
+
+// File lịch (.ics) của vé — null khi hội nghị chưa có ngày tổ chức (chỉ có date_text)
+const getTicketCalendar = async (code) => {
+	const row = await loadTicketHolder(code);
+	return buildSeminarIcs(row, { code, holder: holderName(row), ticketUrl: appTicketUrl(code) });
+};
+
+// Ảnh PNG thẻ đại biểu (cùng ảnh đính kèm email) — tải bằng link thường: trình duyệt trong
+// Zalo/Facebook (WebView Android) không tải được ảnh dựng ở trình duyệt (blob:) nhưng giao
+// được link http cho trình tải xuống của máy.
+const getTicketBadgePng = async (code) => {
+	const row = await loadTicketHolder(code);
+	return { png: await renderSeminarBadgePng(badgeData(row, row, code)), fullName: row.full_name };
+};
+
+// Bấm "Bắt đầu làm bài" (chỉ khi đề có giới hạn thời gian) — ghi giờ bắt đầu 1 lần duy nhất.
+// `t` = dòng đề đã ghép (withHolder); via: 'ticket' | 'qr' (kênh làm bài, migration 2027-01-13).
+const beginAttempt = async (t, { via = 'ticket', requireCheckIn = true } = {}) => {
+	const a = testAttempt(t, Date.now(), { requireCheckIn });
+	assertCanTest(t, a, { requireCheckIn });
 	if (a.state === 'closed') throw httpError(409, 'Đã hết thời gian nhận bài kiểm tra.');
 	if (t.test_duration_minutes && !t.test_started_at) {
 		const pool = await getPool();
 		await pool
 			.request()
 			.input('tid', sql.VarChar(20), t.id)
-			.input('pid', sql.VarChar(24), row.participant_id).query(`
-        INSERT INTO seminar_test_submissions (test_id, participant_id, test_started_at)
-        VALUES (@tid, @pid, ${nowSql})
+			.input('pid', sql.VarChar(24), t.participant_id)
+			.input('via', sql.VarChar(10), via).query(`
+        INSERT INTO seminar_test_submissions (test_id, participant_id, test_started_at, via)
+        VALUES (@tid, @pid, ${nowSql}, @via)
         ON CONFLICT (test_id, participant_id) DO NOTHING`);
 		broadcast('update', { entity: 'seminar' });
 	}
-	return getTicket(code);
 };
 
-// `answers` theo thứ tự câu/phương án hiển thị trên vé; null = bỏ trống (hết giờ tự nộp)
-const submitTest = async (code, testId, answers) => {
-	const row = await loadTicket(code);
-	const t = findTest(row, testId);
+// `answers` theo thứ tự câu/phương án hiển thị; null = bỏ trống (hết giờ tự nộp).
+// via ghi theo kênh NỘP bài (bắt đầu trên vé rồi nộp qua QR chung ⇒ 'qr').
+const finishAttempt = async (t, answers, { via = 'ticket', requireCheckIn = true } = {}) => {
 	const now = Date.now();
-	const a = testAttempt(t, now);
-	assertCanTest(t, a);
+	const a = testAttempt(t, now, { requireCheckIn });
+	assertCanTest(t, a, { requireCheckIn });
 	if (t.test_duration_minutes && !a.started)
 		throw httpError(409, 'Bạn chưa bấm "Bắt đầu làm bài".');
 	// Hạn đã gồm giờ dừng tiếp nhận; cho trễ SUBMIT_GRACE_MS cho bài tự nộp lúc hết giờ
@@ -438,19 +545,21 @@ const submitTest = async (code, testId, answers) => {
 	const u = await pool
 		.request()
 		.input('tid', sql.VarChar(20), t.id)
-		.input('pid', sql.VarChar(24), row.participant_id)
+		.input('pid', sql.VarChar(24), t.participant_id)
 		.input('answers', sql.NVarChar(sql.MAX), JSON.stringify(g.picked))
 		.input('correct', sql.Int, g.correct)
 		.input('total', sql.Int, g.total)
 		.input('score', sql.Decimal(7, 2), g.score)
-		.input('max_score', sql.Decimal(7, 2), g.max_score).query(`
+		.input('max_score', sql.Decimal(7, 2), g.max_score)
+		.input('via', sql.VarChar(10), via).query(`
       INSERT INTO seminar_test_submissions AS x (test_id, participant_id, test_answers, test_correct,
-        test_total, test_score, test_max_score, test_submitted_at)
-      VALUES (@tid, @pid, @answers, @correct, @total, @score, @max_score, ${nowSql})
+        test_total, test_score, test_max_score, test_submitted_at, via)
+      VALUES (@tid, @pid, @answers, @correct, @total, @score, @max_score, ${nowSql}, @via)
       ON CONFLICT (test_id, participant_id) DO UPDATE
       SET test_answers = EXCLUDED.test_answers, test_correct = EXCLUDED.test_correct,
           test_total = EXCLUDED.test_total, test_score = EXCLUDED.test_score,
-          test_max_score = EXCLUDED.test_max_score, test_submitted_at = EXCLUDED.test_submitted_at
+          test_max_score = EXCLUDED.test_max_score, test_submitted_at = EXCLUDED.test_submitted_at,
+          via = EXCLUDED.via
       WHERE x.test_submitted_at IS NULL
     `);
 	if (!u.rowsAffected[0]) throw httpError(409, `Bạn đã nộp bài "${t.title}" rồi.`);
@@ -463,6 +572,17 @@ const submitTest = async (code, testId, answers) => {
 		max_score: scaleMax(t, g.max_score),
 		passed: isPassed(t, score),
 	};
+};
+
+const startTest = async (code, testId) => {
+	const row = await loadTicket(code);
+	await beginAttempt(findTest(row, testId));
+	return getTicket(code);
+};
+
+const submitTest = async (code, testId, answers) => {
+	const row = await loadTicket(code);
+	return finishAttempt(findTest(row, testId), answers);
 };
 
 // Ban tổ chức quét vé QR của người tham dự. Quét lại người đã điểm danh thì
@@ -503,9 +623,19 @@ const checkInTicket = async (seminarId, code, actorId) => {
 module.exports = {
 	getPublicSeminar,
 	lookupStaff,
+	lookupTicket,
 	registerPublic,
 	getTicket,
+	getTicketCalendar,
+	getTicketBadgePng,
 	startTest,
 	submitTest,
 	checkInTicket,
+	// QR chung của đề (seminarTestQrService)
+	SEMINAR_PUBLIC_COLS,
+	loadParticipantTests,
+	withHolder,
+	ticketTest,
+	beginAttempt,
+	finishAttempt,
 };

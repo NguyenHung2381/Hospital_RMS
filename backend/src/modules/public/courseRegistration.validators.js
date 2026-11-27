@@ -271,6 +271,19 @@ const amendment = [
 	body('email_token').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
 ];
 
+// Nhân viên đã đăng nhập cập nhật hồ sơ học viên của mình bằng thông tin vừa khai ở form đăng ký
+// (PUT /me/training/registration-profile) — cùng kiểu dữ liệu với bản khai, không hóa đơn / cam kết.
+const profileUpdate = [
+	emailRule,
+	dobRule,
+	dobWithIdRule,
+	issuedDateRule,
+	genderRule,
+	graduatedYearRule,
+	nationalIdRule,
+	...textRules((k) => !isInvoiceKey(k)),
+];
+
 // Yếu tố thứ hai khi tra cứu / tải đơn / nộp hồ sơ theo mã đăng ký
 const secondFactor = [
 	body('national_id').optional({ values: 'falsy' }).isString().trim().isLength({ max: 20 }),
@@ -292,4 +305,5 @@ module.exports = {
 	emailOtpVerify,
 	secondFactor,
 	amendment,
+	profileUpdate,
 };

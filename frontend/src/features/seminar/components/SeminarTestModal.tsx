@@ -42,6 +42,9 @@ export function SeminarTestModal({
 		() => test?.title ?? (existing.length ? `Bài kiểm tra ${existing.length + 1}` : 'Bài kiểm tra cuối buổi'),
 	);
 	const [countsForCme, setCountsForCme] = useState(test?.counts_for_cme ?? true);
+	// QR chung của đề: quét → nhập họ tên → làm bài (không cần vé cá nhân)
+	const [qrEnabled, setQrEnabled] = useState(!!test?.qr_enabled);
+	const [qrCountsForCme, setQrCountsForCme] = useState(!!test?.qr_counts_for_cme);
 	const [questions, setQuestions] = useState<SeminarTestQuestion[]>(() => {
 		const list = parse(test?.test_questions ?? null);
 		return list.length ? list : [blank()];
@@ -106,6 +109,8 @@ export function SeminarTestModal({
 			const data: SeminarTestInput = {
 				title: title.trim(),
 				counts_for_cme: countsForCme,
+				qr_enabled: qrEnabled,
+				qr_counts_for_cme: qrCountsForCme,
 				test_questions: filled.map((q) => ({ ...q, points: pointsOf(q) })),
 				test_open: open,
 				test_date: testDate || null,
@@ -315,6 +320,33 @@ export function SeminarTestModal({
 							/>
 							Tính vào điều kiện cấp CME
 						</label>
+					</SettingRow>
+					<SettingRow
+						label='QR chung'
+						hint={
+							qrEnabled
+								? 'Chiếu mã QR của đề lên màn hình: người dự quét → nhập họ tên → làm bài, không cần vé cá nhân. Trùng tên người đã đăng ký thì họ tự xác nhận; không trùng ai thì được thêm vào danh sách là khách.'
+								: 'Chỉ làm bài trên vé QR cá nhân (phải đăng ký + điểm danh).'
+						}
+					>
+						<label className={styles.checkFilter}>
+							<input
+								type='checkbox'
+								checked={qrEnabled}
+								onChange={(e) => setQrEnabled(e.target.checked)}
+							/>
+							Cho làm bài bằng QR chung (nhập họ tên)
+						</label>
+						{qrEnabled && countsForCme && (
+							<label className={styles.checkFilter}>
+								<input
+									type='checkbox'
+									checked={qrCountsForCme}
+									onChange={(e) => setQrCountsForCme(e.target.checked)}
+								/>
+								Tính bài nộp qua QR chung vào điều kiện CME
+							</label>
+						)}
 					</SettingRow>
 					<SettingRow label='Trộn đề'>
 						<label className={styles.checkFilter}>

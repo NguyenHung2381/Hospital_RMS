@@ -298,6 +298,8 @@ export interface RegistrationStaff {
 	qualification: string | null;
 	/** Email trong hồ sơ nhân sự đã che (null = không có email thật) */
 	email_masked: string | null;
+	/** Trường hồ sơ trong CSDL đã có (chỉ tên trường, không có giá trị) — form ẩn, máy chủ tự điền khi gửi */
+	known_fields?: string[];
 }
 // Không khớp ⇒ 404 với thông báo chung (không lộ mã nhân viên có tồn tại hay không)
 export const checkRegistrationStaff = (staff_number: string, full_name: string) =>
@@ -630,6 +632,8 @@ export interface SeminarTicketTest {
 		/** Giây còn lại tới hạn nộp khi đang làm bài — null = không giới hạn */
 		remaining_seconds?: number | null;
 		submitted_at: string | null;
+		/** Bài nộp qua QR chung của đề, không được tính vào điều kiện CME */
+		cme_excluded?: boolean;
 		correct: number | null;
 		total: number | null;
 		score?: number | null;
@@ -651,6 +655,22 @@ export const lookupSeminarStaff = (token: string, full_name: string, staff_numbe
 		method: 'POST',
 		body: JSON.stringify({ full_name, staff_number }),
 	});
+/** Mất mã QR ⇒ mã vé. Nội viện: họ tên + mã NV; ngoại viện: họ tên + ngày sinh (YYYY-MM-DD) đã khai */
+export const lookupSeminarTicket = (
+	token: string,
+	data: {
+		source: 'internal' | 'external';
+		full_name: string;
+		staff_number?: string;
+		dob?: string;
+		captcha_token: string;
+		captcha_answer: string;
+	},
+) =>
+	request<{ ticket_code: string }>(`/seminars/${encodeURIComponent(token)}/ticket-lookup`, {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
 export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
 	request<{ ticket_code: string }>(`/seminars/${encodeURIComponent(token)}/register`, {
 		method: 'POST',
@@ -658,13 +678,76 @@ export const registerSeminar = (token: string, data: SeminarRegisterPayload) =>
 	});
 export const getSeminarTicket = (code: string) =>
 	request<SeminarTicket>(`/seminar-tickets/${encodeURIComponent(code)}`);
+/** Link tải ảnh thẻ đại biểu (PNG, attachment) — cho trình duyệt trong Zalo/Facebook không tải được blob */
+export const seminarTicketBadgeUrl = (code: string) =>
+	`${BASE_URL}/api/v1/public/seminar-tickets/${encodeURIComponent(code)}/qr.png`;
+/** Link file lịch .ics của vé — mở bằng link thường (không fetch) để điện thoại hiện "Thêm vào Lịch" */
+export const seminarTicketCalendarUrl = (code: string) =>
+	`${BASE_URL}/api/v1/public/seminar-tickets/${encodeURIComponent(code)}/calendar`;
 export const startSeminarTest = (code: string, testId: string) =>
 	request<SeminarTicket>(
 		`/seminar-tickets/${encodeURIComponent(code)}/tests/${encodeURIComponent(testId)}/start`,
 		{ method: 'POST' },
 	);
+// ─── QR chung của 1 đề kiểm tra: quét → nhập họ tên → làm bài ─────────────────
+
+/** Trang nhập họ tên (chưa có câu hỏi) */
+export interface SeminarTestQrInfo {
+	seminar: SeminarTicket['seminar'];
+	test: Pick<
+		SeminarTicketTest,
+		'title' | 'state' | 'window' | 'question_count' | 'max_score' | 'duration_minutes' | 'pass_score'
+	> & {
+		/** BTC đang bật làm bài qua QR chung */
+		enabled: boolean;
+		/** Bài nộp qua QR chung có tính vào điều kiện cấp CME không */
+		counts_for_cme: boolean;
+	};
+}
+/** Người tham dự trùng họ tên — chọn "là tôi" hoặc làm với tư cách khách */
+export interface SeminarTestQrChoice {
+	id: string;
+	full_name: string;
+	organization: string | null;
+	department: string | null;
+	/** Khách đã tự thêm qua QR chung trước đó */
+	guest: boolean;
+}
+export type SeminarTestQrEnter = { attempt_code: string } | { choices: SeminarTestQrChoice[] };
+/** Lượt làm bài qua QR chung */
+export interface SeminarTestAttempt {
+	title_prefix: string | null;
+	full_name: string;
+	organization: string | null;
+	seminar: SeminarTicket['seminar'];
+	qr_enabled: boolean;
+	counts_for_cme: boolean;
+	test: SeminarTicketTest;
+}
+export const getSeminarTestQr = (token: string) =>
+	request<SeminarTestQrInfo>(`/seminar-test-qr/${encodeURIComponent(token)}`);
+export const enterSeminarTestQr = (
+	token: string,
+	data: { full_name: string; organization?: string; participant_id?: string; as_guest?: boolean },
+) =>
+	request<SeminarTestQrEnter>(`/seminar-test-qr/${encodeURIComponent(token)}/enter`, {
+		method: 'POST',
+		body: JSON.stringify(data),
+	});
+export const getSeminarTestAttempt = (code: string) =>
+	request<SeminarTestAttempt>(`/seminar-test-attempts/${encodeURIComponent(code)}`);
+export const startSeminarTestAttempt = (code: string) =>
+	request<SeminarTestAttempt>(`/seminar-test-attempts/${encodeURIComponent(code)}/start`, {
+		method: 'POST',
+	});
+export const submitSeminarTestAttempt = (code: string, answers: (number | null)[]) =>
+	request<{ correct: number; total: number; score: number; max_score: number; passed: boolean }>(
+		`/seminar-test-attempts/${encodeURIComponent(code)}`,
+		{ method: 'POST', body: JSON.stringify({ answers }) },
+	);
+
 /** answers theo thứ tự hiển thị; null = bỏ trống (hết giờ tự nộp) */
-export const submitSeminarTest = (code: string, testId: string, answers: (number | null)[]) =>
+export const submitSeminarTest =(code: string, testId: string, answers: (number | null)[]) =>
 	request<{ correct: number; total: number; score: number; max_score: number; passed: boolean }>(`/seminar-tickets/${encodeURIComponent(code)}/tests/${encodeURIComponent(testId)}`, {
 		method: 'POST',
 		body: JSON.stringify({ answers }),

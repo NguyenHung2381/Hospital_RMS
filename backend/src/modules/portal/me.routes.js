@@ -67,6 +67,29 @@ router.get(
 		return success(res, await traineeRecordService.myProfile(req.user.id));
 	}),
 );
+// Form đăng ký khóa học (/dang-ky-khoa-hoc) cho nhân viên nội viện đã đăng nhập: điền sẵn từ
+// hồ sơ học viên + bản khai gần nhất + tài khoản; gửi đăng ký xong thì cập nhật lại hồ sơ học
+// viên của CHÍNH tài khoản này. Tài khoản không phải nhân viên (học viên, tài khoản khoa) ⇒ 404.
+const registrationProfileService = require('../public/registrationProfileService');
+const { profileUpdate: profileUpdateRules } = require('../public/courseRegistration.validators');
+router.get(
+	'/training/registration-profile',
+	asyncHandler(async (req, res) =>
+		success(res, await registrationProfileService.getMine(req.user)),
+	),
+);
+router.put(
+	'/training/registration-profile',
+	profileUpdateRules,
+	validate,
+	asyncHandler(async (req, res) =>
+		success(
+			res,
+			await registrationProfileService.updateMine(req.user, req.body ?? {}),
+			'Đã cập nhật hồ sơ học viên',
+		),
+	),
+);
 router.get(
 	'/training/grades',
 	asyncHandler(async (req, res) => {

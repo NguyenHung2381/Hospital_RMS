@@ -534,6 +534,7 @@
 		flex: 1 1 100%;
 	}
 	.searchBtn,
+	.ticketCalendarBtn,
 	.formFooter .submitBtn {
 		width: 100%;
 	}
@@ -612,8 +613,38 @@
 	padding: var(--space-6) var(--space-5);
 	text-align: center;
 }
-.ticketCard .searchBtn { margin-top: var(--space-2); }
-.ticketCard .searchBtn svg { width: 16px; height: 16px; }
+/* Trang đăng ký hội nghị: lối vào "Xem lại mã QR đã đăng ký" */
+.ticketLookupCard {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2) var(--space-4);
+	padding: var(--space-4) var(--space-5);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+}
+.ticketLookupBtn {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+}
+.ticketLookupBack {
+	composes: btn ghost from '@/shared/components/Button/Button.module.css';
+	margin-top: var(--space-3);
+}
+
+.ticketActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--space-2);
+	margin-top: var(--space-2);
+}
+.ticketCalendarBtn {
+	composes: btn secondary from '@/shared/components/Button/Button.module.css';
+	text-decoration: none;
+}
+.ticketCard .searchBtn svg,
+.ticketCalendarBtn svg { width: 16px; height: 16px; }
 .ticketHint { font-size: var(--font-size-xs); color: var(--color-gray-500); }
 .ticketSteps {
 	list-style: none;

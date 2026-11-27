@@ -36,6 +36,7 @@ const {
 	INVOICE_FIELDS,
 } = require('../training/registration/registrationConstants');
 const formCustomValueService = require('../forms/formCustomValueService');
+const registrationProfileService = require('./registrationProfileService');
 const mailService = require('../notifications/mailService');
 const mailQueue = require('../notifications/mailQueue');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
@@ -78,6 +79,7 @@ const findStaff = async (fullName, staffNumber) => {
 		await inputRoleId(pool.request(), 'dept_head_role', ROLE.DEPT_HEAD)
 	).input('sn', sql.Int, sn).query(`
       SELECT u.id, u.full_name, u.staff_number, u.email, u.department_id,
+             u.date_of_birth, u.gender, u.phone_number,
              q.name AS qualification, d.name AS department_name
       FROM users u
       LEFT JOIN qualifications q ON q.id = u.qualification_id
@@ -94,15 +96,22 @@ const findStaff = async (fullName, staffNumber) => {
 const realEmail = (e) => (e && !/@member\.local$/i.test(e) ? e : null);
 
 // Hiện lên form để người đăng ký xác nhận — như tra nhân viên khi đăng ký hội nghị,
-// không trả SĐT / ngày sinh / email đầy đủ.
+// không trả SĐT / ngày sinh / email đầy đủ. known_fields = các trường hồ sơ trong CSDL đã có
+// (chỉ TÊN trường, không có giá trị): form ẩn các ô đó, chỉ hỏi phần còn thiếu; lúc gửi máy
+// chủ tự điền (fillFromStaffProfile).
 const staffCheck = async (staffNumber, fullName) => {
 	const u = await findStaff(fullName, staffNumber);
+	const otpRequired = await emailOtp.isRequired();
 	return {
 		full_name: u.full_name,
 		department_id: u.department_id ?? null,
 		department_name: u.department_name ?? null,
 		qualification: u.qualification ?? null,
 		email_masked: maskEmail(realEmail(u.email)),
+		known_fields: await registrationProfileService.knownFields(
+			u,
+			otpRequired && !!realEmail(u.email),
+		),
 	};
 };
 
@@ -625,6 +634,8 @@ module.exports = {
 	register,
 	fakeAck,
 	staffCheck,
+	findStaff,
+	realEmail,
 	getRules,
 	requestEmailOtp,
 	verifyEmailOtp,

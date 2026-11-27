@@ -17,6 +17,8 @@ export interface RegisterDone {
 	start: string | null;
 	/** Nội viện: đã đính kèm tờ trình đã duyệt lúc gửi (chưa thì nộp bổ sung sau) */
 	proposalAttached?: boolean;
+	/** Nhân viên đã đăng nhập: kết quả cập nhật lại hồ sơ học viên theo thông tin vừa khai */
+	profileUpdate?: { ok: true; skipped: string[] } | { ok: false; message: string };
 }
 
 // Màn sau khi gửi đăng ký: mã đăng ký, việc cần làm tiếp; ngoại viện tải đơn đã điền sẵn để in ký
@@ -161,6 +163,17 @@ export function RegisterSuccess({ done, onRestart }: { done: RegisterDone; onRes
 			{done.email && (
 				<p className={s.hint}>
 					Thư xác nhận kèm mã đăng ký sẽ gửi tới {done.email}. Chưa thấy thư thì xem mục thư rác.
+				</p>
+			)}
+			{done.profileUpdate && (
+				<p
+					className={s.hint}
+					role='status'
+				>
+					{done.profileUpdate.ok
+						? 'Hồ sơ học viên của bạn trong hệ thống đã được cập nhật theo thông tin vừa khai.'
+						: `Đăng ký đã gửi, nhưng chưa cập nhật được hồ sơ học viên của bạn: ${done.profileUpdate.message}`}
+					{done.profileUpdate.ok && done.profileUpdate.skipped.map((m) => ` ${m}`).join('')}
 				</p>
 			)}
 

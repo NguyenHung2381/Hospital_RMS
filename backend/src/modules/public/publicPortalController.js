@@ -4,6 +4,7 @@ const courseRegistration = require('./publicCourseRegistrationService');
 const emailOtp = require('../training/registration/registrationEmailOtpService');
 const registrationFileService = require('../training/registration/registrationFileService');
 const seminarPublicService = require('../seminars/seminarPublicService');
+const seminarTestQrService = require('../seminars/seminarTestQrService');
 const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
 const { success, created, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
@@ -173,6 +174,21 @@ const lookupSeminarStaff = asyncHandler(async (req, res) => {
 	);
 });
 
+const lookupSeminarTicket = asyncHandler(async (req, res) => {
+	if (!(await verifyCaptcha(req.body.captcha_token, req.body.captcha_answer, req.ip))) {
+		return error(res, 'Mã xác nhận không đúng hoặc đã hết hạn, vui lòng thử lại.', 400);
+	}
+	success(
+		res,
+		await seminarPublicService.lookupTicket(req.params.token, {
+			source: req.body.source,
+			full_name: req.body.full_name,
+			staff_number: req.body.staff_number,
+			dob: req.body.dob,
+		}),
+	);
+});
+
 // Honeypot + captcha giống register()
 const registerSeminar = asyncHandler(async (req, res) => {
 	if (req.body.website) return success(res, { ticket_code: null }, 'Đăng ký thành công', 201);
@@ -188,6 +204,30 @@ const registerSeminar = asyncHandler(async (req, res) => {
 
 const getSeminarTicket = asyncHandler(async (req, res) => {
 	success(res, await seminarPublicService.getTicket(req.params.code));
+});
+
+// text/calendar + inline: iOS Safari mở thẳng bảng "Thêm vào Lịch"; Android tải file rồi mở bằng app Lịch
+const getSeminarTicketCalendar = asyncHandler(async (req, res) => {
+	const ics = await seminarPublicService.getTicketCalendar(req.params.code);
+	if (!ics) return error(res, 'Hội nghị chưa có ngày tổ chức để thêm vào lịch.', 404);
+	res.set({
+		'Content-Type': 'text/calendar; charset=utf-8',
+		'Content-Disposition': 'inline; filename="lich-hoi-nghi.ics"',
+		'Cache-Control': 'no-store',
+	});
+	res.send(ics);
+});
+
+// attachment ⇒ WebView Android (Zalo, Facebook...) chuyển link cho trình tải xuống của máy
+const getSeminarTicketBadge = asyncHandler(async (req, res) => {
+	const { png, fullName } = await seminarPublicService.getTicketBadgePng(req.params.code);
+	const name = `ve-hoi-nghi-${String(fullName).trim()}.png`.replace(/[\\/:*?"<>|]|\p{Cc}/gu, ' ');
+	res.set({
+		'Content-Type': 'image/png',
+		'Content-Disposition': `attachment; filename="ve-hoi-nghi.png"; filename*=UTF-8''${encodeURIComponent(name)}`,
+		'Cache-Control': 'no-store',
+	});
+	res.send(png);
 });
 
 const startSeminarTest = asyncHandler(async (req, res) => {
@@ -206,11 +246,44 @@ const submitSeminarTest = asyncHandler(async (req, res) => {
 	);
 });
 
+// QR chung của đề kiểm tra: nhập họ tên → mã lượt làm bài
+const getSeminarTestQr = asyncHandler(async (req, res) => {
+	success(res, await seminarTestQrService.getQrTest(req.params.token));
+});
+
+const enterSeminarTestQr = asyncHandler(async (req, res) => {
+	success(res, await seminarTestQrService.enter(req.params.token, req.body));
+});
+
+const getSeminarTestAttempt = asyncHandler(async (req, res) => {
+	success(res, await seminarTestQrService.getAttempt(req.params.code));
+});
+
+const startSeminarTestAttempt = asyncHandler(async (req, res) => {
+	success(res, await seminarTestQrService.startAttempt(req.params.code), 'Bắt đầu làm bài');
+});
+
+const submitSeminarTestAttempt = asyncHandler(async (req, res) => {
+	success(
+		res,
+		await seminarTestQrService.submitAttempt(req.params.code, req.body.answers),
+		'Đã nộp bài kiểm tra',
+	);
+});
+
 module.exports = {
 	getSeminar,
+	getSeminarTestQr,
+	enterSeminarTestQr,
+	getSeminarTestAttempt,
+	startSeminarTestAttempt,
+	submitSeminarTestAttempt,
 	lookupSeminarStaff,
+	lookupSeminarTicket,
 	registerSeminar,
 	getSeminarTicket,
+	getSeminarTicketCalendar,
+	getSeminarTicketBadge,
 	startSeminarTest,
 	submitSeminarTest,
 	getCaptcha,

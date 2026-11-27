@@ -5,14 +5,15 @@
  * đề: câu hỏi trắc nghiệm 1 đáp án, công tắc mở, khung giờ, thời gian làm bài, thang
  * điểm, điểm đạt, trộn đề, và có tính vào điều kiện cấp CME hay không (counts_for_cme).
  * Bài làm: seminar_test_submissions (1 dòng / người / đề) — làm và chấm ở
- * seminarPublicService (vé QR).
+ * seminarPublicService (vé QR) hoặc seminarTestQrService (QR chung của đề, nhập họ tên:
+ * qr_enabled bật / tắt, qr_counts_for_cme = bài nộp kiểu này có tính điều kiện CME không).
  *
  * Cột test_* của seminar_tests giữ tên cột cũ của seminars nên utils/seminarSchedule
  * (testWindow, testState) và utils/seminarTest dùng thẳng với dòng đề — kèm start_date /
  * end_date của hội nghị (ngày mở mặc định), xem withSeminarDates().
  */
 const { getPool, sql, withActorTransaction, nowSql } = require('../../config/db');
-const { randomId } = require('../../utils/idGenerator');
+const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { httpError, badRequest } = require('../../utils/httpError');
 const { removeUploadedFile, toStoredUploadPath } = require('../../utils/uploadPaths');
@@ -23,10 +24,10 @@ const { maxScore } = require('../../utils/seminarTest');
 const TEST_COLS = `t.id, t.seminar_id, t.title, t.sort_order, t.counts_for_cme, t.test_questions,
   t.test_open, t.test_date, t.test_start_time, t.test_end_date, t.test_end_time,
   t.test_duration_minutes, t.test_pass_score, t.test_score_scale, t.test_shuffle_questions,
-  t.test_shuffle_options, t.created_at, t.updated_at`;
+  t.test_shuffle_options, t.qr_token, t.qr_enabled, t.qr_counts_for_cme, t.created_at, t.updated_at`;
 // Bài làm — không trả test_answers (đáp án đã chọn) ra màn quản lý
 const SUBMISSION_COLS = `r.test_id, r.participant_id, r.test_correct, r.test_total, r.test_score,
-  r.test_max_score, r.test_started_at, r.test_submitted_at`;
+  r.test_max_score, r.test_started_at, r.test_submitted_at, r.via`;
 const ORDER = 'ORDER BY t.sort_order, t.created_at, t.id';
 
 /** Dòng đề + ngày hội nghị: testWindow() lấy ngày kết thúc / bắt đầu làm ngày mở mặc định */
@@ -112,6 +113,8 @@ const normalize = (data, seminarId, { creating = false } = {}) => {
 		'test_shuffle_questions',
 		'test_shuffle_options',
 		'counts_for_cme',
+		'qr_enabled',
+		'qr_counts_for_cme',
 	])
 		if (data[key] !== undefined) cols[key] = [sql.Bit, data[key] ? 1 : 0];
 
@@ -218,15 +221,16 @@ const create = async (seminarId, data, actorId) => {
 			.input('id', sql.VarChar(20), id)
 			.input('sid', sql.VarChar(20), seminarId)
 			.input('sid_order', sql.VarChar(20), seminarId)
+			.input('qr_token', sql.VarChar(32), randomHex32())
 			.input('actor_id', sql.VarChar(20), actorId);
 		for (const [key, [type, v]] of Object.entries(cols)) req.input(key, type, v);
 		const names = Object.keys(cols);
 		// Tham số riêng cho truy vấn con: PG suy kiểu 1 tham số dùng ở 2 chỗ khác kiểu (text/varchar) thì lỗi
 		await req.query(`
-      INSERT INTO seminar_tests (id, seminar_id, sort_order, created_by${names.map((n) => `, ${n}`).join('')})
+      INSERT INTO seminar_tests (id, seminar_id, sort_order, qr_token, created_by${names.map((n) => `, ${n}`).join('')})
       VALUES (@id, @sid,
         (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM seminar_tests WHERE seminar_id = @sid_order),
-        @actor_id${names.map((n) => `, @${n}`).join('')})`);
+        @qr_token, @actor_id${names.map((n) => `, @${n}`).join('')})`);
 	});
 	broadcast('update', { entity: 'seminar' });
 	return getOne(seminarId, id);

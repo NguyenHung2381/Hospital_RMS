@@ -13,10 +13,23 @@ const enterFullscreen = () => {
 	if (!fullscreenEl()) void document.documentElement.requestFullscreen?.().catch(() => {});
 };
 
-// QR đăng ký chiếu toàn màn hình lên máy chiếu/TV hội trường — người tham dự
-// quét bằng điện thoại để đăng ký. Cùng link với SeminarRegistrationQrModal.
-export function SeminarQrPresentation({ seminar, onClose }: { seminar: Seminar; onClose: () => void }) {
-	const url = publicUrl(`/hoi-nghi/${seminar.public_token}`);
+// QR chiếu toàn màn hình lên máy chiếu/TV hội trường — người tham dự quét bằng điện
+// thoại. Mặc định QR đăng ký (cùng link với SeminarRegistrationQrModal); `path` + `cta`
+// để chiếu QR khác, vd QR chung của 1 đề kiểm tra (SeminarTestQrModal).
+export function SeminarQrPresentation({
+	seminar,
+	onClose,
+	path,
+	cta = 'Quét mã QR để đăng ký tham dự',
+}: {
+	seminar: Seminar;
+	onClose: () => void;
+	/** Đường dẫn công khai trong QR — mặc định link đăng ký /hoi-nghi/<public_token> */
+	path?: string;
+	/** Dòng hướng dẫn dưới mã QR */
+	cta?: string;
+}) {
+	const url = publicUrl(path ?? `/hoi-nghi/${seminar.public_token}`);
 	const when = seminarWhen(seminar);
 	const [isFull, setIsFull] = useState(() => !!fullscreenEl());
 	const [qrSize, setQrSize] = useState(0);
@@ -100,7 +113,7 @@ export function SeminarQrPresentation({ seminar, onClose }: { seminar: Seminar; 
 						/>
 					)}
 				</div>
-				<div className={styles.cta}>Quét mã QR để đăng ký tham dự</div>
+				<div className={styles.cta}>{cta}</div>
 				<div className={styles.url}>{url}</div>
 			</main>
 		</div>

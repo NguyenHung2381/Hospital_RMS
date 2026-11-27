@@ -17,6 +17,12 @@ import {
 	type RegistrationSource,
 	type TraineeTypeOption,
 } from '../api/publicApi';
+import {
+	getMyRegistrationProfile,
+	hasStaffSession,
+	updateMyRegistrationProfile,
+	type MyRegistrationProfile,
+} from '../api/registrationProfileApi';
 import { RegisterProvider } from '../components/courseRegister/registerContext';
 import { RegisterSuccess, type RegisterDone } from '../components/courseRegister/RegisterSuccess';
 import { StepAttach } from '../components/courseRegister/StepAttach';
@@ -29,14 +35,18 @@ import { useCaptcha } from '../hooks/useCaptcha';
 import { useEmailOtp } from '../hooks/useEmailOtp';
 import {
 	EMPTY_FORM,
+	PROFILE_UPDATE_KEYS,
 	buildPayload,
 	clearDraft,
 	draftHasInput,
+	knownEmpty,
 	loadDraft,
+	prefillFromAccount,
 	saveDraft,
 	signatureMatches,
 	staffMatches,
 	validateInfo,
+	type InfoKey,
 	type RegForm,
 	type StaffMatch,
 } from '../utils/courseRegisterFields';
@@ -136,6 +146,12 @@ export default function CourseRegisterPublic() {
 	const [staff, setStaff] = useState<StaffMatch | null>(draft?.staff ?? null);
 	const [checkingStaff, setCheckingStaff] = useState(false);
 	const [staffError, setStaffError] = useState('');
+	// Nhân viên đang đăng nhập: hồ sơ trong CSDL (hồ sơ học viên, bản khai gần nhất, tài khoản)
+	// để điền sẵn; gửi đăng ký xong thì cập nhật lại hồ sơ học viên theo thông tin vừa khai.
+	const [account, setAccount] = useState<MyRegistrationProfile | null>(null);
+	// Ô đã có trong hồ sơ mà người đăng ký bấm "nhập lại"
+	const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
+	const [prefilled, setPrefilled] = useState(false);
 	const [invoiceOpen, setInvoiceOpen] = useState(
 		() => !!draft && ['invoice_org_name', 'invoice_org_address', 'invoice_tax_code', 'invoice_budget_code', 'invoice_email'].some((k) => draft.form[k as keyof RegForm]),
 	);
@@ -163,6 +179,11 @@ export default function CourseRegisterPublic() {
 	const staffOk = internal && staffMatches(staff, form);
 	// Mục 4–5 mở khi đã chọn đối tượng (nội viện: đã xác nhận mã nhân viên)
 	const whoReady = !!form.source && (!internal || staffOk);
+	// Đang khai đúng cho tài khoản đang đăng nhập ⇒ gửi xong cập nhật lại hồ sơ của tài khoản đó
+	const fromAccount = !!account && staffOk && staff?.staff_number === account.staff_number;
+	// Nội viện đã xác nhận: ô trống mà hồ sơ đã có ⇒ không bắt nhập (máy chủ tự điền)
+	const skipKnown = knownEmpty(staffOk ? staff : null, form);
+	const isKnown = (key: string) => skipKnown(key) && !revealed.has(key) && !errorsState[key];
 	// Phòng Đào tạo bật/tắt ở trang Khóa học (hoặc Cấu hình hệ thống); chưa tải được thì coi như bật
 	const otpRequired = rules?.email_otp_required ?? true;
 
@@ -259,6 +280,42 @@ export default function CourseRegisterPublic() {
 		setRulesTry((n) => n + 1);
 	};
 
+	// ─── Hồ sơ của tài khoản đang đăng nhập ───────────────────────────────────
+
+	// Điền sẵn 1 lần khi đang khai nội viện (chưa chọn đối tượng ⇒ chọn nội viện); đang khai ngoại
+	// viện thì chờ tới lúc đổi sang nội viện. Bản nháp đang khai cho mã NV khác thì để nguyên.
+	// Ô đã có chữ không bị đè (prefillFromAccount).
+	const applyAccount = (p: MyRegistrationProfile, current: RegForm) => {
+		if (current.source === 'external') return;
+		setPrefilled(true);
+		const sn = current.staff_number.trim();
+		if (sn && sn !== p.staff_number) {
+			setForm((f) => ({ ...f, source: 'internal' }));
+			return;
+		}
+		setForm((f) => prefillFromAccount({ ...f, source: 'internal' }, p));
+		setStaff({ staff_number: p.staff_number, full_name: p.staff.full_name, info: p.staff });
+		setStaffError('');
+		clearError('staff');
+	};
+
+	useEffect(() => {
+		if (!hasStaffSession()) return;
+		let alive = true;
+		getMyRegistrationProfile()
+			.then((p) => {
+				if (!alive || !p) return;
+				setAccount(p);
+				applyAccount(p, form);
+			})
+			// Không lấy được thì vẫn đăng ký bình thường bằng mã NV + họ tên
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ tải 1 lần lúc mở trang
+	}, []);
+
 	// ─── Bản nháp ─────────────────────────────────────────────────────────────
 
 	useEffect(() => {
@@ -306,7 +363,7 @@ export default function CourseRegisterPublic() {
 					? 'Bấm "Kiểm tra" để xác nhận mã nhân viên và họ tên'
 					: 'Vui lòng nhập mã nhân viên và họ tên';
 		} else if (key === 'info') {
-			Object.assign(e, validateInfo(cfg, form, custom));
+			Object.assign(e, validateInfo(cfg, form, custom, skipKnown));
 		} else if (key === 'attach') {
 			if (!rules) e.attachments = 'Chưa tải được danh sách hồ sơ, vui lòng thử lại';
 			else
@@ -335,6 +392,7 @@ export default function CourseRegisterPublic() {
 		try {
 			const info = await checkRegistrationStaff(sn, name);
 			setStaff({ staff_number: sn, full_name: info.full_name, info });
+			setRevealed(new Set());
 			// Dùng đúng họ tên trong hồ sơ nhân sự cho các mục sau
 			setForm((f) => ({ ...f, full_name: info.full_name }));
 		} catch (err) {
@@ -392,6 +450,20 @@ export default function CourseRegisterPublic() {
 			// Máy chủ trả cùng 1 hình dạng cho mọi trường hợp (không lộ CCCD / mã nhân viên đã có hay chưa)
 			const res = await registerCourse(payload, attachments);
 			clearDraft();
+			// Đăng ký đã ghi xong; cập nhật hồ sơ học viên lỗi thì chỉ báo, không làm hỏng đăng ký
+			let profileUpdate: RegisterDone['profileUpdate'];
+			if (fromAccount) {
+				const sent = payload as unknown as Record<string, string | number | undefined>;
+				const data = Object.fromEntries(PROFILE_UPDATE_KEYS.filter((k) => sent[k] !== undefined).map((k) => [k, sent[k] as string | number]));
+				try {
+					const r = await updateMyRegistrationProfile(data);
+					profileUpdate = r
+						? { ok: true, skipped: r.skipped.map((x) => x.reason) }
+						: { ok: false, message: 'phiên đăng nhập đã hết hạn.' };
+				} catch (err) {
+					profileUpdate = { ok: false, message: err instanceof Error ? err.message : 'vui lòng thử lại sau.' };
+				}
+			}
 			setDone({
 				code: res.registration_code,
 				downloadToken: res.download_token,
@@ -408,6 +480,7 @@ export default function CourseRegisterPublic() {
 				program: program?.name ?? null,
 				start: course.start_date,
 				proposalAttached: !!attachments.proposal_approved,
+				profileUpdate,
 			});
 			setForm(EMPTY_FORM);
 			setCustomState({});
@@ -441,6 +514,15 @@ export default function CourseRegisterPublic() {
 		setErrors({});
 		setServerError('');
 		setStaffError('');
+		// Đăng ký khóa khác: điền sẵn lại từ hồ sơ (đã cập nhật) của tài khoản
+		setPrefilled(false);
+		if (account)
+			void getMyRegistrationProfile()
+				.catch(() => null)
+				.then((p) => {
+					if (p) setAccount(p);
+					applyAccount(p ?? account, EMPTY_FORM);
+				});
 		pickCourse(null);
 		window.scrollTo({ top: 0 });
 	};
@@ -456,11 +538,14 @@ export default function CourseRegisterPublic() {
 		setInvoiceOpen(false);
 		setAttachments({});
 		otp.reset();
+		setPrefilled(false);
+		if (account) applyAccount(account, EMPTY_FORM);
 		pickCourse(null);
 	};
 
 	const changeSource = (source: RegistrationSource) => {
 		setForm((f) => ({ ...f, source }));
+		if (source === 'internal' && account && !prefilled) applyAccount(account, { ...form, source });
 		// Hồ sơ theo từng đối tượng — đổi đối tượng thì bỏ file đã chọn
 		setAttachments({});
 		clearError('source', 'staff');
@@ -583,7 +668,7 @@ export default function CourseRegisterPublic() {
 						</div>
 					)}
 
-					<RegisterProvider value={{ cfg, form, errors, setField, traineeTypes }}>
+					<RegisterProvider value={{ cfg, form, errors, setField, traineeTypes, isKnown }}>
 						<div className={s.sections}>
 							<Section
 								{...sec('course')}
@@ -619,6 +704,7 @@ export default function CourseRegisterPublic() {
 									}}
 									staff={staff}
 									staffOk={staffOk}
+									fromAccount={fromAccount}
 									checking={checkingStaff}
 									onCheck={() => void checkStaff()}
 									staffError={staffError}
@@ -630,6 +716,12 @@ export default function CourseRegisterPublic() {
 								{whoReady ? (
 									<StepInfo
 										staff={staffOk ? staff : null}
+										fromAccount={fromAccount}
+										onReveal={(k: InfoKey) => {
+											setRevealed((r) => new Set(r).add(k));
+											// Mở ô rồi đưa con trỏ vào luôn
+											window.setTimeout(() => document.getElementById(`f-${k}`)?.focus(), 0);
+										}}
 										idIssuePlaces={rules?.id_issue_places ?? []}
 										custom={custom}
 										onCustom={setCustom}

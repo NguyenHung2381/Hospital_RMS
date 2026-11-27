@@ -108,6 +108,7 @@ const parseAgenda = (json) => {
 module.exports = {
 	TIME_RE,
 	dateKey,
+	vnDateTime,
 	normalizeTime,
 	testWindow,
 	testState,

@@ -706,6 +706,8 @@ test('staff-check: chỉ trả họ tên / khoa / trình độ / email đã che;
 		department_name: 'Khoa Nội',
 		qualification: STAFF.qualification,
 		email_masked: 'bi***@bvnghean.vn',
+		// Chỉ tên các trường hồ sơ đã có — không bao giờ kèm giá trị (CCCD, ngày sinh, SĐT...)
+		known_fields: [],
 	});
 	assert.equal((await reg.staffCheck('456', 'Lê Văn Bình')).email_masked, null);
 	await assert.rejects(reg.staffCheck('123', 'Lê Văn'), { statusCode: 404 });

@@ -285,6 +285,7 @@ export function RegistrationAmend({ code, proof, onSaved, onCancel }: Props) {
 
 			<RegisterProvider value={{ cfg, form, errors, setField, traineeTypes }}>
 				<StepInfo
+					fromAccount={false}
 					staff={staff}
 					idIssuePlaces={rules.id_issue_places}
 					custom={custom}

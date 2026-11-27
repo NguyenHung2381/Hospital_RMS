@@ -89,14 +89,30 @@ module.exports = {
 			'Cổng công khai — hội nghị theo link QR (token 128-bit, có rate-limit)',
 		[`POST ${API}/public/seminars/:token/staff-lookup`]:
 			'Cổng công khai — tra nhân viên nội viện khi đăng ký QR (phải khớp cả họ tên + mã NV, chỉ trả họ tên/khoa/học hàm, có rate-limit)',
+		[`POST ${API}/public/seminars/:token/ticket-lookup`]:
+			'Cổng công khai — tra lại vé QR (nội viện: họ tên + mã NV, ngoại viện: họ tên + ngày sinh; có captcha, giới hạn lượt tra sai)',
 		[`POST ${API}/public/seminars/:token/register`]:
 			'Cổng công khai — đăng ký hội nghị qua QR (có captcha, rate-limit)',
 		[`GET ${API}/public/seminar-tickets/:code`]:
 			'Cổng công khai — xem vé QR (mã vé 128-bit, có rate-limit)',
+		[`GET ${API}/public/seminar-tickets/:code/calendar`]:
+			'Cổng công khai — file lịch .ics của vé (mã vé 128-bit, có rate-limit)',
+		[`GET ${API}/public/seminar-tickets/:code/qr.png`]:
+			'Cổng công khai — tải ảnh thẻ đại biểu có QR (mã vé 128-bit, có rate-limit)',
 		[`POST ${API}/public/seminar-tickets/:code/tests/:testId/start`]:
 			'Cổng công khai — bắt đầu tính giờ làm 1 đề kiểm tra bằng mã vé (có rate-limit)',
 		[`POST ${API}/public/seminar-tickets/:code/tests/:testId`]:
 			'Cổng công khai — nộp 1 đề kiểm tra hội nghị bằng mã vé (có rate-limit)',
+		[`GET ${API}/public/seminar-test-qr/:token`]:
+			'Cổng công khai — đề kiểm tra theo QR chung (token 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminar-test-qr/:token/enter`]:
+			'Cổng công khai — nhập họ tên trên QR chung của đề (BTC phải bật, chỉ trong giờ mở bài, có rate-limit)',
+		[`GET ${API}/public/seminar-test-attempts/:code`]:
+			'Cổng công khai — lượt làm bài qua QR chung (mã lượt 128-bit, có rate-limit)',
+		[`POST ${API}/public/seminar-test-attempts/:code/start`]:
+			'Cổng công khai — bắt đầu tính giờ lượt làm bài qua QR chung (có rate-limit)',
+		[`POST ${API}/public/seminar-test-attempts/:code`]:
+			'Cổng công khai — nộp bài qua QR chung (có rate-limit)',
 	},
 
 	// ─── Chỉ cần đăng nhập ───────────────────────────────────────────────────
@@ -140,6 +156,10 @@ module.exports = {
 			'Phiếu thu của khoản đã xác nhận — chỉ khoản thuộc hồ sơ của mình (receiptData userId)',
 		[`GET ${API}/me/training/profile`]:
 			'Hồ sơ học viên của chính mình, chỉ đọc (traineeRecordService.myProfile(req.user.id) — lọc user_id / staff_user_id)',
+		[`GET ${API}/me/training/registration-profile`]:
+			'Điền sẵn form đăng ký khóa học cho nhân viên nội viện đang đăng nhập — chỉ dữ liệu của chính req.user.id (hồ sơ học viên staff_user_id, bản khai listByStaff, tài khoản); không phải nhân viên ⇒ 404',
+		[`PUT ${API}/me/training/registration-profile`]:
+			'Cập nhật hồ sơ học viên của chính mình (staff_user_id = req.user.id) bằng thông tin vừa khai — không nhận id từ client, không sửa tài khoản nhân sự, CCCD trùng hồ sơ khác thì bỏ qua',
 		[`GET ${API}/me/training/grades`]:
 			'Kết quả & điểm của học viên đang đăng nhập (myTraineeId(req.user.id))',
 		[`GET ${API}/me/courses/:id`]:

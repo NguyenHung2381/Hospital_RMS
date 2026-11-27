@@ -42,6 +42,7 @@ const SeminarRegisterPublic = lazy(
 	() => import('../../features/public/pages/SeminarRegisterPublic'),
 );
 const SeminarTicket = lazy(() => import('../../features/public/pages/SeminarTicket'));
+const SeminarTestQrPublic = lazy(() => import('../../features/public/pages/SeminarTestQrPublic'));
 const NotFound = lazy(() => import('../../shared/pages/NotFound'));
 
 export const publicRoutes: RouteObject[] = [
@@ -147,6 +148,15 @@ export const publicRoutes: RouteObject[] = [
 		element: (
 			<LazyRoute title='Thư viện đề tài'>
 				<TopicLibrary />
+			</LazyRoute>
+		),
+	},
+	{
+		// QR chung của 1 đề kiểm tra hội nghị (seminar_tests.qr_token): nhập họ tên → làm bài
+		path: '/hoi-nghi/kiem-tra/:token',
+		element: (
+			<LazyRoute title='Bài kiểm tra hội nghị'>
+				<SeminarTestQrPublic />
 			</LazyRoute>
 		),
 	},

@@ -38,12 +38,29 @@
 	user-select: auto;
 }
 
+.actions {
+	display: flex;
+	gap: 8px;
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
 .close {
 	border: 0;
 	border-radius: 8px;
 	padding: 10px 24px;
 	background: var(--color-primary-dark);
 	color: #fff;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.secondary {
+	border: 1px solid var(--color-gray-300);
+	border-radius: 8px;
+	padding: 10px 24px;
+	background: #fff;
+	color: var(--color-gray-700);
 	font-weight: 600;
 	cursor: pointer;
 }

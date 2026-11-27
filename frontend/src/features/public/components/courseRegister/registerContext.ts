@@ -13,6 +13,8 @@ interface RegisterCtx {
 	errors: Record<string, string | undefined>;
 	setField: (key: keyof RegForm, value: string) => void;
 	traineeTypes: { id: string; name: string }[];
+	/** Nội viện: ô hồ sơ nhân viên trong CSDL đã có ⇒ ẩn, máy chủ tự điền khi gửi */
+	isKnown?: (key: string) => boolean;
 }
 
 const Ctx = createContext<RegisterCtx | null>(null);

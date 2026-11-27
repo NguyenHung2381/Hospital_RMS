@@ -24,6 +24,8 @@ interface Props {
 	staff: StaffMatch | null;
 	/** staff đã khớp với mã NV + họ tên đang gõ */
 	staffOk: boolean;
+	/** Nhận ra qua tài khoản đang đăng nhập (không cần bấm "Kiểm tra") */
+	fromAccount: boolean;
 	checking: boolean;
 	onCheck: () => void;
 	staffError: string;
@@ -31,7 +33,7 @@ interface Props {
 }
 
 // Mục "Đối tượng đăng ký": nội viện hay ngoại viện; nội viện tra mã nhân viên + họ tên
-export function StepWho({ form, onSource, onField, staff, staffOk, checking, onCheck, staffError, errors }: Props) {
+export function StepWho({ form, onSource, onField, staff, staffOk, fromAccount, checking, onCheck, staffError, errors }: Props) {
 	// Enter trong ô mã NV / họ tên = bấm "Kiểm tra", không gửi cả trang đăng ký
 	const checkOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key !== 'Enter') return;
@@ -78,6 +80,9 @@ export function StepWho({ form, onSource, onField, staff, staffOk, checking, onC
 			{form.source === 'internal' && (
 				<div className={s.staffBlock}>
 					<h3 className={s.subHeading}>Xác nhận nhân viên bệnh viện</h3>
+					{fromAccount && (
+						<p className={s.hint}>Đã nhận ra bạn qua tài khoản đang đăng nhập — mã nhân viên và họ tên lấy từ hồ sơ nhân sự.</p>
+					)}
 					<div className={styles.formGrid}>
 						<div className={styles.formGroup}>
 							<label

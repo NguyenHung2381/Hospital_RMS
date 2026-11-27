@@ -171,11 +171,17 @@ export interface SeminarTest {
 	test_score_scale: number | null;
 	test_shuffle_questions: boolean;
 	test_shuffle_options: boolean;
+	/** Mã trong link QR chung của đề /hoi-nghi/kiem-tra/<qr_token> (quét → nhập họ tên → làm bài) */
+	qr_token: string;
+	/** Link QR chung đang nhận người vào làm bài */
+	qr_enabled: boolean;
+	/** Bài nộp qua QR chung có tính vào điều kiện cấp CME không */
+	qr_counts_for_cme: boolean;
 }
 
 /** Payload tạo / sửa đề kiểm tra */
 export type SeminarTestInput = Partial<
-	Omit<SeminarTest, 'id' | 'seminar_id' | 'sort_order' | 'test_questions'>
+	Omit<SeminarTest, 'id' | 'seminar_id' | 'sort_order' | 'test_questions' | 'qr_token'>
 > & { test_questions?: SeminarTestQuestion[] | null };
 
 /** Bài làm của 1 người cho 1 đề */
@@ -190,6 +196,8 @@ export interface SeminarTestResult {
 	/** Lúc bấm "Bắt đầu làm bài" (chỉ khi có giới hạn thời gian) */
 	test_started_at: string | null;
 	test_submitted_at: string | null;
+	/** ticket = làm trên vé QR cá nhân · qr = làm qua QR chung của đề (chỉ nhập họ tên) */
+	via?: 'ticket' | 'qr';
 }
 
 export interface SeminarTestQuestion {

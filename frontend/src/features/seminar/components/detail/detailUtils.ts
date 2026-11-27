@@ -47,19 +47,26 @@ const testCleared = (p: SeminarParticipant, t: SeminarTest) => {
 export const selfCreated = (p: SeminarParticipant) =>
 	!!p.ticket_code || (!!p.user_id && !!p.created_by && p.created_by === p.user_id);
 
+/** Bài nộp qua QR chung của đề mà đề không cho tính CME với kiểu nộp này */
+const qrNotCounted = (p: SeminarParticipant, t: SeminarTest) =>
+	resultOf(p, t)?.via === 'qr' && !t.qr_counts_for_cme;
+
 // Người tự đăng ký phải điểm danh + nộp (và đạt điểm đạt nếu đặt) mọi đề kiểm tra tính
-// điều kiện CME mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarCmeService.
+// điều kiện CME mới được cấp CME — khớp CME_ELIGIBLE_SQL ở backend seminarCmeService
+// (bài nộp qua QR chung chỉ tính khi đề bật qr_counts_for_cme).
+const cmeCleared = (p: SeminarParticipant, t: SeminarTest) => testCleared(p, t) && !qrNotCounted(p, t);
 export const cmeEligible = (p: SeminarParticipant, s: Seminar) =>
 	!selfCreated(p) ||
-	(!!p.checked_in_at && activeTests(s).every((t) => !t.counts_for_cme || testCleared(p, t)));
+	(!!p.checked_in_at && activeTests(s).every((t) => !t.counts_for_cme || cmeCleared(p, t)));
 
 /** Lý do chưa đủ điều kiện cấp CME (null = đủ / không áp dụng) — hiện trong drawer người tham dự. */
 export const cmeBlockReason = (p: SeminarParticipant, s: Seminar): string | null => {
 	if (!selfCreated(p) || cmeEligible(p, s)) return null;
 	if (!p.checked_in_at)
 		return p.ticket_code ? 'Tự đăng ký qua QR nhưng chưa điểm danh' : 'Tự đăng ký trên cổng nhưng chưa điểm danh';
-	const t = activeTests(s).find((x) => x.counts_for_cme && !testCleared(p, x));
+	const t = activeTests(s).find((x) => x.counts_for_cme && !cmeCleared(p, x));
 	if (!t) return null;
+	if (testCleared(p, t)) return `"${t.title}" nộp qua QR chung — đề không tính CME cho kiểu nộp này`;
 	return resultOf(p, t)?.test_submitted_at ? `"${t.title}" chưa đạt điểm đạt` : `Chưa nộp "${t.title}"`;
 };
 

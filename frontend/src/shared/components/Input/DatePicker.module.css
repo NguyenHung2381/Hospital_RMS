@@ -59,13 +59,35 @@
 
 .calendarIcon {
 	position: absolute;
-	left: 12px;
-	pointer-events: none;
+	left: 6px;
+	padding: 6px;
+	border: none;
+	border-radius: var(--radius-md, 8px);
+	background: transparent;
+	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	color: var(--color-gray-400, var(--color-gray-500));
 	transition: color 0.15s ease;
+}
+
+.calendarIcon:disabled {
+	cursor: not-allowed;
+}
+
+/* Điện thoại: chữ ≥ 16px để iOS không tự phóng to trang khi chạm ô nhập (phóng to làm
+   lịch lệch đè lên ô); nút lịch là chỗ chạm duy nhất mở lịch nên nới vùng chạm. */
+@media (pointer: coarse) {
+	.input {
+		font-size: 16px;
+		height: 44px;
+		padding-left: 44px;
+	}
+	.calendarIcon {
+		left: 2px;
+		padding: 12px;
+	}
 }
 
 .input:focus + .calendarIcon,

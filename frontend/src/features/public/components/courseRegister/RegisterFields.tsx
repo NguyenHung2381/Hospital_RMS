@@ -38,8 +38,9 @@ export function TextField({
 	type?: 'text' | 'email' | 'tel';
 	onBlur?: () => void;
 }) {
-	const { cfg, form, errors, setField } = useRegister();
+	const { cfg, form, errors, setField, isKnown } = useRegister();
 	const def = defOf(name);
+	if (isKnown?.(name)) return null;
 	return (
 		<CfgField
 			cfg={cfg}
@@ -69,8 +70,9 @@ export function TextField({
 }
 
 export function DateField({ name, label, hint, full }: BaseProps) {
-	const { cfg, form, errors, setField } = useRegister();
+	const { cfg, form, errors, setField, isKnown } = useRegister();
 	const def = defOf(name);
+	if (isKnown?.(name)) return null;
 	return (
 		<CfgField
 			cfg={cfg}
@@ -95,8 +97,9 @@ export function DateField({ name, label, hint, full }: BaseProps) {
 }
 
 export function SelectField({ name, label, hint, full }: BaseProps) {
-	const { cfg, form, errors, setField, traineeTypes } = useRegister();
+	const { cfg, form, errors, setField, traineeTypes, isKnown } = useRegister();
 	const def = defOf(name);
+	if (isKnown?.(name)) return null;
 	const options =
 		name === 'gender'
 			? allowedOptions(cfg, 'gender', GENDER_OPTIONS).map((o) => ({ value: o.value, label: o.label }))

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { CheckCircleSvg, ClockSvg, EditSvg, FileTextSvg, PlusSvg, TrashSvg } from '@/assets/icons';
+import { CheckCircleSvg, ClockSvg, EditSvg, FileTextSvg, PlusSvg, QrSvg, TrashSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
+import { SeminarTestQrModal } from '../SeminarTestQrModal';
 import type { Seminar, SeminarParticipant, SeminarTest } from '../../types/seminar.type';
 import sem from '../../pages/Seminar.module.css';
 import s from './Detail.module.css';
@@ -23,6 +24,7 @@ const testPoints = (t: SeminarTest) => {
 export function TestTab({ seminar: sm, participants, perms, actions }: TabProps) {
 	const tests = sm.tests ?? [];
 	const [picked, setPicked] = useState<string | null>(null);
+	const [qrTest, setQrTest] = useState<SeminarTest | null>(null);
 	const current = tests.find((t) => t.id === picked) ?? tests.find((t) => t.test_questions) ?? null;
 
 	return (
@@ -65,8 +67,16 @@ export function TestTab({ seminar: sm, participants, perms, actions }: TabProps)
 					canUpdate={perms.canUpdate}
 					onEdit={() => actions.openTest(t)}
 					onDelete={() => actions.deleteTest(t)}
+					onQr={() => setQrTest(t)}
 				/>
 			))}
+			{qrTest && (
+				<SeminarTestQrModal
+					seminar={sm}
+					test={tests.find((x) => x.id === qrTest.id) ?? qrTest}
+					onClose={() => setQrTest(null)}
+				/>
+			)}
 
 			{current && (
 				<TestResults
@@ -88,6 +98,7 @@ function TestCard({
 	canUpdate,
 	onEdit,
 	onDelete,
+	onQr,
 }: {
 	t: SeminarTest;
 	sm: Seminar;
@@ -95,6 +106,8 @@ function TestCard({
 	canUpdate: boolean;
 	onEdit: () => void;
 	onDelete: () => void;
+	/** Mở mã QR chung của đề (quét → nhập họ tên → làm bài) */
+	onQr: () => void;
 }) {
 	const { count, points, scale } = testPoints(t);
 	const has = count > 0;
@@ -139,30 +152,45 @@ function TestCard({
 								</Badge>
 							)}
 							{!t.counts_for_cme && <Badge tone='gray'>Không tính CME</Badge>}
+							{has && t.qr_enabled && <Badge tone='blue'>QR chung</Badge>}
 						</span>
 					</div>
 					<div className={s.cardSub}>
 						{has ? `${count} câu · ${points} điểm` : 'Chưa có câu hỏi — đề trống không hiện trên vé.'}
 					</div>
 				</div>
-				{canUpdate && (
+				{(canUpdate || (has && t.qr_enabled)) && (
 					<div className={s.cardActions}>
-						<button
-							type='button'
-							className={has ? sem.btnGhost : sem.btnPrimary}
-							onClick={onEdit}
-						>
-							{has ? <EditSvg /> : <PlusSvg />} {has ? 'Cấu hình' : 'Soạn câu hỏi'}
-						</button>
-						<button
-							type='button'
-							className={s.btnDangerGhost}
-							onClick={onDelete}
-							aria-label={`Xoá đề ${t.title}`}
-							title='Xoá đề'
-						>
-							<TrashSvg />
-						</button>
+						{has && (canUpdate || t.qr_enabled) && (
+							<button
+								type='button'
+								className={sem.btnGhost}
+								onClick={onQr}
+								title='Mã QR chung: quét → nhập họ tên → làm bài'
+							>
+								<QrSvg /> Mã QR làm bài
+							</button>
+						)}
+						{canUpdate && (
+							<>
+								<button
+									type='button'
+									className={has ? sem.btnGhost : sem.btnPrimary}
+									onClick={onEdit}
+								>
+									{has ? <EditSvg /> : <PlusSvg />} {has ? 'Cấu hình' : 'Soạn câu hỏi'}
+								</button>
+								<button
+									type='button'
+									className={s.btnDangerGhost}
+									onClick={onDelete}
+									aria-label={`Xoá đề ${t.title}`}
+									title='Xoá đề'
+								>
+									<TrashSvg />
+								</button>
+							</>
+						)}
 					</div>
 				)}
 			</div>
@@ -196,6 +224,18 @@ function TestCard({
 						<div>
 							<dt>Điều kiện CME</dt>
 							<dd>{t.counts_for_cme ? 'Phải nộp (và đạt) đề này' : 'Không tính'}</dd>
+						</div>
+						<div>
+							<dt>QR chung (nhập họ tên)</dt>
+							<dd>
+								{!t.qr_enabled
+									? 'Tắt — chỉ làm trên vé cá nhân'
+									: t.counts_for_cme
+										? t.qr_counts_for_cme
+											? 'Bật · bài nộp được tính CME'
+											: 'Bật · bài nộp không tính CME'
+										: 'Bật'}
+							</dd>
 						</div>
 					</dl>
 					<div

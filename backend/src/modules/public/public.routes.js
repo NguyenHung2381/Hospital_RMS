@@ -7,6 +7,8 @@ const { validate } = require('../../middlewares/errorHandler');
 const { formConfigGuard } = require('../forms/formConfigGuard');
 const ctrl = require('./publicPortalController');
 const regCtrl = require('./publicCourseRegistrationController');
+// Nội viện: ô để trống mà hồ sơ nhân viên trong CSDL đã có thì máy chủ tự điền trước khi kiểm
+const { fillFromStaffProfile } = require('./publicStaffProfileFill');
 const regValidators = require('./courseRegistration.validators');
 // Hồ sơ đính kèm đề tài (multipart: field `data` = JSON form + `files`) — tùy chọn
 const { publicUpload } = require('../../middlewares/uploadPublic');
@@ -193,6 +195,7 @@ router.post(
 	training,
 	registerLimiter,
 	registrationFormUpload,
+	fillFromStaffProfile(),
 	regValidators.registration,
 	validate,
 	formConfigGuard('course_registration', { variant: 'public', mode: 'create' }),
@@ -203,6 +206,7 @@ router.post(
 	'/course-registration/draft/application',
 	training,
 	regDraftLimiter,
+	fillFromStaffProfile({ draft: 'application' }),
 	regValidators.draftApplication,
 	validate,
 	regCtrl.draftApplication,
@@ -211,6 +215,7 @@ router.post(
 	'/course-registration/draft/proposal',
 	training,
 	regDraftLimiter,
+	fillFromStaffProfile({ draft: 'proposal' }),
 	regValidators.draftProposal,
 	validate,
 	regCtrl.draftProposal,
@@ -363,6 +368,17 @@ const seminarLimiter = rateLimit({
 	legacyHeaders: false,
 	message: { success: false, message: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
 });
+// Tra lại vé bằng họ tên + ngày sinh: chỉ đếm lượt tra SAI (người cả hội trường chung IP
+// tra đúng không bị chặn) — đủ để không dò ngày sinh của một cái tên.
+const seminarTicketLookupLimiter = rateLimit({
+	name: 'seminar-ticket-lookup',
+	windowMs: 15 * 60 * 1000,
+	limit: 20,
+	skipSuccessfulRequests: true,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: { success: false, message: 'Tra cứu sai quá nhiều lần. Vui lòng thử lại sau ít phút.' },
+});
 const seminarToken = param('token')
 	.isString()
 	.matches(/^[a-f0-9]{32}$/)
@@ -388,6 +404,31 @@ router.post(
 	],
 	validate,
 	ctrl.lookupSeminarStaff,
+);
+// Mất mã QR: quét lại QR đăng ký — nội viện: họ tên + mã NV, ngoại viện: họ tên + ngày sinh (có captcha) ⇒ mã vé
+router.post(
+	'/seminars/:token/ticket-lookup',
+	seminar,
+	seminarLimiter,
+	seminarTicketLookupLimiter,
+	[
+		seminarToken,
+		body('full_name').trim().notEmpty().withMessage('Vui lòng nhập họ tên').isLength({ max: 255 }),
+		body('source')
+			.isIn(['internal', 'external'])
+			.withMessage('Vui lòng chọn nội viện / ngoại viện'),
+		body('staff_number')
+			.if(body('source').equals('internal'))
+			.isInt({ min: 1 })
+			.withMessage('Vui lòng nhập mã nhân viên'),
+		body('dob')
+			.if(body('source').equals('external'))
+			.isISO8601({ strict: true })
+			.withMessage('Ngày sinh không hợp lệ'),
+		body('captcha_token').notEmpty().withMessage('Thiếu mã xác nhận'),
+	],
+	validate,
+	ctrl.lookupSeminarTicket,
 );
 router.post(
 	'/seminars/:token/register',
@@ -439,6 +480,24 @@ router.get(
 	validate,
 	ctrl.getSeminarTicket,
 );
+// Sự kiện lịch (.ics) của vé — mở bằng link thường để điện thoại hiện "Thêm vào Lịch"
+router.get(
+	'/seminar-tickets/:code/calendar',
+	seminar,
+	seminarLimiter,
+	[ticketCode],
+	validate,
+	ctrl.getSeminarTicketCalendar,
+);
+// Ảnh thẻ đại biểu (PNG, tải về máy) — cho trình duyệt trong Zalo/Facebook không tải được blob
+router.get(
+	'/seminar-tickets/:code/qr.png',
+	seminar,
+	seminarLimiter,
+	[ticketCode],
+	validate,
+	ctrl.getSeminarTicketBadge,
+);
 router.post(
 	'/seminar-tickets/:code/tests/:testId/start',
 	seminar,
@@ -454,6 +513,66 @@ router.post(
 	[ticketCode, seminarTestId, body('answers').isArray({ max: 200 })],
 	validate,
 	ctrl.submitSeminarTest,
+);
+
+// QR chung của 1 đề kiểm tra (seminarTestQrService): quét → nhập họ tên → làm bài
+const testQrToken = param('token')
+	.isString()
+	.matches(/^[a-f0-9]{32}$/)
+	.withMessage('Link bài kiểm tra không đúng');
+const attemptCode = param('code')
+	.isString()
+	.matches(/^[a-f0-9]{32}$/)
+	.withMessage('Mã lượt làm bài không đúng');
+router.get(
+	'/seminar-test-qr/:token',
+	seminar,
+	seminarLimiter,
+	[testQrToken],
+	validate,
+	ctrl.getSeminarTestQr,
+);
+router.post(
+	'/seminar-test-qr/:token/enter',
+	seminar,
+	seminarLimiter,
+	[
+		testQrToken,
+		body('full_name').trim().notEmpty().withMessage('Vui lòng nhập họ tên').isLength({ max: 255 }),
+		body('organization').optional({ nullable: true }).isString().trim().isLength({ max: 255 }),
+		body('participant_id')
+			.optional({ nullable: true, checkFalsy: true })
+			.isString()
+			.matches(/^[A-Za-z0-9]{1,24}$/)
+			.withMessage('Lựa chọn không hợp lệ'),
+		body('as_guest').optional().isBoolean(),
+	],
+	validate,
+	ctrl.enterSeminarTestQr,
+);
+router.get(
+	'/seminar-test-attempts/:code',
+	seminar,
+	seminarLimiter,
+	[attemptCode],
+	validate,
+	ctrl.getSeminarTestAttempt,
+);
+router.post(
+	'/seminar-test-attempts/:code/start',
+	seminar,
+	seminarLimiter,
+	[attemptCode],
+	validate,
+	ctrl.startSeminarTestAttempt,
+);
+router.post(
+	'/seminar-test-attempts/:code',
+	seminar,
+	seminarLimiter,
+	[attemptCode, body('answers').isArray({ max: 200 })],
+	validate,
+	ctrl.submitSeminarTestAttempt,
 );
 
 // ─── Thư viện đề tài công khai ───────────────────────────────────────────────

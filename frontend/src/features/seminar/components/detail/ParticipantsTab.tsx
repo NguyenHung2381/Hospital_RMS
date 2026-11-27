@@ -368,9 +368,17 @@ export function TestResultCell({ t, r }: { t: SeminarTest; r: SeminarTestResult 
 		return (
 			<span
 				className={s.score}
-				title={`Đúng ${r.test_correct}/${r.test_total} câu`}
+				title={`Đúng ${r.test_correct}/${r.test_total} câu${r.via === 'qr' ? ' · nộp qua QR chung (nhập họ tên)' : ''}`}
 			>
 				<b>{testScore(t, r)}</b>/{testMax(t, r)}
+				{r.via === 'qr' && (
+					<span
+						className={sem.muted}
+						style={{ marginLeft: 6 }}
+					>
+						QR chung
+					</span>
+				)}
 				{t.test_pass_score != null && (
 					<span
 						className={ok ? sem.okText : sem.badText}

@@ -96,6 +96,11 @@ function maskDate(raw: string, autoSlash: boolean): string {
 	return out;
 }
 
+// Màn cảm ứng (điện thoại / máy tính bảng): chạm ô nhập chỉ bật bàn phím số để gõ DD/MM/YYYY
+// (tự chèn '/'), KHÔNG tự mở lịch — bàn phím + lịch (~360px) cùng lúc thì lịch đè lên ô nhập.
+// Mở lịch bằng nút biểu tượng lịch (ô nhập mất focus ⇒ bàn phím đóng trước).
+const isTouch = () => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+
 /** Đọc ngày gõ tay "d/m/yyyy", "d/m/yy", "d/m" (năm nay) → 'YYYY-MM-DD'; rỗng → ''; sai → null. */
 function parseTypedDate(raw: string): string | null {
 	const s = maskDate(raw.trim(), false).replace(/\/$/, '');
@@ -328,7 +333,7 @@ export function DatePicker({
 		const atEnd = el.selectionStart === el.value.length;
 		const next = atEnd ? maskDate(el.value, el.value.length > prev.length) : el.value;
 		setDraft(next);
-		if (!isOpen) setIsOpen(true);
+		if (!isOpen && !isTouch()) setIsOpen(true);
 		if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(next)) {
 			const iso = parseTypedDate(next);
 			if (iso) {
@@ -398,8 +403,8 @@ export function DatePicker({
 					disabled={disabled}
 					value={draft ?? formatVN(value)}
 					placeholder={placeholder}
-					onFocus={() => !disabled && setIsOpen(true)}
-					onClick={() => !disabled && setIsOpen(true)}
+					onFocus={() => !disabled && !isTouch() && setIsOpen(true)}
+					onClick={() => !disabled && !isTouch() && setIsOpen(true)}
 					onChange={handleType}
 					onBlur={(e) => {
 						commitDraft();
@@ -418,10 +423,19 @@ export function DatePicker({
 					}`}
 				/>
 
-				{/* Calendar Icon */}
-				<span
+				{/* Calendar Icon — bấm để mở / đóng lịch (trên điện thoại là cách duy nhất mở lịch) */}
+				<button
+					type='button'
 					className={styles.calendarIcon}
-					aria-hidden='true'
+					aria-label={isOpen ? 'Đóng lịch' : 'Mở lịch chọn ngày'}
+					tabIndex={-1}
+					disabled={disabled}
+					// Không lấy focus khỏi ô nhập trên máy tính (giữ nguyên hành vi gõ + lịch)
+					onMouseDown={(e) => !isTouch() && e.preventDefault()}
+					onClick={() => {
+						if (isTouch()) (document.activeElement as HTMLElement | null)?.blur();
+						setIsOpen((o) => !o);
+					}}
 				>
 					<svg
 						width='16'
@@ -460,7 +474,7 @@ export function DatePicker({
 							y2='10'
 						/>
 					</svg>
-				</span>
+				</button>
 
 				{/* Clear Button */}
 				{value && !disabled && (
