@@ -196,7 +196,9 @@ const assignPunches = ({ punches, courseOn, assignments, shiftsById, existing = 
 /**
  * Giờ vào / ra của 1 dòng điểm danh sau khi thêm lượt chấm. Mỗi mốc mang theo nguồn của nó
  * (ip / khoảng cách khi bấm trên web, device_id khi chấm ở máy).
- * @param {{ check_in_at?: Date|string|null, check_out_at?: Date|string|null }|null} record dòng đã có
+ * @param {{ check_in_at?: Date|string|null, check_in_ip?: string|null, check_in_distance_m?: number|null,
+ *           check_in_device_id?: number|null, check_out_at?: Date|string|null, check_out_ip?: string|null,
+ *           check_out_distance_m?: number|null, check_out_device_id?: number|null }|null} record dòng đã có
  * @param {{ at: Date, device_id?: number|null }[]} punches
  */
 const mergeCheckTimes = (record, punches) => {
