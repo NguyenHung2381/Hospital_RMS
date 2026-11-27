@@ -444,9 +444,10 @@ export interface LookupResult {
 }
 
 export const lookupByNationalId = (nationalId: string, dob: string, fullName: string) =>
-	request<LookupResult[]>(
-		`/lookup?national_id=${encodeURIComponent(nationalId)}&dob=${encodeURIComponent(dob)}&full_name=${encodeURIComponent(fullName)}`,
-	);
+	request<LookupResult[]>('/lookup', {
+		method: 'POST',
+		body: JSON.stringify({ national_id: nationalId, dob, full_name: fullName }),
+	});
 
 // ─── Đăng ký đề tài công khai ────────────────────────────────────────────────
 export interface PublicTopicRound {

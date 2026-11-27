@@ -28,7 +28,7 @@ const getTraineeTypes = asyncHandler(async (req, res) => {
 const LOOKUP_PER_ID_MAX = 5;
 
 const lookup = asyncHandler(async (req, res) => {
-	const nationalId = String(req.query.national_id).trim();
+	const nationalId = String(req.body.national_id).trim();
 	if (!(await attempts.hit('public-lookup', nationalId, LOOKUP_PER_ID_MAX, 60 * 60))) {
 		return error(
 			res,
@@ -36,7 +36,7 @@ const lookup = asyncHandler(async (req, res) => {
 			429,
 		);
 	}
-	success(res, await service.lookupResults(nationalId, req.query.dob, req.query.full_name));
+	success(res, await service.lookupResults(nationalId, req.body.dob, req.body.full_name));
 });
 
 // Honeypot 'website': người dùng thật không thấy field này (ẩn bằng CSS) nên

@@ -39,8 +39,7 @@ const BASELINE = path.join(__dirname, '.baseline', 'get-shapes.json');
 const SKIP = new Set(['/api/v1/events/']);
 const REQUEST_TIMEOUT_MS = 60_000;
 
-// Query bắt buộc của vài route (thiếu thì chỉ thử được nhánh 400). /public/lookup
-// cố ý để 400: tham số là CCCD + ngày sinh của người thật.
+// Query bắt buộc của vài route (thiếu thì chỉ thử được nhánh 400).
 const monthStart = new Date().toISOString().slice(0, 8) + '01';
 const weekEnd = new Date(Date.parse(monthStart) + 6 * 86400000).toISOString().slice(0, 10);
 const QUERY = {
