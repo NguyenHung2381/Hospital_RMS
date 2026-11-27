@@ -11,6 +11,7 @@ const { validate } = require('../../middlewares/errorHandler');
 const { validateRequest } = require('../../middlewares/validateRequest');
 const { success, created } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { signUploadPath } = require('../../utils/signedUpload');
 
 const certificateService = require('./seminarCertificateService');
 const uploadExcel = require('../../middlewares/uploadExcel');
@@ -192,7 +193,9 @@ router.post(
 	uploadTestImage.single('image'),
 	(req, res) => {
 		if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
-		return created(res, { url: `/uploads/seminars/${req.params.id}/test/${req.file.filename}` });
+		// Ký tại đây: khoá `url` không được ký tự động (utils/signedUpload.js, S-10)
+		const url = signUploadPath(`/uploads/seminars/${req.params.id}/test/${req.file.filename}`);
+		return created(res, { url });
 	},
 );
 

@@ -57,14 +57,16 @@ test('chuỗi người dùng tự nhập không được ký (chống tự xin l
 	assert.equal(out.file_url, 'xem /uploads/topics/T1/a.pdf');
 });
 
-test('ảnh test hội nghị: chuỗi JSON test_questions và mảng/đối tượng image đều được ký', async () => {
+test('ảnh test hội nghị: chuỗi JSON test_questions được ký; khoá image thì không (S-10)', async () => {
 	const res = await call({
 		test_questions: JSON.stringify([{ q: 'a', image: '/uploads/seminars/S1/test/x.png' }]),
 		questions: [{ image: '/uploads/seminars/S1/test/y.png' }],
 	});
 	const out = JSON.parse(res.text);
 	assert.match(JSON.parse(out.test_questions)[0].image, /\?exp=\d+&sig=/);
-	assert.match(out.questions[0].image, /\?exp=\d+&sig=/);
+	// Đề công khai tự ký ảnh lúc xuất (utils/seminarTest.publicQuestions) — middleware không ký
+	// khoá `image` nữa (test/security/uploadUrlKeys.test.js)
+	assert.equal(out.questions[0].image, '/uploads/seminars/S1/test/y.png');
 });
 
 test('route tự đặt Content-Type thì không bị ghi đè', async () => {

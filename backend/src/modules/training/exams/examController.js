@@ -1,6 +1,7 @@
 const examService = require('./examService');
 const { success, created, notFound } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
+const { signUploadPath } = require('../../../utils/signedUpload');
 
 // ─── Ngân hàng câu hỏi ───────────────────────────────────────────────────────
 const listQuestions = asyncHandler(async (req, res) => {
@@ -18,7 +19,8 @@ const createQuestionsBulk = asyncHandler(async (req, res) => {
 
 const uploadQuestionImage = (req, res) => {
 	if (!req.file) return res.status(400).json({ success: false, message: 'Chưa chọn ảnh' });
-	return created(res, { url: `/uploads/questions/${req.file.filename}` });
+	// Ký tại đây: khoá `url` không được ký tự động (utils/signedUpload.js, S-10)
+	return created(res, { url: signUploadPath(`/uploads/questions/${req.file.filename}`) });
 };
 
 const updateQuestion = asyncHandler(async (req, res) => {

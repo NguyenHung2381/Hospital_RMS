@@ -38,8 +38,10 @@ const IN_HTML = /(["'])(\/uploads\/[^?#\s"'<>]+)(\?[^#\s"'<>]*)?\1/g;
 // của người khác vào, đọc lại là nhận link hợp lệ. Thêm trường file mới ⇒ thêm tên vào đây.
 //   file_url / evidence_file_url — files, training_files (tên lưu do server sinh)
 //   image_url — question_bank (toStoredUploadPath giới hạn thư mục)
-//   url — response upload ảnh; image — ảnh câu hỏi test hội nghị (đã parse)
-const FILE_KEYS = new Set(['file_url', 'evidence_file_url', 'image_url', 'url', 'image']);
+// KHÔNG có `url` / `image` (rà bảo mật 2026-11-26, S-10): tên quá chung — cột hay trường
+// JSON tự do mang tên đó sau này sẽ lặp lại L-07. Chỗ server tự sinh đường dẫn ảnh (kết quả
+// tải ảnh lên, ảnh câu hỏi bài test công khai) tự ký bằng signUploadPath.
+const FILE_KEYS = new Set(['file_url', 'evidence_file_url', 'image_url']);
 // Trường HTML/JSON nhúng ảnh: nhận xét hội đồng, câu hỏi test hội nghị (chuỗi JSON).
 // Chỉ ký ảnh nằm trong thư mục ảnh nhúng, không bao giờ ký tài liệu đề tài/khóa học.
 const EMBED_KEYS = new Set(['comment', 'general_comment', 'test_questions']);
@@ -125,8 +127,19 @@ const verifyUploadSignature = (req, res, next) => {
 const stripUploadSignatures = (html) =>
 	html && html.replace(IN_HTML, (_all, q, p) => `${q}${p}${q}`);
 
+/**
+ * Ký 1 đường dẫn "/uploads/..." do SERVER tự sinh (không bao giờ dùng cho chuỗi người dùng
+ * nhập). Chuỗi không đúng dạng thì trả nguyên.
+ * @param {string} path
+ */
+const signUploadPath = (path) => {
+	const m = WHOLE.exec(String(path ?? ''));
+	return m ? signPath(m[1]) : path;
+};
+
 module.exports = {
 	signDeep,
+	signUploadPath,
 	signPath,
 	signUploadUrlsInJson,
 	verifyUploadSignature,

@@ -4,6 +4,7 @@
  */
 const crypto = require('crypto');
 const { testWindow } = require('./seminarSchedule');
+const { signUploadPath } = require('./signedUpload');
 
 // Cho trễ một chút sau hạn để bài tự nộp lúc hết giờ (mạng chậm) vẫn được nhận
 const SUBMIT_GRACE_MS = 30 * 1000;
@@ -56,7 +57,9 @@ const publicQuestions = (questions, order) =>
 		const x = questions[q];
 		return {
 			q: x.q,
-			image: x.image || null,
+			// Khoá `image` không được ký tự động (utils/signedUpload.js, S-10). Đường dẫn đã
+			// được giới hạn trong thư mục ảnh bài test lúc lưu (seminarService.normalizeTestQuestions).
+			image: x.image ? signUploadPath(x.image) : null,
 			options: options.map((o) => x.options[o]),
 			points: questionPoints(x),
 		};
