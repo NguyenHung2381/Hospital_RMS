@@ -44,7 +44,11 @@ const HEX = 'a'.repeat(32);
 const ROUTES = {
 	TRAINING: [
 		['GET', '/api/v1/public/courses'],
-		['POST', '/api/v1/public/lookup', { national_id: '040200001234', dob: '2000-05-15', full_name: 'A' }],
+		[
+			'POST',
+			'/api/v1/public/lookup',
+			{ national_id: '040200001234', dob: '2000-05-15', full_name: 'A' },
+		],
 		['POST', '/api/v1/public/course-registration', {}],
 		['GET', '/api/v1/me/training'],
 		['POST', '/api/v1/me/courses/KH1/register', {}],
