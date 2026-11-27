@@ -102,3 +102,25 @@ test('xóa: removeCustom quyết định có xóa giá trị trường tùy ch�
 	await run(createCustomFormCrud('lecturer', makeService()).removeOne, { params: { id: 'B' } });
 	assert.deepEqual(calls, [['remove', 'course', 'A']]);
 });
+
+test('scoped: create / update nhận thêm { actor: req.user }; không scoped thì không truyền thêm', async () => {
+	const args = [];
+	const svc = {
+		...makeService(),
+		create: async (...a) => (args.push(['create', a.slice(1)]), { id: 'NEW' }),
+		update: async (...a) => (args.push(['update', a.slice(2)]), { id: a[0] }),
+	};
+	const user = { id: 'U1' };
+	const scoped = createCustomFormCrud('trainee', svc, { scoped: true });
+	await run(scoped.createOne, { user });
+	await run(scoped.updateOne, { user, params: { id: 'A' } });
+	const plain = createCustomFormCrud('lecturer', svc);
+	await run(plain.createOne, { user });
+	await run(plain.updateOne, { user, params: { id: 'A' } });
+	assert.deepEqual(args, [
+		['create', ['U1', { actor: user }]],
+		['update', ['U1', { actor: user }]],
+		['create', ['U1']],
+		['update', ['U1']],
+	]);
+});

@@ -5,7 +5,9 @@
  * Kiểm tra quyền / validate vẫn nằm ở route và service như trước.
  *
  * opts.scoped: truyền req.user cho service.getAll / getById (lọc theo phạm vi, che trường
- *   nhạy cảm). opts.removeCustom: xóa giá trị trường tùy chỉnh khi xóa bản ghi.
+ *   nhạy cảm), và `{ actor: req.user }` làm tham số cuối cho service.create / update để bản
+ *   ghi trả về che / hiện trường nhạy cảm giống getById (service không dùng thì bỏ qua).
+ *   opts.removeCustom: xóa giá trị trường tùy chỉnh khi xóa bản ghi.
  */
 const { success, created, notFound } = require('../../utils/response');
 const formCustomValueService = require('../forms/formCustomValueService');
@@ -28,14 +30,16 @@ const createCustomFormCrud = (entity, service, { scoped = false, removeCustom = 
 		return success(res, item);
 	});
 
+	const writeOpts = (req) => (scoped ? [{ actor: req.user }] : []);
+
 	const createOne = asyncHandler(async (req, res) => {
-		const item = await service.create(req.body, req.user.id);
+		const item = await service.create(req.body, req.user.id, ...writeOpts(req));
 		const custom = await formCustomValueService.save(entity, item.id, req.formCustom, req.user.id);
 		return created(res, custom ? { ...item, custom } : item);
 	});
 
 	const updateOne = asyncHandler(async (req, res) => {
-		const item = await service.update(req.params.id, req.body, req.user.id);
+		const item = await service.update(req.params.id, req.body, req.user.id, ...writeOpts(req));
 		if (!item) return notFound(res);
 		const custom = await formCustomValueService.save(
 			entity,

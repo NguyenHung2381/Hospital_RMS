@@ -8,8 +8,8 @@
 
 | Chỉ số | Trước | Sau |
 |---|---|---|
-| Dòng trong `src/modules/training` | 24.491 | 24.405 (**−86**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm, D1 thêm 16 dòng chú thích/bọc transaction) |
-| `npm test` | 1080 qua / 0 lỗi* | 1104 qua / 0 lỗi (thêm 24 test đơn vị) |
+| Dòng trong `src/modules/training` | 24.491 | 24.396 (**−95**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm, D1 thêm 16 dòng chú thích/bọc transaction) |
+| `npm test` | 1080 qua / 0 lỗi* | 1110 qua / 0 lỗi (thêm 30 test đơn vị) |
 | `npm run lint` | 0 lỗi, 1 cảnh báo | 0 lỗi, 0 cảnh báo |
 | Smoke trên DB dev (`test-integration/**`, so baseline dựng từ `60d56a71`) | — | 218 test, 216 qua, 2 bỏ qua (thiếu dữ liệu mẫu), 0 lỗi; 192 route GET giữ nguyên mã HTTP và tập trường JSON |
 
@@ -61,8 +61,8 @@ Kiểm thử:
 |---|---|---|
 | course | có | có |
 | training_program | không | có |
-| lecturer | không | không |
-| trainee | có | không (`updateOne` giữ bản riêng, xem đề xuất D2) |
+| lecturer | không | không (`lecturerService.remove` tự xoá ở nhánh xoá cứng) |
+| trainee | có | không (học viên chỉ ẩn, không xoá cứng) |
 
 Không dùng `shared/crudController.js` vì nó không có bước trường tuỳ chỉnh và thuộc phiên `backend-cleanup`.
 Vẫn giữ nguyên: `authorizePermission` + `formConfigGuard` ở route, validate ở service, hình dạng response và thông điệp (`'Cập nhật thành công'`, `'Xóa thành công'`, 201 khi tạo, 404 khi không thấy). Smoke GET không đổi. Test: `test/training/customFormCrud.test.js`.
@@ -120,15 +120,35 @@ Vẫn giữ nguyên: dùng `withTransaction` (không thêm người thao tác) v
 Test cho 7 và 8: `test/training/programLinksTransaction.test.js` (6 test, cùng cách đánh số transaction): UPDATE / INSERT chương trình và câu đối tượng cùng transaction, có câu đặt người thao tác; INSERT đối tượng lỗi ⇒ ROLLBACK cả UPDATE và DELETE, không broadcast; trùng mã ⇒ 409, rollback; `update` không có gì ⇒ không mở transaction; `setLessonPrograms` ghi ba câu trong một transaction, đọc lại sau COMMIT, INSERT lỗi ⇒ ROLLBACK, không dọn giảng viên. Chạy trên bản cũ của hai file thì 6/6 lỗi. `test/training/batchedWrites.test.js` (thứ tự câu của `setLessonPrograms`) vẫn qua.
 Trên PostgreSQL dev (`/tmp/rvd2`, ROLLBACK): `trainingBatchedWrites` (đổi lời gọi sang `setProgramTraineeTypes(tx, …)`) và `batchedWrites` (gọi `setLessonPrograms` thật): 12 qua, 2 bỏ qua như trước, 0 lỗi.
 
+### Rủi ro thấp — đổi response ở trường hợp biên (người dùng đã duyệt D2–D4)
+
+**9. `PUT /trainees/:id` trả 404 khi mã không tồn tại** (D2, `trainees/traineeController.js`)
+Trước: `traineeService.update` trả null thì vẫn 200 `data: null` và vẫn lưu trường tuỳ chỉnh cho mã không tồn tại. Sau: dùng `updateOne` của `customFormCrud` như 3 thực thể kia: 404 `notFound`, không lưu trường tuỳ chỉnh. Bỏ bản `updateOne` riêng và import `formCustomValueService`.
+Vẫn giữ nguyên: route, `authorizePermission`, `formConfigGuard`, validate; response khi thành công (`data` kèm `custom` khi có, thông điệp `'Cập nhật thành công'`). Frontend (`updateTrainee`) chỉ gọi với mã đang mở nên chỉ gặp 404 khi học viên bị xoá giữa chừng, và đã có nhánh báo lỗi chung.
+
+**10. Bản ghi trả về sau tạo / sửa học viên che CCCD theo quyền như GET chi tiết** (D3)
+Trước: `create` / `update` trả `getById(id, true)`; tham số thứ hai là `actor`, `true` không có `permissions` nên CCCD luôn bị che (`••••8901`), kể cả với người có `trainees:read_sensitive`. Hệ quả: ở trang chi tiết học viên (`TraineeDetail` đặt state bằng response), lưu xong mà bấm sửa tiếp thì form chứa CCCD đã che và kiểm tra `/^d{9,12}$/` ở frontend báo lỗi, buộc nhập lại.
+Sau:
+- `traineeService.create(data, actorId, { fetch, actor })` và `update(id, data, actorId, { actor })` trả `getById(id, actor)`.
+- `customFormCrud` với `scoped: true` truyền thêm `{ actor: req.user }` cho `create` / `update` (trainee và course; `courseService.create/update` không nhận tham số đó nên bỏ qua).
+Vẫn giữ nguyên: quy tắc che nằm ở `maskSensitive` / `canReadSensitive` (`traineeListService`), không sửa; người thiếu quyền vẫn thấy `••••` + 4 số cuối. Nơi gọi khác (import Excel, đăng ký công khai, ghi danh, `fetch: false`) không truyền `actor` ⇒ che như trước. Chỉ `national_id` được che, SĐT chưa bao giờ bị che (F3 cũ ghi nhầm "CCCD/SĐT").
+
+**11. `lecturerService.remove` không nuốt lỗi DB** (D4)
+Bỏ `try { … } catch {}` quanh câu kiểm giảng viên đã được dùng. Ba bảng `lecturer_assignments`, `class_sessions`, `session_lecturers` đều có trong baseline / migration nên nhánh "bảng chưa tồn tại" là nhánh chết. Lỗi DB giờ trả 500 ngay thay vì bị coi là "chưa dùng" rồi thử DELETE cứng.
+Vẫn giữ nguyên: câu kiểm (3 bảng), chưa dùng ⇒ DELETE cứng + xoá trường tuỳ chỉnh, đã dùng ⇒ `is_active = false`; cả hai trong `withActorTransaction`.
+Phần "xoá trường tuỳ chỉnh khi xoá cứng giảng viên" của D4 (F5) **đã có sẵn** từ commit `a8541222` (2026-10-27): F5 là phát hiện nhầm, không cần sửa.
+
+Test cho 9–11: `test/training/traineeLecturerDecisions.test.js` (5 test) và thêm 1 test vào `customFormCrud.test.js` (`{ actor }` chỉ truyền khi `scoped`). Chạy trên bản cũ của 4 file nguồn: 5/6 test lỗi; test còn lại (nhánh xoá cứng / vô hiệu hoá của giảng viên) giữ hành vi cũ nên qua ở cả hai bản.
+
 ## Phát hiện chưa sửa
 
 | # | Vị trí | Mức | Mô tả | Đề xuất | Đã sửa? |
 |---|---|---|---|---|---|
 | F1 | `programs/trainingProgramService.js` `setProgramTraineeTypes` / `create` / `update` | trung bình | `setProgramTraineeTypes` chạy DELETE rồi INSERT trên pool, không chung transaction với nhau và với UPDATE chương trình. Nếu INSERT lỗi (vd. trùng khoá), chương trình mất hết đối tượng. Tương tự `courseService.setPrograms` và `programLessonService.setLessonPrograms`. | Bọc trong `withActorTransaction` cùng câu ghi chương trình/khóa học. Cần làm cẩn thận để trigger audit vẫn ghi người thao tác. | **Đã sửa** (thay đổi 6, 7, 8) |
-| F2 | `lecturers/lecturerService.js:249-260` | thấp | `try { … } catch {}` nuốt **mọi** lỗi khi kiểm GV đã được dùng (chú thích nói bảng `lecturer_assignments` "chưa tồn tại", trong khi migration đã có từ lâu). Lỗi DB tạm thời sẽ bị coi là "chưa dùng", dẫn tới DELETE cứng; FK chặn nên không mất dữ liệu nhưng người dùng nhận lỗi 500 khó hiểu. | Bỏ try/catch (nhánh chết). | Chưa |
-| F3 | `trainees/traineeService.js:101`, `:169` | thấp | `getById(id, true)` sau create/update: tham số thứ hai là `actor`, truyền `true` thì `canReadSensitive(true)` = false ⇒ response luôn che CCCD/SĐT kể cả với người có `trainees:read_sensitive`. An toàn về bảo mật nhưng gây hiểu lầm. | Truyền actor thật (cần sửa chữ ký `create/update`), hoặc đổi tên tham số cho rõ. Có đổi response nên chưa làm. | Chưa |
-| F4 | `trainees/traineeController.js:26` | thấp | `updateOne` của học viên không trả 404: `traineeService.update` trả null (mã không tồn tại) thì vẫn 200 `data: null` và **vẫn lưu** trường tuỳ chỉnh cho mã không tồn tại. | Dùng `updateOne` của `customFormCrud` (trả 404, không lưu). Đổi mã HTTP ở trường hợp biên. | Chưa (D2) |
-| F5 | `lecturerController` / `lecturerService.remove`, `traineeController.removeOne` | thấp | Xoá giảng viên (DELETE cứng khi chưa dùng) không xoá `form_custom_values` của giảng viên ⇒ dòng mồ côi. Học viên chỉ ẩn (`hidden_at`) nên giữ là hợp lý. | Bật `removeCustom` cho giảng viên chỉ ở nhánh DELETE cứng. | Chưa |
+| F2 | `lecturers/lecturerService.js:249-260` | thấp | `try { … } catch {}` nuốt **mọi** lỗi khi kiểm GV đã được dùng (chú thích nói bảng `lecturer_assignments` "chưa tồn tại", trong khi migration đã có từ lâu). Lỗi DB tạm thời sẽ bị coi là "chưa dùng", dẫn tới DELETE cứng; FK chặn nên không mất dữ liệu nhưng người dùng nhận lỗi 500 khó hiểu. | Bỏ try/catch (nhánh chết). | **Đã sửa** (thay đổi 11) |
+| F3 | `trainees/traineeService.js:101`, `:169` | thấp | `getById(id, true)` sau create/update: tham số thứ hai là `actor`, truyền `true` thì `canReadSensitive(true)` = false ⇒ response luôn che CCCD kể cả với người có `trainees:read_sensitive`. An toàn về bảo mật nhưng gây hiểu lầm. | Truyền actor thật (cần sửa chữ ký `create/update`), hoặc đổi tên tham số cho rõ. Có đổi response nên chưa làm. | **Đã sửa** (thay đổi 10) |
+| F4 | `trainees/traineeController.js:26` | thấp | `updateOne` của học viên không trả 404: `traineeService.update` trả null (mã không tồn tại) thì vẫn 200 `data: null` và **vẫn lưu** trường tuỳ chỉnh cho mã không tồn tại. | Dùng `updateOne` của `customFormCrud` (trả 404, không lưu). Đổi mã HTTP ở trường hợp biên. | **Đã sửa** (thay đổi 9) |
+| F5 | `lecturerController` / `lecturerService.remove`, `traineeController.removeOne` | thấp | Xoá giảng viên (DELETE cứng khi chưa dùng) không xoá `form_custom_values` của giảng viên ⇒ dòng mồ côi. Học viên chỉ ẩn (`hidden_at`) nên giữ là hợp lý. | Bật `removeCustom` cho giảng viên chỉ ở nhánh DELETE cứng. | **Không cần**: phát hiện nhầm, `lecturerService.remove` đã xoá trường tuỳ chỉnh ở nhánh DELETE cứng |
 | F6 | `courses/practiceBookExportService.js:14-21`, `courses/practiceDocumentService.js:40-46`, `registration/registrationDocumentService.js:32-54`, `tuition/tuitionReceiptPdf.js:74-81` | thấp | `pad2` / `toDate` / `dmy` chép 4 lần, khác nhau tinh vi (UTC hay giờ VN, chuỗi `YYYY-MM-DD` hay `Date`). | Gom vào `utils/vnDate.js` (vùng `backend-cleanup`) sau khi chốt một quy ước múi giờ. | Chưa |
 | F7 | `registration/docCheck/docCheckService.js:26`, `registration/registrationDocumentService.js:29`, `tuition/tuitionController.js:11` | thấp | Tên bệnh viện viết cứng 3 lần. | Một hằng hoặc `system_settings`. `tuitionController` đang được phiên security sửa nên chưa đụng. | Chưa |
 | F8 | `courses/lecturerAssignmentService.js:360` `syncLessonsFromSessions` | thấp | N+1: mỗi bài học 4 câu SELECT + `setLessonLecturers` (thêm vài câu). Nhập kế hoạch giảng dạy cả khóa có thể tới hàng chục bài. | Đọc 4 tập cho mọi bài trong 1 lượt (`subject_id IN jsonValues`) rồi chia theo bài trong JS. Logic phức tạp nên cần test riêng. | Chưa |
@@ -154,3 +174,6 @@ Không thấy dấu hiệu lỗi bảo mật mới trong vùng này:
 - **D2** (F4): Có cho `PUT /trainees/:id` trả 404 khi mã không tồn tại (thay vì 200 `data: null`) không? Nếu đồng ý thì `traineeController.updateOne` dùng luôn bản của `customFormCrud`.
 - **D3** (F3): Có muốn response sau khi tạo/sửa học viên hiện đủ CCCD/SĐT với người có quyền `read_sensitive` (như khi xem chi tiết) không?
 - **D4** (F2, F5): Bỏ `try/catch` nuốt lỗi ở `lecturerService.remove` và xoá trường tuỳ chỉnh khi xoá cứng giảng viên?
+  - 2026-11-27: người dùng duyệt D2, D3, D4 — đã làm (thay đổi 9, 10, 11). Phần xoá trường tuỳ chỉnh của D4 đã có sẵn.
+
+Không còn đề xuất nào chờ quyết. Ghi nhận thêm (chưa sửa, ngoài D1–D4): người **không** có `trainees:read_sensitive` mở form sửa học viên thì CCCD đã che (`••••8901`), và frontend bắt nhập lại CCCD đủ số mỗi lần lưu (họ vốn không được xem số đó). Có thể cho backend bỏ qua `national_id` dạng `••••…` khi cập nhật, hoặc frontend không gửi trường đó khi chưa sửa. Cần thống nhất với phiên `security` / `frontend-cleanup`.

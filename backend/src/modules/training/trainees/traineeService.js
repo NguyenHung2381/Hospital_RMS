@@ -43,8 +43,10 @@ const getById = async (id, actor = null) => {
 	return maskSensitive(row, canReadSensitive(actor));
 };
 
-// opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt
-const create = async (data, actorId, { fetch = true } = {}) => {
+// opts.fetch=false: bỏ query đọc lại bản ghi — dùng cho import hàng loạt.
+// opts.actor: người xem bản ghi trả về — có quyền 'trainees:read_sensitive' thì thấy đủ CCCD
+// như getById; không truyền (import, đăng ký công khai, ghi danh) ⇒ che như trước.
+const create = async (data, actorId, { fetch = true, actor = null } = {}) => {
 	const result = await withActorTransaction(actorId, async (tx) =>
 		queryBatch(
 			tx
@@ -98,10 +100,11 @@ const create = async (data, actorId, { fetch = true } = {}) => {
 	const id = result.recordset[0].id;
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
-	return fetch ? getById(id, true) : { id };
+	return fetch ? getById(id, actor) : { id };
 };
 
-const update = async (id, data, actorId) => {
+// opts.actor: như create — không truyền ⇒ bản ghi trả về che CCCD.
+const update = async (id, data, actorId, { actor = null } = {}) => {
 	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
 	const req = actorRequest(actorId)
 		.input('id', sql.VarChar(20), id)
@@ -166,7 +169,7 @@ const update = async (id, data, actorId) => {
 	if (data.is_active !== undefined && !data.is_active) await lockAccountOf(id, actorId);
 	await personService.syncPerson('trainees', id, { actorId });
 	broadcast('update', { entity: 'trainee' });
-	return getById(id, true);
+	return getById(id, actor);
 };
 
 const remove = async (id, actorId) => {
