@@ -143,7 +143,7 @@ Ba module này trước đây gần như chưa có test riêng. Phạm vi khoa c
 
 **Lỗi thật mới (chưa sửa, thuộc backend-cleanup):**
 
-10. `dashboardService.js:385-412` (`getOverviewStats`): `@from` tính theo ngày giờ VN (`todayVN()`), còn nhãn 12 tháng lại tính theo giờ máy (`new Date()`). Server chạy giờ UTC (Docker) thì trong 7 giờ đầu mỗi tháng (00:00–07:00 giờ VN), biểu đồ bỏ mất tháng hiện tại và hiện thêm một tháng ngoài cửa sổ truy vấn. Có test todo; sửa xong thì bỏ `todo`. Cách sửa: tính nhãn tháng từ `todayVN()` bằng getter UTC.
+10. `dashboardService.js:355-462` (`getOverviewStats`, dòng 361 và 452): `@from` tính theo ngày giờ VN (`todayVN()`), còn nhãn 12 tháng lại tính theo giờ máy (`new Date()`). Server chạy giờ UTC (Docker) thì trong 7 giờ đầu mỗi tháng (00:00–07:00 giờ VN), biểu đồ bỏ mất tháng hiện tại và hiện thêm một tháng ngoài cửa sổ truy vấn. Có test todo; sửa xong thì bỏ `todo`. Cách sửa: tính nhãn tháng từ `todayVN()` bằng getter UTC.
 
 **Điểm yếu nhỏ (không viết test todo vì không giả lập ổn định được):**
 
