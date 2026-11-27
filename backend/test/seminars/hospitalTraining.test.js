@@ -80,20 +80,14 @@ test('setRequiredDepartments: undefined ⇒ không đổi; [] ⇒ chỉ xóa; b�
 	assert.equal(inputs.sid, 'S1');
 });
 
-test(
-	'setRequiredDepartments: mỗi lần query chỉ 1 câu SQL (PostgreSQL không nhận nhiều câu có tham số)',
-	{
-		todo: 'Lỗi thật: hospitalTraining.js:49-62 gửi "DELETE …; INSERT …" trong 1 query có tham số ⇒ PG báo 42601 "cannot insert multiple commands into a prepared statement" (đã thử trên DB dev, rollback) ⇒ lưu buổi tập huấn có khoa bắt buộc bị 500',
-	},
-	async () => {
-		log.length = 0;
-		await ht.setRequiredDepartments(pool, 'S1', ['K1', 'K2']);
-		for (const { text } of log) {
-			const statements = text.split(';').filter((s) => s.trim());
-			assert.equal(statements.length, 1, text);
-		}
-	},
-);
+test('setRequiredDepartments: mỗi lần query chỉ 1 câu SQL (PostgreSQL không nhận nhiều câu có tham số)', async () => {
+	log.length = 0;
+	await ht.setRequiredDepartments(pool, 'S1', ['K1', 'K2']);
+	for (const { text } of log) {
+		const statements = text.split(';').filter((s) => s.trim());
+		assert.equal(statements.length, 1, text);
+	}
+});
 
 // ── Nhân viên tự đăng ký ────────────────────────────────────────────────────
 const base = (over = {}) => ({

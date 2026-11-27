@@ -196,10 +196,9 @@ const optionalNumber = (v, label, { min, max, integer = false }) => {
 
 const create = async (input, actorId) => {
 	const data = ht.applyLessonCredits(input);
-	const pool = await getPool();
 	const newId = randomId('SEM', 17);
-	await withActorTransaction(actorId, (tx) =>
-		tx
+	await withActorTransaction(actorId, async (tx) => {
+		await tx
 			.request()
 			.input('new_id', sql.VarChar(20), newId)
 			.input('public_token', sql.VarChar(32), randomHex32())
@@ -249,9 +248,9 @@ const create = async (input, actorId) => {
          @manual_participant_count, @manual_internal_count, @manual_external_count,
          @manual_foreign_count, @manual_cme_count, @organizer_department_id, @topic_id, @lesson_hours,
          @public_token, @actor_id)
-    `),
-	);
-	await ht.setRequiredDepartments(pool, newId, data.required_department_ids);
+    `);
+		await ht.setRequiredDepartments(tx, newId, data.required_department_ids);
+	});
 	broadcast('update', { entity: 'seminar' });
 	return getById(newId);
 };
@@ -380,7 +379,10 @@ const update = async (id, input, actorId) => {
 	}
 
 	await req.query(`UPDATE seminars SET ${sets.join(', ')} WHERE id = @id`);
-	await ht.setRequiredDepartments(pool, id, data.required_department_ids);
+	if (Array.isArray(data.required_department_ids))
+		await withActorTransaction(actorId, (tx) =>
+			ht.setRequiredDepartments(tx, id, data.required_department_ids),
+		);
 	removedImages.forEach(removeUploadedFile);
 	broadcast('update', { entity: 'seminar' });
 	return getById(id);
