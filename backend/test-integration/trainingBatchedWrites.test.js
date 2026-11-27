@@ -266,7 +266,8 @@ test('ghi gộp training-cleanup trên PostgreSQL thật (rollback)', async (t) 
 				{ c: link.course_id },
 			);
 			if (!other) return s.skip('thiếu chương trình chưa gắn');
-			await setPrograms(link.course_id, [other.id, 'KHONG_TON_TAI'], actor);
+			// setPrograms chạy trên tx của nơi gọi (D1: create / update truyền transaction của câu ghi courses)
+			await setPrograms(tx, link.course_id, [other.id, 'KHONG_TON_TAI'], actor);
 			const r = await q('SELECT program_id FROM course_programs WHERE course_id = @c', {
 				c: link.course_id,
 			});

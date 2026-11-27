@@ -2,8 +2,6 @@ const {
 	getPool,
 	sql,
 	withActorTransaction,
-	actorRequest,
-	withTransaction,
 	queryAll,
 	vnTodaySql,
 	nowSql,
@@ -203,9 +201,11 @@ const getById = async (id, actor = null) => {
 	return result.recordset[0] ? normalize(result.recordset[0]) : null;
 };
 
+// Ghi khóa học và chương trình áp dụng chung 1 transaction (có người thao tác): gắn chương
+// trình lỗi thì không để lại khóa học thiếu chương trình.
 const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, async (tx) =>
-		queryBatch(
+	const id = await withActorTransaction(actorId, async (tx) => {
+		const result = await queryBatch(
 			tx
 				.request()
 				.input('new_id', sql.VarChar(20), await genCourseId(tx))
@@ -229,10 +229,11 @@ const create = async (data, actorId) => {
       VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
-		),
-	);
-	const id = result.recordset[0].id;
-	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
+		);
+		const newId = result.recordset[0].id;
+		if (Array.isArray(data.program_ids)) await setPrograms(tx, newId, data.program_ids, actorId);
+		return newId;
+	});
 	broadcast('update', { entity: 'course' });
 	const saved = await getById(id);
 	// Khóa ĐTLT / CTCV mới ⇒ nhận người trong danh sách chờ của chương trình.
@@ -240,43 +241,48 @@ const create = async (data, actorId) => {
 	return programClassService.appliesTo(saved) ? getById(id) : saved;
 };
 
+// Sửa khóa học và đồng bộ chương trình áp dụng chung 1 transaction (có người thao tác cho
+// trigger audit của courses): gắn chương trình lỗi thì rollback cả câu UPDATE.
 const update = async (id, data, actorId) => {
-	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
-	const req = actorRequest(actorId)
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId);
+	await withActorTransaction(actorId, async (tx) => {
+		const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
+		const req = tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId);
 
-	const fieldMap = {
-		name: sql.NVarChar(255),
-		training_form_id: sql.VarChar(20),
-		training_type_id: sql.VarChar(20),
-		batch_no: sql.Int,
-		is_rolling: sql.Bit,
-		start_date: sql.Date,
-		end_date: sql.Date,
-		enrollment_start_date: sql.Date,
-		enrollment_end_date: sql.Date,
-		status: sql.VarChar(15),
-		is_public_registration: sql.Bit,
-		description: sql.NVarChar(sql.MAX),
-	};
-	for (const [field, type] of Object.entries(fieldMap)) {
-		if (data[field] !== undefined) {
-			sets.push(`${field} = @${field}`);
-			req.input(field, type, data[field] === '' ? null : data[field]);
+		const fieldMap = {
+			name: sql.NVarChar(255),
+			training_form_id: sql.VarChar(20),
+			training_type_id: sql.VarChar(20),
+			batch_no: sql.Int,
+			is_rolling: sql.Bit,
+			start_date: sql.Date,
+			end_date: sql.Date,
+			enrollment_start_date: sql.Date,
+			enrollment_end_date: sql.Date,
+			status: sql.VarChar(15),
+			is_public_registration: sql.Bit,
+			description: sql.NVarChar(sql.MAX),
+		};
+		for (const [field, type] of Object.entries(fieldMap)) {
+			if (data[field] !== undefined) {
+				sets.push(`${field} = @${field}`);
+				req.input(field, type, data[field] === '' ? null : data[field]);
+			}
 		}
-	}
-	if (data.prerequisites !== undefined) {
-		sets.push('prerequisites = @prerequisites');
-		req.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []));
-	}
-	if (data.objectives !== undefined) {
-		sets.push('objectives = @objectives');
-		req.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || []));
-	}
+		if (data.prerequisites !== undefined) {
+			sets.push('prerequisites = @prerequisites');
+			req.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []));
+		}
+		if (data.objectives !== undefined) {
+			sets.push('objectives = @objectives');
+			req.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || []));
+		}
 
-	await req.query(`UPDATE courses SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.program_ids)) await setPrograms(id, data.program_ids, actorId);
+		await req.query(`UPDATE courses SET ${sets.join(', ')} WHERE id = @id`);
+		if (Array.isArray(data.program_ids)) await setPrograms(tx, id, data.program_ids, actorId);
+	});
 	broadcast('update', { entity: 'course' });
 	const saved = await getById(id);
 	// Khóa ĐTLT / CTCV: thêm chương trình / dời ngày ⇒ lớp còn chỗ nhận người chờ.
@@ -341,18 +347,19 @@ const listProgramLinks = async (courseId) => {
 };
 
 // Đồng bộ theo danh sách chọn ở form khóa học: gỡ chương trình bị bỏ, gắn chương trình mới.
-const setPrograms = async (courseId, programIds, actorId) => {
-	const pool = await getPool();
+// Chạy trong transaction của create / update (`tx`): lỗi giữa chừng thì rollback cả câu ghi
+// khóa học, không để khóa học mất liên kết cũ mà chưa có liên kết mới.
+const setPrograms = async (tx, courseId, programIds, actorId) => {
 	const wanted = new Set(programIds.filter(Boolean).map(String));
 	const current = (
-		await pool
+		await tx
 			.request()
 			.input('course_id', sql.VarChar(20), courseId)
 			.query('SELECT id, program_id FROM course_programs WHERE course_id = @course_id')
 	).recordset;
 	const dropIds = current.filter((l) => !wanted.has(l.program_id)).map((l) => l.id);
 	if (dropIds.length)
-		await pool
+		await tx
 			.request()
 			.input('course_id', sql.VarChar(20), courseId)
 			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(dropIds))
@@ -365,7 +372,7 @@ const setPrograms = async (courseId, programIds, actorId) => {
 	// Mã chương trình không tồn tại thì bỏ qua — kiểm 1 lần cho cả danh sách
 	const known = new Set(
 		(
-			await pool
+			await tx
 				.request()
 				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(toAdd))
 				.query(
@@ -373,18 +380,17 @@ const setPrograms = async (courseId, programIds, actorId) => {
 				)
 		).recordset.map((r) => r.id),
 	);
-	// Mã course_programs sinh tuần tự trong giao dịch (genCourseProgramId) nên vẫn ghi từng dòng
+	// Mã course_programs sinh tuần tự (genCourseProgramId: MAX+1 dưới khóa advisory theo
+	// transaction) nên vẫn ghi từng dòng; MAX+1 thấy dòng vừa chèn trong cùng transaction.
 	for (const programId of toAdd.filter((id) => known.has(id))) {
-		await withTransaction(async (tx) =>
-			tx
-				.request()
-				.input('new_id', sql.VarChar(20), await genCourseProgramId(tx))
-				.input('actor_id', sql.VarChar(20), actorId)
-				.input('course_id', sql.VarChar(20), courseId)
-				.input('program_id', sql.VarChar(20), programId).query(`
+		await tx
+			.request()
+			.input('new_id', sql.VarChar(20), await genCourseProgramId(tx))
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('course_id', sql.VarChar(20), courseId)
+			.input('program_id', sql.VarChar(20), programId).query(`
         INSERT INTO course_programs (id, course_id, program_id, status, created_by)
-        VALUES (@new_id, @course_id, @program_id, 'active', @actor_id)`),
-		);
+        VALUES (@new_id, @course_id, @program_id, 'active', @actor_id)`);
 	}
 };
 

@@ -8,14 +8,14 @@
 
 | Chỉ số | Trước | Sau |
 |---|---|---|
-| Dòng trong `src/modules/training` | 24.491 | 24.389 (**−102**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm) |
-| `npm test` | 1080 qua / 0 lỗi* | 1094 qua / 0 lỗi (thêm 14 test đơn vị) |
+| Dòng trong `src/modules/training` | 24.491 | 24.395 (**−96**; tính cả 3 file mới `customFormCrud.js`, `importText.js`, `courseGradeRoutes.js` — riêng việc tách route thêm 19 dòng đầu file/bọc hàm, D1 thêm 6 dòng chú thích/bọc transaction) |
+| `npm test` | 1080 qua / 0 lỗi* | 1098 qua / 0 lỗi (thêm 18 test đơn vị) |
 | `npm run lint` | 0 lỗi, 1 cảnh báo | 0 lỗi, 0 cảnh báo |
 | Smoke trên DB dev (`test-integration/**`, so baseline dựng từ `60d56a71`) | — | 218 test, 216 qua, 2 bỏ qua (thiếu dữ liệu mẫu), 0 lỗi; 192 route GET giữ nguyên mã HTTP và tập trường JSON |
 
 \* Lần chạy mốc đầu tiên báo 4 file lỗi (`test/cme/cmeCycleCompliance`, `test/security/courseLecturerCme`, `gradeLockOutcome`, `moduleKillSwitchMounts`). Chạy riêng từng file đều qua; các lần chạy đầy đủ sau đó cũng qua. Đây là lỗi chập chờn do máy tải nặng (7 phiên cùng chạy), không phải lỗi code.
 
-Cách chạy smoke: chép `src/` + `test-integration/` của từng commit vào `/tmp/rvb` (gốc) và `/tmp/rvh` (HEAD) trong container `hospital_rms_dev-backend-1`, nối `node_modules` và `.env` của `/app`. Bản gốc ghi baseline, bản HEAD so với baseline đó. Container vẫn phục vụ checkout chính và không bị đụng tới. Các thư mục `/tmp/rv-training`, `/tmp/rvb`, `/tmp/rvh` và file `/tmp/rvb.tar`, `/tmp/rvh.tar` còn lại trong container (lệnh xoá bị công cụ chặn). Có thể xoá tay hoặc để mất khi tạo lại container.
+Cách chạy smoke: chép `src/` + `test-integration/` của từng commit vào `/tmp/rvb` (gốc) và `/tmp/rvh` (HEAD) trong container `hospital_rms_dev-backend-1`, nối `node_modules` và `.env` của `/app`. Bản gốc ghi baseline, bản HEAD so với baseline đó. Container vẫn phục vụ checkout chính và không bị đụng tới. Các thư mục `/tmp/rv-training`, `/tmp/rvb`, `/tmp/rvh`, `/tmp/rvd1` và file `/tmp/rvb.tar`, `/tmp/rvh.tar`, `/tmp/rvd1.tar` còn lại trong container (lệnh xoá bị công cụ chặn). Có thể xoá tay hoặc để mất khi tạo lại container.
 
 ## Thay đổi đã làm (xếp theo mức rủi ro)
 
@@ -46,7 +46,7 @@ Dùng helper sẵn có `jsonValues` / `jsonRows` (cách repo đã làm ở `setL
 | `programs/trainingProgramService.js:136` `setProgramTraineeTypes` | 2 round-trip / đối tượng | 1 INSERT … JOIN trainee_types | `display_order` = vị trí trong mảng gửi lên; mã không tồn tại bỏ qua |
 | `courses/enrollmentRotationService.js:466` `schedule` | 1 UPDATE / vòng | 1 UPDATE … FROM jsonRows | ngày tính bởi `planSchedule` như cũ; thêm điều kiện `enrollment_id` (hẹp hơn, không rộng hơn) |
 | `courses/waitlistTransferService.js:67` `transfer` | 1 UPDATE / hồ sơ | 1 UPDATE … WHERE id IN jsonValues | transaction + `lockWaitlist`; tính chỗ trống trong JS như cũ; vẫn kèm `status = 'waitlisted'`; 409 khi không chuyển được ai (kiểm trước câu UPDATE, vẫn rollback) |
-| `courses/courseService.js:344` `setPrograms` | 1 DELETE / liên kết bị bỏ + 1 SELECT / chương trình mới | 1 DELETE + 1 SELECT cho cả danh sách | DELETE thêm điều kiện `course_id`; INSERT vẫn từng dòng vì mã `CP…` sinh tuần tự bằng `genCourseProgramId(tx)` |
+| `courses/courseService.js:352` `setPrograms` | 1 DELETE / liên kết bị bỏ + 1 SELECT / chương trình mới | 1 DELETE + 1 SELECT cho cả danh sách | DELETE thêm điều kiện `course_id`; INSERT vẫn từng dòng vì mã `CP…` sinh tuần tự bằng `genCourseProgramId(tx)` |
 
 Kiểm thử:
 - `test/training/batchedWritesCleanup.test.js`: 7 test fakeDb kiểm số câu ghi, payload JSON và COMMIT/ROLLBACK.
@@ -82,11 +82,32 @@ Vẫn giữ nguyên:
 - `check:routes`: mọi route đều khai báo phân quyền.
 - `test/security/gradeLockOutcome.test.js` và `test/security/courseTeachingScope.test.js`.
 
+### Rủi ro trung bình — đổi ranh giới transaction (người dùng đã duyệt D1, chỉ phần `setPrograms`)
+
+**6. Ghi khóa học và chương trình áp dụng chung 1 transaction** (`courses/courseService.js`)
+Trước: `create` / `update` ghi `courses` trong một transaction riêng (commit xong), rồi `setPrograms` đọc và DELETE trên pool (tự commit từng câu), mỗi INSERT `course_programs` lại một `withTransaction` riêng. INSERT lỗi giữa chừng thì khóa học đã mất liên kết cũ mà chưa có đủ liên kết mới, còn thay đổi của `courses` vẫn được giữ.
+Sau:
+- `setPrograms(tx, courseId, programIds, actorId)` chạy toàn bộ (đọc liên kết hiện có, DELETE, kiểm `training_programs`, INSERT từng dòng) trên `tx` do nơi gọi truyền vào.
+- `create` (`:206`) gọi nó trong chính `withActorTransaction` có câu INSERT `courses`. `update` (`:246`) bọc câu UPDATE `courses` cùng `setPrograms` vào một `withActorTransaction`, thay cho `actorRequest` (vốn cũng là `withActorTransaction` cho đúng 1 câu).
+- Lỗi ở bất kỳ bước nào ⇒ ROLLBACK cả lần ghi, ném lại lỗi gốc như cũ.
+
+Vẫn giữ nguyên:
+- Người thao tác cho trigger audit: câu UPDATE `courses` vẫn chạy sau `withActor(tx, actorId)` (trigger `BEFORE UPDATE` đọc `app.current_user_id`). `course_programs` không có trigger audit nên không có gì đổi về audit; `created_by` vẫn là `actorId`.
+- Phân quyền ở route, validator, câu SQL (từng câu giống hệt, kể cả điều kiện `course_id` ở DELETE), cách bỏ qua mã chương trình không tồn tại, mã `CP…` sinh bằng `genCourseProgramId(tx)`. Khoá sinh mã là `pg_advisory_xact_lock` nên gọi lại trong cùng transaction không tự chặn; MAX+1 thấy dòng vừa chèn trong cùng transaction.
+- `broadcast`, `getById`, `programClassService.refreshCourse` vẫn chạy sau commit như cũ. Hình dạng response không đổi.
+- Không đụng `remove` / `HAS_TUITION_SQL`.
+
+Khác biệt nhỏ chấp nhận được: khoá sinh mã khóa học (`gen_course_id_KH…`, trong `create`) giữ lâu hơn một chút, tới khi gắn xong chương trình (vài câu SQL).
+Đã bỏ import `actorRequest`, `withTransaction` của `courseService.js` vì không còn dùng.
+
+Test: `test/training/courseSetPrograms.test.js` (4 test) đánh số từng transaction trong fakeDb, kiểm UPDATE/INSERT `courses` và mọi câu của `setPrograms` cùng một transaction, có câu đặt người thao tác, 1 COMMIT; INSERT lỗi ⇒ ROLLBACK cả transaction (kể cả câu DELETE và câu ghi `courses`). Chạy các test này trên `courseService.js` bản trước thì 3/4 lỗi, đúng như mong đợi.
+`test-integration/trainingBatchedWrites.test.js` đổi lời gọi sang `setPrograms(tx, …)` và chạy lại trên PostgreSQL dev (transaction ROLLBACK, bản chép ở `/tmp/rvd1` trong container): 8 qua, 2 bỏ qua như trước, 0 lỗi; phần `setPrograms` qua (gỡ, gắn, bỏ mã không tồn tại, khoá sinh mã trên transaction thật). Đường `create` / `update` đầy đủ không chạy được trong harness này vì nó chặn `withActorTransaction` để không COMMIT.
+
 ## Phát hiện chưa sửa
 
 | # | Vị trí | Mức | Mô tả | Đề xuất | Đã sửa? |
 |---|---|---|---|---|---|
-| F1 | `programs/trainingProgramService.js:136`, `:241`, `:265` | trung bình | `setProgramTraineeTypes` chạy DELETE rồi INSERT trên pool, không chung transaction với nhau và với UPDATE chương trình. Nếu INSERT lỗi (vd. trùng khoá), chương trình mất hết đối tượng. Tương tự `courseService.setPrograms` (`:344`) và `programLessonService.setLessonPrograms` (`:253`). | Bọc trong `withActorTransaction` cùng câu ghi chương trình/khóa học. Cần làm cẩn thận để trigger audit vẫn ghi người thao tác. | Chưa (đổi ranh giới transaction, cần người dùng đồng ý) |
+| F1 | `programs/trainingProgramService.js:136`, `:241`, `:265` | trung bình | `setProgramTraineeTypes` chạy DELETE rồi INSERT trên pool, không chung transaction với nhau và với UPDATE chương trình. Nếu INSERT lỗi (vd. trùng khoá), chương trình mất hết đối tượng. Tương tự `courseService.setPrograms` và `programLessonService.setLessonPrograms` (`:253`). | Bọc trong `withActorTransaction` cùng câu ghi chương trình/khóa học. Cần làm cẩn thận để trigger audit vẫn ghi người thao tác. | **Một phần**: `setPrograms` đã sửa (thay đổi 6); `setProgramTraineeTypes`, `setLessonPrograms` chưa |
 | F2 | `lecturers/lecturerService.js:249-260` | thấp | `try { … } catch {}` nuốt **mọi** lỗi khi kiểm GV đã được dùng (chú thích nói bảng `lecturer_assignments` "chưa tồn tại", trong khi migration đã có từ lâu). Lỗi DB tạm thời sẽ bị coi là "chưa dùng", dẫn tới DELETE cứng; FK chặn nên không mất dữ liệu nhưng người dùng nhận lỗi 500 khó hiểu. | Bỏ try/catch (nhánh chết). | Chưa |
 | F3 | `trainees/traineeService.js:101`, `:169` | thấp | `getById(id, true)` sau create/update: tham số thứ hai là `actor`, truyền `true` thì `canReadSensitive(true)` = false ⇒ response luôn che CCCD/SĐT kể cả với người có `trainees:read_sensitive`. An toàn về bảo mật nhưng gây hiểu lầm. | Truyền actor thật (cần sửa chữ ký `create/update`), hoặc đổi tên tham số cho rõ. Có đổi response nên chưa làm. | Chưa |
 | F4 | `trainees/traineeController.js:26` | thấp | `updateOne` của học viên không trả 404: `traineeService.update` trả null (mã không tồn tại) thì vẫn 200 `data: null` và **vẫn lưu** trường tuỳ chỉnh cho mã không tồn tại. | Dùng `updateOne` của `customFormCrud` (trả 404, không lưu). Đổi mã HTTP ở trường hợp biên. | Chưa (D2) |
@@ -106,12 +127,13 @@ Không thấy dấu hiệu lỗi bảo mật mới trong vùng này:
 
 ## Lưu ý khi gộp nhánh
 
-- Phiên `security` (nhánh `claude/review-security-479bca`) có sửa `courses/courseService.js` (`HAS_TUITION_SQL` trong `remove`), `courses/courseEnrollmentService.js`, `tuition/tuitionService.js`, `tuition/tuitionController.js`. Nhánh này chỉ sửa `courseService.js` ở khối `require` đầu file (thêm `jsonValues`) và hàm `setPrograms`, nên có thể xung đột nhẹ ở khối `require`. Khi gộp cần giữ cả hai.
+- Phiên `security` (nhánh `claude/review-security-479bca`) có sửa `courses/courseService.js` (`HAS_TUITION_SQL` trong `remove`), `courses/courseEnrollmentService.js`, `tuition/tuitionService.js`, `tuition/tuitionController.js`. Nhánh này sửa `courseService.js` ở khối `require` đầu file (thêm `jsonValues`, bỏ `actorRequest` và `withTransaction`) và các hàm `create`, `update`, `setPrograms` (thay đổi 3 và 6), không đụng `remove`. Có thể xung đột nhẹ ở khối `require`: khi gộp cần giữ cả hai, và nếu nhánh security có dùng `actorRequest` / `withTransaction` trong `courseService.js` thì giữ lại hai import đó (lint `no-unused-vars` sẽ báo nếu thừa hoặc thiếu).
 - `shared/crudService.js` / `crudController.js` không bị sửa. Đề xuất mục E của phiên `backend-cleanup` (thêm tuỳ chọn cho `createCrudService`) không ảnh hưởng module này vì `training` không dùng hai file đó.
 
 ## Đề xuất cần người dùng quyết
 
 - **D1** (F1): Có bọc các cặp "xoá cũ rồi chèn mới" (`setProgramTraineeTypes`, `setPrograms`, `setLessonPrograms`) vào chung transaction với câu ghi chính không? Lợi: không mất liên kết khi lỗi giữa chừng. Đổi: ranh giới transaction và cách ghi người thao tác cho audit.
+  - 2026-11-27: người dùng duyệt phần `setPrograms` — đã làm (thay đổi 6). `setProgramTraineeTypes` và `setLessonPrograms` vẫn chờ quyết; cách làm giống hệt (nhận `tx`, gọi trong `withActorTransaction` của câu ghi chương trình / bài học).
 - **D2** (F4): Có cho `PUT /trainees/:id` trả 404 khi mã không tồn tại (thay vì 200 `data: null`) không? Nếu đồng ý thì `traineeController.updateOne` dùng luôn bản của `customFormCrud`.
 - **D3** (F3): Có muốn response sau khi tạo/sửa học viên hiện đủ CCCD/SĐT với người có quyền `read_sensitive` (như khi xem chi tiết) không?
 - **D4** (F2, F5): Bỏ `try/catch` nuốt lỗi ở `lecturerService.remove` và xoá trường tuỳ chỉnh khi xoá cứng giảng viên?
