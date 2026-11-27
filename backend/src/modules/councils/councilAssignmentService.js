@@ -101,8 +101,9 @@ const setTopicSession = async (councilId, topicId, session, actorId, { tx = null
 
 // Ghế thay thế theo đề tài: với một đề tài cụ thể, thay người ngồi một ghế của
 // hội đồng (thành viên gốc là tác giả, hoặc cần chuyên gia đúng ngành phản biện).
-const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
-	const ok = await withActorTransaction(actorId, async (tx) => {
+// opts.tx: như assignTopics.
+const setSeatSubstitute = async (councilId, topicId, role, userId, actorId, { tx = null } = {}) => {
+	const write = async (tx) => {
 		const req = () =>
 			tx
 				.request()
@@ -125,11 +126,12 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
           VALUES (@topic_id, @role, @user_id, @actor_id)`);
 		}
 		return true;
-	});
+	};
+	const ok = tx ? await write(tx) : await withActorTransaction(actorId, write);
 	if (!ok) {
 		throw httpError(404, 'Đề tài không thuộc hội đồng này.');
 	}
-	broadcast('update', { entity: 'council' });
+	if (!tx) broadcast('update', { entity: 'council' });
 };
 
 const removeSeatSubstitute = async (councilId, topicId, role, actorId) => {
