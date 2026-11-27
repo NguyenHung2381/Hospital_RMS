@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DownloadSvg } from '@/assets/icons';
-import { Button } from '@/shared/components';
+import { Button, ErrorState } from '@/shared/components';
 import { showToast } from '@/shared/utils/feedback';
 import { saveBlob } from '@/shared/utils/saveBlob';
 import { formatDate } from '../../../shared/utils/formatDate';
@@ -34,14 +34,24 @@ function ResultChip({ result, reasons }: { result: 'pass' | 'fail' | null; reaso
 export function TraineeResultsTab({ traineeId, enrollmentId }: { traineeId?: string; enrollmentId?: string }) {
 	const [data, setData] = useState<TraineeCourseResult[] | null>(null);
 	const [error, setError] = useState('');
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		(traineeId ? traineeRecordApi.grades(traineeId) : traineeRecordApi.myGrades())
 			.then((rows) => setData(enrollmentId ? rows.filter((r) => r.enrollment_id === enrollmentId) : rows))
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được kết quả'));
-	}, [traineeId, enrollmentId]);
+	}, [traineeId, enrollmentId, retry]);
 
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error)
+		return (
+			<ErrorState
+				desc={error}
+				onRetry={() => {
+					setError('');
+					setRetry((n) => n + 1);
+				}}
+			/>
+		);
 	if (!data) return <div className={styles.subEmpty}>Đang tải...</div>;
 	if (!data.length)
 		return (
@@ -154,6 +164,7 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 	const [courses, setCourses] = useState<TraineeCourseResult[] | null>(null);
 	const [cme, setCme] = useState<MyCme | null | undefined>(undefined);
 	const [error, setError] = useState('');
+	const [retry, setRetry] = useState(0);
 	const [exportYear, setExportYear] = useState<number | 'all'>('all');
 	const [exporting, setExporting] = useState(false);
 
@@ -164,9 +175,18 @@ export function TraineeCertificatesTab({ traineeId }: { traineeId: string }) {
 				setCme(c);
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được chứng chỉ'));
-	}, [traineeId]);
+	}, [traineeId, retry]);
 
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error)
+		return (
+			<ErrorState
+				desc={error}
+				onRetry={() => {
+					setError('');
+					setRetry((n) => n + 1);
+				}}
+			/>
+		);
 	if (!courses) return <div className={styles.subEmpty}>Đang tải...</div>;
 	const certs = courses.filter((c) => c.cert_no);
 	const hasCme = !!cme && (cme.seminars.length > 0 || cme.records.length > 0);

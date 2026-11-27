@@ -1,7 +1,7 @@
 import { DownloadSvg, ListSvg, RefreshSvg } from '@/assets/icons';
 import { useState } from 'react';
 import AdminLayout from '../../../layouts/AdminLayout';
-import { InlineLoading, Pagination } from '../../../shared/components';
+import { ErrorState, InlineLoading, Pagination } from '../../../shared/components';
 import type { ActivityLog, ActivitySession } from '../api/activityLogApi';
 import { ActivityDetailModal } from '../components/ActivityDetailModal';
 import { SessionsPanel } from '../components/SessionsPanel';
@@ -195,7 +195,11 @@ export default function ActivityLogs() {
 					(loading && rows.length === 0 ? (
 						<InlineLoading />
 					) : error ? (
-						<div className={styles.emptyState}>{error}</div>
+						<ErrorState
+							desc={error}
+							onRetry={refresh}
+							retrying={loading}
+						/>
 					) : rows.length === 0 ? (
 						<div className={styles.emptyState}>
 							<ListSvg style={{ width: 36, height: 36, color: 'var(--color-gray-300)' }} />

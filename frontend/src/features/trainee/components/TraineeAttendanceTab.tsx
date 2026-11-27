@@ -3,6 +3,7 @@ import { formatDate } from '../../../shared/utils/formatDate';
 import { programLabel, traineeRecordApi, type TraineeAttendanceCourse, type TraineeRotation } from '../api/traineeRecordApi';
 import styles from '../pages/Trainees.module.css';
 import ds from '../pages/TraineeDetail.module.css';
+import { ErrorState } from '@/shared/components';
 
 const STATUS_LABEL = { present: 'Có mặt', late: 'Muộn', absent: 'Vắng' } as const;
 
@@ -92,6 +93,7 @@ export function TraineeAttendanceTab({
 }) {
 	const [data, setData] = useState<TraineeAttendanceCourse[] | null>(null);
 	const [error, setError] = useState('');
+	const [retry, setRetry] = useState(0);
 	const [open, setOpen] = useState<Record<string, boolean>>(enrollmentId ? { [enrollmentId]: true } : {});
 
 	useEffect(() => {
@@ -104,9 +106,18 @@ export function TraineeAttendanceTab({
 				setData(picked);
 			})
 			.catch((err) => setError(err instanceof Error ? err.message : 'Không tải được điểm danh'));
-	}, [traineeId, enrollmentId, courseId]);
+	}, [traineeId, enrollmentId, courseId, retry]);
 
-	if (error) return <div className={styles.errorBanner}>{error}</div>;
+	if (error)
+		return (
+			<ErrorState
+				desc={error}
+				onRetry={() => {
+					setError('');
+					setRetry((n) => n + 1);
+				}}
+			/>
+		);
 	if (!data) return <div className={styles.subEmpty}>Đang tải...</div>;
 	if (!data.length)
 		return (
