@@ -149,3 +149,28 @@ Ba module này trước đây gần như chưa có test riêng. Phạm vi khoa c
 
 - `leaveRequestService.createMine`: bước kiểm đơn trùng và bước INSERT không nằm trong transaction và không có khóa. Nếu học viên bấm gửi 2 lần cùng lúc thì có thể tạo ra 2 đơn trùng thời gian.
 - `shiftService.removeShift`: bước kiểm "ca đang dùng" và bước DELETE cũng không nằm trong transaction. Nếu có người phân ca đúng lúc ca đang bị xóa, khóa ngoại sẽ báo lỗi 500.
+
+## 6. Bổ sung 27/11: training, seminars
+
+Số test tăng từ 1292 lên 1335 (1327 pass, 1 skip, 7 todo, 0 fail). Lint, typecheck và format:check đều xanh.
+
+Training đã có nhiều test từ trước (42 file), nên đợt này chỉ nhắm vào những file nguồn chưa có test nào nạp tới và có logic nghiệp vụ. Seminars trước đó chỉ có test chứng chỉ.
+
+| File mới | Số test | Kiểm gì |
+| --- | --- | --- |
+| `training/courseAttendanceService.test.js` | 9 | QR điểm danh (hết hạn, ký cho mục đích khác, sai purpose ⇒ 401), học viên phải thuộc lớp của buổi, 1 thiết bị chỉ điểm danh cho 1 người, điểm đã khóa thì không đổi trạng thái (cả lô ⇒ 409), máy chấm công không ghi đè điểm danh tay và giữ lần chấm sớm nhất |
+| `training/questionBank.test.js` | 11 (2 todo) | lọc ngân hàng, giá trị mặc định khi tạo, đường dẫn ảnh phải trong thư mục câu hỏi, nhập hàng loạt trong 1 transaction, đổi sang tự luận thì bỏ phương án, dọn ảnh cũ khi không câu nào dùng, không xóa câu đang có trong đề; validate ở route |
+| `training/examSharedLessonProgress.test.js` | 7 | bốc câu đủ số lượng hoặc báo thiếu, giữ thứ tự câu của lượt làm bài, tính lại tiến độ bài học theo đúng bộ lọc (có mặt + đi muộn đều tính là đã học) |
+| `seminars/hospitalTraining.test.js` | 9 (1 todo) | bộ lọc tập huấn bệnh viện, số tiết ⇒ tín chỉ CME, ghi khoa bắt buộc, nhân viên tự đăng ký/hủy (đủ 4 lý do không được hủy) |
+| `seminars/seminarStatsService.test.js` | 4 | bảng tổng hợp hội thảo do BV tổ chức, thống kê CME, phân trang sổ CME, số cuối của sổ không nhỏ hơn số đã cấp |
+| `database/singleStatementQueries.test.js` | 3 (1 todo) | quét `src` tìm `.query()` ghép nhiều câu SQL; chặn trường hợp mới, 2 chỗ đã biết ghi bằng todo |
+
+**Lỗi thật mới (chưa sửa):**
+
+11. **(nặng)** PostgreSQL không nhận nhiều câu SQL có tham số trong 1 lần query (lỗi 42601). Đã thử cả hai chỗ trên DB dev trong transaction rồi rollback: đều báo lỗi.
+    - `seminars/hospitalTraining.js:49-62` (`setRequiredDepartments`): lưu buổi tập huấn có khoa bắt buộc bị 500.
+    - `topics/topicService.js:226-238` (`setRelatedDepartments`): tạo đề tài có chuyên ngành liên quan thì đề tài đã được lưu (dòng 270-279) rồi mới lỗi 500. Người dùng thấy lỗi, gửi lại sẽ tạo đề tài trùng. Sửa đề tài có chuyên ngành liên quan cũng lỗi.
+    - Cách sửa: tách thành 2 lần query, chạy trong cùng 1 transaction.
+    - Sửa xong thì bỏ `todo` ở `test/database/singleStatementQueries.test.js`, `test/seminars/hospitalTraining.test.js` và xóa 2 file khỏi `KNOWN`.
+12. `training/exams/exams.routes.js:78-90`: `POST /exams/questions` (tạo lẻ) không kiểm đáp án đúng có nằm trong các phương án, trong khi `/questions/bulk` có kiểm. Hậu quả là lưu được câu mà chấm tự động luôn cho 0 điểm (`examAttemptService.js:244`). Có test todo.
+13. `training/exams/exams.routes.js:134`: `PUT /exams/questions/:id` không có validate nào, nên sửa được câu thành nội dung rỗng, điểm âm, hoặc đáp án không có trong phương án. Có test todo.
