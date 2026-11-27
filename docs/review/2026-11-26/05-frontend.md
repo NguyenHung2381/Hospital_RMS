@@ -8,7 +8,7 @@
 
 | Hạng mục | Số liệu |
 |---|---|
-| Dòng thay đổi trong `frontend/src` | 125 file, +600 / −2.755 (**giảm 2.155 dòng**) |
+| Dòng thay đổi trong `frontend/src` | 144 file, +739 / −2.821 (**giảm 2.082 dòng**; P5 thêm ~80 dòng nút Thử lại) |
 | `package-lock.json` | −386 dòng (gỡ `recharts`, 37 gói con) |
 | Class CSS Module không dùng đã xoá | ~210 rule ở 22 file (2 lượt quét, xem §2) |
 | File xoá | `styles/mixins.css` (424 dòng), `assets/svg/settings.svg`, 2 bản `GrantedAccountsModal` (gộp thành 1) |
@@ -62,11 +62,11 @@ Các mục MD3_AUDIT kiểm lại và **đã được sửa từ trước** (cá
 
 | # | File:dòng | Mức | Mô tả | Đề xuất |
 |---|---|---|---|---|
-| P1 | `features/public/api/publicApi.ts:477–479` (`lookupByNationalId`, `GET /public/lookup`) | Cao | CCCD + ngày sinh + họ tên đi trên query string (phiên security S-05): lọt vào log máy chủ/proxy, lịch sử trình duyệt | Đổi sang `POST` có body — **đổi hợp đồng API, cần sửa cả backend**; ngoài phạm vi phiên này |
-| P2 | Toàn `frontend/src` | TB | Chỉ **1** chỗ dùng `useQuery` (`['courses','pending-enrollments']`); còn lại gọi API trong `useEffect`. Danh mục bị tải lặp ở nhiều màn: `getRounds` 10 file, `getCategories` 5, `getRoles` 5, `getDepartments` 3, `getLevels` 3 | Chuyển các danh mục dùng chung sang hook TanStack Query với query key chung (`['catalog','rounds']`…) để có cache và vô hiệu hoá một nơi |
+| P1 | `features/public/api/publicApi.ts:477–479` (`lookupByNationalId`, `GET /public/lookup`) | Cao | CCCD + ngày sinh + họ tên đi trên query string (phiên security S-05): lọt vào log máy chủ/proxy, lịch sử trình duyệt | **Đã làm 27/11** (commit `2c9d845b`): `POST /public/lookup` body JSON; backend đổi validator `query`→`body`, `routePolicy`, `routes.snapshot.txt`, test kill-switch. Giữ nguyên công tắc module, `lookupLimiter` theo IP, giới hạn theo số CCCD, validator 3 trường, dạng phản hồi; `logRedact` vẫn che query cũ. Backend `npm test` 1080/1080 qua. **Frontend và backend phải triển khai cùng lúc** (GET đã bỏ) |
+| P2 | Toàn `frontend/src` | TB | Chỉ **1** chỗ dùng `useQuery` (`['courses','pending-enrollments']`); còn lại gọi API trong `useEffect`. Danh mục bị tải lặp ở nhiều màn: `getRounds` 10 file, `getCategories` 5, `getRoles` 5, `getDepartments` 3, `getLevels` 3 | **Đánh giá lại 27/11: không chuyển.** `apiClient.get` (`shared/api/axios.ts`) đã gộp request trùng đang bay và giữ cache 60s cho các bảng danh mục (`departments`, `categories`, `levels`, `research-rounds`, `roles`…), xoá sạch khi có thao tác ghi hoặc sự kiện realtime — số file gọi `getRounds` không đồng nghĩa với số request. Thêm TanStack Query cho danh mục sẽ thành hai lớp cache phải vô hiệu hoá song song. Đã gom 10 chỗ tự gọi `/departments?limit=0` về `getDepartmentOptions` (commit `559a2d67`). TanStack Query vẫn hợp cho màn mới |
 | P3 | `features/topics/components/MemberSearchBox.tsx`, `AddMemberForm.tsx`, `portal/components/MemberFormFields.tsx` | TB | 3 ô tìm nhân viên tự viết (debounce, danh sách gợi ý, đóng khi blur) gần giống nhau, chưa có điều hướng mũi tên / `role="listbox"` | Một component `UserSearchCombobox` trong kit (combobox ARIA đầy đủ) |
 | P4 | `features/approval/components/ConfirmModal.tsx`, `BulkConfirmModal.tsx` | Thấp | Vẫn dựng bằng `modalBackdrop` thay vì `<Modal>` (đã có focus trap nên không chặn bàn phím) | Chuyển sang `<Modal>` khi chạm tới |
-| P5 | `shared/components/ErrorState` | Thấp | Component của kit không ai dùng; trong khi MD3 F4 ghi nhiều trang danh sách thiếu trạng thái lỗi + "Thử lại" | Dùng ở các trang danh sách, hoặc xoá |
+| P5 | `shared/components/ErrorState` | Thấp | Component của kit không ai dùng; trong khi MD3 F4 ghi nhiều trang danh sách thiếu trạng thái lỗi + "Thử lại" | **Đã làm 27/11** (commit `14e6ee24`): `ErrorState` + Thử lại ở Nhật ký hoạt động, danh sách Phê duyệt, Khảo sát, ExamBuilder, bảng điểm khóa học, 5 tab hồ sơ học viên, kết quả chương trình. Các banner lỗi của thao tác (lưu/gửi) giữ nguyên |
 | P6 | `features/dashboard/utils/dashboardHelpers.ts:16–40`, `features/dashboard/pages/TrainingDashboard.tsx:23`, `features/schedule/types/schedule.type.ts`, `shared/components/BrandedQr/renderBrandedQr.ts`, `app/providers/AntdProvider.tsx`, `features/settings/components/RadiusMap.tsx` | Thấp | 134 mã hex còn lại: màu SVG/canvas/QR/Leaflet/antd phải là giá trị thật (thuộc tính SVG và canvas không đọc `var()`), và màu lịch được ghép độ trong suốt (`${color}20`) | Một file TS nguồn màu duy nhất, sinh cả `variables.css` và hằng TS (MD3 M7) |
 | P7 | `features/course/api/registrationApi.ts:143` `getRegistrationDossier` · `features/public/api/publicApi.ts:461` `downloadDraftApplication` · `features/public/utils/courseRegisterFields.ts:257` `buildDraftPayload` · `features/seminar/api/cmeRecordApi.ts:47` `deleteCmeRecords` | Thấp | Hàm gọi API không ai dùng. 3 hàm đầu mới thêm 19–20/11 | **Đã xoá** (người dùng đồng ý 27/11), kèm 2 kiểu chỉ chúng dùng: `RegistrationDossier`, `DraftApplicationPayload`. Endpoint backend giữ nguyên |
 | P8 | `shared/components/Badge/Badge.module.css:53` (`purple`), `features/trainee/components/TraineeProgressPanel.tsx:13` (`violet`) | Thấp | Tên tông "tím" vẫn còn dù hiển thị như xanh dương | Đổi tên thành `blue`/`teal` khi rảnh |
@@ -75,10 +75,10 @@ Các mục MD3_AUDIT kiểm lại và **đã được sửa từ trước** (cá
 
 ## 4. Đề xuất cần người dùng quyết
 
-1. **P1** — đổi tra cứu công khai sang `POST` (cần sửa backend cùng lúc).
-2. **P2** — có chuyển dần các danh mục sang TanStack Query không (thay đổi lớn, nên làm theo từng feature).
+1. ~~**P1**~~ — đã làm 27/11.
+2. ~~**P2**~~ — đánh giá lại 27/11: không cần (đã có cache danh mục trong `apiClient`).
 3. ~~**P7**~~ — đã quyết 27/11: xoá.
-4. **P5** — dùng `ErrorState` cho các trang danh sách hay xoá.
+4. ~~**P5**~~ — đã làm 27/11.
 5. ~~Nhãn "Chưa lưu"~~ — đã quyết 27/11: giữ tông hồng ("việc đang chờ bạn xử lý") cho `navBadgeUnsaved`, `typeTagUnsaved`, `.tabBadge`.
 
 ## 5. Cách kiểm lại
