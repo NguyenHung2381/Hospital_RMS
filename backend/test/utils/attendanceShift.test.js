@@ -207,3 +207,97 @@ test('validateShift & normalizePatternDays', () => {
 		7: [],
 	});
 });
+
+// ─── Lượt chấm từ máy chấm công ───────────────────────────────────────────────
+const sang2 = shift(5, '07:00', '11:30');
+const chieu2 = shift(6, '13:00', '17:00');
+const byId2 = new Map([sang2, chieu2, dem].map((x) => [x.id, x]));
+const haiCa = { days: { 1: [5, 6], 2: [5, 6], 3: [5, 6], 4: [5, 6], 5: [5, 6], 6: [], 7: [] } };
+const assign = (times, extra = {}) =>
+	s
+		.assignPunches({
+			punches: times.map((t) => ({ at: vn(t), device_id: 7 })),
+			courseOn: inCourse(haiCa),
+			assignments: [],
+			shiftsById: byId2,
+			...extra,
+		})
+		.map((g) => ({
+			key: `${g.work_date}|${g.shift_id}`,
+			times: g.punches.map((p) => p.at.toISOString().slice(11, 16)),
+		}));
+
+test('assignPunches: ca sáng / ca chiều, lượt giữa trưa vào ca gần hơn', () => {
+	assert.deepStrictEqual(
+		assign(['2026-10-12T06:55', '2026-10-12T11:32', '2026-10-12T12:45', '2026-10-12T17:03']),
+		[
+			{ key: '2026-10-12|5', times: ['23:55', '04:32'] },
+			{ key: '2026-10-12|6', times: ['05:45', '10:03'] },
+		],
+	);
+	// Ngoài mọi khung (quá sớm) ⇒ bỏ; thứ 7 không có ca ⇒ bỏ
+	assert.deepStrictEqual(assign(['2026-10-12T05:00', '2026-10-17T08:00']), []);
+});
+
+test('assignPunches: hết ca mà chưa vào thì không nhận; đã có giờ vào (web) thì là giờ ra', () => {
+	assert.deepStrictEqual(assign(['2026-10-12T12:00']), []);
+	const existing = [{ work_date: '2026-10-12', shift_id: 5, check_in_at: vn('2026-10-12T07:01') }];
+	assert.deepStrictEqual(assign(['2026-10-12T12:00'], { existing }), [
+		{ key: '2026-10-12|5', times: ['05:00'] },
+	]);
+	// Lượt về sai thứ tự vẫn đúng: lượt vào đến sau lượt ra trong cùng lô
+	assert.deepStrictEqual(assign(['2026-10-12T11:40', '2026-10-12T07:02']), [
+		{ key: '2026-10-12|5', times: ['00:02', '04:40'] },
+	]);
+});
+
+test('assignPunches: ca đêm thuộc ngày bắt đầu ca; không có lịch ca ⇒ 1 dòng tự do', () => {
+	const demTuan = { days: { 1: [3], 2: [3], 3: [3], 4: [3], 5: [3], 6: [3], 7: [3] } };
+	assert.deepStrictEqual(
+		assign(['2026-10-12T18:50', '2026-10-13T07:10'], { courseOn: inCourse(demTuan) }),
+		[{ key: '2026-10-12|3', times: ['11:50', '00:10'] }],
+	);
+	assert.deepStrictEqual(
+		assign(['2026-10-17T09:00', '2026-10-17T15:00'], { courseOn: inCourse(null) }),
+		[{ key: '2026-10-17|null', times: ['02:00', '08:00'] }],
+	);
+	// Ngày không học khóa nào ⇒ bỏ
+	assert.deepStrictEqual(assign(['2026-10-12T07:00'], { courseOn: () => null }), []);
+});
+
+test('mergeCheckTimes: vào sớm nhất, ra muộn nhất, chấm lặp không tính giờ ra', () => {
+	const p = (t, device_id = 7) => ({ at: vn(t), device_id });
+	const hm = (x) => x && x.at.toISOString().slice(11, 16);
+	// Bấm 3 lần trong 1 phút ⇒ chỉ có giờ vào
+	let m = s.mergeCheckTimes(null, [
+		p('2026-10-12T09:15'),
+		p('2026-10-12T09:15:30'),
+		p('2026-10-12T09:16'),
+	]);
+	assert.strictEqual(hm(m.in), '02:15');
+	assert.strictEqual(m.out, null);
+	assert.strictEqual(m.changed, true);
+	m = s.mergeCheckTimes(null, [p('2026-10-12T07:02'), p('2026-10-12T11:31', 8)]);
+	assert.deepStrictEqual([hm(m.in), hm(m.out), m.out.device_id], ['00:02', '04:31', 8]);
+	// Dòng bấm trên web (có IP) + lượt máy sớm hơn ⇒ giờ vào thành của máy, giờ web thành giờ ra
+	const web = {
+		check_in_at: vn('2026-10-12T07:20'),
+		check_in_ip: '192.168.1.5',
+		check_in_distance_m: 12,
+		check_out_at: null,
+	};
+	m = s.mergeCheckTimes(web, [p('2026-10-12T07:01')]);
+	assert.deepStrictEqual(
+		[hm(m.in), m.in.device_id, hm(m.out), m.out.ip],
+		['00:01', 7, '00:20', '192.168.1.5'],
+	);
+	// Chạy lại với cùng lượt ⇒ không đổi
+	const saved = {
+		check_in_at: m.in.at,
+		check_in_device_id: 7,
+		check_out_at: m.out.at,
+		check_out_ip: '192.168.1.5',
+	};
+	assert.strictEqual(s.mergeCheckTimes(saved, [p('2026-10-12T07:01')]).changed, false);
+	assert.strictEqual(s.mergeCheckTimes(null, []), null);
+});

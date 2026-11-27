@@ -30,7 +30,7 @@ Các file thuộc tính năng này:
 
 | Nhóm | File |
 |---|---|
-| CSDL | `backend/database/migrations/2027-01-05_may_cham_cong.sql`, `2027-01-06_may_cham_cong_day_tay.sql` |
+| CSDL | `backend/database/migrations/2027-01-05_may_cham_cong.sql`, `2027-01-06_may_cham_cong_day_tay.sql`, `2027-01-12_diem_danh_ca_tu_may_cham_cong.sql` |
 | Backend mới | `backend/src/modules/attendanceDevices/*`, `backend/src/jobs/attendanceDeviceJob.js`, `backend/test/attendanceDevices/*` |
 | Backend sửa | `backend/src/app.js`, `backend/src/jobs/index.js`, `backend/src/permissions/catalogAdmin.js`, `backend/src/permissions/routePolicy.js`, `backend/src/modules/settings/systemSettingService.js`, `backend/src/modules/training/courses/courseAttendanceService.js`, `backend/src/modules/training/courses/courseEnrollmentService.js`, `backend/test/contract/routes.snapshot.txt` (chỉ các dòng `attendance-devices` / `iclock`) |
 | Frontend mới | `frontend/src/features/attendance-device/*`, `frontend/src/assets/svg/fingerprint.svg` |
@@ -248,6 +248,21 @@ Cách ghép điểm danh chỉnh ở *Cấu hình hệ thống → Đào tạo �
 | Chép vân tay giữa các máy | Bật |
 
 Lượt chấm **không ghi đè** điểm danh giảng viên đã nhập tay và **không sửa** điểm đã khoá.
+
+### 5.4. Điểm danh theo ca từ máy chấm công
+
+Khi phân hệ **Ca & điểm danh** đang bật, lượt chấm của học viên (có tài khoản, đang học khoá ngày đó) được ghi luôn vào **Điểm danh theo ca** — không cần bấm điểm danh trên web:
+
+| Quy tắc | Cách tính |
+|---|---|
+| Ca nào | Ca của học viên ngày đó (phân ca ngày, không có thì mẫu ca tuần của khoá). Lượt chấm phải nằm trong khung *vào sớm nhất … ra muộn nhất* của ca; ca chưa có giờ vào thì chỉ nhận tới hết ca. |
+| Hai ca liền nhau | Lượt chấm vào ca có giờ bắt đầu / kết thúc gần nhất (12:45 giữa ca sáng tới 11:30 và ca chiều 13:00 ⇒ ca chiều). |
+| Giờ vào / ra | Vào = lượt sớm nhất, ra = lượt muộn nhất của ca. Chấm lại trong 5 phút sau giờ vào là chấm lặp, không tính giờ ra. |
+| Muộn / sớm | Theo giờ ca và *du di* của ca, như điểm danh trên web. |
+| Không có lịch ca | 1 dòng điểm danh tự do mỗi ngày. |
+| Đã bấm trên web | Gộp với lượt chấm: vẫn lấy giờ sớm nhất / muộn nhất. |
+
+Cột *Nơi điểm danh* ghi **Máy chấm công · tên máy**. Ca / phân ca xếp sau khi học viên đã chấm sẽ được ghi lại khi bấm **Ghép lại** hoặc sau tối đa 5 phút (7 ngày gần nhất). Trang **Bảng công** hiện ca và trạng thái (đúng giờ / muộn / về sớm / chưa chấm ra) của từng người mỗi ngày; file Excel có thêm cột *Điểm danh theo ca*.
 
 ---
 

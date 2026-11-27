@@ -709,7 +709,7 @@ const SECTIONS: Section[] = [
 			},
 			{
 				title: 'Máy chấm công vân tay',
-				desc: 'Lượt chấm tự ghép vào điểm danh buổi học; học viên đang học tự được gửi xuống máy. Quản lý máy ở trang Máy chấm công.',
+				desc: 'Lượt chấm tự ghép vào điểm danh buổi học và điểm danh theo ca (khi bật phân hệ Ca & điểm danh); học viên đang học tự được gửi xuống máy. Quản lý máy ở trang Máy chấm công.',
 				more: 'Mã người dùng trên máy = mã học viên bỏ chữ HV. Lượt chấm không ghi đè điểm danh giảng viên đã nhập tay và không sửa điểm đã khóa.',
 				layout: 'grid',
 				fields: [

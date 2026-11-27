@@ -158,20 +158,205 @@
 	width: 240px;
 	max-width: 100%;
 }
-.personCell {
-	min-width: 180px;
-}
 .timesheetSummary {
-	margin: 0;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--space-2) var(--space-4);
 	padding: var(--space-2) var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+	min-height: 44px;
+}
+.summaryText {
+	margin: 0;
 	font-size: var(--font-size-compact);
 	color: var(--color-gray-600, var(--color-gray-700));
-	border-bottom: 1px solid var(--color-gray-100);
 	font-variant-numeric: tabular-nums;
 }
-.timesheetSummary strong {
+.summaryText strong {
 	color: var(--color-gray-800, var(--color-gray-700));
 	font-weight: var(--font-weight-semibold);
+}
+
+/* Lọc nhanh các dòng cần xem lại (muộn, sớm, chưa chấm ra, mã không khớp) */
+.issueChips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.issueChip,
+.issueChipActive {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 10px;
+	border-radius: var(--radius-full, 9999px);
+	border: 1px solid var(--color-gray-200);
+	background: var(--color-white, #fff);
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-medium, 500);
+	cursor: pointer;
+}
+.issueChip:hover {
+	border-color: var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+}
+.issueChipActive {
+	border-color: var(--tone-amber-border);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-weight: var(--font-weight-semibold);
+}
+.issueCount {
+	min-width: 18px;
+	padding: 0 5px;
+	border-radius: var(--radius-full, 9999px);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-2xs);
+	font-weight: var(--font-weight-bold);
+	line-height: 18px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+.issueChipActive .issueCount {
+	background: var(--color-white, #fff);
+}
+
+/* Bảng: giờ chấm xuống dòng trong ô (tối đa TIMES_SHOWN, còn lại "+N") nên không kéo ngang */
+.timesheetTable td {
+	vertical-align: top;
+}
+.dayRow th {
+	padding: 10px 18px;
+	text-align: left;
+	background: var(--color-gray-50);
+	border-top: 1px solid var(--color-gray-200);
+	border-bottom: 1px solid var(--color-gray-200);
+	font-weight: var(--font-weight-semibold);
+}
+.dayName {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.dayMeta {
+	margin-left: var(--space-3);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-normal);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+.personCell {
+	min-width: 200px;
+}
+.warnText {
+	margin-top: 2px;
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	color: var(--tone-amber-fg);
+	cursor: help;
+}
+
+.shiftCell {
+	min-width: 220px;
+}
+.shiftList {
+	display: grid;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.shiftHead {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	column-gap: 6px;
+	margin-bottom: 3px;
+}
+.shiftName {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.shiftTime {
+	white-space: nowrap;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+.badgeRow {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.timeCell {
+	width: 1%;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+.timeBig {
+	font-size: var(--font-size-base, 15px);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.timeNone {
+	font-size: var(--font-size-base, 15px);
+	color: var(--color-gray-400);
+}
+
+.punchCell {
+	min-width: 220px;
+	max-width: 420px;
+}
+.punchCount {
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+	font-variant-numeric: tabular-nums;
+}
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 6px;
+}
+.chip {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 2px;
+	padding: 1px 7px;
+	border-radius: var(--radius-sm);
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+	font-size: var(--font-size-compact);
+	font-variant-numeric: tabular-nums;
+	line-height: 20px;
+}
+.chipTimes {
+	font-size: var(--font-size-2xs);
+	color: var(--color-gray-500);
+}
+.chipMore {
+	padding: 1px 7px;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	font-weight: var(--font-weight-semibold);
+	line-height: 18px;
+	cursor: pointer;
+}
+.chipMore:hover {
+	background: var(--color-gray-50);
+}
+
+.courseCell {
+	min-width: 180px;
 }
 
 /* ── Modal ─────────────────────────────── */

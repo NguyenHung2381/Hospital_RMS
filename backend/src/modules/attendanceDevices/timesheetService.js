@@ -1,7 +1,7 @@
 // Bảng công từ lượt chấm vân tay: mỗi người (PIN) mỗi ngày một dòng — giờ vào (lượt đầu),
-// giờ ra (lượt cuối), số lượt. Xem trên trang Máy chấm công (tab Bảng công) và xuất Excel.
+// giờ ra (lượt cuối), số lượt, kèm điểm danh theo ca (vào / ra / muộn / sớm của từng ca). Xem trên trang Máy chấm công (tab Bảng công) và xuất Excel.
 // punched_at lưu UTC ⇒ đổi sang giờ VN ngay trong SQL và trả chuỗi, tránh lệch múi giờ ở JS.
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, jsonValues } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
 
 const MAX_DAYS = 93;
@@ -77,7 +77,47 @@ const getTimesheet = async (q) => {
 	}));
 	const truncated = rows.length > MAX_DAY_ROWS;
 	if (truncated) rows.length = MAX_DAY_ROWS;
+	await attachShifts(pool, q, rows);
 	return { rows, truncated, summary: summarize(rows) };
+};
+
+// Điểm danh theo ca (staff_attendance, ghi từ lượt chấm — attendance/deviceShiftService) của
+// học viên có trong bảng: mỗi dòng người/ngày kèm các ca bắt đầu ngày đó, giờ VN dạng HH:MM.
+const attachShifts = async (pool, q, rows) => {
+	for (const r of rows) r.shifts = [];
+	const ids = [...new Set(rows.map((r) => r.trainee_id).filter(Boolean))];
+	if (!ids.length) return;
+	const hhmm = (col) => `to_char(${col} + interval '7 hours', 'HH24:MI')`;
+	const list = (
+		await pool
+			.request()
+			.input('from', sql.Date, q.from)
+			.input('to', sql.Date, q.to)
+			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids)).query(`
+      SELECT to_char(a.work_date, 'YYYY-MM-DD') AS work_date, t.id AS trainee_id,
+             a.shift_id, a.shift_name, a.shift_code,
+             ${hhmm('a.shift_start_at')} AS shift_start, ${hhmm('a.shift_end_at')} AS shift_end,
+             ${hhmm('a.check_in_at')} AS check_in, ${hhmm('a.check_out_at')} AS check_out,
+             a.late_min, a.early_min,
+             (a.check_out_at IS NULL AND a.shift_end_at < (now() AT TIME ZONE 'UTC')) AS missing_out
+      FROM staff_attendance a
+      JOIN trainees t ON t.user_id = a.user_id
+      WHERE a.work_date BETWEEN @from AND @to AND a.course_id IS NOT NULL
+        AND t.id IN ${jsonValues('@ids', { type: 'VARCHAR(20)' })}
+      ORDER BY a.shift_start_at NULLS LAST, a.check_in_at`)
+	).recordset;
+	const byKey = new Map(rows.map((r) => [`${r.work_date}|${r.trainee_id}`, r]));
+	for (const a of list) {
+		const row = byKey.get(`${a.work_date}|${a.trainee_id}`);
+		if (!row) continue;
+		const { work_date: _d, trainee_id: _t, ...shift } = a;
+		row.shifts.push({
+			...shift,
+			late_min: shift.late_min ?? null,
+			early_min: shift.early_min ?? null,
+			missing_out: shift.missing_out === true || shift.missing_out === 'true',
+		});
+	}
 };
 
 /** @param {{ pin: string, work_date: string, trainee_id: string|null, punch_count: number }[]} rows */

@@ -7,7 +7,7 @@ import { attendanceDeviceApi } from '../api/attendanceDeviceApi';
 import { TimesheetPanel } from '../components/TimesheetPanel';
 import type { AttendanceDevice } from '../types/attendanceDevice.type';
 
-/** Trang Bảng công: lượt chấm vân tay gộp theo người / ngày, xuất Excel */
+/** Trang Bảng công: lượt chấm vân tay gộp theo người / ngày, kèm điểm danh theo ca, xuất Excel */
 export default function AttendanceTimesheet() {
 	const [devices, setDevices] = useState<AttendanceDevice[]>([]);
 	const [refreshKey, setRefreshKey] = useState(0);
@@ -25,7 +25,7 @@ export default function AttendanceTimesheet() {
 	return (
 		<AdminLayout
 			pageTitle='Bảng công'
-			pageSubtitle='Giờ vào, giờ ra của từng người theo ngày từ máy chấm công vân tay'
+			pageSubtitle='Giờ vào, giờ ra của từng người theo ngày từ máy chấm công vân tay, kèm ca và đi muộn / về sớm'
 			breadcrumbs={[{ label: 'Ca & điểm danh học viên' }]}
 		>
 			<div className={base.tableCard}>

@@ -8,6 +8,7 @@ const { lazyRequire } = require('../../../utils/lazyRequire');
 /** @type {typeof import('exceljs')} */
 const ExcelJS = lazyRequire('exceljs');
 const xl = require('../../../utils/excelTemplate');
+const { REPEAT_PUNCH_MIN } = require('../../../utils/attendanceShift');
 
 const MATCH_LABEL = {
 	matched: 'Đã ghép buổi học',
@@ -37,6 +38,22 @@ const spanText = (min) => {
 	const h = Math.floor(min / 60);
 	const m = min % 60;
 	return h ? `${h} giờ ${String(m).padStart(2, '0')} phút` : `${m} phút`;
+};
+
+// Chấm lại trong vài phút sau lượt đầu = chấm lặp, chưa phải giờ ra (utils/attendanceShift)
+const hasOut = (r) => r.span_minutes >= REPEAT_PUNCH_MIN;
+
+/** "Ca sáng 07:00–11:30: vào 07:05, ra 11:31 (muộn 5 phút)" — điểm danh theo ca của 1 dòng */
+const shiftText = (s) => {
+	const name = s.shift_name
+		? `${s.shift_name}${s.shift_start ? ` ${s.shift_start}–${s.shift_end}` : ''}`
+		: 'Tự do';
+	const notes = [
+		s.late_min ? `muộn ${s.late_min} phút` : '',
+		s.early_min ? `về sớm ${s.early_min} phút` : '',
+		s.missing_out ? 'chưa chấm ra' : '',
+	].filter(Boolean);
+	return `${name}: vào ${s.check_in ?? '—'}${s.check_out ? `, ra ${s.check_out}` : ''}${notes.length ? ` (${notes.join(', ')})` : ''}`;
 };
 
 const fileNameOf = (from, to) =>
@@ -83,7 +100,7 @@ const summarizeByPerson = (days) => {
  * @param {{ from: string, to: string, device?: string|null,
  *           days: { work_date: string, pin: string, trainee_id: string|null, trainee_name: string|null,
  *                   first_time: string, last_time: string, span_minutes: number, punch_count: number,
- *                   times: string, devices: string, courses: string|null }[],
+ *                   times: string, devices: string, courses: string|null, shifts?: object[] }[],
  *           punches: { work_date: string, punch_time: string, pin: string, trainee_id: string|null,
  *                      trainee_name: string|null, match_status: string, verify_mode: number|null,
  *                      device_name: string, course_name: string|null, session_date: string|null,
@@ -145,6 +162,7 @@ const buildTimesheetWorkbook = ({ from, to, device = null, days = [], punches = 
 			{ key: 'in', header: 'Giờ vào (lượt đầu)', width: 12 },
 			{ key: 'out', header: 'Giờ ra (lượt cuối)', width: 12 },
 			{ key: 'span', header: 'Khoảng vào – ra', width: 16 },
+			{ key: 'shifts', header: 'Điểm danh theo ca', width: 40 },
 			{ key: 'count', header: 'Số lượt', width: 9 },
 			{ key: 'times', header: 'Các giờ chấm', width: 30 },
 			{ key: 'courses', header: 'Khóa học (đã ghép)', width: 30 },
@@ -159,9 +177,10 @@ const buildTimesheetWorkbook = ({ from, to, device = null, days = [], punches = 
 			trainee_name: r.trainee_name ?? 'Không khớp học viên',
 			pin: r.pin,
 			in: hhmm(r.first_time),
-			// Chấm 1 lần trong ngày ⇒ chưa có giờ ra
-			out: r.punch_count > 1 ? hhmm(r.last_time) : '',
-			span: r.punch_count > 1 ? spanText(r.span_minutes) : '',
+			// Chấm 1 lần (hoặc chỉ chấm lặp) trong ngày ⇒ chưa có giờ ra
+			out: hasOut(r) ? hhmm(r.last_time) : '',
+			span: hasOut(r) ? spanText(r.span_minutes) : '',
+			shifts: (r.shifts ?? []).map(shiftText).join('\n'),
 			count: r.punch_count,
 			times: r.times,
 			courses: r.courses ?? '',
@@ -213,6 +232,7 @@ module.exports = {
 	buildTimesheetWorkbook,
 	summarizeByPerson,
 	fileNameOf,
+	shiftText,
 	viDate,
 	spanText,
 	verifyLabel,

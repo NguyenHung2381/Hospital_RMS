@@ -110,6 +110,24 @@ export interface TimesheetRow {
 	times: string;
 	devices: string;
 	courses: string | null;
+	/** Điểm danh theo ca (Ca & điểm danh) của các ca bắt đầu ngày này — ghi từ lượt chấm */
+	shifts: TimesheetShift[];
+}
+
+export interface TimesheetShift {
+	shift_id: number | null;
+	/** null = điểm danh tự do (không có lịch ca) */
+	shift_name: string | null;
+	shift_code: string | null;
+	/** HH:MM giờ VN */
+	shift_start: string | null;
+	shift_end: string | null;
+	check_in: string | null;
+	check_out: string | null;
+	late_min: number | null;
+	early_min: number | null;
+	/** Hết ca mà chưa có giờ ra */
+	missing_out: boolean;
 }
 
 export interface Timesheet {

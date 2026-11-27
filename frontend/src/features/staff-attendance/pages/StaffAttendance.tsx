@@ -42,6 +42,9 @@ interface Row {
 	check_out_at: string | null;
 	check_out_ip?: string | null;
 	check_out_distance_m?: number | null;
+	/** Máy chấm công ghi giờ vào / ra (null = bấm điểm danh trên web) */
+	check_in_device?: string | null;
+	check_out_device?: string | null;
 	late_min?: number | null;
 	early_min?: number | null;
 }
@@ -73,7 +76,9 @@ const leaveText = (l: NonNullable<Row['leave']>) =>
 		? `${l.type === 'absent' ? 'Nghỉ' : 'Muộn'} có phép${l.arrive_time ? ` (${l.arrive_time})` : ''}`
 		: `Đơn xin ${l.type === 'absent' ? 'nghỉ' : 'đi muộn'} chờ duyệt`;
 
-const place = (ip?: string | null, m?: number | null) => [ip, m != null ? `${m}m` : null].filter(Boolean).join(' · ');
+/** Nơi điểm danh: máy chấm công vân tay, hoặc IP · khoảng cách GPS khi bấm trên web */
+const place = (ip?: string | null, m?: number | null, device?: string | null) =>
+	device ? `Máy chấm công · ${device}` : [ip, m != null ? `${m}m` : null].filter(Boolean).join(' · ');
 
 const STATUS_TEXT: Record<Row['status'], string> = {
 	checked: 'Đã điểm danh',
@@ -94,8 +99,8 @@ const EXCEL_COLS: ExcelColumn<Row>[] = [
 	{ header: 'Về sớm (phút)', value: (r) => r.early_min || '' },
 	{ header: 'Trạng thái', value: (r) => STATUS_TEXT[r.status] },
 	{ header: 'Đơn xin phép', value: (r) => (r.leave ? `${leaveText(r.leave)} — ${r.leave.reason}` : '') },
-	{ header: 'Nơi điểm danh vào', value: (r) => place(r.check_in_ip, r.check_in_distance_m) },
-	{ header: 'Nơi điểm danh ra', value: (r) => place(r.check_out_ip, r.check_out_distance_m) },
+	{ header: 'Nơi điểm danh vào', value: (r) => place(r.check_in_ip, r.check_in_distance_m, r.check_in_device) },
+	{ header: 'Nơi điểm danh ra', value: (r) => place(r.check_out_ip, r.check_out_distance_m, r.check_out_device) },
 ];
 
 export default function StaffAttendance() {
@@ -257,7 +262,7 @@ export default function StaffAttendance() {
 											{r.check_in_at ? (
 												<>
 													<div className={tbl.cellTitle}>{formatTimeVN(r.check_in_at)}</div>
-													<div className={tbl.cellSub}>{place(r.check_in_ip, r.check_in_distance_m)}</div>
+													<div className={tbl.cellSub}>{place(r.check_in_ip, r.check_in_distance_m, r.check_in_device)}</div>
 												</>
 											) : (
 												<span className={tbl.cellSub}>—</span>
@@ -267,7 +272,7 @@ export default function StaffAttendance() {
 											{r.check_out_at ? (
 												<>
 													<div className={tbl.cellTitle}>{formatTimeVN(r.check_out_at)}</div>
-													<div className={tbl.cellSub}>{place(r.check_out_ip, r.check_out_distance_m)}</div>
+													<div className={tbl.cellSub}>{place(r.check_out_ip, r.check_out_distance_m, r.check_out_device)}</div>
 												</>
 											) : (
 												<span className={tbl.cellSub}>{r.status === 'checked' ? 'Chưa điểm danh ra' : '—'}</span>

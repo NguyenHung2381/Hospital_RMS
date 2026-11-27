@@ -115,3 +115,23 @@ test('buildTimesheetWorkbook: 3 sheet, dòng 1 lượt không có giờ ra', () 
 	assert.equal(punch.getCell(9).value, 'Đã ghép buổi học');
 	assert.equal(punch.getCell(10).value, 'Hồi sức cơ bản · 26/11/2026 07:30');
 });
+
+test('shiftText: ca, giờ vào/ra, muộn / sớm / chưa chấm ra', () => {
+	assert.equal(
+		w.shiftText({
+			shift_name: 'Ca sáng',
+			shift_start: '07:00',
+			shift_end: '11:30',
+			check_in: '07:12',
+			check_out: '11:31',
+			late_min: 12,
+			early_min: null,
+			missing_out: false,
+		}),
+		'Ca sáng 07:00–11:30: vào 07:12, ra 11:31 (muộn 12 phút)',
+	);
+	assert.equal(
+		w.shiftText({ shift_name: null, check_in: '09:00', check_out: null, missing_out: true }),
+		'Tự do: vào 09:00 (chưa chấm ra)',
+	);
+});

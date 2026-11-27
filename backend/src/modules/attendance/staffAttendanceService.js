@@ -283,10 +283,14 @@ const getByDate = async (dateArg, actor) => {
 	if (dept !== undefined) req.input('dept', sql.VarChar(20), String(dept));
 	const [records, plan, leaves] = await Promise.all([
 		req.query(`
-      SELECT a.*, t.id AS trainee_id, t.full_name, d.name AS department_name
+      SELECT a.*, t.id AS trainee_id, t.full_name, d.name AS department_name,
+             COALESCE(dvi.name, dvi.serial_no) AS check_in_device,
+             COALESCE(dvo.name, dvo.serial_no) AS check_out_device
       FROM staff_attendance a
       ${crossApply(`SELECT * FROM trainees WHERE user_id = a.user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 't')}
       LEFT JOIN departments d ON d.id = t.department_id
+      LEFT JOIN attendance_devices dvi ON dvi.id = a.check_in_device_id
+      LEFT JOIN attendance_devices dvo ON dvo.id = a.check_out_device_id
       WHERE a.work_date = @date AND a.course_id IS NOT NULL${dept !== undefined ? ' AND t.department_id = @dept' : ''}
     `),
 		shiftService.planForDate(date, dept),

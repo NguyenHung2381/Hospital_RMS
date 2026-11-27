@@ -3,6 +3,7 @@
 //   được duyệt, đúng lớp/chương trình (SESSION_IN_PROGRAM_SQL — như điểm danh QR).
 //   Hợp lệ khi chấm trong [bắt đầu − EARLY, kết thúc]; ≤ bắt đầu + LATE ⇒ có mặt, sau đó ⇒ muộn.
 //   Nhiều buổi cùng khớp ⇒ buổi có giờ bắt đầu gần lượt chấm nhất.
+// Sau đó ghi luôn điểm danh theo ca của học viên (attendance/deviceShiftService).
 const { getPool, sql, jsonValues } = require('../../config/db');
 const logger = require('../../config/logger');
 const { broadcast } = require('../events/eventService');
@@ -13,6 +14,16 @@ const { getDeviceSettings } = require('./deviceSettings');
 // require muộn — courseAttendanceService kéo theo gradebook / certificate...
 const attendance = () => require('../training/courses/courseAttendanceService');
 const lessonProgress = () => require('../training/courses/lessonProgressService');
+const deviceShift = () => require('../attendance/deviceShiftService');
+
+// Điểm danh theo ca (phân hệ Ca & điểm danh) — lỗi ở đây không làm hỏng việc ghép buổi học
+const syncShifts = async (fn) => {
+	try {
+		await fn(deviceShift());
+	} catch (e) {
+		logger.error(`[attendanceDevices] Ghi điểm danh ca lỗi: ${e.message}`);
+	}
+};
 
 // Buổi không ghi giờ kết thúc: coi như dài 4 tiếng
 const DEFAULT_SESSION_MIN = 240;
@@ -150,6 +161,7 @@ const matchPunches = async (punchIds) => {
 	}
 	for (const sessionId of touchedSessions) await lessonProgress().recompute({ sessionId });
 	if (touchedSessions.size) broadcast('update', { entity: 'attendance' });
+	await syncShifts((svc) => svc.recordPunches(punches.map((p) => p.id)));
 	broadcast('update', { entity: 'attendance_punch' });
 	return { matched, total: punches.length };
 };
@@ -164,7 +176,10 @@ const rematchRecent = async (days = 7) => {
         AND punched_at >= (now() AT TIME ZONE 'UTC') - make_interval(days => @days)
       ORDER BY id LIMIT 5000`)
 	).recordset.map((r) => r.id);
-	return matchPunches(ids);
+	const result = await matchPunches(ids);
+	// Mọi lượt (kể cả đã ghép buổi học): ca / phân ca có thể được xếp sau khi đã chấm
+	await syncShifts((svc) => svc.syncRecent(days));
+	return result;
 };
 
 module.exports = { matchPunches, rematchRecent, pickSession, vnParts };
