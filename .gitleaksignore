@@ -5,3 +5,5 @@
 13d1b446927cbd03acfb7ed49681edda4f905262:backend/test/security/courseLecturerCme.test.js:generic-api-key:9
 25134a85d24aadf2ae6fefb366142d8c158002d6:backend/test/security/seminarParticipantCme.test.js:generic-api-key:5
 cb8e8ff062c56d17bda8449b1fa80188827e39c9:backend/test/security/practiceBookOwner.test.js:generic-api-key:5
+# Khóa API giả trong test reCAPTCHA Google Cloud ('AIzaSy-test-api-key-…'), không phải khóa thật; đã đổi sang 'k'.repeat(24)
+65f2f9461629578c8ce64fd5bc4118147686ec1c:backend/test/auth/recaptcha.test.js:generic-api-key:237

@@ -232,9 +232,11 @@ test('đặt cả khóa Turnstile → Turnstile được ưu tiên', async () =>
 });
 
 // ─── Google Cloud (assessment) — cloud.google.com/recaptcha/docs/using-features#migrate-backend
+// Khóa giả sinh lúc chạy, không viết dạng chuỗi giống khóa thật — gitleaks (generic-api-key) báo nhầm
+const FAKE_API_KEY = 'k'.repeat(24);
 const withEnterprise = async (fn) => {
 	uiSettings.RECAPTCHA_PROJECT_ID = 'rms-benhvien';
-	uiSettings.RECAPTCHA_API_KEY = 'AIzaSy-test-api-key-0123456789 \n';
+	uiSettings.RECAPTCHA_API_KEY = `${FAKE_API_KEY} \n`; // dính khoảng trắng → phải được cắt
 	try {
 		await fn();
 	} finally {
@@ -272,7 +274,7 @@ test('Google Cloud: tạo assessment (API key ở header, không cần secret ke
 				last.url,
 				'https://recaptchaenterprise.googleapis.com/v1/projects/rms-benhvien/assessments',
 			);
-			assert.equal(last.headers['X-Goog-Api-Key'], 'AIzaSy-test-api-key-0123456789');
+			assert.equal(last.headers['X-Goog-Api-Key'], FAKE_API_KEY);
 			assert.equal(last.url.includes('key='), false);
 			assert.deepEqual(lastJson(), {
 				event: { token: 'g-token', siteKey: 'site-key-test', userIpAddress: '10.1.2.3' },
@@ -340,6 +342,6 @@ test('Google Cloud: kiểm tra giá trị Project ID / API key khi lưu', () => 
 	assert.equal(validateSetting('RECAPTCHA_PROJECT_ID', 'rms-benhvien'), null);
 	assert.match(validateSetting('RECAPTCHA_PROJECT_ID', 'RMS Bệnh viện') ?? '', /Project ID/);
 	assert.equal(validateSetting('RECAPTCHA_API_KEY', '••••••'), null);
-	assert.equal(validateSetting('RECAPTCHA_API_KEY', 'AIzaSyA-0123456789abcdefghij'), null);
+	assert.equal(validateSetting('RECAPTCHA_API_KEY', FAKE_API_KEY), null);
 	assert.equal(normalizeSetting('RECAPTCHA_API_KEY', ' k \n'), 'k');
 });
