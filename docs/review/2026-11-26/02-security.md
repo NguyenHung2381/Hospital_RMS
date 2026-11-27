@@ -8,7 +8,7 @@ Phiên `security`, nhánh `claude/review-security-479bca`.
 |---|---|---|---|
 | Cao | 2 | 2 (S-01, S-02) | 0 |
 | Trung bình | 3 | 2 (S-03, S-04) | 1 (S-05) |
-| Thấp | 5 | 3 (S-06, S-07, S-09) | 2 (S-08, S-10) |
+| Thấp | 5 | 5 (S-06, S-07, S-09, S-10; S-08 sửa ở nhánh `backend-cleanup`) | 0 |
 
 Mỗi lỗi đã sửa có test tái hiện trong `backend/test/security/`. Test đỏ trước khi sửa và xanh sau khi sửa:
 
@@ -17,8 +17,15 @@ Mỗi lỗi đã sửa có test tái hiện trong `backend/test/security/`. Test
 - `tuitionPaymentRace.test.js`: S-06, S-07
 - `passwordEventLog.test.js`: S-09
 - `iclockDeviceGuard.test.js`: S-01 (6 ca lỗi, 3 ca đối chứng)
+- `uploadUrlKeys.test.js`: S-10 (3 ca lỗi, 1 ca đối chứng)
 
-Các mục S-05, S-08, S-10 và phần chặn ở DB của S-02 chưa làm, đang chờ người dùng quyết.
+Còn chưa làm, chờ người dùng quyết: S-05 và phần chặn ở DB của S-02.
+
+**Đợt S-10** (file dùng chung, ngoài vùng `security`):
+
+- `backend/src/utils/signedUpload.js`: bỏ `url`, `image` khỏi `FILE_KEYS`; thêm `signUploadPath`. Nhánh `backend-cleanup` xoá export `signPath` ở cùng chỗ, gộp sẽ xung đột nhỏ ở `module.exports` (giữ `signUploadPath`)
+- Ký ngay tại chỗ server sinh đường dẫn ảnh: `training/exams/examController.js` (`uploadQuestionImage`), `seminars/seminars.routes.js` (`/:id/test-image`), `councils/councilProgressService.js` (`uploadCommentImage`), `utils/seminarTest.js` (`publicQuestions`)
+- Test cũ `test/utils/signedUpload.test.js`: đổi 1 khẳng định (khoá `image` không còn được middleware ký) theo đúng thiết kế mới
 
 **Đợt S-01 (máy chấm công)** sửa trong vùng `attendanceDevices` của phiên `backend-cleanup` (nhánh đó chỉ đổi dòng `module.exports` của `iclockService.js`, gộp sẽ xung đột nhỏ):
 
@@ -123,11 +130,14 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
 - **Đã sửa:** `tuitionGuards.approvers(courseId)` chỉ trả người có `courses:approve` với phạm vi hiệu lực `all`, cộng với người có phạm vi `assigned` **và** được phân công khoá đó (`lecturer_assignments`, giảng viên còn hoạt động). Đây là cùng điều kiện mà `listPending` và `router.param` của khoá học đang dùng. `submitMine` truyền `row.course_id` vào.
 - **Test:** `tuitionPaymentRace.test.js` (ca S-07).
 
-### S-08 — Thấp — Nộp khảo sát không nằm trong transaction
+### S-08 — Thấp — Nộp khảo sát không nằm trong transaction — ĐÃ SỬA (nhánh `claude/review-backend-b73be5`)
 
-- **Vị trí:** `backend/src/modules/surveys/surveyService.js:254` (`submitResponse`).
-- **Mô tả:** INSERT `survey_responses` và từng `survey_answers` là các câu riêng lẻ. Nếu lỗi giữa chừng (DB rớt, đáp án quá dài), phản hồi bị lưu dở, và người dùng không nộp lại được vì nhận 409 "đã nộp". `answer_options` cũng không được đối chiếu với các lựa chọn của câu hỏi.
-- **Đề xuất:** Bọc trong `withTransaction`; kiểm `answer_options` thuộc `question.options`.
+- **Vị trí:** `backend/src/modules/surveys/surveyService.js` (`submitResponse`).
+- **Mô tả:** INSERT `survey_responses` và từng `survey_answers` là các câu riêng lẻ. Lỗi giữa chừng thì phản hồi bị lưu dở, người dùng không nộp lại được (409 "đã nộp"). `answer_options` không được đối chiếu với lựa chọn của câu hỏi.
+- **Trạng thái:** phiên `backend-cleanup` đã sửa trên nhánh của nó, có test (`test/surveys/surveyService.test.js`, ca `#2/S-08` và `#4`):
+  - commit `50915f10`: phản hồi + câu trả lời trong một `withActorTransaction`; lỗi giữa chừng thì ROLLBACK;
+  - commit `c0fc63a2`: `pickOptions` chỉ giữ lựa chọn có trong câu hỏi, `single_choice` tối đa 1; lựa chọn lạ bị bỏ (không trả 400).
+- Nhánh `security` **không** sửa lại để tránh xung đột (nhánh kia đổi khoảng 240 dòng của file). Đã đọc lại bản sửa: đúng với đề xuất.
 
 ### S-09 — Thấp — Tự đặt lại / tự đổi mật khẩu thành công không ghi `security_events` — ĐÃ SỬA
 
@@ -140,11 +150,17 @@ Phần lớn backend đã qua nhiều đợt sửa bảo mật (run-1 đến run
   - `securityEvents.log` không bao giờ throw, nên lỗi ghi nhật ký không làm hỏng việc đổi mật khẩu.
 - **Test:** `test/security/passwordEventLog.test.js`, gồm 2 ca lỗi và 1 ca đối chứng (sai OTP thì không ghi).
 
-### S-10 — Thấp — Khoá `url` / `image` trong `FILE_KEYS` ký mọi chuỗi `/uploads/...` mang tên trường đó
+### S-10 — Thấp — Khoá `url` / `image` trong `FILE_KEYS` ký mọi chuỗi `/uploads/...` mang tên trường đó — ĐÃ SỬA
 
-- **Vị trí:** `backend/src/utils/signedUpload.js:42`.
-- **Mô tả:** Hiện chưa thấy trường người dùng tự nhập nào tên `url` hoặc `image` được trả về cho chính người nhập (đã kiểm baseline schema; giá trị trường tuỳ biến của form chỉ có khoá do admin đặt). Tuy vậy, sau này nếu thêm một cột hay trường JSON tự do tên `url`, ta sẽ lặp lại lỗi L-07 (máy ký link).
-- **Đề xuất:** Chỉ ký `url` / `image` ở các response upload cụ thể, hoặc cấm đặt khoá `url` / `image` cho trường tuỳ biến trong `formConfigService`.
+- **Vị trí:** `backend/src/utils/signedUpload.js:42` (`FILE_KEYS`).
+- **Mô tả:** Middleware `signUploadUrlsInJson` ký mọi chuỗi `/uploads/...` nằm dưới khoá `url` hoặc `image`, ở bất kỳ độ sâu nào của response. Hiện chưa có trường tự nhập nào tên như vậy được trả lại cho người nhập. Nhưng tên quá chung: sau này thêm một cột hay trường JSON tự do tên `url` là lặp lại L-07 ("máy ký link": gõ đường dẫn tài liệu của người khác, đọc lại là nhận link tải hợp lệ).
+- **Đã sửa:** bỏ `url`, `image` khỏi `FILE_KEYS`. Bốn chỗ server tự sinh đường dẫn ảnh tự ký bằng `signUploadPath`:
+  - kết quả tải ảnh câu hỏi ngân hàng đề (`examController.uploadQuestionImage`);
+  - kết quả tải ảnh câu hỏi bài test hội nghị (`seminars.routes` `/:id/test-image`);
+  - kết quả tải ảnh chèn vào nhận xét hội đồng (`councilProgressService.uploadCommentImage`);
+  - ảnh câu hỏi khi xuất đề trên cổng công khai (`seminarTest.publicQuestions`).
+- **Giữ nguyên:** `file_url`, `evidence_file_url`, `image_url` vẫn ký tự động; ảnh nhúng trong `comment` / `general_comment` / `test_questions` vẫn chỉ ký trong thư mục ảnh nhúng; `USER_JSON_KEYS` vẫn không bao giờ ký. Frontend nhận cùng giá trị như trước (link đã ký), không phải sửa.
+- **Test:** `test/security/uploadUrlKeys.test.js`, gồm 3 ca lỗi (khoá `url`/`image` không được ký tự động; ảnh tải lên và ảnh đề công khai vẫn được ký đúng chỗ) và 1 ca đối chứng (các trường file do server ghi vẫn được ký).
 
 ## Ghi chú cho các phiên khác
 

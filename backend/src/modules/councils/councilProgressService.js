@@ -13,7 +13,7 @@ const fileService = require('../topics/fileService');
 const { lazyRequire } = require('../../utils/lazyRequire');
 /** @type {typeof import('sanitize-html')} */
 const sanitizeHtml = lazyRequire('sanitize-html');
-const { stripUploadSignatures } = require('../../utils/signedUpload');
+const { signUploadPath, stripUploadSignatures } = require('../../utils/signedUpload');
 const { toStoredUploadPath } = require('../../utils/uploadPaths');
 const { httpError } = require('../../utils/httpError');
 
@@ -279,9 +279,8 @@ const uploadCommentImage = async (topicId, userId, file) => {
 			status: 403,
 		});
 	}
-	return {
-		url: `/uploads/topics/${topicId}/comments/${file.filename}`,
-	};
+	// Ký tại đây: khoá `url` không được ký tự động (utils/signedUpload.js, S-10)
+	return { url: signUploadPath(`/uploads/topics/${topicId}/comments/${file.filename}`) };
 };
 
 const deleteEvalFileByNote = async (topicId, fileId, userId, note, label) => {
