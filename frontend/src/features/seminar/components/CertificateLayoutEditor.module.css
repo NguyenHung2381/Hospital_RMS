@@ -345,6 +345,16 @@
 }
 .thumbStruck { opacity: 0.35; }
 
+/* Mẫu nét vẽ: dòng thông tin hội nghị nhận ra được — khung + nhãn luôn hiện */
+.lineInfo { outline: 1px dashed color-mix(in srgb, var(--color-gray-600) 55%, transparent); outline-offset: 1px; }
+.infoTag { display: block; background: var(--color-gray-700); }
+.itemKey {
+	flex-shrink: 0;
+	font-size: var(--font-size-xs);
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-900);
+}
+
 .textInput {
 	width: 100%;
 	box-sizing: border-box;

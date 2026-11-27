@@ -10,6 +10,8 @@ import {
 	missingChars,
 } from '../api/seminarApi';
 import styles from '../pages/Seminar.module.css';
+import { LineThumb } from './CertificateLayoutEditor';
+import { BASE_URL } from '@/shared/api/endpoints';
 import css from './CertificateModal.module.css';
 
 const errMsg = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
@@ -121,23 +123,36 @@ export function CertificateInfoForm({
 					key={f.key}
 					className={css.infoRow}
 				>
-					<span className={css.infoLabel}>{f.label}</span>
+					<span className={css.infoLabel}>
+						{f.label}
+						{/* Mẫu nét vẽ: không đọc được chữ đang có → cắt ảnh đoạn đó cho biết ô này thay gì */}
+						{f.box && f.image_url && f.page && (
+							<span className={css.infoThumb}>
+								<LineThumb
+									url={`${BASE_URL}${f.image_url}`}
+									page={f.page}
+									box={f.box}
+									struck={!!f.value}
+								/>
+							</span>
+						)}
+					</span>
 					<span className={css.infoInput}>
 						{f.prefix && <span className={css.infoPrefix}>{f.prefix.trim()}</span>}
 						{/* Nội dung / đơn vị thường dài → 2 dòng để thấy hết */}
-						{f.key === 'content' || f.key === 'organizer' ? (
+						{f.key === 'content' || f.key === 'organizer' || f.key === 'form' ? (
 							<textarea
 								rows={2}
 								value={values[f.key] ?? ''}
 								onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-								placeholder={f.original}
+								placeholder={f.original || 'Để trống = giữ như trên mẫu'}
 								disabled={saving}
 							/>
 						) : (
 							<input
 								value={values[f.key] ?? ''}
 								onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-								placeholder={f.original}
+								placeholder={f.original || 'Để trống = giữ như trên mẫu'}
 								disabled={saving}
 							/>
 						)}
@@ -150,12 +165,13 @@ export function CertificateInfoForm({
 							</span>
 						) : null;
 					})()}
+					{/* Mẫu nét vẽ: chữ gốc không đọc được (original rỗng) — "Gốc" = xoá ô, giữ như mẫu */}
 					{values[f.key] !== f.original && (
 						<button
 							type='button'
 							className={css.infoReset}
 							onClick={() => setValues((v) => ({ ...v, [f.key]: f.original }))}
-							title={`Trả về chữ gốc: ${f.original}`}
+							title={f.original ? `Trả về chữ gốc: ${f.original}` : 'Giữ chữ như trên mẫu'}
 						>
 							Gốc
 						</button>

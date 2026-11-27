@@ -65,7 +65,11 @@ const MAX_SUFFIX = 80;
 const styleEdits = (e, what) => {
 	const out = {};
 	if (e.color !== undefined) {
-		const c = fromHex(e.color);
+		// '#rrggbb' từ giao diện, hoặc [r, g, b] của bản sửa đã lưu (gửi lại khi sửa nhanh)
+		const c =
+			Array.isArray(e.color) && e.color.length === 3 && e.color.every((v) => v >= 0 && v <= 1)
+				? e.color.map(Number)
+				: fromHex(e.color);
 		if (!c) throw httpError(400, `Màu chữ của ${what} không hợp lệ.`);
 		out.color = c;
 	}
@@ -225,6 +229,8 @@ const applyTextEdits = (meta, edits) => {
 
 // ─── Thông tin hội nghị trên giấy (sửa nhanh, không cần tìm dòng) ─────────────
 const INFO_FIELDS = [
+	// Chỉ mẫu nét vẽ nhận được dòng này (certificateVector.guessVectorFields)
+	{ key: 'form', label: 'Hình thức' },
 	{ key: 'content', label: 'Nội dung / chủ đề' },
 	{ key: 'organizer', label: 'Đơn vị / cá nhân chịu trách nhiệm' },
 	{ key: 'time', label: 'Thời gian' },

@@ -588,7 +588,7 @@ const toBuffers = (r) => {
 };
 
 /**
- * @typedef {'prepare' | 'preview' | 'texts' | 'removeTexts' | 'patchRegions'} WorkerMode
+ * @typedef {'prepare' | 'preview' | 'texts' | 'removeTexts' | 'patchRegions' | 'vectorTexts'} WorkerMode
  * @param {WorkerMode} mode
  * @param {Buffer} buffer
  * @param {any} [extra]  removeTexts: danh sách khung cần xoá
@@ -637,6 +637,8 @@ const renderPreview = (pdf) => enqueue('preview', pdf);
 const extractTexts = (pdf) => enqueue('texts', pdf);
 /** @type {(basePdf: Buffer, boxes: { x0: number, y0: number, x1: number, y1: number }[]) => Promise<{ pdf: Buffer, preview: Buffer }>} */
 const removeTexts = (basePdf, boxes) => enqueue('removeTexts', basePdf, boxes);
+/** Mẫu nét vẽ lưu trước khi nhận dấu ":": dò lại dòng. @type {(pdf: Buffer) => Promise<TemplateText[]>} */
+const extractVectorTexts = (pdf) => enqueue('vectorTexts', pdf);
 /** Mẫu nét vẽ: xoá các vùng bằng miếng vá nền. @type {(basePdf: Buffer, rects: { x0: number, y0: number, x1: number, y1: number }[]) => Promise<{ pdf: Buffer, preview: Buffer }>} */
 const patchRegions = (basePdf, rects) => enqueue('patchRegions', basePdf, rects);
 
@@ -651,6 +653,7 @@ module.exports = {
 	removeTextsCore,
 	patchRegions,
 	patchRegionsCore,
+	extractVectorTexts,
 	SLOT_LABELS,
 	SLOT_KEYS,
 	_test: { classify, findSlots },

@@ -22,6 +22,7 @@ const {
 	extractTexts,
 	removeTexts,
 	patchRegions,
+	extractVectorTexts,
 	SLOT_LABELS,
 	SLOT_KEYS,
 } = require('./certificate/certificateTemplate');
@@ -34,6 +35,15 @@ const {
 	INFO_FIELDS,
 } = require('./certificate/certificateLayout');
 const { createRenderer, fieldValues } = require('./certificate/certificateRender');
+const {
+	VECTOR_GUESS_VERSION,
+	eraseRects,
+	rectsSig,
+	applyVectorGuess,
+	vectorInfoOf,
+	vectorInfoEdits,
+	vectorTextHints,
+} = require('./certificate/certificateVectorMeta');
 const {
 	fontCharsets,
 	hasFullFont,
@@ -144,8 +154,15 @@ const saveTemplate = async (seminarId, file, actorId) => {
 	};
 	await writeAtomic(basePath(seminarId), out.pdf);
 	await writeAtomic(pdfPath(seminarId), out.pdf);
+	let tmpPreview = null;
+	if (meta.vector) {
+		// Mẫu nét vẽ: tự đặt các ô sau nhãn + xoá chữ mẫu dưới ô
+		applyVectorGuess(meta, { keepSlots: false });
+		if (eraseRects(meta).length) tmpPreview = await rebuildFromBase(seminarId, meta);
+	}
 	await writeAtomic(metaPath(seminarId), JSON.stringify(meta));
 	await removeOldPreview(seminarId, old?.preview_file);
+	await removeOldPreview(seminarId, tmpPreview);
 	return publicInfo(meta);
 };
 
@@ -177,6 +194,9 @@ const charsetFor = (meta, t) => {
 	return meta.font_chars?.[key] ?? '';
 };
 
+const imageUrlOf = (seminarId, meta) =>
+	`/uploads/seminars/${seminarId}/certificate/${meta.preview_file}`;
+
 const layoutOf = (seminarId, meta) => {
 	const sample = fieldValues(SAMPLE_PERSON);
 	return {
@@ -184,7 +204,7 @@ const layoutOf = (seminarId, meta) => {
 		vector: !!meta.vector,
 		// Máy chủ có font có chân (Times...) để in chữ kiểu có chân
 		serif_font: hasSerifFont(),
-		image_url: `/uploads/seminars/${seminarId}/certificate/${meta.preview_file}`,
+		image_url: imageUrlOf(seminarId, meta),
 		fields: SLOT_KEYS.map((key) => ({
 			key,
 			label: SLOT_LABELS[key],
@@ -193,10 +213,12 @@ const layoutOf = (seminarId, meta) => {
 			auto: !!meta.auto_slots?.[key],
 			slot: meta.slots[key] ? toEditable(key, meta.slots[key]) : null,
 		})),
-		texts: (meta.texts || []).map((t) => ({
-			...textEditable(t, meta.text_overrides?.[t.id]),
-			charset: charsetFor(meta, t),
-		})),
+		texts: (meta.texts || []).map((t) =>
+			vectorTextHints(meta, t, {
+				...textEditable(t, meta.text_overrides?.[t.id]),
+				charset: charsetFor(meta, t),
+			}),
+		),
 	};
 };
 
@@ -231,44 +253,21 @@ const backfill = async (seminarId, meta, pdf) => {
 		meta.auto_slots = meta.slots;
 		changed = true;
 	}
+	if (meta.vector && meta.vector_guess !== VECTOR_GUESS_VERSION) {
+		// Mẫu nét vẽ lưu trước khi tự nhận chỗ sửa: dò lại dòng (cùng cách gom → cùng id,
+		// bản sửa dòng giữ nguyên). Ô người dùng đã đặt thì giữ, chưa có thì tự đặt.
+		meta.texts = await extractVectorTexts(await fs.readFile(basePath(seminarId)));
+		const keep = Object.keys(meta.slots || {}).length > 0;
+		applyVectorGuess(meta, { keepSlots: keep });
+		if (!keep && rectsSig(meta) !== (meta.patch_sig ?? '[]')) {
+			const old = await rebuildFromBase(seminarId, meta);
+			await writeAtomic(metaPath(seminarId), JSON.stringify(meta));
+			await removeOldPreview(seminarId, old);
+		}
+		changed = true;
+	}
 	return changed;
 };
-
-// ─── Mẫu chữ nét vẽ: vùng phải xoá chữ cũ ──────────────────────────────────
-// Chữ là hình vẽ nên không xoá theo dòng được — xoá đúng vùng: đoạn dòng đã sửa
-// ([x0, x1] của bản sửa, cao theo khung dòng gốc) và chỗ đặt mỗi ô đang in.
-const ERASE_PAD = 1.2;
-const ASCENT = 0.969; // khớp khung hiển thị ở màn chỉnh mẫu (số đo font Inter)
-const r1 = (v) => Math.round(v * 10) / 10;
-
-/** @returns {{ x0: number, y0: number, x1: number, y1: number }[]} */
-const eraseRects = (meta) => {
-	if (!meta.vector) return [];
-	const lines = meta.texts || [];
-	const rects = [];
-	for (const [id, o] of Object.entries(meta.text_overrides || {})) {
-		const t = lines.find((x) => x.id === id);
-		if (t)
-			rects.push({ x0: o.x0 - 0.5, x1: o.x1 + 0.5, y0: t.y0 - ERASE_PAD, y1: t.y1 + ERASE_PAD });
-	}
-	for (const s of Object.values(meta.slots || {})) {
-		if (s.hidden) continue;
-		const x0 = s.align === 'center' ? s.box.x0 : s.x;
-		const x1 = s.align === 'center' ? s.box.x1 : s.x1;
-		const size = s.textSize ?? s.size;
-		// Ô đặt đè lên 1 dòng chữ mẫu → xoá theo chiều cao dòng đó (đủ dấu, chân chữ)
-		const line = lines.find(
-			(t) => s.baseline >= t.y0 && s.baseline <= t.y1 + size * 0.3 && x0 < t.x1 && x1 > t.x0,
-		);
-		rects.push(
-			line
-				? { x0: x0 - 0.5, x1: x1 + 0.5, y0: line.y0 - ERASE_PAD, y1: line.y1 + ERASE_PAD }
-				: { x0, x1, y0: s.baseline - ASCENT * size, y1: s.baseline + 0.3 * size },
-		);
-	}
-	return rects.map((r) => ({ x0: r1(r.x0), y0: r1(r.y0), x1: r1(r.x1), y1: r1(r.y1) }));
-};
-const rectsSig = (meta) => JSON.stringify(eraseRects(meta));
 
 // Dựng lại template.pdf từ bản gốc, xoá các dòng chữ đang bị sửa (bản in viết dòng mới).
 // Mẫu nét vẽ: dán miếng vá nền lên các vùng cần xoá.
@@ -353,7 +352,14 @@ const resetLayout = async (seminarId) => {
 
 // ─── Thông tin hội nghị trên giấy (4 dòng hay đổi giữa các hội nghị) ──────────
 
-const infoOf = (meta) => {
+// Đọc lại mẫu sau khi lưu → thông tin trên giấy (kèm link ảnh nền mới)
+const infoAfterSave = async (seminarId) => {
+	const { meta } = await loadTemplate(seminarId);
+	return infoOf(meta, imageUrlOf(seminarId, meta));
+};
+
+const infoOf = (meta, imageUrl) => {
+	if (meta.vector) return vectorInfoOf(meta, imageUrl);
 	const lines = findInfoLines(meta.texts);
 	return INFO_FIELDS.map(({ key, label }) => {
 		const line = lines[key];
@@ -380,7 +386,7 @@ const getInfo = async (seminarId) => {
 	if (await backfill(seminarId, meta, pdf)) {
 		await writeAtomic(metaPath(seminarId), JSON.stringify(meta));
 	}
-	return infoOf(meta);
+	return infoOf(meta, imageUrlOf(seminarId, meta));
 };
 
 /**
@@ -398,6 +404,11 @@ const saveInfo = async (seminarId, values) => {
 	const edits = Object.fromEntries(
 		Object.entries(meta.text_overrides || {}).map(([id, o]) => [id, { ...o }]),
 	);
+	if (meta.vector) {
+		vectorInfoEdits(meta, values, edits);
+		await saveLayout(seminarId, { texts: edits });
+		return infoAfterSave(seminarId);
+	}
 	for (const [key, raw] of Object.entries(values || {})) {
 		const line = lines[key];
 		if (!line) throw httpError(400, `Không tìm thấy dòng "${key}" trên mẫu.`);
@@ -413,7 +424,7 @@ const saveInfo = async (seminarId, values) => {
 		edits[t.id] = { text, x0: g.x0, x1: g.x1, baseline: g.baseline, size: g.size, align: g.align };
 	}
 	await saveLayout(seminarId, { texts: edits });
-	return infoOf((await loadTemplate(seminarId)).meta);
+	return infoAfterSave(seminarId);
 };
 
 const loadTemplate = async (seminarId) => {

@@ -133,9 +133,57 @@ const readGlyphContours = (mupdf, page) => {
 };
 
 /**
+ * Dấu hiệu đọc được trên 1 dòng dù không đọc được chữ:
+ *   - colons: mép phải các dấu ":" — cột chỉ có 2 chấm nhỏ chồng nhau, chấm dưới đứng
+ *     trên chân chữ, chấm trên ở tầm chữ thường (dấu tiếng Việt nằm cao / thấp hơn)
+ *   - gaps: khoảng trống giữa 2 từ [mép phải từ trước, mép trái từ sau]
+ *   - paren: dấu ")" cuối dòng — 1 nét mảnh, cao, thò xuống dưới chân chữ
+ */
+const lineMarks = (items, baseline, size) => {
+	/** @type {{ x0: number, x1: number, parts: typeof items }[]} */
+	const cols = [];
+	for (const g of [...items].sort((a, b) => a.x0 - b.x0)) {
+		const c = cols[cols.length - 1];
+		if (c && g.x0 < c.x1 - 0.05 * size) {
+			c.x1 = Math.max(c.x1, g.x1);
+			c.parts.push(g);
+		} else cols.push({ x0: g.x0, x1: g.x1, parts: [g] });
+	}
+	const small = (p) => p.x1 - p.x0 < 0.3 * size && p.y1 - p.y0 < 0.3 * size;
+	const isColon = (c) => {
+		if (c.parts.length !== 2 || !c.parts.every(small)) return false;
+		const [top, bottom] = [...c.parts].sort((p, q) => p.y0 - q.y0);
+		const h = (p) => p.y1 - p.y0;
+		return (
+			// chấm dưới đứng trên chân chữ, 2 chấm cùng cỡ, cách nhau rõ ràng
+			Math.abs(bottom.y1 - baseline) < 0.15 * size &&
+			Math.abs(h(top) - h(bottom)) < 0.5 * Math.max(h(top), h(bottom)) &&
+			top.y1 < bottom.y0 - 0.1 * size &&
+			top.y0 > baseline - 0.85 * size
+		);
+	};
+	const gaps = [];
+	for (let i = 1; i < cols.length; i++) {
+		if (cols[i].x0 - cols[i - 1].x1 > 0.18 * size) gaps.push([r1(cols[i - 1].x1), r1(cols[i].x0)]);
+	}
+	const last = cols[cols.length - 1];
+	const lp = last?.parts[0];
+	const paren =
+		last &&
+		last.parts.length === 1 &&
+		lp.y0 < baseline - 0.55 * size &&
+		lp.y1 > baseline + 0.1 * size &&
+		lp.x1 - lp.x0 < 0.4 * size
+			? { x0: r1(last.x0), x1: r1(last.x1) }
+			: null;
+	return { colons: cols.filter(isColon).map((c) => r1(c.x1)), gaps, paren };
+};
+
+/**
  * Gom đường viền thành dòng chữ: cùng màu, chồng / sát nhau theo chiều dọc; trong
  * 1 hàng, khoảng trống ngang lớn tách thành khối riêng.
- * @returns {{ x0: number, y0: number, x1: number, y1: number, baseline: number, size: number, n: number }[]}
+ * @returns {{ x0: number, y0: number, x1: number, y1: number, baseline: number, size: number, n: number,
+ *   marks: ReturnType<typeof lineMarks> }[]}
  */
 const groupGlyphLines = (contours) => {
 	const sorted = [...contours].sort((a, b) => a.y0 - b.y0);
@@ -175,12 +223,22 @@ const groupGlyphLines = (contours) => {
 				votes.set(k, (votes.get(k) || 0) + (g.x1 - g.x0));
 			}
 			const baseline = [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0];
-			// Cỡ chữ ≈ chiều cao chữ cao nhất đứng trên chân chữ (h, l, chữ hoa ~0,7 em)
+			// Cỡ chữ ≈ chiều cao chữ cao nhất đứng trên chân chữ (h, l, chữ hoa ~0,68 em)
 			const tall = Math.max(
 				...seg.filter((g) => Math.abs(g.y1 - baseline) < 1).map((g) => g.y1 - g.y0),
 			);
-			const size = Math.min(tall / 0.7, (y1 - y0) / 1.05);
-			lines.push({ x0, y0, x1, y1, baseline, size, n: seg.length });
+			// Chặn trên theo khung dòng chỉ để tránh số vô lý (dòng không dấu / chân chữ thấp hơn cỡ chữ)
+			const size = Math.min(tall / 0.68, (y1 - y0) / 0.7);
+			lines.push({
+				x0,
+				y0,
+				x1,
+				y1,
+				baseline,
+				size,
+				n: seg.length,
+				marks: lineMarks(seg, baseline, size),
+			});
 		}
 	}
 	return lines;
@@ -206,12 +264,17 @@ const renderRgb = (mupdf, page, z, backgroundOnly) => {
 	return pix;
 };
 
+// Nét đứng dày ≥ 12,5% cỡ chữ → chữ đậm (Times thường ~8%, đậm ~14%)
+const BOLD_STEM = 0.125;
+
 /**
- * Màu chữ của từng dòng: so ảnh đầy đủ với ảnh chỉ nền, điểm ảnh khác nhiều nhất là
- * chữ → trung bình màu các điểm đó (màu đã qua quản lý màu, khớp với mắt nhìn).
+ * Màu + độ đậm của từng dòng: so ảnh đầy đủ với ảnh chỉ nền, điểm ảnh khác nhiều nhất
+ * là chữ → trung bình màu các điểm đó (màu đã qua quản lý màu, khớp với mắt nhìn); độ
+ * dày nét = trung vị các đoạn mực nằm ngang trong tầm chữ thường.
+ * @returns {{ color: number[], bold: boolean }[]}
  */
-const sampleLineColors = (mupdf, page, lines) => {
-	const z = 2;
+const sampleLineStyles = (mupdf, page, lines) => {
+	const z = 3;
 	const full = renderRgb(mupdf, page, z, false);
 	const bg = renderRgb(mupdf, page, z, true);
 	try {
@@ -231,12 +294,37 @@ const sampleLineColors = (mupdf, page, lines) => {
 					if (d > 60) px.push([d, i]);
 				}
 			}
-			if (!px.length) return [0, 0, 0];
+			if (!px.length) return { color: [0, 0, 0], bold: false };
 			px.sort((p, q) => q[0] - p[0]);
 			const top = px.slice(0, Math.max(1, Math.round(px.length * 0.3)));
 			const sum = [0, 0, 0];
 			for (const [, i] of top) for (let k = 0; k < 3; k++) sum[k] += a[i + k];
-			return sum.map((v) => Math.round((v / top.length / 255) * 1000) / 1000);
+			const runs = [];
+			const yTop = Math.max(0, Math.round((l.baseline - 0.35 * l.size) * z));
+			const yBot = Math.min(h, Math.round((l.baseline - 0.1 * l.size) * z));
+			for (let y = yTop; y < yBot; y++) {
+				let run = 0;
+				for (
+					let x = Math.max(0, Math.floor(l.x0 * z));
+					x < Math.min(w, Math.ceil(l.x1 * z) + 2);
+					x++
+				) {
+					const i = y * stride + x * 3;
+					const d =
+						Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+					if (d > 150) run++;
+					else if (run) {
+						runs.push(run);
+						run = 0;
+					}
+				}
+			}
+			runs.sort((p, q) => p - q);
+			const stem = runs.length ? runs[runs.length >> 1] / z : 0;
+			return {
+				color: sum.map((v) => Math.round((v / top.length / 255) * 1000) / 1000),
+				bold: stem / l.size >= BOLD_STEM,
+			};
 		});
 	} finally {
 		full.destroy();
@@ -253,7 +341,7 @@ const readVectorTexts = (mupdf, page) => {
 	const [px0, , px1] = page.getBounds();
 	const mid = (px1 - px0) / 2;
 	const lines = groupGlyphLines(readGlyphContours(mupdf, page));
-	const colors = lines.length ? sampleLineColors(mupdf, page, lines) : [];
+	const styles = lines.length ? sampleLineStyles(mupdf, page, lines) : [];
 	return lines
 		.map((l, i) => ({
 			vector: true,
@@ -265,9 +353,10 @@ const readVectorTexts = (mupdf, page) => {
 			y1: r1(l.y1),
 			baseline: r1(l.baseline),
 			size: r1(l.size),
-			color: colors[i],
+			color: styles[i].color,
 			font: '',
-			bold: false,
+			bold: styles[i].bold,
+			marks: l.marks,
 			italic: false,
 			align: /** @type {'left' | 'center'} */ (
 				Math.abs((l.x0 + l.x1) / 2 - mid) < 4 ? 'center' : 'left'
@@ -362,4 +451,137 @@ const applyPatches = (mupdf, doc, page, rects) => {
 	pageObj.put('Contents', arr);
 };
 
-module.exports = { readVectorTexts, applyPatches, backgroundDevice, _test: { groupGlyphLines } };
+// ─── Tự nhận các chỗ cần sửa theo bố cục mẫu giấy chứng nhận CME ───────────────
+// Không đọc được chữ, nhưng mẫu CME có thứ tự dòng cố định và mỗi nhãn kết thúc bằng
+// dấu ":". Dòng có ":" mà phía sau còn chữ = 1 chỗ cần điền, theo thứ tự:
+//   trên tiêu đề:   Số: …                                   → ô số giấy
+//   dưới tiêu đề:   Chứng nhận: … / Sinh ngày: … / Đơn vị công tác: …  → 3 ô theo người
+//                   1. Hình thức: … (Vai trò: …)            → dòng hội nghị + ô vai trò
+//                   2. Chủ đề / 3. Đơn vị chịu trách nhiệm / 4. Thời gian (1 dấu ":")
+//                   5. Quy đổi: … giờ tín chỉ (Bằng chữ: … giờ tín chỉ) → 2 ô tín chỉ
+//                   dòng đầu tiên không có ":" phía dưới    → địa điểm, ngày ký
+const hex = (rgb) =>
+	'#' +
+	(rgb || [0, 0, 0])
+		.map((v) =>
+			Math.round(Math.min(1, Math.max(0, v)) * 255)
+				.toString(16)
+				.padStart(2, '0'),
+		)
+		.join('');
+
+/**
+ * @param {any[]} texts  dòng nét vẽ (readVectorTexts, có marks)
+ * @returns {{ slots: Record<string, any>, info: Record<string, { id: string, x0: number, x1: number, size: number }> }}
+ *   slots: dạng chỉnh tay (certificateLayout.applyEdits); info: đoạn giá trị của dòng hội nghị
+ */
+const guessVectorFields = (texts) => {
+	const slots = {};
+	const info = {};
+	const lines = texts.filter((t) => t.marks).sort((a, b) => a.baseline - b.baseline);
+	if (!lines.length) return { slots, info };
+	const title = lines.reduce((m, t) => (t.size > m.size ? t : m));
+	// Dấu ":" mà sau nó còn chữ (bỏ "…như sau:" cuối dòng)
+	const colonsOf = (t) => t.marks.colons.filter((c) => c < t.x1 - 0.5 * t.size);
+	// Mép trái chữ ngay sau dấu ":" (đầu khoảng trống kế tiếp)
+	const startAfter = (t, c) => {
+		const g = t.marks.gaps.find(([a]) => Math.abs(a - c) < 0.5);
+		return g ? g[1] : c + 0.25 * t.size;
+	};
+	// Mép phải từ đầu tiên bắt đầu tại x
+	const wordEnd = (t, x) => t.marks.gaps.find(([a]) => a > x + 0.5)?.[0] ?? t.x1;
+	// Mép phải của từ đứng trước từ chứa x (vd đầu "(Vai trò:" → hết "khoa học")
+	const endBeforeLabel = (t, c, words) => {
+		const before = t.marks.gaps.filter(([a]) => a < c - 0.5);
+		const g = before[before.length - words];
+		return g ? g[0] : c;
+	};
+	const body = lines.filter((t) => t.baseline > title.baseline && colonsOf(t).length);
+	const median = (xs) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
+	const size = body.length ? Math.round(median(body.map((t) => t.size)) * 2) / 2 : 13;
+	const style = (t) => ({ color: hex(t.color), bold: !!t.bold, italic: false, serif: true });
+	const slot = (t, x0, x1, extra = {}) => ({
+		x0: Math.round((x0 - 0.5) * 10) / 10,
+		x1: Math.round((x1 + 0.5) * 10) / 10,
+		baseline: t.baseline,
+		size,
+		align: 'left',
+		hidden: false,
+		suffix: '',
+		...style(t),
+		...extra,
+	});
+	const field = (t, x0, x1) => ({
+		id: t.id,
+		x0: Math.round((x0 - 0.5) * 10) / 10,
+		x1: Math.round((x1 + 0.5) * 10) / 10,
+		size,
+	});
+
+	const so = lines.find((t) => t.baseline < title.baseline && colonsOf(t).length);
+	if (so) {
+		const c = colonsOf(so)[0];
+		slots.so = slot(so, startAfter(so, c), so.x1, { size: Math.round(so.size * 2) / 2 });
+	}
+	const single = body.filter((t) => colonsOf(t).length === 1);
+	const double = body.filter((t) => colonsOf(t).length >= 2);
+	['name', 'dob', 'organization'].forEach((key, i) => {
+		const t = single[i];
+		if (t) slots[key] = slot(t, startAfter(t, colonsOf(t)[0]), t.x1);
+	});
+	const people = new Set(single.slice(0, 3));
+	// Dòng 2 dấu ":" đầu tiên: Hình thức (giá trị tới trước "(Vai trò:") + ô vai trò
+	const form =
+		double.length > 1 || (double[0] && double[0] !== body[body.length - 1]) ? double[0] : null;
+	if (form) {
+		const [c1, c2] = colonsOf(form);
+		info.form = field(form, startAfter(form, c1), endBeforeLabel(form, c2, 2));
+		const p = form.marks.paren;
+		slots.role = slot(form, startAfter(form, c2), p ? p.x1 : form.x1, { suffix: p ? ')' : '' });
+	}
+	// Dòng 2 dấu ":" cuối: Quy đổi … (Bằng chữ: …)
+	const credit =
+		double.length && double[double.length - 1] !== form ? double[double.length - 1] : null;
+	if (credit) {
+		const [c1, c2] = colonsOf(credit);
+		const x = startAfter(credit, c1);
+		// Số giữa câu ("02 giờ tín chỉ") → căn giữa chỗ số cũ, không hở 1 bên
+		slots.credits = slot(credit, x, wordEnd(credit, x), { align: 'center' });
+		const x2 = startAfter(credit, c2);
+		const p = credit.marks.paren;
+		// "Hai giờ tín chỉ)": giá trị chỉ là số bằng chữ — phần đuôi in kèm sau
+		const words = credit.marks.gaps.filter(([a]) => a > x2).length + 1;
+		const tail = (words >= 3 ? ' giờ tín chỉ' : '') + (p ? ')' : '');
+		slots.credits_text = slot(credit, x2, p ? p.x1 : credit.x1, { suffix: tail });
+	}
+	// Dòng 1 dấu ":" còn lại: Chủ đề, Đơn vị chịu trách nhiệm, Thời gian
+	const rest = single.filter((t) => !people.has(t));
+	['content', 'organizer', 'time'].forEach((key, i) => {
+		const t = rest[i];
+		if (t) info[key] = field(t, startAfter(t, colonsOf(t)[0]), t.x1);
+	});
+	const last = body[body.length - 1];
+	const sign = last && lines.find((t) => t.baseline > last.baseline && !t.marks.colons.length);
+	if (sign) info.sign_date = field(sign, sign.x0, sign.x1);
+	return { slots, info };
+};
+
+/** Trích lại dòng nét vẽ từ PDF (mẫu tải lên trước khi có nhận diện dấu ":"). */
+const extractVectorTextsCore = async (pdf) => {
+	const mupdf = await import('mupdf');
+	const doc = mupdf.Document.openDocument(pdf, 'application/pdf');
+	try {
+		return readVectorTexts(mupdf, doc.loadPage(0));
+	} finally {
+		doc.destroy?.();
+	}
+};
+
+module.exports = {
+	readVectorTexts,
+	guessVectorFields,
+	extractVectorTextsCore,
+	applyPatches,
+	backgroundDevice,
+	_test: { groupGlyphLines, readGlyphContours },
+};

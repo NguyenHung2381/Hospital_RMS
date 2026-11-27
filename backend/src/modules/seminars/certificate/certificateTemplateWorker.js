@@ -10,6 +10,7 @@
  */
 const { isMainThread, parentPort, workerData } = require('worker_threads');
 const T = require('./certificateTemplate');
+const V = require('./certificateVector');
 
 const JOBS = {
 	prepare: (buf) => T.prepareTemplateCore(buf),
@@ -17,6 +18,7 @@ const JOBS = {
 	texts: (buf) => T.extractTextsCore(buf),
 	removeTexts: (buf, extra) => T.removeTextsCore(buf, extra || []),
 	patchRegions: (buf, extra) => T.patchRegionsCore(buf, extra || []),
+	vectorTexts: (buf) => V.extractVectorTextsCore(buf),
 };
 
 // Bị require() ở luồng chính (vd scripts/check-requires.js) thì không làm gì

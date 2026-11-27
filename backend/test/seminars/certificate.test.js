@@ -424,3 +424,72 @@ test('mẫu chữ nét vẽ: dò dòng, xoá vùng bằng miếng vá nền, in 
 	assert.ok(text.includes('0261/GCN/2025'), 'số giấy kèm chữ in sau');
 	assert.ok(text.includes('Sinh ngày: 01/01/1990'), 'dòng sửa được in');
 });
+
+// Mẫu CME nét vẽ giả lập đúng bố cục chuẩn: chữ = hình chữ nhật 6×9 (cách 1pt), từ
+// cách 6pt, dấu ":" = 2 chấm vuông chồng nhau, ")" = nét mảnh cao thò dưới chân chữ
+const makeCmeVectorTemplate = async () => {
+	const doc = await PDFDocument.create();
+	const page = doc.addPage([595, 842]);
+	const ink = rgb(0.18, 0.19, 0.57);
+	const box = (x, yTop, w, h) =>
+		page.drawRectangle({ x, y: 842 - yTop - h, width: w, height: h, color: ink });
+	// spec: số chữ của từng từ, ':' = dấu hai chấm, ')' = ngoặc đóng
+	const line = (x, base, spec, cw = 6, ch = 9) => {
+		for (const tok of spec) {
+			if (tok === ':') {
+				box(x, base - 1.6, 1.6, 1.6);
+				box(x, base - 6.6, 1.6, 1.6);
+				x += 2.6 + 6;
+			} else if (tok === ')') {
+				box(x, base - 10, 1.8, 12.5);
+				x += 2.8;
+			} else {
+				for (let i = 0; i < tok; i++) box(x + i * (cw + 1), base - ch, cw, ch);
+				x += tok * (cw + 1) - 1 + 6;
+			}
+		}
+	};
+	line(95, 110, [2, ':', 4]); // Số: 002/GCN
+	line(160, 196, [5, 6], 18, 24); // GIẤY CHỨNG NHẬN (tiêu đề to nhất)
+	line(75, 294, [4, 3, ':', 3, 5, 4]); // Chứng nhận: Ông …
+	line(75, 320, [3, 4, ':', 10]); // Sinh ngày: …
+	line(75, 345, [3, 2, 3, 3, ':', 5, 4]); // Đơn vị công tác: …
+	line(75, 371, [3, 4, 3, 3, ':']); // Đã hoàn thành … như sau:
+	line(75, 397, [2, 4, 4, ':', 3, 4, 4, 3, 2, 3, ':', 3, 3, 4, ')']); // 1. Hình thức: … (Vai trò: …)
+	line(75, 422, [2, 3, 3, ':', 6, 5]); // 2. Chủ đề: …
+	line(75, 448, [2, 3, 2, 4, 5, 5, ':', 5, 4]); // 3. Đơn vị chịu trách nhiệm: …
+	line(75, 473, [2, 4, 4, ':', 4, 10]); // 4. Thời gian: …
+	line(75, 499, [2, 3, 3, ':', 2, 3, 3, 3, 4, 3, ':', 3, 3, 3, 3, ')']); // 5. Quy đổi: … (Bằng chữ: …)
+	line(283, 595, [4, 2, 4, 2, 5, 2, 3, 4]); // Nghệ An, ngày … (không có ":")
+	return Buffer.from(await doc.save());
+};
+
+test('mẫu CME nét vẽ: tự nhận đủ 7 ô theo người và 5 dòng thông tin hội nghị', async () => {
+	const { guessVectorFields } = require('../../src/modules/seminars/certificate/certificateVector');
+	const tpl = await prepareTemplate(await makeCmeVectorTemplate());
+	assert.equal(tpl.vector, true);
+	const { slots, info } = guessVectorFields(tpl.texts);
+	assert.deepEqual(Object.keys(slots).sort(), [
+		'credits',
+		'credits_text',
+		'dob',
+		'name',
+		'organization',
+		'role',
+		'so',
+	]);
+	assert.deepEqual(Object.keys(info).sort(), ['content', 'form', 'organizer', 'sign_date', 'time']);
+	// Ô tên bắt đầu ngay sau "Chứng nhận:" (4+3 chữ, dấu ":", khoảng trống)
+	const nameStart = 75 + 4 * 7 - 1 + 6 + 3 * 7 - 1 + 6 + 2.6 + 6;
+	assert.ok(
+		Math.abs(slots.name.x0 + 0.5 - nameStart) < 1,
+		`ô tên x0 ${slots.name.x0} ≈ ${nameStart}`,
+	);
+	assert.equal(slots.role.suffix, ')');
+	assert.equal(slots.credits_text.suffix, ' giờ tín chỉ)');
+	assert.ok(slots.credits.x1 - slots.credits.x0 < 20, 'ô số tín chỉ chỉ phủ 1 từ');
+	assert.ok(info.form.x1 < slots.role.x0 - 30, 'Hình thức dừng trước "(Vai trò:"');
+	assert.equal(tpl.texts.find((t) => t.id === info.sign_date.id).baseline, 595);
+	assert.equal(slots.name.serif, true);
+	assert.match(slots.name.color, /^#2[de]309[0-2]$/, 'ô tên lấy màu của dòng');
+});

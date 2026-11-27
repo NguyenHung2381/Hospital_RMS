@@ -298,6 +298,8 @@ export interface CertificateText {
 	vector: boolean;
 	/** Khung dòng gốc trên mẫu */
 	box: { x0: number; y0: number; x1: number; y1: number };
+	/** Mẫu nét vẽ: dòng thông tin hội nghị nhận ra được ("Chủ đề", "Thời gian"...) */
+	info_label?: string;
 	/** Vị trí / cỡ của dòng gốc (trước khi sửa) */
 	base: Pick<CertificateText, 'x0' | 'x1' | 'baseline' | 'size' | 'align'>;
 	/** Đã sửa (dòng gốc đã bị xoá khỏi ảnh nền) */
@@ -340,7 +342,7 @@ export const resetCertificateLayout = (seminarId: string) =>
 	apiClient.post<CertificateLayout>(`/seminars/${seg(seminarId)}/certificate-template/layout/reset`, {});
 
 // Thông tin hội nghị in sẵn trên giấy — sửa nhanh không cần mở màn chỉnh mẫu
-export type CertificateInfoKey = 'content' | 'organizer' | 'time' | 'sign_date';
+export type CertificateInfoKey = 'form' | 'content' | 'organizer' | 'time' | 'sign_date';
 export interface CertificateInfoField {
 	key: CertificateInfoKey;
 	label: string;
@@ -352,6 +354,10 @@ export interface CertificateInfoField {
 	prefix: string;
 	/** Ký tự font của mẫu in được; null = in được mọi ký tự (có font đầy đủ) */
 	charset: string | null;
+	/** Mẫu nét vẽ: khung đoạn chữ đang có trên mẫu (cắt từ ảnh nền image_url) */
+	box?: { x0: number; y0: number; x1: number; y1: number };
+	image_url?: string;
+	page?: { width: number; height: number };
 }
 
 export const getCertificateInfo = (seminarId: string) =>

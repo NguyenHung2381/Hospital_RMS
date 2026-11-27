@@ -107,6 +107,8 @@ export function CertificateLayoutEditor({
 	const page = layout?.page ?? { width: 595, height: 842 };
 	const fields = layout?.fields ?? [];
 	const textList = layout ? layout.texts.map((t) => texts[t.id]).filter(Boolean) : [];
+	// Danh sách: dòng thông tin hội nghị nhận ra được lên đầu
+	const textListSorted = [...textList.filter((t) => t.info_label), ...textList.filter((t) => !t.info_label)];
 
 	const geoOf = (s: { kind: Kind; id: string }): Geo | null =>
 		s.kind === 'slot' ? (slots[s.id] ?? null) : (texts[s.id] ?? null);
@@ -382,7 +384,8 @@ export function CertificateLayoutEditor({
 							{/* Dòng chữ in sẵn: thẻ "Chữ trên mẫu" thì chọn được; thẻ kia chỉ hiện dòng đã sửa */}
 							{textList.map((t) => {
 								const interactive = tab === 'text';
-								if (!interactive && !t.edited) return null;
+								// Dòng hội nghị nhận ra được: luôn hiện khung + nhãn để thấy chỗ sẽ thay
+								if (!interactive && !t.edited && !t.info_label) return null;
 								const active = interactive && isSel('text', t.id);
 								// Sửa nhưng chưa lưu (mẫu nét vẽ: hoặc đổi đoạn xoá): ảnh nền vẫn còn chữ gốc → che tạm
 								const cover = t.edited && removedInImage.get(t.id) !== (vector ? textSig(t) : '');
@@ -393,6 +396,7 @@ export function CertificateLayoutEditor({
 											css.line,
 											interactive ? css.lineInteractive : css.linePassive,
 											t.edited ? css.lineEdited : '',
+											t.info_label ? css.lineInfo : '',
 											cover ? css.lineCover : '',
 											active ? css.lineActive : '',
 										].join(' ')}
@@ -410,6 +414,7 @@ export function CertificateLayoutEditor({
 										title={interactive ? t.original || 'Dòng chữ trên mẫu' : undefined}
 									>
 										{t.edited && <span className={css.fieldText}>{t.text}</span>}
+										{t.info_label && <span className={`${css.fieldTag} ${css.infoTag}`}>{t.info_label}</span>}
 										{/* Dòng nét vẽ: chọn đoạn cần thay bằng 2 mép ngay cả khi chưa gõ chữ */}
 										{active && (t.edited || t.vector) && handles({ kind: 'text', id: t.id })}
 									</div>
@@ -529,20 +534,22 @@ export function CertificateLayoutEditor({
 										: 'Bấm một dòng trên mẫu hoặc trong danh sách để sửa — vd tên hội nghị, ngày tháng, người ký.'}
 								</p>
 								<ul className={`${css.list} ${css.listScroll}`}>
-									{textList.map((t) => (
+									{textListSorted.map((t) => (
 										<li key={t.id}>
 											<button
 												type='button'
 												className={`${css.item} ${isSel('text', t.id) ? css.itemActive : ''}`}
 												onClick={() => setSel({ kind: 'text', id: t.id })}
 												title={t.original || undefined}
-												aria-label={t.vector && !t.text ? `Dòng ${t.id.slice(1)} trên mẫu` : undefined}
+												aria-label={t.vector && !t.text ? (t.info_label ?? `Dòng ${t.id.slice(1)} trên mẫu`) : undefined}
 											>
+												{t.info_label && <span className={css.itemKey}>{t.info_label}</span>}
 												{t.vector && !(t.edited && t.text) ? (
 													<LineThumb
 														url={imageUrl}
 														page={page}
-														box={t.box}
+														// Dòng hội nghị: chỉ cắt đoạn giá trị (nhãn đã ghi bên cạnh)
+														box={t.info_label ? { ...t.box, x0: t.base.x0, x1: t.base.x1 } : t.box}
 														struck={t.edited}
 													/>
 												) : (
@@ -739,7 +746,7 @@ export function CertificateLayoutEditor({
 const THUMB_H = 16;
 
 /** Ảnh cắt đúng khung 1 dòng chữ nét vẽ từ ảnh mẫu — thay cho chữ (không đọc được). */
-function LineThumb({
+export function LineThumb({
 	url,
 	page,
 	box,
