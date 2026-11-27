@@ -17,6 +17,8 @@ const {
 	verifyCaptcha,
 	captchaProvider,
 	validateSetting,
+	normalizeSetting,
+	testRecaptcha,
 } = require('../../src/utils/captcha');
 
 const calls = [];
@@ -43,6 +45,93 @@ test('khóa đặt ở Cấu hình hệ thống được ưu tiên hơn .env', a
 	} finally {
 		delete uiSettings.RECAPTCHA_SITE_KEY;
 		delete uiSettings.RECAPTCHA_SECRET_KEY;
+	}
+});
+
+// Khóa dán từ trang Google hay dính khoảng trắng / xuống dòng — trước đây lưu được (kiểm tra
+// trên chuỗi đã cắt) nhưng gửi nguyên văn cho Google ⇒ invalid-input-secret, lượt nào cũng lỗi.
+test('khóa đã lưu dính khoảng trắng → cắt trước khi dùng', async () => {
+	uiSettings.RECAPTCHA_SITE_KEY = ' ui-site-key \n';
+	uiSettings.RECAPTCHA_SECRET_KEY = 'ui-secret-key \r\n';
+	try {
+		assert.deepEqual(await generateCaptcha(), { provider: 'recaptcha', site_key: 'ui-site-key' });
+		mockFetch(() => ({ json: async () => ({ success: true, hostname: 'localhost' }) }));
+		assert.equal(await verifyCaptcha('g-token', undefined, '10.1.2.3'), true);
+		assert.equal(calls.at(-1).body.get('secret'), 'ui-secret-key');
+	} finally {
+		delete uiSettings.RECAPTCHA_SITE_KEY;
+		delete uiSettings.RECAPTCHA_SECRET_KEY;
+	}
+});
+
+test('lưu cấu hình: cắt khoảng trắng khóa reCAPTCHA, giữ chuỗi che và key khác', () => {
+	assert.equal(normalizeSetting('RECAPTCHA_SECRET_KEY', ' abc \n'), 'abc');
+	assert.equal(normalizeSetting('RECAPTCHA_HOSTNAMES', ' rms.vn '), 'rms.vn');
+	assert.equal(normalizeSetting('RECAPTCHA_SECRET_KEY', '••••••'), '••••••');
+	assert.equal(normalizeSetting('SMTP_PASS', ' p '), ' p ');
+	assert.equal(normalizeSetting('RECAPTCHA_SITE_KEY', null), null);
+});
+
+// Nút "Kiểm tra" ở Cấu hình hệ thống
+test('kiểm tra: không token → chỉ thử kết nối, gửi khóa đã cắt khoảng trắng', async () => {
+	uiSettings.RECAPTCHA_SECRET_KEY = 'ui-secret-key \n';
+	try {
+		mockFetch(() => ({
+			json: async () => ({ success: false, 'error-codes': ['invalid-input-response'] }),
+		}));
+		const r = await testRecaptcha();
+		assert.equal(r.ok, true);
+		assert.match(r.message, /gọi được Google/);
+		assert.equal(calls.at(-1).body.get('secret'), 'ui-secret-key');
+	} finally {
+		delete uiSettings.RECAPTCHA_SECRET_KEY;
+	}
+});
+
+test('kiểm tra: không gọi được Google → báo lỗi mạng', async () => {
+	mockFetch(() => {
+		throw Object.assign(new Error('fetch failed'), { cause: { code: 'ENOTFOUND' } });
+	});
+	const r = await testRecaptcha('g-token');
+	assert.equal(r.ok, false);
+	assert.match(r.message, /không gọi được www\.google\.com \(ENOTFOUND\)/);
+});
+
+test('kiểm tra: token thật + khóa sai → nêu lý do', async () => {
+	mockFetch(() => ({
+		json: async () => ({ success: false, 'error-codes': ['invalid-input-secret'] }),
+	}));
+	const r = await testRecaptcha('g-token');
+	assert.equal(r.ok, false);
+	assert.match(r.message, /invalid-input-secret.*khóa bí mật sai/);
+});
+
+test('kiểm tra: cặp khóa đúng nhưng tên miền ngoài danh sách → báo', async () => {
+	mockFetch(() => ({ json: async () => ({ success: true, hostname: '10.0.0.5' }) }));
+	const r = await testRecaptcha('g-token');
+	assert.equal(r.ok, false);
+	assert.match(r.message, /10\.0\.0\.5.*rms\.benhvien\.vn, localhost/);
+});
+
+test('kiểm tra: cặp khóa + tên miền đúng → ok', async () => {
+	mockFetch(() => ({ json: async () => ({ success: true, hostname: 'rms.benhvien.vn' }) }));
+	const r = await testRecaptcha('g-token');
+	assert.deepEqual(r, {
+		ok: true,
+		message: 'Cặp khóa hoạt động bình thường (tên miền rms.benhvien.vn).',
+	});
+});
+
+test('kiểm tra: thiếu khóa → không gọi Google', async () => {
+	const saved = process.env.RECAPTCHA_SECRET_KEY;
+	delete process.env.RECAPTCHA_SECRET_KEY;
+	const before = calls.length;
+	try {
+		const r = await testRecaptcha('g-token');
+		assert.equal(r.ok, false);
+		assert.equal(calls.length, before);
+	} finally {
+		process.env.RECAPTCHA_SECRET_KEY = saved;
 	}
 });
 

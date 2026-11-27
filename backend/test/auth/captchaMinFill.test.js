@@ -31,3 +31,11 @@ test('gửi sớm hơn thời gian điền form tối thiểu → không qua', a
 	}
 	assert.equal(await verifyCaptcha(c.token, nonce), false);
 });
+
+// Frontend (useCaptcha) dựa vào min_fill_sec để chờ đủ rồi mới cho gửi — thiếu thì người dùng
+// gửi lại ngay sau 1 lần lỗi sẽ gặp "Mã xác nhận không đúng hoặc đã hết hạn".
+test('mã proof-of-work báo cho frontend thời gian điền form tối thiểu', async () => {
+	const c = await generateCaptcha();
+	assert.equal(c.provider, 'pow');
+	assert.equal(c.min_fill_sec, 3);
+});

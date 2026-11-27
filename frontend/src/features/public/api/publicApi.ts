@@ -114,7 +114,14 @@ export interface TraineeTypeOption {
 // duyệt tự giải ngầm), hoặc Cloudflare Turnstile / Google reCAPTCHA v2 khi đã
 // cấu hình khóa.
 export type Captcha =
-	| { provider: 'pow'; token: string; bits: number; expires_in: number }
+	| {
+			provider: 'pow';
+			token: string;
+			bits: number;
+			expires_in: number;
+			/** Server từ chối mã được gửi sớm hơn ngần này giây kể từ lúc cấp (chống bot) */
+			min_fill_sec?: number;
+	  }
 	| { provider: 'turnstile'; site_key: string; action: string }
 	| { provider: 'recaptcha'; site_key: string };
 

@@ -25,6 +25,18 @@ router.get(
 	}),
 );
 
+// Kiểm tra Google reCAPTCHA bằng khóa đã lưu. token (tùy chọn) = token admin vừa tích trên
+// trang cấu hình — có thì thử trọn cặp khóa + tên miền, không thì chỉ thử kết nối tới Google.
+router.post(
+	'/test-recaptcha',
+	[body('token').optional().isString().isLength({ max: 4096 })],
+	validate,
+	asyncHandler(async (req, res) => {
+		const r = await captcha.testRecaptcha(req.body.token);
+		return r.ok ? success(res, r, r.message) : error(res, r.message, 400);
+	}),
+);
+
 // Gửi thử bằng cấu hình SMTP hiện tại (đã lưu) — báo lỗi thật thay vì nuốt như send().
 router.post('/test-mail', [body('to').isEmail()], validate, async (req, res, next) => {
 	try {
@@ -65,7 +77,7 @@ router.put(
 	validate,
 	asyncHandler(async (req, res) => {
 		if (!systemSettingService.isKey(req.params.key)) return notFound(res);
-		const value = req.body.value ?? null;
+		const value = captcha.normalizeSetting(req.params.key, req.body.value ?? null);
 		const invalid =
 			systemSettingService.validateSetting(req.params.key, value) ??
 			uploadPolicy.validateSetting(req.params.key, value) ??
@@ -75,11 +87,7 @@ router.put(
 			captcha.validateSetting(req.params.key, value) ??
 			tempPasswordPolicy.validateSetting(req.params.key, value);
 		if (invalid) return error(res, invalid, 400);
-		const item = await systemSettingService.update(
-			req.params.key,
-			req.body.value ?? null,
-			req.user.id,
-		);
+		const item = await systemSettingService.update(req.params.key, value, req.user.id);
 		return success(res, item, 'Đã cập nhật cấu hình');
 	}),
 );

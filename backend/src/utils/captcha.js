@@ -41,13 +41,23 @@ const turnstileEnabled = () =>
 	!!(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
 
 const RECAPTCHA_KEYS = ['RECAPTCHA_SITE_KEY', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_HOSTNAMES'];
-// Khóa reCAPTCHA: Cấu hình hệ thống, từng key trống thì lấy .env (systemSettingService.getValue)
+// Khóa reCAPTCHA: Cấu hình hệ thống, từng key trống thì lấy .env (systemSettingService.getValue).
+// Cắt khoảng trắng: khóa dán từ trang quản trị Google hay dính dấu cách / xuống dòng ở cuối —
+// secret dính khoảng trắng thì Google trả invalid-input-secret, MỌI lượt gửi đều bị từ chối.
+// Cắt cả lúc đọc để giá trị đã lưu trước bản sửa này (chưa cắt) cũng dùng được.
 const recaptchaConfig = async () => {
 	const [siteKey, secretKey, hostnames] = await Promise.all(
-		RECAPTCHA_KEYS.map((k) => systemSettingService.getValue(k)),
+		RECAPTCHA_KEYS.map(async (k) => (await systemSettingService.getValue(k))?.trim() || undefined),
 	);
 	return { siteKey, secretKey, hostnames };
 };
+
+// Chuẩn hóa giá trị trước khi lưu (systemSettings.routes.js) — khớp với validateSetting,
+// vốn kiểm tra trên chuỗi đã cắt. Chuỗi che (••••••) của secret giữ nguyên để service nhận ra.
+const normalizeSetting = (key, value) =>
+	RECAPTCHA_KEYS.includes(key) && typeof value === 'string' && !/^•+$/.test(value)
+		? value.trim()
+		: value;
 const recaptchaEnabled = async () => {
 	const c = await recaptchaConfig();
 	return !!(c.siteKey && c.secretKey);
@@ -94,7 +104,15 @@ const generateCaptcha = async () => {
 				{ d: POW_BITS, jti: crypto.randomUUID() },
 				CAPTCHA_TTL_SEC,
 			);
-			return { provider: 'pow', token, bits: POW_BITS, expires_in: CAPTCHA_TTL_SEC };
+			// min_fill_sec: frontend chờ đủ ngần này giây kể từ lúc nhận mã mới cho gửi
+			// (lời giải chỉ mất < 1 giây — gửi lại ngay sau 1 lần lỗi sẽ bị verifyPow từ chối)
+			return {
+				provider: 'pow',
+				token,
+				bits: POW_BITS,
+				expires_in: CAPTCHA_TTL_SEC,
+				min_fill_sec: MIN_FILL_SEC,
+			};
 		}
 	}
 };
@@ -124,7 +142,9 @@ const callWithRetry = async (name, call) => {
 const hostnameAllowed = (name, hostsEnv, hostname) => {
 	const hosts = parseHostnames(hostsEnv);
 	if (!hosts.length || hosts.includes(String(hostname || '').toLowerCase())) return true;
-	logger.warn(`[captcha] ${name} sai hostname:`, hostname);
+	logger.warn(
+		`[captcha] ${name} sai hostname: ${hostname} — không có trong danh sách tên miền cho phép (${hosts.join(', ')})`,
+	);
 	return false;
 };
 
@@ -156,6 +176,77 @@ const verifyTurnstile = async (token, ip) => {
 	return hostnameAllowed('Turnstile', process.env.TURNSTILE_HOSTNAMES, json.hostname);
 };
 
+// Người dùng chỉ thấy 1 câu chung — log ghi rõ lý do để admin sửa cấu hình
+const RECAPTCHA_ERROR_HINTS = {
+	'invalid-input-secret':
+		'khóa bí mật sai hoặc không cùng cặp với site key (Cấu hình hệ thống → Bảo mật & Tài khoản)',
+	'missing-input-secret': 'chưa có khóa bí mật',
+	'invalid-input-response':
+		'token không hợp lệ — thường do site key và khóa bí mật thuộc 2 cặp khóa khác nhau',
+	'timeout-or-duplicate': 'token đã dùng hoặc quá 2 phút từ lúc tích ô',
+	'bad-request': 'yêu cầu gửi Google bị lỗi',
+};
+
+const recaptchaHints = (codes) =>
+	codes
+		.map((c) => RECAPTCHA_ERROR_HINTS[c])
+		.filter(Boolean)
+		.join('; ');
+
+// Nút "Kiểm tra" ở Cấu hình hệ thống (systemSettings.routes.js), dùng khóa ĐÃ LƯU.
+// token = token thật admin vừa tích trên trang cấu hình ⇒ thử trọn cặp khóa + tên miền.
+// Không có token thì chỉ thử máy chủ gọi được Google: Google xét token trước khóa bí mật,
+// token giả luôn ra invalid-input-response dù khóa đúng hay sai.
+// Trả { ok, message } — ok = false: cấu hình / mạng đang làm mọi lượt đăng ký bị từ chối.
+const testRecaptcha = async (token) => {
+	const config = await recaptchaConfig();
+	if (!config.siteKey || !config.secretKey)
+		return { ok: false, message: 'Chưa đặt đủ Site key và Secret key.' };
+	const note = turnstileEnabled()
+		? ' Lưu ý: máy chủ đang đặt khóa Turnstile trong .env nên form công khai dùng Turnstile, không dùng reCAPTCHA.'
+		: '';
+	/** @type {any} */
+	let json;
+	try {
+		const res = await fetch(RECAPTCHA_VERIFY_URL, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				secret: config.secretKey,
+				response: token || 'kiem-tra',
+			}).toString(),
+			signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS * 2),
+		});
+		json = await res.json();
+	} catch (err) {
+		return {
+			ok: false,
+			message: `Máy chủ không gọi được www.google.com (${err.cause?.code || err.name}) nên mọi lượt đăng ký đang bị từ chối. Cần mở tường lửa / DNS, hoặc cấu hình proxy cho backend.${note}`,
+		};
+	}
+	if (!token)
+		return {
+			ok: true,
+			message: `Máy chủ gọi được Google. Tích ô "Tôi không phải người máy" rồi bấm Kiểm tra để thử cả cặp khóa.${note}`,
+		};
+	if (json.success !== true) {
+		const codes = json['error-codes'] || [];
+		const hints = recaptchaHints(codes);
+		return {
+			ok: false,
+			message: `Google từ chối (${codes.join(', ') || 'không rõ lý do'})${hints ? `: ${hints}` : ''}.${note}`,
+		};
+	}
+	const hosts = parseHostnames(config.hostnames);
+	const hostname = String(json.hostname || '').toLowerCase();
+	if (hosts.length && !hosts.includes(hostname))
+		return {
+			ok: false,
+			message: `Cặp khóa đúng, nhưng tên miền "${hostname}" không có trong "Chỉ nhận từ tên miền" (${hosts.join(', ')}): người dùng mở trang ở tên miền này sẽ bị từ chối.${note}`,
+		};
+	return { ok: true, message: `Cặp khóa hoạt động bình thường (tên miền ${hostname}).${note}` };
+};
+
 // Google chỉ nhận body dạng form (application/x-www-form-urlencoded), không nhận JSON.
 const verifyRecaptcha = async (token, ip) => {
 	const config = await recaptchaConfig();
@@ -176,7 +267,9 @@ const verifyRecaptcha = async (token, ip) => {
 	});
 	if (!json) return false;
 	if (json.success !== true) {
-		logger.warn('[captcha] reCAPTCHA từ chối:', (json['error-codes'] || []).join(','));
+		const codes = json['error-codes'] || [];
+		const hints = recaptchaHints(codes);
+		logger.warn('[captcha] reCAPTCHA từ chối:', codes.join(','), hints ? `— ${hints}` : '');
 		return false;
 	}
 	return hostnameAllowed('reCAPTCHA', config.hostnames, json.hostname);
@@ -215,4 +308,6 @@ module.exports = {
 	verifyCaptcha,
 	captchaProvider,
 	validateSetting,
+	normalizeSetting,
+	testRecaptcha,
 };

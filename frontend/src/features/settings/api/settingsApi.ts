@@ -76,6 +76,9 @@ export const settingsApi = {
 	update: (key: string, value: string) => apiClient.put<SettingRow>(`/system-settings/${seg(key)}`, { value }),
 	testMail: (to: string) => apiClient.post<null>('/system-settings/test-mail', { to }),
 	testClamav: () => apiClient.post<{ host: string; port: number; version: string | null }>('/system-settings/test-clamav', {}),
+	/** token = token reCAPTCHA vừa tích (thử cả cặp khóa); bỏ trống = chỉ thử kết nối tới Google */
+	testRecaptcha: (token?: string) =>
+		apiClient.post<{ ok: boolean; message: string }>('/system-settings/test-recaptcha', token ? { token } : {}),
 	docCheckStatus: () => apiClient.get<DocCheckStatus>('/system-settings/doc-check'),
 	/** Không tham số: thử lại file lỗi. 'signature': kiểm lại chữ ký mọi file (sau khi bật thêm mục kiểm). */
 	retryDocCheck: (what?: 'signature') =>

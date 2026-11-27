@@ -14,6 +14,11 @@ type PowStatus = 'loading' | 'solving' | 'done' | 'error';
 const RENEW_BEFORE_SEC = 30;
 // Vòng xoay tối thiểu sau khi tích ô — lời giải thường đã xong từ trước
 const MIN_SPIN_MS = 700;
+// Server (CAPTCHA_MIN_FILL_SEC) từ chối mã gửi quá sớm sau lúc cấp — lời giải chỉ mất < 1 giây
+// nên gửi lại ngay sau 1 lần lỗi (mã mới vừa cấp) sẽ bị báo "hết hạn". Chờ đủ thời gian đó
+// (cộng chút dư cho iat làm tròn giây) rồi mới coi là xác minh xong.
+const DEFAULT_MIN_FILL_SEC = 3;
+const MIN_FILL_MARGIN_MS = 300;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -55,6 +60,9 @@ export function useCaptcha() {
 	const [checked, setChecked] = useState(false);
 	const [spinning, setSpinning] = useState(false);
 	const [powError, setPowError] = useState('');
+	// Mốc (ms) sớm nhất được gửi mã proof-of-work hiện tại; fillReady = đã qua mốc
+	const [readyAt, setReadyAt] = useState(0);
+	const [fillReady, setFillReady] = useState(false);
 	// Bỏ kết quả của lượt lấy / giải mã cũ khi đã reload
 	const seq = useRef(0);
 
@@ -66,6 +74,10 @@ export function useCaptcha() {
 				if (!current()) return;
 				setCaptcha(c);
 				if (c.provider !== 'pow') return;
+				setFillReady(false);
+				setReadyAt(
+					Date.now() + (c.min_fill_sec ?? DEFAULT_MIN_FILL_SEC) * 1000 + MIN_FILL_MARGIN_MS,
+				);
 				setPowStatus('solving');
 				const solved = await solveChallenge({ token: c.token, bits: c.bits });
 				if (!current()) return;
@@ -91,6 +103,7 @@ export function useCaptcha() {
 	// Lấy mã mới, giữ nguyên trạng thái ô đã tích (dùng khi mã sắp hết hạn)
 	const renew = useCallback(() => {
 		setNonce('');
+		setFillReady(false);
 		setPowStatus('loading');
 		void fetchCaptcha();
 	}, [fetchCaptcha]);
@@ -117,12 +130,19 @@ export function useCaptcha() {
 		return () => window.clearTimeout(t);
 	}, [captcha, renew]);
 
+	// Tới mốc readyAt thì cho gửi
+	useEffect(() => {
+		if (!readyAt) return;
+		const t = window.setTimeout(() => setFillReady(true), Math.max(readyAt - Date.now(), 0));
+		return () => window.clearTimeout(t);
+	}, [readyAt]);
+
 	const checkState: HumanCheckState =
 		powStatus === 'error'
 			? 'error'
 			: !checked
 				? 'idle'
-				: spinning || powStatus !== 'done'
+				: spinning || powStatus !== 'done' || !fillReady
 					? 'verifying'
 					: 'verified';
 

@@ -463,6 +463,7 @@ GET    /api/v1/system-settings/doc-check  system_settings:manage
 POST   /api/v1/system-settings/doc-check/retry  system_settings:manage
 POST   /api/v1/system-settings/test-clamav  system_settings:manage
 POST   /api/v1/system-settings/test-mail  system_settings:manage
+POST   /api/v1/system-settings/test-recaptcha  system_settings:manage
 POST   /api/v1/topics/  topics:create
 GET    /api/v1/topics/  topics:read
 DELETE /api/v1/topics/:id  topics:delete

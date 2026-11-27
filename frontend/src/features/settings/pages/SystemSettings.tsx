@@ -30,6 +30,7 @@ import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
 import RadiusMap from '../components/RadiusMap';
 import DocCheckPanel from '../components/DocCheckPanel';
+import RecaptchaTestPanel from '../components/RecaptchaTestPanel';
 import { TUITION_BANKS } from '../../tuition/utils/banks';
 
 type Field = {
@@ -67,7 +68,7 @@ type Group = {
 	/** Công tắc tổng — khi tắt thì cảnh báo nhóm này chưa có tác dụng. */
 	dependsOn?: { key: string; text: string };
 	/** Công cụ hỗ trợ hiện cuối nhóm. */
-	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test' | 'doc-check';
+	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test' | 'doc-check' | 'recaptcha-test';
 	fields: Field[];
 };
 
@@ -163,6 +164,7 @@ const SECTIONS: Section[] = [
 				title: 'Chống bot form đăng ký công khai',
 				desc: 'Google reCAPTCHA v2 cho form đăng ký khóa học / đề tài. Để trống cả hai khóa = dùng kiểm tra chạy ngầm.',
 				more: 'Đặt đủ Site key + Secret key thì form hiện ô tích "Tôi không phải người máy" của Google. Để trống cả hai thì dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ không ra Internet.',
+				tool: 'recaptcha-test',
 				fields: [
 					{
 						key: 'RECAPTCHA_SITE_KEY',
@@ -1311,6 +1313,8 @@ export default function SystemSettings() {
 			);
 		}
 		if (tool === 'doc-check') return <DocCheckPanel />;
+		if (tool === 'recaptcha-test')
+			return <RecaptchaTestPanel siteKey={(saved.RECAPTCHA_SITE_KEY || env.RECAPTCHA_SITE_KEY || '').trim()} dirty={dirty.length > 0} />;
 		if (tool === 'attendance-helper') {
 			// Bản đồ xem trước tọa độ + bán kính đang nhập (chưa lưu cũng hiện)
 			const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(form.ATTENDANCE_LOCATION ?? '');
