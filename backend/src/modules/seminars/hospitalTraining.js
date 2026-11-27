@@ -45,20 +45,26 @@ const applyLessonCredits = (data) =>
 		? { ...data, cme_default_credits: data.lesson_hours }
 		: data;
 
-// Ghi đè danh sách khoa bắt buộc tham dự (undefined = không đổi)
-const setRequiredDepartments = async (pool, seminarId, ids) => {
+// Ghi đè danh sách khoa bắt buộc tham dự (undefined = không đổi). db: tx của người
+// gọi. DELETE và INSERT là 2 lần query — PostgreSQL không nhận nhiều câu trong 1
+// prepared statement (42601).
+const setRequiredDepartments = async (db, seminarId, ids) => {
 	if (!Array.isArray(ids)) return;
-	const req = pool.request().input('sid', sql.VarChar(20), seminarId);
+	await db
+		.request()
+		.input('sid', sql.VarChar(20), seminarId)
+		.query('DELETE FROM seminar_required_departments WHERE seminar_id = @sid');
+	const req = db.request().input('sid', sql.VarChar(20), seminarId);
 	const values = [...new Set(ids.filter(Boolean))]
 		.map((id, i) => {
 			req.input(`d${i}`, sql.VarChar(20), id);
 			return `(@sid, @d${i})`;
 		})
 		.join(', ');
-	await req.query(`
-    DELETE FROM seminar_required_departments WHERE seminar_id = @sid;
-    ${values ? `INSERT INTO seminar_required_departments (seminar_id, department_id) VALUES ${values};` : ''}
-  `);
+	if (values)
+		await req.query(
+			`INSERT INTO seminar_required_departments (seminar_id, department_id) VALUES ${values}`,
+		);
 };
 
 module.exports = {

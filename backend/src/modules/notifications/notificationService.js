@@ -311,7 +311,6 @@ module.exports = {
 	markAllRead,
 	push,
 	pushWithEmail,
-	getUsersByTarget,
 	sendBroadcast,
 	adminGetAll,
 	getBatchRecipients,

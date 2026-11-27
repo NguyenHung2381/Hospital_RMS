@@ -7,7 +7,8 @@
  * với users/external_reviewers, match đề tài (đã có sẵn trong đợt) theo tên →
  * dry_run trả preview; commit tạo hội đồng draft + 5 ghế + gán đề tài & phiên.
  */
-const { getPool, sql } = require('../../config/db');
+const { getPool, sql, withActorTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
@@ -443,67 +444,79 @@ const importExcel = async ({ buffer, round_id, dry_run }, actorId) => {
 		};
 	}
 
-	// Commit — theo pattern autoAssign: tạo tuần tự qua councilService, hội đồng
-	// draft nên lỗi giữa chừng xóa tay được ngay trên UI.
+	// Commit — cả file trong MỘT transaction có người thao tác: lỗi giữa chừng thì
+	// không để lại hội đồng thiếu ghế / đề tài gán dở; sửa file rồi nhập lại.
 	let councilsCreated = 0;
 	let topicsAssigned = 0;
-	for (const c of councils) {
-		if (c.duplicate) continue;
-		const council = await councilService.create(
-			{
-				round_id,
-				name: c.name,
-				specialty_group: c.specialty_group,
-				location: c.location,
-			},
-			actorId,
-		);
-		councilsCreated++;
-
-		for (const s of c.seats) {
-			if (!s.matched) continue; // ghế lỗi để trống — đã có warning, bổ sung tay
-			await councilService.addMember(
-				council.id,
+	await withActorTransaction(actorId, async (tx) => {
+		const opts = { tx };
+		for (const c of councils) {
+			if (c.duplicate) continue;
+			const council = await councilService.create(
 				{
-					user_id: s.matched.type === 'user' ? s.matched.id : null,
-					external_reviewer_id: s.matched.type === 'external' ? s.matched.id : null,
-					role: s.role,
+					round_id,
+					name: c.name,
+					specialty_group: c.specialty_group,
+					location: c.location,
 				},
 				actorId,
+				opts,
 			);
-		}
+			councilsCreated++;
 
-		const assignable = c.topics.filter((t) => t.matched && !t.skip_assign);
-		if (assignable.length) {
-			await councilAssignmentService.assignTopics(
-				council.id,
-				assignable.map((t) => t.matched.id),
-				actorId,
-			);
-			for (const t of assignable) {
-				if (t.session) {
-					await councilAssignmentService.setTopicSession(
-						council.id,
-						t.matched.id,
-						t.session,
-						actorId,
-					);
-				}
-				for (const s of t.substitutes) {
-					// Ghế thay thế chỉ hỗ trợ người trong viện (bảng chỉ có user_id)
-					if (s.matched?.type === 'user') {
-						await councilAssignmentService.setSeatSubstitute(
+			for (const s of c.seats) {
+				if (!s.matched) continue; // ghế lỗi để trống — đã có warning, bổ sung tay
+				await councilService.addMember(
+					council.id,
+					{
+						user_id: s.matched.type === 'user' ? s.matched.id : null,
+						external_reviewer_id: s.matched.type === 'external' ? s.matched.id : null,
+						role: s.role,
+					},
+					actorId,
+					opts,
+				);
+			}
+
+			const assignable = c.topics.filter((t) => t.matched && !t.skip_assign);
+			if (assignable.length) {
+				await councilAssignmentService.assignTopics(
+					council.id,
+					assignable.map((t) => t.matched.id),
+					actorId,
+					opts,
+				);
+				for (const t of assignable) {
+					if (t.session) {
+						await councilAssignmentService.setTopicSession(
 							council.id,
 							t.matched.id,
-							s.role,
-							s.matched.id,
+							t.session,
 							actorId,
+							opts,
 						);
 					}
+					for (const s of t.substitutes) {
+						// Ghế thay thế chỉ hỗ trợ người trong viện (bảng chỉ có user_id)
+						if (s.matched?.type === 'user') {
+							await councilAssignmentService.setSeatSubstitute(
+								council.id,
+								t.matched.id,
+								s.role,
+								s.matched.id,
+								actorId,
+								opts,
+							);
+						}
+					}
 				}
+				topicsAssigned += assignable.length;
 			}
-			topicsAssigned += assignable.length;
 		}
+	});
+	if (councilsCreated) {
+		broadcast('update', { entity: 'council' });
+		if (topicsAssigned) broadcast('update', { entity: 'topic' });
 	}
 
 	return {

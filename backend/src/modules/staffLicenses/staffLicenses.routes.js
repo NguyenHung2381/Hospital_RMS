@@ -6,8 +6,9 @@ const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const uploadExcel = require('../../middlewares/uploadExcel');
 const staffLicenseImportService = require('./staffLicenseImportService');
-const { success } = require('../../utils/response');
+const { success, notFound } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { formFlag } = require('../../utils/formFlag');
 
 const ctrl = createCrudController(staffLicenseService);
 
@@ -27,7 +28,6 @@ router.get(
 	'/by-user/:userId',
 	authorizePermission(['staff_licenses', 'read']),
 	asyncHandler(async (req, res) => {
-		const { success, notFound } = require('../../utils/response');
 		const item = await staffLicenseService.getByUserId(req.params.userId);
 		if (!item) return notFound(res);
 		return success(res, item);
@@ -49,7 +49,7 @@ router.post(
 	asyncHandler(async (req, res) => {
 		if (!req.file)
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
-		const dry_run = req.body.dry_run === '1' || req.body.dry_run === 'true';
+		const dry_run = formFlag(req.body.dry_run);
 		return success(
 			res,
 			await staffLicenseImportService.importExcel(

@@ -3,10 +3,11 @@ const cmeRecordImportService = require('./cmeRecordImportService');
 const cmeReportService = require('./cmeReportService');
 const cmeReportWorkbook = require('./exports/cmeReportWorkbook');
 const cmeUserService = require('./cmeUserService');
-const { success, created, notFound } = require('../../utils/response');
+const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { hasPermission } = require('../../permissions/authz');
 const { departmentLimit } = require('../../permissions/actionScope');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { formFlag } = require('../../utils/formFlag');
 
 const getAll = asyncHandler(async (req, res) => {
 	return success(res, await cmeRecordService.getAll(req.query));
@@ -96,7 +97,7 @@ const importExcel = asyncHandler(async (req, res) => {
 	}
 	// Tạo nhân viên mới từ file = tạo tài khoản người dùng → cần thêm quyền users:create
 	const canCreateStaff = hasPermission(req.user, 'users', 'create');
-	const createMissing = req.body.create_missing === '1' || req.body.create_missing === 'true';
+	const createMissing = formFlag(req.body.create_missing);
 	if (createMissing && !canCreateStaff) {
 		return res.status(403).json({
 			success: false,
@@ -113,7 +114,7 @@ const importExcel = asyncHandler(async (req, res) => {
 	const out = await cmeRecordImportService.importExcel(
 		{
 			buffer: req.file.buffer,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			dry_run: formFlag(req.body.dry_run),
 			defaults: {
 				year: parseInt(req.body.year, 10) || null,
 				group_id: req.body.group_id || null,
@@ -132,8 +133,7 @@ const importExcel = asyncHandler(async (req, res) => {
 				can_create_staff: canCreateStaff,
 				force_department_id: staffDeptLimit || null,
 				// Người nhập đã xác nhận nhập cả dòng trùng ghi nhận đã có / dòng khác trong file
-				include_duplicates:
-					req.body.include_duplicates === '1' || req.body.include_duplicates === 'true',
+				include_duplicates: formFlag(req.body.include_duplicates),
 			},
 		},
 		req.user.id,
@@ -155,19 +155,6 @@ const reviewWith = (approve) =>
 	});
 const approve = reviewWith(true);
 const reject = reviewWith(false);
-
-const sendWorkbook = async (res, wb, fileName) => {
-	res.setHeader(
-		'Content-Type',
-		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-	);
-	res.setHeader(
-		'Content-Disposition',
-		`attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-	);
-	await wb.xlsx.write(res);
-	res.end();
-};
 
 const importTemplate = asyncHandler(async (req, res) => {
 	return sendWorkbook(

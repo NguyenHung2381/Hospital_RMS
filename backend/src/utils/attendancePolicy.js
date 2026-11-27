@@ -123,6 +123,4 @@ module.exports = {
 	parseCidr,
 	splitList,
 	distanceM,
-	parseLocation,
-	DEFAULT_RADIUS_M,
 };

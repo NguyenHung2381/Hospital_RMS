@@ -11,6 +11,7 @@ const roundService = require('../rounds/roundService');
 const { httpError } = require('../../utils/httpError');
 const { computeAllowedActions, topicScope, inDepartmentScope } = require('./topicPolicy');
 const formCustomValueService = require('../forms/formCustomValueService');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const getAll = async (filters, actor = null) => {
 	const {
@@ -222,20 +223,19 @@ const getById = async (id, actor = null) => {
 	return topic;
 };
 
-// Ghi đè danh sách chuyên ngành liên quan của đề tài
-const setRelatedDepartments = async (topicId, ids) => {
-	const pool = await getPool();
-	const req = pool.request().input('topic_id', sql.VarChar(15), topicId);
+// Ghi đè danh sách chuyên ngành liên quan của đề tài. DELETE và INSERT là 2 lần
+// query trên cùng tx — PostgreSQL không nhận nhiều câu trong 1 prepared statement (42601).
+const setRelatedDepartments = async (tx, topicId, ids) => {
+	await tx
+		.request()
+		.input('topic_id', sql.VarChar(15), topicId)
+		.query('DELETE FROM topic_related_departments WHERE topic_id = @topic_id');
+	if (!ids.length) return;
+	const req = tx.request().input('topic_id', sql.VarChar(15), topicId);
 	ids.forEach((d, i) => req.input(`d${i}`, sql.VarChar(20), d));
 	await req.query(`
-    DELETE FROM topic_related_departments WHERE topic_id = @topic_id;
-    ${
-			ids.length
-				? `INSERT INTO topic_related_departments (topic_id, department_id)
-           VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')};`
-				: ''
-		}
-  `);
+    INSERT INTO topic_related_departments (topic_id, department_id)
+    VALUES ${ids.map((_, i) => `(@topic_id, @d${i})`).join(', ')}`);
 };
 
 // Cấp độ đề tài lấy theo đợt (mỗi đợt đúng 1 cấp độ) — form không hỏi nữa;
@@ -273,10 +273,11 @@ const create = async (data, actorId) => {
               @is_legacy, @acceptance_rating, @acceptance_score, @acceptance_date)
     `);
 		await ensureApproval(tx, id, actorId); // đề tài mới luôn 'submitted'
+		// cùng transaction: lỗi ở đây không để lại đề tài đã tạo mà người dùng tưởng chưa lưu
+		if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
+			await setRelatedDepartments(tx, id, data.related_department_ids);
 		return id;
 	});
-	if (Array.isArray(data.related_department_ids) && data.related_department_ids.length)
-		await setRelatedDepartments(newId, data.related_department_ids);
 	const topic = await getById(newId);
 	broadcast('update', { entity: 'topic' });
 	return topic;
@@ -364,18 +365,11 @@ const update = async (id, data, actorId, actor = null) => {
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.title !== undefined) {
-		sets.push('title = @title');
-		req.input('title', sql.NVarChar(500), data.title);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description);
-	}
-	if (data.category_id !== undefined) {
-		sets.push('category_id = @cat');
-		req.input('cat', sql.VarChar(6), data.category_id);
-	}
+	addSets(req, sets, data, {
+		title: sql.NVarChar(500),
+		description: sql.NVarChar(sql.MAX),
+		category_id: [sql.VarChar(6), { param: 'cat' }],
+	});
 	// level_id từ client bị bỏ qua: cấp độ theo đợt, tính lại khi đổi đợt / loại bài
 	const roundChanged = data.round_id !== undefined && data.round_id !== current.round_id;
 	const typeChanged = data.article_type !== undefined && data.article_type !== current.article_type;
@@ -390,62 +384,22 @@ const update = async (id, data, actorId, actor = null) => {
 			),
 		);
 	}
-	if (data.department_id !== undefined) {
-		sets.push('department_id = @dept');
-		req.input('dept', sql.VarChar(20), data.department_id);
-	}
-	if (data.round_id !== undefined) {
-		sets.push('round_id = @round_id');
-		req.input('round_id', sql.VarChar(10), data.round_id);
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(15), data.status);
-	}
-	if (data.article_type !== undefined) {
-		sets.push('article_type = @article_type');
-		req.input('article_type', sql.VarChar(20), data.article_type);
-	}
-	if (data.journal_name !== undefined) {
-		sets.push('journal_name = @journal_name');
-		req.input('journal_name', sql.NVarChar(255), data.journal_name || null);
-	}
-	if (data.doi !== undefined) {
-		sets.push('doi = @doi');
-		req.input('doi', sql.VarChar(100), data.doi || null);
-	}
-	if (data.publish_date !== undefined) {
-		sets.push('publish_date = @publish_date');
-		req.input('publish_date', sql.Date, data.publish_date || null);
-	}
-	if (data.budget_estimated !== undefined) {
-		sets.push('budget_estimated = @budget_estimated');
-		req.input('budget_estimated', sql.Decimal(18, 2), data.budget_estimated);
-	}
-	if (data.budget_actual !== undefined) {
-		sets.push('budget_actual = @budget_actual');
-		req.input('budget_actual', sql.Decimal(18, 2), data.budget_actual);
-	}
-	if (data.approval_decision_no !== undefined) {
-		sets.push('approval_decision_no = @approval_decision_no');
-		req.input('approval_decision_no', sql.NVarChar(100), data.approval_decision_no || null);
-	}
-	if (data.approval_decision_date !== undefined) {
-		sets.push('approval_decision_date = @approval_decision_date');
-		req.input('approval_decision_date', sql.Date, data.approval_decision_date || null);
-	}
-	if (data.recognition_decision_no !== undefined) {
-		sets.push('recognition_decision_no = @recognition_decision_no');
-		req.input('recognition_decision_no', sql.NVarChar(100), data.recognition_decision_no || null);
-	}
-	if (data.recognition_decision_date !== undefined) {
-		sets.push('recognition_decision_date = @recognition_decision_date');
-		req.input('recognition_decision_date', sql.Date, data.recognition_decision_date || null);
-	}
-	if (data.acceptance_rating !== undefined) {
-		sets.push('acceptance_rating = @acceptance_rating');
-		req.input('acceptance_rating', sql.VarChar(20), data.acceptance_rating || null);
-	}
+	addSets(req, sets, data, {
+		department_id: [sql.VarChar(20), { param: 'dept' }],
+		round_id: sql.VarChar(10),
+		status: sql.VarChar(15),
+		article_type: sql.VarChar(20),
+		journal_name: [sql.NVarChar(255), { orNull: true }],
+		doi: [sql.VarChar(100), { orNull: true }],
+		publish_date: [sql.Date, { orNull: true }],
+		budget_estimated: sql.Decimal(18, 2),
+		budget_actual: sql.Decimal(18, 2),
+		approval_decision_no: [sql.NVarChar(100), { orNull: true }],
+		approval_decision_date: [sql.Date, { orNull: true }],
+		recognition_decision_no: [sql.NVarChar(100), { orNull: true }],
+		recognition_decision_date: [sql.Date, { orNull: true }],
+		acceptance_rating: [sql.VarChar(20), { orNull: true }],
+	});
 	if (data.acceptance_score !== undefined) {
 		sets.push('acceptance_score = @acceptance_score');
 		req.input(
@@ -464,7 +418,10 @@ const update = async (id, data, actorId, actor = null) => {
 	}
 
 	const relatedChanged = Array.isArray(data.related_department_ids);
-	if (relatedChanged) await setRelatedDepartments(id, data.related_department_ids);
+	if (relatedChanged)
+		await withActorTransaction(actorId, (tx) =>
+			setRelatedDepartments(tx, id, data.related_department_ids),
+		);
 
 	if (!sets.length) {
 		if (relatedChanged) broadcast('update', { entity: 'topic' });
@@ -481,19 +438,19 @@ const update = async (id, data, actorId, actor = null) => {
 };
 
 const remove = async (id, actorId) => {
-	const pool = await getPool();
-	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members)
-	await pool.request().input('topic_id', sql.VarChar(15), id).query(`
+	// Phải NULL hóa FK trên users trước khi xóa topic (cascade xóa topic_members).
+	// Cùng 1 transaction có người thao tác: DELETE lỗi thì tài khoản giữ liên kết.
+	await withActorTransaction(actorId, async (tx) => {
+		await tx.request().input('topic_id', sql.VarChar(15), id).query(`
       UPDATE users SET topic_member_id = NULL
       WHERE topic_member_id IN (SELECT id FROM topic_members WHERE topic_id = @topic_id)
     `);
-	await withActorTransaction(actorId, (tx) =>
-		tx
+		await tx
 			.request()
 			.input('id', sql.VarChar(15), id)
 			.input('actor_id', sql.VarChar(20), actorId)
-			.query(`DELETE FROM topics WHERE id = @id`),
-	);
+			.query(`DELETE FROM topics WHERE id = @id`);
+	});
 	await formCustomValueService.remove('topic', id);
 	broadcast('update', { entity: 'topic' });
 };

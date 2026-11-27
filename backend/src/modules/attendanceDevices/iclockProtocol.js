@@ -248,7 +248,6 @@ module.exports = {
 	parseOperlog,
 	parseDeviceCmdResult,
 	parseInfo,
-	isModernPush,
 	formatOptions,
 	deviceName,
 	formatUserUpsert,

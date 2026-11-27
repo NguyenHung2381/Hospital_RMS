@@ -161,4 +161,4 @@ const notify = async (event) => {
 	}
 };
 
-module.exports = { notify, IMMEDIATE, BURST };
+module.exports = { notify };

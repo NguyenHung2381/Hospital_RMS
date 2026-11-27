@@ -29,14 +29,15 @@ const getTopics = async (councilId) => {
 };
 
 // Chỉ gán được đề tài cùng đợt (round_id) với hội đồng.
-const assignTopics = async (councilId, topicIds, actorId) => {
+// opts.tx: chạy trong transaction của người gọi (đã gắn người thao tác), không broadcast.
+const assignTopics = async (councilId, topicIds, actorId, { tx = null } = {}) => {
 	if (!Array.isArray(topicIds) || topicIds.length === 0) return { assigned: 0 };
 
 	const idParams = topicIds.map((_, i) => `@id${i}`).join(',');
 	const moved = `id IN (${idParams})
       AND round_id = (SELECT round_id FROM councils WHERE id = @council_id)`;
 
-	const result = await withActorTransaction(actorId, async (tx) => {
+	const write = async (tx) => {
 		const req = () => {
 			const r = tx
 				.request()
@@ -52,8 +53,9 @@ const assignTopics = async (councilId, topicIds, actorId) => {
       DELETE FROM council_seat_substitutes WHERE topic_id IN (
         SELECT id FROM topics WHERE ${moved} AND council_id IS NOT NULL AND council_id <> @council_id)`);
 		return req().query(`UPDATE topics SET council_id = @council_id WHERE ${moved}`);
-	});
-	broadcast('update', { entity: 'topic' });
+	};
+	const result = tx ? await write(tx) : await withActorTransaction(actorId, write);
+	if (!tx) broadcast('update', { entity: 'topic' });
 	return { assigned: result.rowsAffected[0] ?? 0 };
 };
 
@@ -78,8 +80,9 @@ const unassignTopic = async (councilId, topicId, actorId) => {
 };
 
 // Đặt buổi bảo vệ (sáng/chiều) cho một đề tài đã gán vào hội đồng.
-const setTopicSession = async (councilId, topicId, session, actorId) => {
-	const result = await withActorTransaction(actorId, (tx) =>
+// opts.tx: như assignTopics.
+const setTopicSession = async (councilId, topicId, session, actorId, { tx = null } = {}) => {
+	const write = (tx) =>
 		tx
 			.request()
 			.input('actor_id', sql.VarChar(20), actorId)
@@ -88,18 +91,19 @@ const setTopicSession = async (councilId, topicId, session, actorId) => {
 			.input('session', sql.VarChar(10), session || null).query(`
       UPDATE topics SET session = @session
       WHERE id = @topic_id AND council_id = @council_id
-    `),
-	);
+    `);
+	const result = tx ? await write(tx) : await withActorTransaction(actorId, write);
 	if (!result.rowsAffected[0]) {
 		throw Object.assign(new Error('Đề tài không thuộc hội đồng này.'), { status: 404 });
 	}
-	broadcast('update', { entity: 'topic' });
+	if (!tx) broadcast('update', { entity: 'topic' });
 };
 
 // Ghế thay thế theo đề tài: với một đề tài cụ thể, thay người ngồi một ghế của
 // hội đồng (thành viên gốc là tác giả, hoặc cần chuyên gia đúng ngành phản biện).
-const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
-	const ok = await withActorTransaction(actorId, async (tx) => {
+// opts.tx: như assignTopics.
+const setSeatSubstitute = async (councilId, topicId, role, userId, actorId, { tx = null } = {}) => {
+	const write = async (tx) => {
 		const req = () =>
 			tx
 				.request()
@@ -122,11 +126,12 @@ const setSeatSubstitute = async (councilId, topicId, role, userId, actorId) => {
           VALUES (@topic_id, @role, @user_id, @actor_id)`);
 		}
 		return true;
-	});
+	};
+	const ok = tx ? await write(tx) : await withActorTransaction(actorId, write);
 	if (!ok) {
 		throw httpError(404, 'Đề tài không thuộc hội đồng này.');
 	}
-	broadcast('update', { entity: 'council' });
+	if (!tx) broadcast('update', { entity: 'council' });
 };
 
 const removeSeatSubstitute = async (councilId, topicId, role, actorId) => {

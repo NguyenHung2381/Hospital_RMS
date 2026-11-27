@@ -49,4 +49,4 @@ const parseTraineeTypes = (text) => {
 	return { ids, unknown };
 };
 
-module.exports = { parseTraineeTypes, ALL_STAFF };
+module.exports = { parseTraineeTypes };

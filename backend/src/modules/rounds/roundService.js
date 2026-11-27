@@ -3,7 +3,6 @@ const {
 	sql,
 	withTransaction,
 	withActorTransaction,
-	actorRequest,
 	withActor,
 	boolExpr,
 	queryAll,
@@ -17,6 +16,8 @@ const { paging } = require('../../utils/paging');
 const deadlineService = require('./deadlineService');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
 const { httpError } = require('../../utils/httpError');
+const { inClause } = require('../../utils/sqlFilters');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const STATUS_TO_FRONT = { open: 'active' };
 const STATUS_TO_DB = { active: 'open' };
@@ -63,22 +64,23 @@ const writeLevels = async (request, roundId, levelIds) => {
 	await request()
 		.input('rid', sql.VarChar(10), roundId)
 		.query('DELETE FROM research_round_levels WHERE round_id = @rid');
-	for (const lid of ids) {
-		const req = () =>
-			request().input('rid', sql.VarChar(10), roundId).input('lid', sql.VarChar(5), lid);
-		if (!(await req().query('SELECT 1 AS x FROM levels WHERE id = @lid')).recordset.length)
-			continue;
-		await req().query('INSERT INTO research_round_levels (round_id, level_id) VALUES (@rid, @lid)');
-	}
+	if (!ids.length) return;
+	// 1 câu cho cả danh sách; mã không có trong levels tự bị bỏ qua (như trước)
+	const req = request().input('rid', sql.VarChar(10), roundId);
+	const where = inClause(req, 'id', 'lid', ids, sql.VarChar(5));
+	await req.query(
+		`INSERT INTO research_round_levels (round_id, level_id) SELECT @rid, id FROM levels WHERE ${where}`,
+	);
 };
 
 // Cấp độ hợp lệ cho đề tài của một đợt: cấu hình riêng của đợt nếu có, không
 // thì theo loại đợt (round_type_levels). [] ⇒ chưa giới hạn (cho phép tất cả).
-const getAllowedLevelIds = async (roundId) => {
+// `tx` (tuỳ chọn): đọc trong transaction đang ghi để thấy cấp độ vừa ghi.
+const getAllowedLevelIds = async (roundId, tx = null) => {
 	if (!roundId) return [];
-	const pool = await getPool();
+	const runner = tx ?? (await getPool());
 	try {
-		const sets = await queryAll(pool.request().input('rid', sql.VarChar(10), roundId), [
+		const sets = await queryAll(runner.request().input('rid', sql.VarChar(10), roundId), [
 			`
 			SELECT level_id FROM research_round_levels WHERE round_id = @rid
 			`,
@@ -91,7 +93,9 @@ const getAllowedLevelIds = async (roundId) => {
 		]);
 		const own = sets[0].map((x) => x.level_id);
 		return own.length ? own : sets[1].map((x) => x.level_id);
-	} catch {
+	} catch (err) {
+		// Trong transaction: lỗi đã làm hỏng transaction ⇒ ném tiếp để rollback
+		if (tx) throw err;
 		return []; // bảng chưa tồn tại (migration chưa chạy)
 	}
 };
@@ -99,8 +103,8 @@ const getAllowedLevelIds = async (roundId) => {
 // Mỗi đợt đúng 1 cấp độ; đề tài lấy cấp độ theo đợt (form không hỏi nữa).
 // Cấu hình riêng của đợt, không có thì theo loại đợt. Nhiều cấp (dữ liệu cũ)
 // hoặc chưa cấu hình ⇒ null — quản lý chọn lại cấp độ cho đợt.
-const getRoundLevelId = async (roundId) => {
-	const ids = await getAllowedLevelIds(roundId);
+const getRoundLevelId = async (roundId, tx = null) => {
+	const ids = await getAllowedLevelIds(roundId, tx);
 	return ids.length === 1 ? ids[0] : null;
 };
 
@@ -123,20 +127,20 @@ const ROUND_LEVEL_APPLY = `
 
 // Đề tài (trừ bài báo) của đợt nhận lại cấp độ của đợt — gọi khi đổi cấp độ /
 // loại đợt để báo cáo, bộ lọc (đọc topics.level_id) khớp cấu hình đợt.
-const syncTopicLevels = async (roundId, actorId) => {
-	const levelId = await getRoundLevelId(roundId);
-	if (!levelId) return;
-	await withActorTransaction(actorId, (tx) =>
-		tx
-			.request()
-			.input('rid', sql.VarChar(10), roundId)
-			.input('lid', sql.VarChar(5), levelId)
-			.input('actor_id', sql.VarChar(20), actorId).query(`
+// Chạy trong transaction `tx` của người gọi (đã gắn người thao tác). Trả true nếu
+// có cập nhật để người gọi broadcast sau khi commit.
+const syncTopicLevels = async (roundId, actorId, tx) => {
+	const levelId = await getRoundLevelId(roundId, tx);
+	if (!levelId) return false;
+	await tx
+		.request()
+		.input('rid', sql.VarChar(10), roundId)
+		.input('lid', sql.VarChar(5), levelId)
+		.input('actor_id', sql.VarChar(20), actorId).query(`
       UPDATE topics SET level_id = @lid, updated_at = ${nowSql}, updated_by = @actor_id
       WHERE round_id = @rid AND article_type <> 'bai_bao'
-        AND (level_id IS NULL OR level_id <> @lid);`),
-	);
-	broadcast('update', { entity: 'topic' });
+        AND (level_id IS NULL OR level_id <> @lid);`);
+	return true;
 };
 
 const getAll = async ({
@@ -278,39 +282,6 @@ const create = async (data, actorId) => {
 
 const update = async (id, data, actorId) => {
 	const pool = await getPool();
-	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
-	const req = actorRequest(actorId)
-		.input('id', sql.VarChar(10), id)
-		.input('actor_id', sql.VarChar(20), actorId);
-
-	if (data.name !== undefined) {
-		sets.push('name = @name');
-		req.input('name', sql.NVarChar(200), data.name);
-	}
-	if (data.year !== undefined) {
-		sets.push('year = @year');
-		req.input('year', sql.Int, data.year);
-	}
-	if (data.round_number !== undefined) {
-		sets.push('round_number = @round_number');
-		req.input('round_number', sql.TinyInt, data.round_number);
-	}
-	if (data.round_type_id !== undefined) {
-		sets.push('round_type_id = @round_type_id');
-		req.input('round_type_id', sql.VarChar(6), data.round_type_id || null);
-	}
-	if (data.start_date !== undefined) {
-		sets.push('start_date = @start_date');
-		req.input('start_date', sql.Date, new Date(data.start_date));
-	}
-	if (data.end_date !== undefined) {
-		sets.push('end_date = @end_date');
-		req.input('end_date', sql.Date, new Date(data.end_date));
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status);
-	}
 	if (data.start_date !== undefined || data.end_date !== undefined) {
 		assertRoundDates(data.start_date, data.end_date);
 		// Chỉ gửi 1 trong 2 ngày ⇒ so với ngày còn lại đang lưu (so trong SQL cùng
@@ -324,10 +295,40 @@ const update = async (id, data, actorId) => {
 				WHERE id = @id AND COALESCE(@end_date, end_date) < COALESCE(@start_date, start_date)`);
 		if (bad.recordset.length) throw httpError(400, ROUND_DATES_MSG);
 	}
-	await req.query(`UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.level_ids)) await writeLevels(() => pool.request(), id, data.level_ids);
-	if (Array.isArray(data.level_ids) || data.round_type_id !== undefined)
-		await syncTopicLevels(id, actorId);
+
+	// Đợt + cấp độ + cấp độ đề tài trong 1 transaction có người thao tác: lỗi giữa
+	// chừng không để đợt mất cấp độ hay đề tài lệch cấp độ.
+	const levelsChanged = Array.isArray(data.level_ids);
+	const topicsSynced = await withActorTransaction(actorId, async (tx) => {
+		const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
+		const req = tx
+			.request()
+			.input('id', sql.VarChar(10), id)
+			.input('actor_id', sql.VarChar(20), actorId);
+		addSets(req, sets, data, {
+			name: sql.NVarChar(200),
+			year: sql.Int,
+			round_number: sql.TinyInt,
+			round_type_id: [sql.VarChar(6), { orNull: true }],
+		});
+		if (data.start_date !== undefined) {
+			sets.push('start_date = @start_date');
+			req.input('start_date', sql.Date, new Date(data.start_date));
+		}
+		if (data.end_date !== undefined) {
+			sets.push('end_date = @end_date');
+			req.input('end_date', sql.Date, new Date(data.end_date));
+		}
+		if (data.status !== undefined) {
+			sets.push('status = @status');
+			req.input('status', sql.VarChar(10), STATUS_TO_DB[data.status] ?? data.status);
+		}
+		await req.query(`UPDATE research_rounds SET ${sets.join(', ')} WHERE id = @id`);
+		if (levelsChanged) await writeLevels(() => tx.request(), id, data.level_ids);
+		if (levelsChanged || data.round_type_id !== undefined) return syncTopicLevels(id, actorId, tx);
+		return false;
+	});
+	if (topicsSynced) broadcast('update', { entity: 'topic' });
 	const round = await getById(id);
 	broadcast('update', { entity: 'round' });
 	return round;

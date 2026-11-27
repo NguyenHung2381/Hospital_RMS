@@ -17,7 +17,8 @@ const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { httpError } = require('../../utils/httpError');
-const { loadWorkbook } = require('../../utils/excelImport');
+const { loadWorkbook, cellText, pad2, findHeader } = require('../../utils/excelImport');
+const { fmtDateUTC: fmtDate, fmtDateVN } = require('../../utils/vnDate');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -167,14 +168,6 @@ const COUNT_KEYS = [
 	'manual_cme_count',
 ];
 
-const pad2 = (n) => String(n).padStart(2, '0');
-const fmtDate = (d) => {
-	if (!d) return '';
-	const x = d instanceof Date ? d : new Date(d);
-	if (Number.isNaN(x.getTime())) return '';
-	return `${pad2(x.getUTCDate())}/${pad2(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
-};
-
 // Cột có giá trị cố định → dropdown trong file mẫu và file xuất
 const DROPDOWNS = {
 	event_type: Object.values(EVENT_TYPE_LABELS),
@@ -225,7 +218,7 @@ const exportWorkbook = async (filters = {}) => {
 	const wb = new ExcelJS.Workbook();
 	const subtitle = [
 		filters.year ? `Năm ${filters.year}` : 'Tất cả các năm',
-		`Xuất ngày ${fmtDate(new Date())}`,
+		`Xuất ngày ${fmtDateVN(new Date())}`,
 		`${data.length} sự kiện`,
 	].join(' · ');
 	const ws = buildSheet(wb, 'DANH SÁCH HỘI THẢO, HỘI NGHỊ', subtitle);
@@ -294,37 +287,9 @@ const templateWorkbook = async () => {
 };
 
 // ─── Nhập ───────────────────────────────────────────────────────────────────
-const cellText = (cell) => {
-	if (!cell) return '';
-	try {
-		return String(cell.text ?? '')
-			.replace(/\s+/g, ' ')
-			.trim();
-	} catch {
-		return '';
-	}
-};
-
-const findHeader = (workbook) => {
-	for (const ws of workbook.worksheets) {
-		const scanMax = Math.min(ws.actualRowCount || ws.rowCount || 0, 30);
-		for (let r = 1; r <= scanMax; r++) {
-			const cols = {};
-			ws.getRow(r).eachCell({ includeEmpty: false }, (cell, col) => {
-				const h = norm(cellText(cell));
-				if (!h) return;
-				for (const c of COLUMNS) {
-					if (cols[c.key] == null && c.match(h)) {
-						cols[c.key] = col;
-						break;
-					}
-				}
-			});
-			if (cols.title) return { ws, headerRow: r, cols };
-		}
-	}
-	return null;
-};
+// Dòng tiêu đề = dòng đầu (≤ 30) có cột "Tên hội thảo"
+const MATCHERS = COLUMNS.map((c) => [c.key, c.match]);
+const findSeminarHeader = (workbook) => findHeader(workbook, MATCHERS, (cols) => !!cols.title);
 
 // Trả 'YYYY-MM-DD' hoặc null (kèm raw để đẩy vào date_text nếu không parse được)
 const parseDate = (cell) => {
@@ -388,7 +353,7 @@ const dupKey = (title, year) => `${norm(title)}|${year ?? ''}`;
 
 const parseRows = async (buffer) => {
 	const workbook = await loadWorkbook(buffer);
-	const header = findHeader(workbook);
+	const header = findSeminarHeader(workbook);
 	if (!header) {
 		throw Object.assign(
 			new Error(
@@ -533,4 +498,4 @@ const importExcel = async ({ buffer, dry_run }, actorId) => {
 	return { dry_run: false, summary, inserted, failures };
 };
 
-module.exports = { exportWorkbook, templateWorkbook, importExcel, parseRows };
+module.exports = { exportWorkbook, templateWorkbook, importExcel };

@@ -1,4 +1,5 @@
-const { getPool, sql } = require('../../config/db');
+const { sql, withActorTransaction } = require('../../config/db');
+const { broadcast } = require('../events/eventService');
 const councilService = require('./councilService');
 const councilAssignmentService = require('./councilAssignmentService');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
@@ -35,11 +36,11 @@ const splitEven = (items, clusterCount) => {
 // (không đủ cờ thì autoAssignOne chuyển sang tìm người ngoài viện thay vì nới
 // lỏng nhét người trong viện không đủ điều kiện).
 const pickInternal = async (
-	pool,
+	db,
 	{ roundId, specialtyGroup, deptIds, usedUserIds, requireChair },
 ) => {
 	const flagCol = requireChair ? 'can_chair_council' : 'can_sit_council';
-	const req = pool
+	const req = db
 		.request()
 		.input('round_id', sql.VarChar(10), roundId)
 		.input('sg', sql.NVarChar(100), specialtyGroup);
@@ -80,8 +81,8 @@ const pickInternal = async (
 // nên không cần loại xung đột khoa như pickInternal. allowedIds (nếu có, do
 // admin chọn tay trong modal auto-assign) giới hạn pool xuống đúng những
 // người đã xác nhận tham gia đợt này — không có thì dùng cả danh bạ.
-const pickExternal = async (pool, { specialtyGroup, usedExternalReviewerIds, allowedIds }) => {
-	const req = pool.request().input('sg', sql.NVarChar(100), specialtyGroup);
+const pickExternal = async (db, { specialtyGroup, usedExternalReviewerIds, allowedIds }) => {
+	const req = db.request().input('sg', sql.NVarChar(100), specialtyGroup);
 	const usedParams = usedExternalReviewerIds.map((id, i) => {
 		req.input(`x${i}`, sql.VarChar(20), id);
 		return `@x${i}`;
@@ -110,14 +111,14 @@ const pickExternal = async (pool, { specialtyGroup, usedExternalReviewerIds, all
 // hội đồng draft cho mỗi cụm, gán 5 ghế theo pickInternal/pickExternal, gán đề tài + chia phiên
 // sáng/chiều. Ghế thay thế theo từng đề tài KHÔNG tự động — để tay qua UI có sẵn.
 const autoAssignOne = async (
+	tx,
 	{ round_id, specialty_group, min_size, max_size, external_reviewer_ids },
 	actorId,
 ) => {
 	const minSize = Math.max(1, Number(min_size) || 6);
 	const maxSize = Math.max(minSize, Number(max_size) || 10);
-	const pool = await getPool();
 
-	const topicsRes = await pool
+	const topicsRes = await tx
 		.request()
 		.input('round_id', sql.VarChar(10), round_id)
 		.input('sg', sql.NVarChar(100), specialty_group).query(`
@@ -168,7 +169,7 @@ const autoAssignOne = async (
 		const seats = {};
 
 		for (const role of SEAT_ORDER) {
-			const internal = await pickInternal(pool, {
+			const internal = await pickInternal(tx, {
 				roundId: round_id,
 				specialtyGroup: specialty_group,
 				deptIds,
@@ -181,7 +182,7 @@ const autoAssignOne = async (
 				continue;
 			}
 
-			const external = await pickExternal(pool, {
+			const external = await pickExternal(tx, {
 				specialtyGroup: specialty_group,
 				usedExternalReviewerIds,
 				allowedIds: external_reviewer_ids,
@@ -206,7 +207,7 @@ const autoAssignOne = async (
 		// gợi ý, admin sửa tay qua dropdown địa điểm nếu phòng đã có người dùng.
 		let location = null;
 		if (seats.chairman?.type === 'user') {
-			const deptRes = await pool.request().input('uid', sql.VarChar(20), seats.chairman.id).query(`
+			const deptRes = await tx.request().input('uid', sql.VarChar(20), seats.chairman.id).query(`
           SELECT d.name AS dept_name
           FROM users u
           LEFT JOIN departments d ON d.id = u.department_id
@@ -224,6 +225,7 @@ const autoAssignOne = async (
 				location,
 			},
 			actorId,
+			{ tx },
 		);
 
 		for (const role of SEAT_ORDER) {
@@ -237,11 +239,12 @@ const autoAssignOne = async (
 					role,
 				},
 				actorId,
+				{ tx },
 			);
 		}
 
 		const topicIds = cluster.map((t) => t.id);
-		await councilAssignmentService.assignTopics(council.id, topicIds, actorId);
+		await councilAssignmentService.assignTopics(council.id, topicIds, actorId, { tx });
 		const half = Math.ceil(topicIds.length / 2);
 		for (let j = 0; j < topicIds.length; j++) {
 			await councilAssignmentService.setTopicSession(
@@ -249,6 +252,7 @@ const autoAssignOne = async (
 				topicIds[j],
 				j < half ? 'morning' : 'afternoon',
 				actorId,
+				{ tx },
 			);
 		}
 		topicsAssigned += topicIds.length;
@@ -268,10 +272,19 @@ const autoAssign = async (
 	let topics_assigned = 0;
 	const warnings = [];
 	for (const sg of groups) {
-		const res = await autoAssignOne(
-			{ round_id, specialty_group: sg, min_size, max_size, external_reviewer_ids },
-			actorId,
+		// Mỗi hệ một transaction có người thao tác: lỗi giữa chừng không để lại hội đồng
+		// nháp thiếu ghế / đề tài gán dở (hệ đã xong trước đó vẫn giữ).
+		const res = await withActorTransaction(actorId, (tx) =>
+			autoAssignOne(
+				tx,
+				{ round_id, specialty_group: sg, min_size, max_size, external_reviewer_ids },
+				actorId,
+			),
 		);
+		if (res.councils_created) {
+			broadcast('update', { entity: 'council' });
+			broadcast('update', { entity: 'topic' });
+		}
 		councils_created += res.councils_created;
 		topics_assigned += res.topics_assigned;
 		warnings.push(...res.warnings);

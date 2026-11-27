@@ -32,6 +32,7 @@ const { ROLE, requireRoleId, roleIdOf, inputRoleId } = require('../access/roleCo
 const { generateTempPassword } = require('../../utils/passwordPolicy');
 const { maskEmail } = require('../../utils/maskEmail');
 const { httpError } = require('../../utils/httpError');
+const { addSets } = require('../../utils/sqlUpdate');
 
 // ─── Cache thống kê toàn bảng (global_stats) ─────────────────────────────────
 // global_stats không phụ thuộc filter/phân trang nên trước đây bị quét lại toàn
@@ -333,14 +334,10 @@ const update = async (id, data, actorId) => {
 		// '' → NULL: unique index trên email chỉ bỏ qua NULL
 		req.input('email', sql.VarChar(100), data.email?.trim() || null);
 	}
-	if (data.department_id !== undefined) {
-		sets.push('department_id = @department_id');
-		req.input('department_id', sql.VarChar(20), data.department_id);
-	}
-	if (data.role_id !== undefined) {
-		sets.push('role_id = @role_id');
-		req.input('role_id', sql.VarChar(20), data.role_id);
-	}
+	addSets(req, sets, data, {
+		department_id: sql.VarChar(20),
+		role_id: sql.VarChar(20),
+	});
 	if (data.is_active !== undefined) {
 		sets.push('is_active = @is_active');
 		req.input('is_active', sql.Bit, data.is_active);
@@ -352,14 +349,10 @@ const update = async (id, data, actorId) => {
 		sets.push('deactivated_reason = @deactivated_reason');
 		req.input('deactivated_reason', sql.VarChar(20), on ? null : 'admin');
 	}
-	if (data.can_sit_council !== undefined) {
-		sets.push('can_sit_council = @can_sit_council');
-		req.input('can_sit_council', sql.Bit, data.can_sit_council);
-	}
-	if (data.can_chair_council !== undefined) {
-		sets.push('can_chair_council = @can_chair_council');
-		req.input('can_chair_council', sql.Bit, data.can_chair_council);
-	}
+	addSets(req, sets, data, {
+		can_sit_council: sql.Bit,
+		can_chair_council: sql.Bit,
+	});
 
 	if (!sets.length) return getById(id);
 

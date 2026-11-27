@@ -23,7 +23,7 @@ const updateOne = asyncHandler(async (req, res) => {
 });
 
 const removeOne = asyncHandler(async (req, res) => {
-	await surveyService.remove(req.params.id);
+	await surveyService.remove(req.params.id, req.user.id);
 	return success(res, null, 'Xóa thành công');
 });
 

@@ -1,5 +1,5 @@
-const router = require('express').Router();
 const express = require('express');
+const router = express.Router();
 const logger = require('../../config/logger');
 // Đếm trên Redis, tự rơi về bộ nhớ khi Redis lỗi (utils/rateLimit.js)
 const rateLimit = require('../../utils/rateLimit');

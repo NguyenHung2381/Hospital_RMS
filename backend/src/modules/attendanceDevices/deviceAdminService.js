@@ -359,5 +359,4 @@ module.exports = {
 	pushTrainees,
 	syncAll,
 	rematch,
-	commandSummary,
 };

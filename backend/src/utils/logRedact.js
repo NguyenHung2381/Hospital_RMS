@@ -205,7 +205,6 @@ const redactActivityRecord = (record) => {
 };
 
 module.exports = {
-	HIDDEN,
 	isSensitiveKey,
 	redact,
 	redactBody,

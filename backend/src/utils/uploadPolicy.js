@@ -67,7 +67,4 @@ const getPolicy = async () => {
 module.exports = {
 	getPolicy,
 	validateSetting,
-	parseExtensions,
-	DEFAULT_EXTENSIONS,
-	DEFAULT_MAX_MB,
 };

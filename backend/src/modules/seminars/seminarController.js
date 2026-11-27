@@ -14,6 +14,7 @@ const { createCrudController } = require('../../shared/crudController');
 const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { hasPermission } = require('../../permissions/authz');
+const { formFlag } = require('../../utils/formFlag');
 
 const base = createCrudController(seminarService);
 
@@ -137,8 +138,8 @@ const importParticipants = asyncHandler(async (req, res) => {
 		{
 			buffer: req.file.buffer,
 			seminar_id: req.params.id,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
-			issue_cme: req.body.issue_cme === '1' || req.body.issue_cme === 'true',
+			dry_run: formFlag(req.body.dry_run),
+			issue_cme: formFlag(req.body.issue_cme),
 			// Cấp số CME chỉ dành cho người có seminars:cme_manage (cùng quy tắc M-04)
 			canCme: hasPermission(req.user, 'seminars', 'cme_manage'),
 			credits_by_role: req.body.credits_by_role,
@@ -192,7 +193,7 @@ const importListExcel = asyncHandler(async (req, res) => {
 	const out = await listExcelService.importExcel(
 		{
 			buffer: req.file.buffer,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			dry_run: formFlag(req.body.dry_run),
 		},
 		req.user.id,
 	);

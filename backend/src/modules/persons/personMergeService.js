@@ -482,5 +482,4 @@ module.exports = {
 	reopenCandidate,
 	STATUSES,
 	REASONS,
-	MERGE_FIELDS,
 };

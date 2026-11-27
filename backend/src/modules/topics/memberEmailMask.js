@@ -38,7 +38,6 @@ const maskExportTopics = (topics, actor) =>
 	canSeeMemberEmails(actor) ? topics : (topics || []).map((t) => maskTopicMembers(t, actor));
 
 module.exports = {
-	canSeeMemberEmails,
 	isMaskedEmail,
 	maskMember,
 	maskMembers,

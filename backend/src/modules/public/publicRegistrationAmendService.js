@@ -310,4 +310,4 @@ const notifyAmended = (to, { keys, ...info }) => {
 /** Đọc lại bản khai sau khi sửa (cho tra cứu) */
 const reload = (code) => courseRegistrationService.getByCode(code);
 
-module.exports = { getEditable, amend, canEdit, reload, LIMIT, CLOSED };
+module.exports = { getEditable, amend, reload, LIMIT };

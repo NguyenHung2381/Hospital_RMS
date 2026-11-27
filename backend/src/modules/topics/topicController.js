@@ -4,7 +4,7 @@ const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
 const topicAuthorService = require('./topicAuthorService');
 const workflowEngineService = require('./workflowEngineService');
-const { success, created, notFound } = require('../../utils/response');
+const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { createCrudController } = require('../../shared/crudController');
 const { httpError } = require('../../utils/httpError');
 const { assertTopicActionWindow, assertRegistrationOpen } = require('./deadlineGuard');
@@ -13,9 +13,9 @@ const { effectiveScope } = require('../../permissions/actionScope');
 const topicImportService = require('./topicImportService');
 const topicLegacyService = require('./topicLegacyService');
 const formCustomValueService = require('../forms/formCustomValueService');
-const { sendWorkbook } = require('../../utils/response');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { maskMembers, maskTopicMembers, maskExportTopics } = require('./memberEmailMask');
+const { formFlag } = require('../../utils/formFlag');
 
 const base = createCrudController(topicService);
 
@@ -262,7 +262,7 @@ const importExcel = asyncHandler(async (req, res) => {
 	const out = await topicImportService.importExcel(
 		{
 			buffer: req.file.buffer,
-			dry_run: req.body.dry_run === '1' || req.body.dry_run === 'true',
+			dry_run: formFlag(req.body.dry_run),
 			defaults: {
 				round_id: req.body.round_id || null,
 				category_id: req.body.category_id || null,

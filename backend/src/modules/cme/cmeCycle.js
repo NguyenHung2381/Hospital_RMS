@@ -186,7 +186,6 @@ module.exports = {
 	DEFAULT_REQUIRED_HOURS,
 	STATUSES,
 	parseYmd,
-	fmtYmd,
 	normalizeYears,
 	computeCycle,
 	daysLeftOf,

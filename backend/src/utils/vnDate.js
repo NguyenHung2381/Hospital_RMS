@@ -15,13 +15,20 @@ const todayVN = () => {
 // Hôm nay theo giờ VN dạng 'YYYY-MM-DD'.
 const todayKeyVN = () => todayVN().toISOString().slice(0, 10);
 
-// Date | chuỗi ngày → 'dd/mm/yyyy' theo giờ VN; rỗng/không hợp lệ → ''.
-const fmtDateVN = (d) => {
+// Date | chuỗi ngày → 'dd/mm/yyyy' đọc bằng getter UTC (cột DATE / giờ VN lưu
+// không múi giờ — driver trả Date "gắn nhãn UTC"); rỗng/không hợp lệ → ''.
+const fmtDateUTC = (d) => {
 	if (!d) return '';
 	const dt = d instanceof Date ? d : new Date(d);
 	if (isNaN(dt.getTime())) return '';
-	const vn = new Date(dt.getTime() + VN_OFFSET_MS);
-	return `${pad2(vn.getUTCDate())}/${pad2(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()}`;
+	return `${pad2(dt.getUTCDate())}/${pad2(dt.getUTCMonth() + 1)}/${dt.getUTCFullYear()}`;
 };
 
-module.exports = { VN_OFFSET_MS, todayVN, todayKeyVN, fmtDateVN };
+// Date | chuỗi ngày → 'dd/mm/yyyy' theo giờ VN; rỗng/không hợp lệ → ''.
+const fmtDateVN = (d) => {
+	if (!d) return '';
+	const t = (d instanceof Date ? d : new Date(d)).getTime();
+	return isNaN(t) ? '' : fmtDateUTC(new Date(t + VN_OFFSET_MS));
+};
+
+module.exports = { VN_OFFSET_MS, todayVN, todayKeyVN, fmtDateVN, fmtDateUTC };

@@ -1,6 +1,7 @@
 // Định dạng ô / bố cục sheet + tổng hợp số liệu dùng chung cho các sheet báo cáo CME (cmeReportWorkbook.js).
 const xl = require('../../../utils/excelTemplate');
 const { NO_DEPT, round2 } = require('../cmeReportService');
+const { fmtDateUTC: fmtDate } = require('../../../utils/vnDate');
 
 const PARTICIPATION_LABELS = {
 	attendee: 'Đại biểu',
@@ -24,13 +25,6 @@ const GREEN = 'FF0A7A3B';
 const RED = 'FFC00000';
 const GREY = 'FF6B7280';
 
-const fmtDate = (d) => {
-	if (!d) return '';
-	const x = d instanceof Date ? d : new Date(d);
-	if (Number.isNaN(x.getTime())) return '';
-	const p = (n) => String(n).padStart(2, '0');
-	return `${p(x.getUTCDate())}/${p(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
-};
 const fmtRange = (a, b) => {
 	const from = fmtDate(a);
 	const to = fmtDate(b);

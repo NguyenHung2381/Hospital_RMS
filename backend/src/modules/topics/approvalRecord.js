@@ -67,4 +67,4 @@ const withApprovalSync = (req, updateSql, topicId, status) => {
 	return stmts;
 };
 
-module.exports = { ENSURE_APPROVAL_SQL, approvalIdOf, ensureApproval, withApprovalSync };
+module.exports = { approvalIdOf, ensureApproval, withApprovalSync };

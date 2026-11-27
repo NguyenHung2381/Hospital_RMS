@@ -225,6 +225,5 @@ module.exports = {
 	ACTION_LABELS,
 	normalizeIp,
 	ipKind,
-	splitPath,
 	describe,
 };

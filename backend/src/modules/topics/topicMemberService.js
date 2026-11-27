@@ -20,6 +20,7 @@ const { stripDiacritics, stripQualification } = require('../../utils/vietnameseT
 const logger = require('../../config/logger');
 const { httpError, publicMessage } = require('../../utils/httpError');
 const { isMaskedEmail } = require('./memberEmailMask');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const getMembers = async (topicId) => {
 	const pool = await getPool();
@@ -476,14 +477,10 @@ const updateMember = async (topicId, memberId, data, actorId) => {
 		sets.push('position = @chuc_vu');
 		req.input('chuc_vu', sql.NVarChar(200), data.chuc_vu);
 	}
-	if (data.role !== undefined) {
-		sets.push('role = @role');
-		req.input('role', sql.VarChar(20), data.role);
-	}
-	if (data.department_id !== undefined) {
-		sets.push('department_id = @department_id');
-		req.input('department_id', sql.VarChar(20), data.department_id);
-	}
+	addSets(req, sets, data, {
+		role: sql.VarChar(20),
+		department_id: sql.VarChar(20),
+	});
 
 	const upd = await req.query(
 		`UPDATE topic_members SET ${sets.join(', ')} WHERE id = @id AND topic_id = @topic_id`,

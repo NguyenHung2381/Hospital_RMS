@@ -2,10 +2,9 @@
 //   - ghi danh 'approved' của khóa chưa hủy, đã/sắp bắt đầu (≤ UPCOMING_DAYS ngày) và chưa
 //     quá cleanupDays ngày sau khi kết thúc;
 //   - được đẩy tay ở trang Tất cả học viên (attendance_device_manual) và chưa quá until_date.
-const { sql } = require('../../config/db');
+const { sql, vnTodaySql: VN_TODAY } = require('../../config/db');
 
 const UPCOMING_DAYS = 7;
-const VN_TODAY = "CAST(now() AT TIME ZONE 'Asia/Ho_Chi_Minh' AS DATE)";
 
 /**
  * @param {any} runner pool hoặc transaction

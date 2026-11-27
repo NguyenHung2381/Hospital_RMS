@@ -64,6 +64,5 @@ module.exports = {
 	norm,
 	normDept,
 	stripQualification,
-	bigrams,
 	dice,
 };

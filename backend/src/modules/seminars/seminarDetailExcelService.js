@@ -14,7 +14,7 @@ const seminarService = require('./seminarService');
 const xl = require('../../utils/excelTemplate');
 const { parseAgenda, testWindow } = require('../../utils/seminarSchedule');
 const { isPassed, maxScore, participantScore, scaleMax } = require('../../utils/seminarTest');
-const { VN_OFFSET_MS } = require('../../utils/vnDate');
+const { VN_OFFSET_MS, fmtDateUTC: fmtDate, fmtDateVN } = require('../../utils/vnDate');
 
 const EVENT_TYPE_LABELS = {
 	conference: 'Hội nghị',
@@ -43,12 +43,6 @@ const CME_STATUS_LABELS = {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 // DATE từ mssql là 00:00 UTC → định dạng theo UTC; chuỗi 'YYYY-MM-DD' cũng parse thành UTC
-const fmtDate = (d) => {
-	if (!d) return '';
-	const x = d instanceof Date ? d : new Date(d);
-	if (Number.isNaN(x.getTime())) return '';
-	return `${pad2(x.getUTCDate())}/${pad2(x.getUTCMonth() + 1)}/${x.getUTCFullYear()}`;
-};
 // Cột giờ ghi bằng nowSql (giờ VN, không múi giờ); driver đọc như UTC ⇒ getUTC* hiển thị đúng như lưu
 const fmtDateTime = (d) => {
 	if (!d) return '';
@@ -121,7 +115,7 @@ const addInfoSheet = (wb, s, agendaCount) => {
 		['Đã cấp CME', participants.filter((p) => p.cme_seq != null).length],
 		['Số bài học', agendaCount],
 		['Ghi chú', s.notes ?? ''],
-		['Ngày xuất', fmtDate(new Date())],
+		['Ngày xuất', fmtDateVN(new Date())],
 	];
 	rows.forEach(([k, v]) => {
 		const row = ws.addRow([k, v]);

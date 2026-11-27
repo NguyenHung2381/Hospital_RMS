@@ -15,6 +15,7 @@ const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { ROLE, inputRoleId } = require('../access/roleCodes');
 const { fmtDateVN: fmtDate } = require('../../utils/vnDate');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const normalize = (c) => ({
 	...c,
@@ -160,8 +161,10 @@ const getById = async (id) => {
 	return council;
 };
 
-const create = async (data, actorId) => {
-	const result = await withActorTransaction(actorId, async (tx) =>
+// opts.tx: chạy trong transaction của người gọi (đã gắn người thao tác) — khi đó chỉ
+// trả { id }, không đọc lại / broadcast (người gọi làm sau khi commit).
+const create = async (data, actorId, { tx = null } = {}) => {
+	const write = async (tx) =>
 		queryBatch(
 			tx
 				.request()
@@ -177,8 +180,9 @@ const create = async (data, actorId) => {
       VALUES (@new_id, @round_id, @name, @specialty_group, @location, @defense_date, 'draft', @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
-		),
-	);
+		);
+	if (tx) return { id: (await write(tx)).recordset[0].id };
+	const result = await withActorTransaction(actorId, write);
 	const council = await getById(result.recordset[0].id);
 	broadcast('update', { entity: 'council' });
 	return council;
@@ -190,26 +194,13 @@ const update = async (id, data, actorId) => {
 		.input('id', sql.VarChar(15), id)
 		.input('actor_id', sql.VarChar(20), actorId);
 
-	if (data.name !== undefined) {
-		sets.push('name = @name');
-		req.input('name', sql.NVarChar(255), data.name);
-	}
-	if (data.specialty_group !== undefined) {
-		sets.push('specialty_group = @specialty_group');
-		req.input('specialty_group', sql.NVarChar(100), data.specialty_group);
-	}
-	if (data.location !== undefined) {
-		sets.push('location = @location');
-		req.input('location', sql.NVarChar(255), data.location);
-	}
-	if (data.defense_date !== undefined) {
-		sets.push('defense_date = @defense_date');
-		req.input('defense_date', sql.Date, data.defense_date);
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(15), data.status);
-	}
+	addSets(req, sets, data, {
+		name: sql.NVarChar(255),
+		specialty_group: sql.NVarChar(100),
+		location: sql.NVarChar(255),
+		defense_date: sql.Date,
+		status: sql.VarChar(15),
+	});
 
 	if (sets.length) {
 		await req.query(`UPDATE councils SET ${sets.join(', ')} WHERE id = @id`);
@@ -256,8 +247,9 @@ const getMemberById = async (memberId) => {
 
 // Ghế nhận đúng 1 trong 2: user_id (trong viện) hoặc external_reviewer_id
 // (ngoài viện) — ràng buộc bởi CK_council_members_seat_owner ở DB.
-const addMember = async (councilId, data, actorId) => {
-	const result = await withActorTransaction(actorId, async (tx) =>
+// opts.tx: như create — trong transaction của người gọi chỉ trả { id }.
+const addMember = async (councilId, data, actorId, { tx = null } = {}) => {
+	const write = async (tx) =>
 		queryBatch(
 			tx
 				.request()
@@ -272,8 +264,9 @@ const addMember = async (councilId, data, actorId) => {
       VALUES (@new_id, @council_id, @user_id, @external_reviewer_id, @role, @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
-		),
-	);
+		);
+	if (tx) return { id: (await write(tx)).recordset[0].id };
+	const result = await withActorTransaction(actorId, write);
 	broadcast('update', { entity: 'council' });
 	return getMemberById(result.recordset[0].id);
 };
@@ -287,18 +280,11 @@ const updateMember = async (councilId, memberId, data, actorId) => {
 
 	// Đổi ghế từ trong viện <-> ngoài viện phải set cả 2 cột cùng lúc (1 cột
 	// NULL, 1 cột có giá trị) để không vi phạm CK_council_members_seat_owner.
-	if (data.user_id !== undefined) {
-		sets.push('user_id = @user_id');
-		req.input('user_id', sql.VarChar(20), data.user_id);
-	}
-	if (data.external_reviewer_id !== undefined) {
-		sets.push('external_reviewer_id = @external_reviewer_id');
-		req.input('external_reviewer_id', sql.VarChar(20), data.external_reviewer_id);
-	}
-	if (data.role !== undefined) {
-		sets.push('role = @role');
-		req.input('role', sql.VarChar(15), data.role);
-	}
+	addSets(req, sets, data, {
+		user_id: sql.VarChar(20),
+		external_reviewer_id: sql.VarChar(20),
+		role: sql.VarChar(15),
+	});
 	if (!sets.length) return getMemberById(memberId);
 
 	await req.query(

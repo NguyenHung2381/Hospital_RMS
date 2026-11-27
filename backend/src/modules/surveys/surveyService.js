@@ -1,10 +1,19 @@
-const { getPool, sql, queryAll, nowSql, ilike } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	queryAll,
+	nowSql,
+	ilike,
+	withActorTransaction,
+	actorRequest,
+} = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
 const { httpError } = require('../../utils/httpError');
+const { addSets } = require('../../utils/sqlUpdate');
 
 const QUESTION_TYPES = ['single_choice', 'multi_choice', 'text'];
 
@@ -74,19 +83,62 @@ const getById = async (id) => {
 	return row;
 };
 
-const setQuestions = async (surveyId, questions, actorId) => {
-	const pool = await getPool();
-	await pool
+// Câu hỏi hợp lệ theo đúng thứ tự sẽ ghi (bỏ câu thiếu nội dung / sai loại);
+// options là chuỗi JSON như cột lưu (câu tự luận: null).
+const normalizeQuestions = (questions) =>
+	(questions || [])
+		.filter((q) => q && q.question_text && QUESTION_TYPES.includes(q.question_type))
+		.map((q) => ({
+			question_text: q.question_text,
+			question_type: q.question_type,
+			options:
+				q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean)),
+		}));
+
+const sameQuestions = (a, b) =>
+	a.length === b.length &&
+	a.every(
+		(q, i) =>
+			q.question_text === b[i].question_text &&
+			q.question_type === b[i].question_type &&
+			(q.options ?? '[]') === (b[i].options ?? '[]'),
+	);
+
+// Ghi lại toàn bộ câu hỏi trong transaction `tx` (đã gắn người thao tác). Bộ câu hỏi
+// không đổi ⇒ không ghi gì (form sửa luôn gửi kèm câu hỏi, kể cả khi chỉ đổi tiêu đề /
+// trạng thái). Đã có phản hồi mà đổi câu hỏi ⇒ 409: survey_answers tham chiếu câu hỏi
+// (fk_survans_question, không cascade) nên DELETE sẽ lỗi.
+const writeQuestions = async (tx, surveyId, questions, actorId) => {
+	const wanted = normalizeQuestions(questions);
+	const cur = await tx
+		.request()
+		.input('survey_id', sql.VarChar(20), surveyId)
+		.query(
+			'SELECT question_text, question_type, options FROM survey_questions WHERE survey_id = @survey_id ORDER BY sort_order ASC, created_at ASC',
+		);
+	const existing = cur.recordset.map((q) => ({
+		...q,
+		options: q.question_type === 'text' ? null : JSON.stringify(parseJsonArray(q.options)),
+	}));
+	if (sameQuestions(wanted, existing)) return;
+	const answered = await tx
+		.request()
+		.input('survey_id', sql.VarChar(20), surveyId)
+		.query('SELECT COUNT(*) AS n FROM survey_responses WHERE survey_id = @survey_id');
+	if (Number(answered.recordset[0]?.n) > 0) {
+		throw httpError(
+			409,
+			'Khảo sát đã có người trả lời nên không sửa được câu hỏi. Hãy tạo khảo sát mới nếu cần đổi câu hỏi.',
+		);
+	}
+	await tx
 		.request()
 		.input('survey_id', sql.VarChar(20), surveyId)
 		.query('DELETE FROM survey_questions WHERE survey_id = @survey_id');
-	let order = 0;
-	for (const q of questions || []) {
-		if (!q || !q.question_text || !QUESTION_TYPES.includes(q.question_type)) continue;
-		const options =
-			q.question_type === 'text' ? null : JSON.stringify((q.options || []).filter(Boolean));
+	for (const [order, q] of wanted.entries()) {
+		const { options } = q;
 		const newId = randomId('CH', 18);
-		await pool
+		await tx
 			.request()
 			.input('survey_id', sql.VarChar(20), surveyId)
 			.input('question_text', sql.NVarChar(500), q.question_text)
@@ -98,67 +150,62 @@ const setQuestions = async (surveyId, questions, actorId) => {
         INSERT INTO survey_questions (id, survey_id, question_text, question_type, options, sort_order, created_by)
         VALUES (@new_id, @survey_id, @question_text, @question_type, @options, @sort_order, @actor_id);
       `);
-		order += 1;
 	}
+};
+
+const setQuestions = async (surveyId, questions, actorId) => {
+	await withActorTransaction(actorId, (tx) => writeQuestions(tx, surveyId, questions, actorId));
 	broadcast('update', { entity: 'survey' });
 	return listQuestions(surveyId);
 };
 
 const create = async (data, actorId) => {
-	const pool = await getPool();
 	const newId = randomId('KS', 18);
-	await pool
-		.request()
-		.input('actor_id', sql.VarChar(20), actorId)
-		.input('title', sql.NVarChar(255), data.title)
-		.input('description', sql.NVarChar(sql.MAX), data.description || null)
-		.input('status', sql.VarChar(20), data.status || 'draft')
-		.input('target_role', sql.VarChar(20), data.target_role || null)
-		.input('new_id', sql.VarChar(20), newId).query(`
-      INSERT INTO surveys (id, title, description, status, target_role, created_by)
-      VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
-    `);
-	const id = newId;
-	if (Array.isArray(data.questions) && data.questions.length)
-		await setQuestions(id, data.questions, actorId);
+	// Khảo sát + câu hỏi trong 1 transaction có người thao tác
+	await withActorTransaction(actorId, async (tx) => {
+		await tx
+			.request()
+			.input('actor_id', sql.VarChar(20), actorId)
+			.input('title', sql.NVarChar(255), data.title)
+			.input('description', sql.NVarChar(sql.MAX), data.description || null)
+			.input('status', sql.VarChar(20), data.status || 'draft')
+			.input('target_role', sql.VarChar(20), data.target_role || null)
+			.input('new_id', sql.VarChar(20), newId).query(`
+        INSERT INTO surveys (id, title, description, status, target_role, created_by)
+        VALUES (@new_id, @title, @description, @status, @target_role, @actor_id);
+      `);
+		if (Array.isArray(data.questions) && data.questions.length)
+			await writeQuestions(tx, newId, data.questions, actorId);
+	});
 	broadcast('update', { entity: 'survey' });
-	return getById(id);
+	return getById(newId);
 };
 
 const update = async (id, data, actorId) => {
-	const pool = await getPool();
-	const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
-	const req = pool
-		.request()
-		.input('id', sql.VarChar(20), id)
-		.input('actor_id', sql.VarChar(20), actorId);
-
-	if (data.title !== undefined) {
-		sets.push('title = @title');
-		req.input('title', sql.NVarChar(255), data.title);
-	}
-	if (data.description !== undefined) {
-		sets.push('description = @description');
-		req.input('description', sql.NVarChar(sql.MAX), data.description || null);
-	}
-	if (data.status !== undefined) {
-		sets.push('status = @status');
-		req.input('status', sql.VarChar(20), data.status);
-	}
-	if (data.target_role !== undefined) {
-		sets.push('target_role = @target_role');
-		req.input('target_role', sql.VarChar(20), data.target_role || null);
-	}
-
-	if (sets.length > 2) await req.query(`UPDATE surveys SET ${sets.join(', ')} WHERE id = @id`);
-	if (Array.isArray(data.questions)) await setQuestions(id, data.questions, actorId);
+	// Thông tin + câu hỏi trong 1 transaction: 409 ở câu hỏi không để lại nửa thay đổi
+	await withActorTransaction(actorId, async (tx) => {
+		const sets = [`updated_at = ${nowSql}`, 'updated_by = @actor_id'];
+		const req = tx
+			.request()
+			.input('id', sql.VarChar(20), id)
+			.input('actor_id', sql.VarChar(20), actorId);
+		addSets(req, sets, data, {
+			title: sql.NVarChar(255),
+			description: [sql.NVarChar(sql.MAX), { orNull: true }],
+			status: sql.VarChar(20),
+			target_role: [sql.VarChar(20), { orNull: true }],
+		});
+		if (sets.length > 2) await req.query(`UPDATE surveys SET ${sets.join(', ')} WHERE id = @id`);
+		if (Array.isArray(data.questions)) await writeQuestions(tx, id, data.questions, actorId);
+	});
 	broadcast('update', { entity: 'survey' });
 	return getById(id);
 };
 
-const remove = async (id) => {
-	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM surveys WHERE id = @id');
+const remove = async (id, actorId) => {
+	await actorRequest(actorId)
+		.input('id', sql.VarChar(20), id)
+		.query('DELETE FROM surveys WHERE id = @id');
 	broadcast('update', { entity: 'survey' });
 };
 
@@ -251,52 +298,62 @@ const getForRespond = async (id, actor) => {
 	return row;
 };
 
+// Lựa chọn hợp lệ của 1 câu chọn: chỉ giữ giá trị có trong question.options (bỏ
+// trùng, giữ thứ tự gửi); câu chọn 1 giữ tối đa 1 lựa chọn. Không còn gì ⇒ null.
+const pickOptions = (question, picked) => {
+	if (!Array.isArray(picked)) return null;
+	const allowed = new Set(question.options || []);
+	const out = [...new Set(picked.filter((o) => allowed.has(o)))];
+	const kept = question.question_type === 'single_choice' ? out.slice(0, 1) : out;
+	return kept.length ? JSON.stringify(kept) : null;
+};
+
 const submitResponse = async (surveyId, answers, actor) => {
 	// Validate lại toàn bộ điều kiện (trạng thái/vai trò/đã nộp chưa) ngay
 	// trước khi ghi — tránh race giữa lúc mở form và lúc bấm nộp.
 	const survey = await getForRespond(surveyId, actor);
-	const questionMap = new Map(survey.questions.map((q) => [q.id, q]));
-
-	const pool = await getPool();
-	const newId = randomId('PH', 18);
-	await pool
-		.request()
-		.input('survey_id', sql.VarChar(20), surveyId)
-		.input('user_id', sql.VarChar(20), actor.id)
-		.input('new_id', sql.VarChar(20), newId)
-		.query(
-			`
+	if (!survey) throw httpError(404, 'Không tìm thấy khảo sát.');
+	const responseId = randomId('PH', 18);
+	// Phản hồi + mọi câu trả lời trong 1 transaction có người thao tác: lỗi giữa
+	// chừng không để lại phản hồi thiếu câu trả lời (UNIQUE sẽ chặn nộp lại).
+	await withActorTransaction(actor.id, async (tx) => {
+		await tx
+			.request()
+			.input('survey_id', sql.VarChar(20), surveyId)
+			.input('user_id', sql.VarChar(20), actor.id)
+			.input('new_id', sql.VarChar(20), responseId)
+			.query(
+				`
       INSERT INTO survey_responses (id, survey_id, respondent_user_id, created_by)
       VALUES (@new_id, @survey_id, @user_id, @user_id);
     `,
-		)
-		.catch((err) => {
-			if (isUniqueViolation(err)) {
-				throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
-			}
-			throw err;
-		});
-	const responseId = newId;
-
-	for (const [questionId, question] of questionMap) {
-		const ans = (answers || []).find((a) => a.question_id === questionId);
-		const isText = question.question_type === 'text';
-		const answerId = randomId('DA', 18);
-		await pool
-			.request()
-			.input('response_id', sql.VarChar(20), responseId)
-			.input('question_id', sql.VarChar(20), questionId)
-			.input('answer_text', sql.NVarChar(sql.MAX), isText ? ans?.answer_text || null : null)
-			.input(
-				'answer_options',
-				sql.NVarChar(sql.MAX),
-				!isText && ans?.answer_options ? JSON.stringify(ans.answer_options) : null,
 			)
-			.input('new_id', sql.VarChar(20), answerId).query(`
+			.catch((err) => {
+				if (isUniqueViolation(err)) {
+					throw httpError(409, 'Bạn đã nộp khảo sát này rồi.');
+				}
+				throw err;
+			});
+
+		for (const question of survey.questions) {
+			const ans = (answers || []).find((a) => a.question_id === question.id);
+			const isText = question.question_type === 'text';
+			await tx
+				.request()
+				.input('response_id', sql.VarChar(20), responseId)
+				.input('question_id', sql.VarChar(20), question.id)
+				.input('answer_text', sql.NVarChar(sql.MAX), isText ? ans?.answer_text || null : null)
+				.input(
+					'answer_options',
+					sql.NVarChar(sql.MAX),
+					isText ? null : pickOptions(question, ans?.answer_options),
+				)
+				.input('new_id', sql.VarChar(20), randomId('DA', 18)).query(`
         INSERT INTO survey_answers (id, response_id, question_id, answer_text, answer_options)
         VALUES (@new_id, @response_id, @question_id, @answer_text, @answer_options);
       `);
-	}
+		}
+	});
 	broadcast('update', { entity: 'survey' });
 	return { response_id: responseId };
 };

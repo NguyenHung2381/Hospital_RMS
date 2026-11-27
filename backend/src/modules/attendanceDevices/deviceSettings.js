@@ -20,4 +20,4 @@ const getDeviceSettings = async () => ({
 	fpSync: (await systemSettingService.getValue('DEVICE_FP_SYNC', 'true')) !== 'false',
 });
 
-module.exports = { getDeviceSettings, DEFAULTS };
+module.exports = { getDeviceSettings };

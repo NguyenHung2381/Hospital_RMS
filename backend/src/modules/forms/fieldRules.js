@@ -446,12 +446,9 @@ const validateOverride = (form, override) => {
 };
 
 module.exports = {
-	CUSTOM_TYPES,
-	FORMATS,
 	resolve,
 	checkValue,
 	normalizeValue,
 	validateValues,
 	validateOverride,
-	checkPattern,
 };

@@ -200,7 +200,6 @@ const departmentProposalDocument = async (user, q) => {
 };
 
 module.exports = {
-	nextSteps,
 	listMine,
 	getOwn,
 	assertCanUploadFile,

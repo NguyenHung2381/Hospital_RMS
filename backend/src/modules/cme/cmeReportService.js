@@ -276,5 +276,4 @@ module.exports = {
 	rangeLabel,
 	round2,
 	NO_DEPT,
-	MAX_YEAR_SPAN,
 };

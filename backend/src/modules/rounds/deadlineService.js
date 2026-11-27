@@ -47,21 +47,23 @@ const getByRoundId = async (roundId) => {
 
 const ALLOWED_DEADLINE_TYPES = ['topic_registration', 'edit', 'supplement', 'report_submission'];
 
+// Cột DATE đọc ra Date "gắn nhãn UTC" ⇒ 'yyyy-mm-dd' để so với ngày gửi lên
+const ymd = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d) : null);
+
 const upsert = async (roundId, phase, data, actorId) => {
 	const pool = await getPool();
-	const deadlineType = ALLOWED_DEADLINE_TYPES.includes(data.deadline_type)
-		? data.deadline_type
-		: 'edit';
+	// Kiểm tra giống lúc tạo đợt (prepareBatch): ngày 'yyyy-mm-dd', bắt đầu ≤ hạn
+	// cuối, nằm trong thời gian của đợt. Lỗi ⇒ 400 trước khi ghi.
+	const roundRes = await pool
+		.request()
+		.input('round_id', sql.VarChar(10), roundId)
+		.query('SELECT start_date, end_date FROM research_rounds WHERE id = @round_id');
+	const round = roundRes.recordset[0];
+	if (!round) throw httpError(404, 'Không tìm thấy đợt.');
+	const row = checkDeadline(data, ymd(round.start_date), ymd(round.end_date), `Mốc ${phase}`);
+	const deadlineType = row.deadline_type;
 	const id = genId(roundId, deadlineType, phase);
-	const startDate = data.start_date ? new Date(data.start_date) : null;
-	const supplementFields =
-		deadlineType === 'supplement'
-			? parseSupplementFields(
-					Array.isArray(data.supplement_fields)
-						? data.supplement_fields.join(',')
-						: data.supplement_fields,
-				)
-			: null;
+	const startDate = row.start_date ? new Date(row.start_date) : null;
 
 	// Có thì sửa, chưa có thì thêm (trước là rẽ nhánh T-SQL trong 1 câu — PG không có IF ngoài PL/pgSQL)
 	const bind = (req) =>
@@ -70,15 +72,11 @@ const upsert = async (roundId, phase, data, actorId) => {
 			.input('id', sql.VarChar(12), id)
 			.input('round_id', sql.VarChar(10), roundId)
 			.input('phase', sql.TinyInt, phase)
-			.input('name', sql.NVarChar(255), data.name)
+			.input('name', sql.NVarChar(255), row.name)
 			.input('start_date', sql.Date, startDate)
-			.input('deadline_date', sql.Date, new Date(data.deadline_date))
+			.input('deadline_date', sql.Date, new Date(row.deadline_date))
 			.input('deadline_type', sql.VarChar(30), deadlineType)
-			.input(
-				'supplement_fields',
-				sql.VarChar(120),
-				supplementFields ? supplementFields.join(',') : null,
-			);
+			.input('supplement_fields', sql.VarChar(120), row.supplement_fields);
 	await withActorTransaction(actorId, async (tx) => {
 		const upd = await bind(tx.request()).query(`
         UPDATE round_deadlines
@@ -145,46 +143,47 @@ const remove = async (roundId, phase, actorId) => {
 const MAX_PHASE = 9;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const fail = (msg) => {
+	throw httpError(400, msg);
+};
+
+// Chuẩn hóa + kiểm tra 1 mốc (ngày 'yyyy-mm-dd' trong [roundStart, roundEnd]).
+// Dùng cho cả tạo đợt (prepareBatch) lẫn sửa từng mốc (upsert). Lỗi ⇒ 400.
+const checkDeadline = (d, roundStart, roundEnd, label) => {
+	const name = String(d?.name ?? '').trim();
+	const start = d?.start_date ? String(d.start_date) : null;
+	const end = d?.deadline_date ? String(d.deadline_date) : '';
+	if (!name) fail(`${label}: chưa nhập tên`);
+	if (!end) fail(`${label}: chưa chọn hạn cuối`);
+	if (!ISO_DATE.test(end)) fail(`${label}: hạn cuối không hợp lệ`);
+	if (start && !ISO_DATE.test(start)) fail(`${label}: ngày bắt đầu không hợp lệ`);
+	if (start && start > end) fail(`${label}: ngày bắt đầu phải trước hạn cuối`);
+	if ([start, end].some((x) => x && ((roundStart && x < roundStart) || (roundEnd && x > roundEnd))))
+		fail(`${label}: phải nằm trong khoảng thời gian của đợt`);
+	const deadlineType = ALLOWED_DEADLINE_TYPES.includes(d.deadline_type) ? d.deadline_type : 'edit';
+	const supplementFields =
+		deadlineType === 'supplement'
+			? parseSupplementFields(
+					Array.isArray(d.supplement_fields) ? d.supplement_fields.join(',') : d.supplement_fields,
+				)
+			: null;
+	return {
+		name: name.slice(0, 255),
+		start_date: start,
+		deadline_date: end,
+		deadline_type: deadlineType,
+		supplement_fields: supplementFields ? supplementFields.join(',') : null,
+	};
+};
+
 const prepareBatch = (list, roundStart, roundEnd) => {
 	if (list == null) return [];
-	const fail = (msg) => {
-		throw httpError(400, msg);
-	};
 	if (!Array.isArray(list)) fail('Danh sách mốc thời gian không hợp lệ');
 	if (list.length > MAX_PHASE) fail(`Tối đa ${MAX_PHASE} mốc thời gian cho một đợt`);
-	return list.map((d, i) => {
-		const label = `Mốc ${i + 1}`;
-		const name = String(d?.name ?? '').trim();
-		const start = d?.start_date ? String(d.start_date) : null;
-		const end = d?.deadline_date ? String(d.deadline_date) : '';
-		if (!name) fail(`${label}: chưa nhập tên`);
-		if (!ISO_DATE.test(end)) fail(`${label}: chưa chọn hạn cuối`);
-		if (start && !ISO_DATE.test(start)) fail(`${label}: ngày bắt đầu không hợp lệ`);
-		if (start && start > end) fail(`${label}: ngày bắt đầu phải trước hạn cuối`);
-		if (
-			[start, end].some((x) => x && ((roundStart && x < roundStart) || (roundEnd && x > roundEnd)))
-		)
-			fail(`${label}: phải nằm trong khoảng thời gian của đợt`);
-		const deadlineType = ALLOWED_DEADLINE_TYPES.includes(d.deadline_type)
-			? d.deadline_type
-			: 'edit';
-		const supplementFields =
-			deadlineType === 'supplement'
-				? parseSupplementFields(
-						Array.isArray(d.supplement_fields)
-							? d.supplement_fields.join(',')
-							: d.supplement_fields,
-					)
-				: null;
-		return {
-			phase: i + 1,
-			name: name.slice(0, 255),
-			start_date: start,
-			deadline_date: end,
-			deadline_type: deadlineType,
-			supplement_fields: supplementFields ? supplementFields.join(',') : null,
-		};
-	});
+	return list.map((d, i) => ({
+		phase: i + 1,
+		...checkDeadline(d, roundStart, roundEnd, `Mốc ${i + 1}`),
+	}));
 };
 
 // Ghi các mốc đã prepareBatch vào DB trong transaction của người gọi.

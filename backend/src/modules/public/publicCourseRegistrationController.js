@@ -13,7 +13,6 @@ const { success, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
 const { asyncHandler } = require('../../utils/asyncHandler');
 const { normalizeCode } = require('../training/registration/courseRegistrationService');
-const { normalizeEmail } = require('../training/registration/registrationEmailOtpService');
 
 const HOUR = 60 * 60;
 const STAFF_CHECK_PER_STAFF_MAX = 10;
@@ -52,7 +51,7 @@ const requestEmailOtp = asyncHandler(async (req, res) => {
 	if (
 		!(await attempts.hit(
 			'course-reg-otp-email',
-			normalizeEmail(req.body.email),
+			emailOtp.normalizeEmail(req.body.email),
 			OTP_PER_EMAIL_MAX,
 			HOUR,
 		))
