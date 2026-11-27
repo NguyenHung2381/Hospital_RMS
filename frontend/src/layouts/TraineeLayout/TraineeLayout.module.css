@@ -353,9 +353,8 @@
 /* ── DẢI TIÊU ĐỀ TRANG ───────────────────── */
 .pageBand {
 	position: relative;
-	background:
-		radial-gradient(circle at 1px 1px, rgba(10, 120, 59, 0.09) 1px, transparent 0) 0 0 / 18px 18px,
-		linear-gradient(180deg, #e8f5ec 0%, #f4f7f5 100%);
+	/* Nền phẳng — không gradient ngoài trang đăng nhập */
+	background: var(--color-primary-pale);
 	border-bottom: 1px solid rgba(10, 120, 59, 0.08);
 }
 

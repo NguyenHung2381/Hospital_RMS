@@ -161,7 +161,7 @@
 }
 .infoEmpty {
 	font-size: var(--font-size-sm);
-	color: var(--color-gray-300);
+	color: var(--color-gray-500);
 }
 .name {
 	font-weight: var(--font-weight-semibold);

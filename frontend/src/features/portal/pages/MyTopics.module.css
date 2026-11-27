@@ -209,6 +209,14 @@
 	display: flex;
 	border-bottom: 1px solid var(--color-gray-100);
 	flex-shrink: 0;
+	/* Màn hẹp (375): 4 tab không vừa khung — cho cuộn ngang thay vì bị .listPanel cắt mất */
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: none;
+}
+
+.listTabs::-webkit-scrollbar {
+	display: none;
 }
 
 .listTab {
@@ -301,6 +309,12 @@
 .listItemSelected {
 	background: var(--color-primary-pale) !important;
 	box-shadow: inset 0 0 0 1px var(--tone-green-border);
+}
+
+/* Trên nền xanh nhạt gray-400 chỉ đạt 4.24:1 — đậm thêm một bậc */
+.listItemSelected .listItemTopicId,
+.listItemSelected .listItemMeta {
+	color: var(--color-gray-500);
 }
 
 .urgencyDot {

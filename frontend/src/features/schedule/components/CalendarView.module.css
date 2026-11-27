@@ -149,7 +149,6 @@
 	color: var(--color-gray-500);
 	padding: 6px 3px;
 	background: var(--color-white);
-	letter-spacing: 0.04em;
 	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;

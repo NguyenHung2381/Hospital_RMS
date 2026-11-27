@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	BadgeSvg,
@@ -46,6 +46,7 @@ const TABS: { key: TraineeDetailTab; label: string; icon: ReactNode }[] = [
 /** Hồ sơ học viên đầy đủ (giai đoạn 3) — trang riêng /admin/trainees/:id?tab=… thay cho modal 3 tab. */
 export default function TraineeDetail() {
 	const { id = '' } = useParams();
+	const tabUid = useId();
 	const navigate = useNavigate();
 	const [params, setParams] = useSearchParams();
 	const { has } = usePermission();
@@ -150,6 +151,8 @@ export default function TraineeDetail() {
 								<button type='button'
 									key={t.key}
 									role='tab'
+									id={`${tabUid}-tab-${t.key}`}
+									aria-controls={`${tabUid}-panel`}
 									aria-selected={tab === t.key}
 									className={`${styles.detailTabBtn} ${tab === t.key ? styles.detailTabBtnActive : ''}`}
 									onClick={() => go(t.key)}
@@ -158,7 +161,12 @@ export default function TraineeDetail() {
 								</button>
 							))}
 						</div>
-						<div className={ds.body}>
+						<div
+							className={ds.body}
+							role='tabpanel'
+							id={`${tabUid}-panel`}
+							aria-labelledby={`${tabUid}-tab-${tab}`}
+						>
 							{tab === 'info' && (
 									<TraineeInfoTab
 										trainee={trainee}

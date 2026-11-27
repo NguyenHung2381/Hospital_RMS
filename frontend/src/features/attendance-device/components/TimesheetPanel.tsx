@@ -148,6 +148,7 @@ export function TimesheetPanel({ devices }: { devices: AttendanceDevice[] }) {
 					// Xóa ngày ⇒ xem 1 ngày (ngày còn lại)
 					onChange={(v) => setFilter({ from: v || to })}
 					placeholder='Từ ngày'
+					aria-label='Từ ngày'
 					className={styles.dateFilter}
 				/>
 				<DatePicker
@@ -155,6 +156,7 @@ export function TimesheetPanel({ devices }: { devices: AttendanceDevice[] }) {
 					min={from}
 					onChange={(v) => setFilter({ to: v || from })}
 					placeholder='Đến ngày'
+					aria-label='Đến ngày'
 					className={styles.dateFilter}
 				/>
 				<select

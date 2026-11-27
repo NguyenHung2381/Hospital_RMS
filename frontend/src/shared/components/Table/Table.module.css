@@ -458,7 +458,8 @@
 }
 .emptyDesc {
 	font-size: var(--font-size-sm);
-	color: var(--color-gray-400);
+	/* gray-500: trạng thái trống cũng nằm trên nền gray-100 (cổng học viên), gray-400 chỉ đạt 4.31:1 ở đó */
+	color: var(--color-gray-500);
 }
 
 /* Màn hẹp: cụm điều khiển chiếm phần còn lại của hàng để ô tìm kiếm giãn ra. */

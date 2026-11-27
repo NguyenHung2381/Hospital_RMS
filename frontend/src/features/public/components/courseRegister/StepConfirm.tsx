@@ -214,6 +214,7 @@ export function StepConfirm({
 						</label>
 						<input
 							id='f-signature_name'
+							aria-required='true'
 							className={`${styles.input} ${s.signInput}`}
 							value={form.signature_name}
 							onChange={(e) => onChange({ signature_name: e.target.value })}
