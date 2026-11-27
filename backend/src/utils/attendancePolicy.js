@@ -120,6 +120,8 @@ module.exports = {
 	validateSetting,
 	evaluate,
 	ipAllowed,
+	parseCidr,
+	splitList,
 	distanceM,
 	parseLocation,
 	DEFAULT_RADIUS_M,

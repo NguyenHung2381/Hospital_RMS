@@ -17,13 +17,13 @@ const { badRequest, notFound, conflict } = require('../../../utils/httpError');
 const { genTuitionPaymentId, genTuitionReceiptNo } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const notificationService = require('../../notifications/notificationService');
-const { findActiveUserIdsWhere } = require('../../access/permissionService');
-const { hasPermission } = require('../../../permissions/authz');
 const trainingFileService = require('../trainingFileService');
 const { isPdfOrImage } = require('../trainees/traineeProfilePdf');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 const { todayKeyVN } = require('../../../utils/vnDate');
 const { getBankInfo } = require('./tuitionSettings');
+const { lockFee, approvers } = require('./tuitionGuards');
+const { courseScope, ASSIGNED_EXISTS_SQL } = require('../courses/coursePolicy');
 
 const changed = () => broadcast('update', { entity: 'tuition' });
 const money = (n) => `${Number(n).toLocaleString('vi-VN')} đ`;
@@ -141,7 +141,17 @@ const ensureFeeRow = (tx, enrollmentId, actorId) =>
       INSERT INTO enrollment_fees (enrollment_id, base_amount, discount_amount, created_by)
       SELECT e.id, COALESCE(tp.tuition_fee, 0), 0, @actor
       FROM course_enrollments e LEFT JOIN training_programs tp ON tp.id = e.program_id
-      WHERE e.id = @eid AND NOT EXISTS (SELECT 1 FROM enrollment_fees f WHERE f.enrollment_id = e.id)`);
+      WHERE e.id = @eid AND NOT EXISTS (SELECT 1 FROM enrollment_fees f WHERE f.enrollment_id = e.id)
+      ON CONFLICT (enrollment_id) DO NOTHING`);
+
+// Số phải nộp / đã nộp / đang chờ tính lại TRONG transaction, sau khi khóa enrollment_fees
+// (tuitionGuards.lockFee) — kiểm ngoài transaction thì 2 thao tác song song cùng thấy "còn đủ".
+const lockedSummary = async (tx, enrollmentId) => {
+	const { fee, payments } = await lockFee(tx, enrollmentId);
+	return summarize(fee, payments);
+};
+const overpayConflict = () =>
+	conflict('Số tiền vượt số còn phải nộp (vừa có khoản khác được ghi nhận). Vui lòng tải lại.');
 
 const parseAmount = (v) => {
 	const n = Number(v);
@@ -161,8 +171,7 @@ const clip = (v, n) => {
 	return s ? s.slice(0, n) : null;
 };
 
-// Người nhận thông báo phía phòng Đào tạo
-const approvers = () => findActiveUserIdsWhere((u) => hasPermission(u, 'courses', 'approve'));
+// Người nhận thông báo phía phòng Đào tạo: tuitionGuards.approvers (theo phạm vi khóa học)
 const traineeUsers = (row) => [
 	...new Set([row.trainee_user_id, row.staff_user_id].filter(Boolean)),
 ];
@@ -244,6 +253,8 @@ const submitMine = async (userId, enrollmentId, body, file) => {
 		);
 		const id = await withActorTransaction(userId, async (tx) => {
 			await ensureFeeRow(tx, enrollmentId, userId);
+			const locked = await lockedSummary(tx, enrollmentId);
+			if (amount > locked.remaining - locked.pending) throw overpayConflict();
 			const newId = await genTuitionPaymentId(tx);
 			await tx
 				.request()
@@ -263,7 +274,7 @@ const submitMine = async (userId, enrollmentId, body, file) => {
 		await notificationService.push(
 			'tuition_submitted',
 			`${row.trainee_name} báo đã chuyển khoản ${money(amount)} học phí khóa ${row.course_name}`,
-			await approvers(),
+			await approvers(row.course_id),
 			{
 				message: `Nội dung chuyển khoản: ${transferContent(enrollmentId)}`,
 				refId: id,
@@ -293,12 +304,16 @@ const cancelMine = async (userId, paymentId) => {
         WHERE p.id = @id AND p.status <> 'confirmed' AND ${TRAINEE_OF_USER_SQL('t')}`)
 	).recordset[0];
 	if (!p) throw notFound('Không tìm thấy khoản nộp chưa xác nhận của bạn.');
-	await withActorTransaction(userId, (tx) =>
+	// Điều kiện trạng thái phải nằm ngay trong câu DELETE: phòng Đào tạo xác nhận (cấp biên
+	// lai) xen giữa SELECT ở trên và câu này thì 0 dòng ⇒ 409, khoản đã xác nhận không bị xóa.
+	const del = await withActorTransaction(userId, (tx) =>
 		tx
 			.request()
 			.input('id', sql.VarChar(20), paymentId)
-			.query('DELETE FROM tuition_payments WHERE id = @id'),
+			.query("DELETE FROM tuition_payments WHERE id = @id AND status <> 'confirmed'"),
 	);
+	if (!del.rowsAffected?.[0])
+		throw conflict('Khoản nộp này vừa được xác nhận, không rút lại được.');
 	if (p.proof_file_id) await trainingFileService.softDelete(p.proof_file_id, userId);
 	changed();
 	return listMine(userId);
@@ -451,6 +466,7 @@ const recordPayment = async (courseId, enrollmentId, body, actorId) => {
 	const paidDate = parseDate(body.paid_date);
 	const saved = await withActorTransaction(actorId, async (tx) => {
 		await ensureFeeRow(tx, enrollmentId, actorId);
+		if (amount > (await lockedSummary(tx, enrollmentId)).remaining) throw overpayConflict();
 		const id = await genTuitionPaymentId(tx);
 		await tx
 			.request()
@@ -494,9 +510,13 @@ const pendingInCourse = async (pool, courseId, paymentId) => {
 const confirmPayment = async (courseId, paymentId, actorId) => {
 	const pool = await getPool();
 	const { p, row } = await pendingInCourse(pool, courseId, paymentId);
-	const receiptNo = await withActorTransaction(actorId, (tx) =>
-		confirmInTx(tx, paymentId, actorId),
-	);
+	// Xác nhận nhiều khoản chờ (hoặc vừa có khoản ghi nhận tại quầy) không được vượt số phải nộp
+	const receiptNo = await withActorTransaction(actorId, async (tx) => {
+		await ensureFeeRow(tx, p.enrollment_id, actorId);
+		if (Number(p.amount) > (await lockedSummary(tx, p.enrollment_id)).remaining)
+			throw overpayConflict();
+		return confirmInTx(tx, paymentId, actorId);
+	});
 	changed();
 	await notifyTrainee(
 		row,
@@ -536,18 +556,25 @@ const rejectPayment = async (courseId, paymentId, reviewNote, actorId) => {
 	return (await summaryOf(pool, p.enrollment_id)).item;
 };
 
-/** Khoản chờ xác nhận ở mọi khóa — việc cần làm của phòng Đào tạo. */
-const listPending = async () => {
+/**
+ * Khoản chờ xác nhận ở mọi khóa — việc cần làm của phòng Đào tạo. Phạm vi courses:approve
+ * 'assigned' chỉ thấy khóa mình được phân công (route theo khóa kiểm ở router.param;
+ * danh sách gộp này không có :id nên phải tự lọc).
+ */
+const listPending = async (actor) => {
 	const pool = await getPool();
+	const assigned = courseScope(actor, 'approve') === 'assigned';
+	const req = pool.request();
+	if (assigned) req.input('actor_id', sql.VarChar(20), actor.id);
 	return (
-		await pool.request().query(`
+		await req.query(`
       SELECT p.id, p.amount, p.paid_date, p.created_at, e.id AS enrollment_id, c.id AS course_id,
              c.name AS course_name, t.full_name AS trainee_name
       FROM tuition_payments p
       JOIN course_enrollments e ON e.id = p.enrollment_id
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
-      WHERE p.status = 'pending'
+      WHERE p.status = 'pending'${assigned ? ` AND ${ASSIGNED_EXISTS_SQL}` : ''}
       ORDER BY p.created_at`)
 	).recordset;
 };

@@ -18,6 +18,7 @@ backend :3001 → /iclock/cdata, /iclock/getrequest, /iclock/devicecmd, /iclock/
 - **Máy → server:** lượt chấm, mẫu vân tay mới.
 - **Server → máy:** máy tự hỏi lệnh khoảng 10–30 giây một lần; server trả lệnh thêm/xoá học viên, chép vân tay, kéo lại lượt chấm.
 - Server chỉ nhận dữ liệu của máy **đã được duyệt** trên trang *Máy chấm công*. Máy lạ được ghi *Chờ duyệt*, dữ liệu của nó nằm lại trong máy cho tới khi duyệt.
+- Giao thức của máy không có mật khẩu: máy chỉ gửi **số serial** (in trên tem máy). Vì vậy server chỉ nhận `/iclock` từ **mạng nội bộ của viện** và tự **tạm khoá** máy khi một số serial gửi từ hai nơi — xem mục 3.1.
 
 ---
 
@@ -105,6 +106,41 @@ https://nckh.bvnghean.vn/iclock/ping
 ```
 
 Thấy chữ `OK` là proxy của viện đã chuyển đúng đường `/iclock/` vào hệ thống. Thấy trang lỗi hoặc trang web của hệ thống thì xem mục 7.
+
+### 3.1. Chặn giả số serial (bắt buộc kiểm)
+
+Ai biết số serial của một máy đã duyệt và gọi được tới `/iclock/` thì lấy được mẫu vân tay, tạo được lượt chấm giả. Có ba lớp chặn:
+
+1. **Chỉ nhận từ mạng nội bộ.** Backend chỉ nhận `/iclock` từ dải `ICLOCK_ALLOWED_CIDRS` (mặc định `192.168.0.0/16`). Dải máy chủ `172.16.0.0/12`, Docker và Internet đều bị trả `403`. Riêng `/iclock/ping` vẫn mở (chỉ trả `OK`).
+2. **Tạm khoá khi một serial gửi từ hai nơi.** Máy chuyển chỗ chỉ đổi IP một lần. Nếu IP cũ lại gửi lên trong 10 phút sau khi đổi, tức có máy thứ hai dùng cùng serial, hệ thống chuyển máy sang **Tạm khoá**, ghi *Nhật ký bảo mật* và gửi email cảnh báo cho quản trị.
+3. **Giữ lệnh khi máy vừa đổi IP.** Trong 5 phút sau khi đổi IP, server chưa gửi lệnh (vân tay, tên học viên) xuống máy. Mỗi số serial gọi tối đa 240 lần/phút.
+
+**Điều kiện để lớp 1 và 2 chạy đúng: backend phải thấy IP thật của máy**, không phải IP của proxy viện. Đặt trong `.env` gốc (biến của container frontend) và `backend/.env.production`:
+
+```bash
+# .env — nginx tin X-Forwarded-For từ proxy của viện (cai-dat-may-ao-ubuntu.md mục 13.3)
+TRUSTED_PROXIES=192.168.34.20
+# backend/.env.production — request mang IP của chính proxy = chưa có IP thật ⇒ chặn
+ICLOCK_PROXY_IPS=192.168.34.20
+```
+
+Sau khi triển khai, mở trang *Máy chấm công*: cột IP của từng máy phải là IP riêng của máy (`192.168.103.x`…). Nếu máy nào cũng bị chặn (`403`) và *Nhật ký bảo mật* có `iclock_ip_blocked` ghi "mang IP của proxy" thì `TRUSTED_PROXIES` chưa đúng.
+
+Các biến tuỳ chỉnh (`backend/.env.production`, khởi động lại backend sau khi sửa):
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `ICLOCK_ALLOWED_CIDRS` | `192.168.0.0/16` | Dải IP được gửi `/iclock`, cách nhau dấu phẩy. Nên thu hẹp về đúng các dải có đặt máy |
+| `ICLOCK_PROXY_IPS` | (trống) | IP của proxy viện — request mang IP này bị chặn |
+| `ICLOCK_IP_FLIP_MIN` | `10` | IP cũ quay lại trong bấy nhiêu phút sau khi đổi IP ⇒ tạm khoá |
+| `ICLOCK_IP_HOLD_MIN` | `5` | Số phút giữ lệnh sau khi máy đổi IP |
+| `ICLOCK_SN_RATE_LIMIT` | `240` | Số lượt gọi tối đa mỗi phút của một số serial |
+
+**Máy bị Tạm khoá:** máy giữ lượt chấm trong máy, không mất. Quản trị kiểm tra máy thật vẫn ở đúng chỗ, tìm thiết bị lạ theo hai IP ghi ở dòng lý do, rồi bấm **Mở khoá**. Máy giả còn gửi thì máy sẽ bị khoá lại.
+
+Còn hở: người **trong mạng viện** biết số serial vẫn giả được máy lúc máy thật đang tắt (vd. ban đêm). Muốn chặn hẳn cần mã bí mật riêng cho từng máy (chưa làm, phải thử trên máy thật).
+
+### 3.2. Kiểm tra trên web
 
 Trên web, đăng nhập tài khoản quản trị hệ thống:
 
@@ -253,6 +289,8 @@ docker compose -p hospital_rms -f docker-compose.prod.yml up -d backend
 
 | Hiện tượng | Nguyên nhân / cách xử lý |
 |---|---|
+| Mọi máy đều nhận `403` / *Nhật ký bảo mật* có `iclock_ip_blocked` | Backend không thấy IP thật của máy: đặt `TRUSTED_PROXIES` và `ICLOCK_PROXY_IPS` (mục 3.1). Máy đặt ở dải ngoài `ICLOCK_ALLOWED_CIDRS` thì thêm dải đó. |
+| Máy chuyển sang **Tạm khoá** | Một số serial gửi từ hai IP xen kẽ (mục 3.1). Kiểm tra rồi bấm **Mở khoá**; nếu máy bị khoá lại ngay thì đang có thiết bị lạ dùng serial này — tìm theo hai IP ở dòng lý do. |
 | Máy không hiện ở trang Máy chấm công | Máy chưa tới được server. Thử `https://nckh.bvnghean.vn/iclock/ping` từ máy tính cùng mạng (mục 3). Được thì kiểm tra DNS / Gateway / giờ trên máy (mục 4). Không được thì xem dòng dưới. |
 | `…/iclock/ping` ra trang web của hệ thống thay vì `OK` | Image frontend cũ chưa có `location /iclock/` — kiểm tra bản đang chạy (`logs/deploy-history.log`). |
 | `…/iclock/ping` lỗi 404 / trang "Welcome to nginx" | Proxy của viện (`192.168.34.20`) không chuyển `/iclock/` vào `172.16.25.21:8081`. Nhờ IT kiểm tra cấu hình proxy cho `nckh.bvnghean.vn`. |

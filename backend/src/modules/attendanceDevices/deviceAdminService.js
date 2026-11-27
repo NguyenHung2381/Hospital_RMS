@@ -14,7 +14,7 @@ const listDevices = async () => {
 		await pool.request().query(`
       SELECT d.id, d.serial_no, d.name, d.location, d.status, d.name_ascii, d.push_version,
              d.firmware, d.fp_algorithm, d.last_seen_at, d.last_ip, d.user_count, d.fp_count,
-             d.created_at,
+             d.created_at, d.suspended_at, d.suspend_reason,
              (SELECT COUNT(*) FROM attendance_device_users u WHERE u.device_id = d.id) AS synced_users,
              (SELECT COUNT(*) FROM attendance_device_commands c
                WHERE c.device_id = d.id AND c.status IN ('pending', 'sent')) AS pending_commands,
@@ -23,7 +23,7 @@ const listDevices = async () => {
                  AND c.created_at > (now() AT TIME ZONE 'UTC') - interval '1 day') AS failed_commands,
              (SELECT MAX(p.punched_at) FROM attendance_punches p WHERE p.device_id = d.id) AS last_punch_at
       FROM attendance_devices d
-      ORDER BY (d.status = 'pending') DESC, d.name NULLS LAST, d.serial_no`)
+      ORDER BY (d.status IN ('pending', 'suspended')) DESC, d.name NULLS LAST, d.serial_no`)
 	).recordset.map((d) => ({
 		...d,
 		synced_users: Number(d.synced_users),
@@ -73,6 +73,15 @@ const updateDevice = async (id, data, actorId) => {
 	if (data.name !== undefined) add('name', sql.NVarChar(150), data.name || null);
 	if (data.location !== undefined) add('location', sql.NVarChar(255), data.location || null);
 	if (data.status !== undefined) add('status', sql.VarChar(10), data.status);
+	// Bật / mở lại máy (kể cả máy bị tạm khoá vì 1 serial gọi từ 2 nơi — iclockGuard): xoá
+	// dấu vết đổi IP để theo dõi lại từ đầu; máy giả còn chạy thì sẽ bị khoá lại.
+	if (data.status === 'active')
+		sets.push(
+			'prev_ip = NULL',
+			'ip_changed_at = NULL',
+			'suspended_at = NULL',
+			'suspend_reason = NULL',
+		);
 	if (data.name_ascii !== undefined) add('name_ascii', sql.Bit, !!data.name_ascii);
 	if (!sets.length) return;
 	await withActorTransaction(actorId, async (tx) => {

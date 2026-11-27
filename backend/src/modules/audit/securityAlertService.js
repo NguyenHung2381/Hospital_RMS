@@ -25,6 +25,8 @@ const IMMEDIATE = {
 	password_reset_by_admin: 'Quản trị đặt lại mật khẩu người dùng',
 	login_attack_mode:
 		'Phát hiện đăng nhập dồn dập — bật chế độ chống tấn công (utils/loginShield.js)',
+	iclock_serial_conflict:
+		'Tạm khoá máy chấm công: một số serial gửi từ hai nơi (có thể bị giả máy)',
 };
 
 // Sự kiện chỉ cảnh báo khi xảy ra DỒN DẬP (dấu hiệu dò mật khẩu hàng loạt):
@@ -40,6 +42,13 @@ const BURST = {
 		threshold: 10,
 		windowMin: 15,
 		title: 'Nhiều lần nhập sai mã OTP đặt lại mật khẩu',
+	},
+	// Mỗi IP chỉ ghi 1 lần / 10 phút (iclockGuard) ⇒ 5 lần = nhiều IP lạ dò /iclock, hoặc
+	// proxy chưa chuyển IP thật của máy chấm công (mọi máy đều bị chặn).
+	iclock_ip_blocked: {
+		threshold: 5,
+		windowMin: 15,
+		title: 'Chặn nhiều request tới máy chấm công (/iclock) từ IP ngoài dải cho phép',
 	},
 	// Đúng mật khẩu tạm (thường = tên đăng nhập) của tài khoản bỏ quên — nhiều lượt
 	// liền nhau là dấu hiệu dò mật khẩu mặc định hàng loạt.

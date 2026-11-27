@@ -1,4 +1,5 @@
-export type DeviceStatus = 'pending' | 'active' | 'disabled';
+/** suspended: hệ thống tạm khoá vì 1 số serial gửi từ 2 nơi (nghi máy giả) — quản trị mở lại */
+export type DeviceStatus = 'pending' | 'active' | 'disabled' | 'suspended';
 
 export interface AttendanceDevice {
 	id: number;
@@ -22,6 +23,9 @@ export interface AttendanceDevice {
 	pending_commands: number;
 	failed_commands: number;
 	last_punch_at: string | null;
+	/** UTC ISO — lúc bị tạm khoá */
+	suspended_at: string | null;
+	suspend_reason: string | null;
 }
 
 export interface DeviceFormData {
