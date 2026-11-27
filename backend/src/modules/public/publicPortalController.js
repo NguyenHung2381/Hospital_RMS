@@ -215,7 +215,9 @@ const getSeminarTicketCalendar = asyncHandler(async (req, res) => {
 		'Content-Disposition': 'inline; filename="lich-hoi-nghi.ics"',
 		'Cache-Control': 'no-store',
 	});
-	res.send(ics);
+	// Gửi file như các route tải file khác (res.end + Buffer) — nội dung là text/calendar đã
+	// thoát ký tự (utils/seminarCalendar), không phải HTML
+	res.end(Buffer.from(ics, 'utf8'));
 });
 
 // attachment ⇒ WebView Android (Zalo, Facebook...) chuyển link cho trình tải xuống của máy
@@ -227,7 +229,7 @@ const getSeminarTicketBadge = asyncHandler(async (req, res) => {
 		'Content-Disposition': `attachment; filename="ve-hoi-nghi.png"; filename*=UTF-8''${encodeURIComponent(name)}`,
 		'Cache-Control': 'no-store',
 	});
-	res.send(png);
+	res.end(png);
 });
 
 const startSeminarTest = asyncHandler(async (req, res) => {
