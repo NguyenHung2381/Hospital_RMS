@@ -8,7 +8,6 @@ import { useId, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import { ChevDSvg, ListSvg, XSvg } from '@/assets/icons';
 import { removeDiacritics } from '@/shared/utils/helper';
-import { apiClient } from '@/shared/api/axios';
 import {
 	createLesson,
 	getLessonPrograms,
@@ -25,6 +24,7 @@ import {
 	type TrainingProgram,
 } from '../types/trainingProgram.type';
 import styles from '../pages/TrainingPrograms.module.css';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 interface Department {
 	id: string;
@@ -341,9 +341,7 @@ export function LessonFormModal({
 	const isRotation = form.lesson_kind === 'rotation';
 
 	useEffect(() => {
-		apiClient
-			.get<{ data: Department[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<Department>().then(setDepartments)
 			.catch(() => {});
 	}, []);
 

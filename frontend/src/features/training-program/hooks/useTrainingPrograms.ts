@@ -21,6 +21,7 @@ import {
 	type TrainingProgram,
 	type TrainingProgramFormData,
 } from '../types/trainingProgram.type';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 export interface SimpleItem {
 	id: string;
@@ -59,7 +60,7 @@ export function useTrainingPrograms() {
 	}, [refreshKey]);
 
 	useEffect(() => {
-		apiClient.get<{ data: SimpleItem[] }>('/departments?limit=0').then((r) => setDepartments(r.data)).catch(() => {});
+		getDepartmentOptions<SimpleItem>().then(setDepartments).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/trainee-types?limit=0').then((r) => setTraineeTypes(r.data)).catch(() => {});
 		apiClient.get<{ data: SimpleItem[] }>('/training-types?limit=0').then((r) => setTrainingTypes(r.data)).catch(() => {});
 	}, []);

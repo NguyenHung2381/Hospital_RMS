@@ -62,6 +62,7 @@ import tbl from '@/shared/components/Table/Table.module.css';
 import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
 import { DEFAULT_PAGE_SIZE } from '@/shared/utils/constants';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 const THIS_YEAR = new Date().getFullYear();
 const MIN_YEAR = 2000;
@@ -1074,9 +1075,7 @@ function ImportModal({
 	const [completing, setCompleting] = useState(false);
 	useEffect(() => {
 		if ((!createMissing && !adding && !completing) || departments.length) return;
-		apiClient
-			.get<{ data: { id: string; name: string }[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<{ id: string; name: string }>().then(setDepartments)
 			.catch(() => setError('Không tải được danh sách khoa/phòng'));
 	}, [createMissing, adding, completing, departments.length]);
 	const inGroup = group ? categories.filter((c) => c.group_id === group) : categories;

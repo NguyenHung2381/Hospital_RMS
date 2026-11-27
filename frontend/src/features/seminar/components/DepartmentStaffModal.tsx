@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CheckSvg, UsersSvg } from '@/assets/icons';
-import { apiClient } from '@/shared/api/axios';
 import { Modal, SearchableSelect } from '@/shared/components';
 import { InlineLoading } from '@/shared/components/Loading';
 import { SelectCheckbox } from '@/shared/components/Table/RowSelect';
@@ -13,6 +12,7 @@ import { showToast } from '@/shared/utils/feedback';
 import { addSeminarUsers, getDepartmentStaff } from '../api/seminarApi';
 import type { DepartmentStaff } from '../types/seminar.type';
 import styles from '../pages/Seminar.module.css';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 /** Tập huấn bệnh viện: chọn người tham dự từ nhân sự theo khoa, hoặc thêm cả khoa. */
 export function DepartmentStaffModal({
@@ -31,9 +31,7 @@ export function DepartmentStaffModal({
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
-		apiClient
-			.get<{ data: { id: string; name: string }[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<{ id: string; name: string }>().then(setDepartments)
 			.catch(() => showToast('error', 'Không tải được danh sách khoa/phòng'));
 	}, []);
 

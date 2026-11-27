@@ -29,6 +29,7 @@ import type { SimpleItem } from '../hooks/useTrainees';
 import type { Trainee, TraineeFormData } from '../types/trainee.type';
 import styles from './Trainees.module.css';
 import ds from './TraineeDetail.module.css';
+import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
 export type TraineeDetailTab = 'info' | 'documents' | 'courses' | 'schedule' | 'attendance' | 'results' | 'certificates';
 
@@ -77,9 +78,7 @@ export default function TraineeDetail() {
 			.get<{ data: SimpleItem[] }>('/trainee-types?limit=0')
 			.then((r) => setTraineeTypes(r.data))
 			.catch(() => {});
-		apiClient
-			.get<{ data: SimpleItem[] }>('/departments?limit=0')
-			.then((r) => setDepartments(r.data))
+		getDepartmentOptions<SimpleItem>().then(setDepartments)
 			.catch(() => {});
 	}, [editing, traineeTypes.length]);
 
