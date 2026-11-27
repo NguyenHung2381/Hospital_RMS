@@ -202,6 +202,7 @@ export function FileSlot({
 						className={s.ghostBtn}
 						onClick={() => inputRef.current?.click()}
 						disabled={disabled}
+						aria-label={`Chọn file ${label}`}
 						aria-describedby={describedBy}
 						aria-invalid={shownError ? true : undefined}
 					>

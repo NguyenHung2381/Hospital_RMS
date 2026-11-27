@@ -147,10 +147,8 @@
 	font-size: var(--font-size-2xs);
 	font-weight: 700;
 	color: var(--color-gray-500);
-	text-transform: uppercase;
 	padding: 6px 3px;
 	background: var(--color-white);
-	letter-spacing: 0.04em;
 	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;

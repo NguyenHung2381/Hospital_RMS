@@ -10,8 +10,6 @@ export default function NotFound() {
 
 	return (
 		<div className={styles.wrapper}>
-			<div className={styles.glowOrb} />
-			<div className={styles.glowOrb} />
 			<div className={styles.ring} />
 			<div className={styles.ring} />
 

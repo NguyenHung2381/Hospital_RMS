@@ -488,7 +488,7 @@
 	box-shadow: var(--shadow-sm);
 }
 .statusCount {
-	color: var(--color-gray-400);
+	color: var(--color-gray-500);
 	font-weight: normal;
 }
 .statusDot {

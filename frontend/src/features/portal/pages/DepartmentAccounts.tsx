@@ -345,6 +345,7 @@ export default function DepartmentAccounts() {
 											<td className={styles.td}>
 												<div className={styles.statusToggle}>
 													<Toggle
+														aria-label={`Kích hoạt tài khoản ${u.full_name}`}
 														on={u.is_active}
 														disabled={!canUpdate}
 														onChange={() => void d.handleToggleActive(u.id)}

@@ -293,6 +293,7 @@ export default function TrainingPrograms() {
 							className={`${styles.filterSelect} ${d.lessonFilter !== 'all' ? styles.filterActive : ''}`}
 							data-active={d.lessonFilter !== 'all' ? 'true' : undefined}
 							value={d.lessonFilter}
+							aria-label='Lọc theo trạng thái bài học'
 							onChange={(e) => d.handleLessonFilter(e.target.value as LessonStateFilter)}
 						>
 							<option value='all'>Tất cả bài học</option>

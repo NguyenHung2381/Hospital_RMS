@@ -507,9 +507,11 @@ export function SeminarFormModal({
 				)}
 
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Bắt đầu</label>
+					<label htmlFor={`${uid}-start-date`} className={styles.formLabel}>Bắt đầu</label>
 					<div className={styles.dateTimeRow}>
 						<DatePicker
+							id={`${uid}-start-date`}
+							aria-label='Ngày bắt đầu'
 							value={form.start_date}
 							onChange={(val) => update({ start_date: val })}
 							max={form.end_date || undefined}
@@ -518,14 +520,17 @@ export function SeminarFormModal({
 						<TimePicker
 							value={form.start_time}
 							onChange={(v) => update({ start_time: v })}
+							aria-label='Giờ bắt đầu'
 							className={styles.timeCell}
 						/>
 					</div>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Kết thúc</label>
+					<label htmlFor={`${uid}-end-date`} className={styles.formLabel}>Kết thúc</label>
 					<div className={styles.dateTimeRow}>
 						<DatePicker
+							id={`${uid}-end-date`}
+							aria-label='Ngày kết thúc'
 							value={form.end_date}
 							onChange={(val) => update({ end_date: val })}
 							min={form.start_date || undefined}
@@ -534,6 +539,7 @@ export function SeminarFormModal({
 						<TimePicker
 							value={form.end_time}
 							onChange={(v) => update({ end_time: v })}
+							aria-label='Giờ kết thúc'
 							hasError={!!errors.end_time}
 							className={styles.timeCell}
 						/>

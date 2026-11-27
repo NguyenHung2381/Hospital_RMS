@@ -149,7 +149,8 @@
 }
 
 .inputRequired {
-	color: var(--color-error);
+	/* --color-error chỉ đạt 3.91:1 trên nền trắng; chữ dùng bản đậm */
+	color: var(--color-error-text);
 	font-size: var(--font-size-base);
 	line-height: 1;
 }
@@ -212,6 +213,12 @@
 
 .inputField.hasError:focus {
 	box-shadow: 0 0 0 4px rgba(232, 69, 69, 0.1);
+}
+
+/* Ô đang lỗi giữ viền đỏ khi focus — thêm viền ngoài đậm để vẫn thấy rõ đang ở ô nào */
+.inputField.hasError:focus-visible {
+	outline: 2px solid var(--color-error-text);
+	outline-offset: 2px;
 }
 
 /* Ẩn icon mắt mặc định của trình duyệt (Edge/Chrome) */

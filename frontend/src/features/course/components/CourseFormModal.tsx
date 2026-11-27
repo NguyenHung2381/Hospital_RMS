@@ -116,6 +116,8 @@ export function CourseFormModal({
 	// id duy nhất cho từng ô — CfgField nối nhãn qua htmlFor
 	const fieldUid = useId();
 	const fid = (name: string) => `${fieldUid}-${name}`;
+	// Trang "Đợt thực hành GPHN" dùng chung modal: gọi theo đúng tên của trang đó.
+	const noun = (course?.training_type_id ?? initial?.training_type_id) === TRAINING_TYPE.GPHN ? 'đợt' : 'khóa học';
 
 	const [form, setForm] = useState<CourseFormData>(course ? courseToForm(course) : { ...EMPTY_FORM, ...initial });
 	const [forms, setForms] = useState<SimpleItem[]>([]);
@@ -197,12 +199,12 @@ export function CourseFormModal({
 			open
 			onClose={onClose}
 			icon={<LayersSvg />}
-			title={cloneOf ? 'Nhân bản khóa học' : mode === 'add' ? 'Thêm khóa học' : 'Chỉnh sửa khóa học'}
+			title={cloneOf ? `Nhân bản ${noun}` : mode === 'add' ? `Thêm ${noun}` : `Chỉnh sửa ${noun}`}
 			subtitle={
 				cloneOf
 					? `Từ "${cloneOf}" — kiểm tra lại tên, số đợt và ngày học trước khi lưu`
 					: mode === 'add'
-						? 'Thêm khóa học mới'
+						? `Thêm ${noun} mới`
 						: `Cập nhật — ${course?.name}`
 			}
 			className={styles.modal}
@@ -212,7 +214,7 @@ export function CourseFormModal({
 					onCancel={onClose}
 					onConfirm={() => validate() && submit()}
 					loading={loading}
-					confirmLabel={cloneOf ? 'Tạo bản sao' : mode === 'add' ? 'Thêm khóa học' : 'Lưu thay đổi'}
+					confirmLabel={cloneOf ? 'Tạo bản sao' : mode === 'add' ? `Thêm ${noun}` : 'Lưu thay đổi'}
 				/>
 			}
 		>
@@ -223,8 +225,9 @@ export function CourseFormModal({
 				>
 					1. Thông tin chung
 				</div>
-				<FormField label='Chế độ đăng ký'>
+				<FormField label='Chế độ đăng ký' htmlFor={fid('is_public_registration')}>
 					<select
+						id={fid('is_public_registration')}
 						className={styles.formInput}
 						value={form.is_public_registration ? '1' : '0'}
 						onChange={(e) => setForm((f) => ({ ...f, is_public_registration: e.target.value === '1' }))}

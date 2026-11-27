@@ -154,8 +154,9 @@ export function CouncilFormModal({
 					/>
 				</div>
 				<div className={styles.formGroup}>
-					<label className={styles.formLabel}>Địa điểm</label>
+					<label htmlFor={`${uid}-venue`} className={styles.formLabel}>Địa điểm</label>
 					<VenueSelect
+						id={`${uid}-venue`}
 						scope='defense'
 						className={styles.formInput}
 						value={form.location}

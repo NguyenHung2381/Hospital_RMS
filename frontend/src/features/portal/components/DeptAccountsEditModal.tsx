@@ -216,6 +216,7 @@ export function DeptAccountsEditModal({
 					</div>
 				</div>
 				<Toggle
+					aria-label='Trạng thái tài khoản'
 					on={form.is_active}
 					onChange={() => set('is_active', !form.is_active)}
 				/>

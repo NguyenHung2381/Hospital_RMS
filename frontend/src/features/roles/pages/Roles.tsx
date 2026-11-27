@@ -270,7 +270,7 @@ export default function Roles() {
 														background:
 															pCount > 0 ? '#e6f1fb' : 'var(--color-gray-100)',
 														color:
-															pCount > 0 ? '#0c447c' : 'var(--color-gray-400)',
+															pCount > 0 ? '#0c447c' : 'var(--color-gray-500)',
 														fontSize: 11,
 														fontWeight: 600,
 														whiteSpace: 'nowrap',

@@ -213,7 +213,7 @@ pre.hint {
 }
 .poolCount {
 	margin-left: 4px;
-	color: var(--color-gray-400);
+	color: var(--color-gray-500);
 	font-weight: var(--font-weight-normal, 400);
 }
 @media (max-width: 640px) {
