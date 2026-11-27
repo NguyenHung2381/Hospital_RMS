@@ -126,3 +126,14 @@ test('#3 setQuestions: chưa có phản hồi ⇒ ghi lại trong 1 transaction 
 	assert.equal(ins[0].inputs.options, '["A","B"]');
 	assert.ok(texts.includes('COMMIT'));
 });
+
+test('xoá khảo sát ghi kèm người thao tác (audit biết ai xoá)', async () => {
+	reset();
+	log.length = 0;
+	await svc.remove('KS1', 'ADMIN');
+	const texts = log.map((l) => l.text);
+	const iDel = texts.findIndex((t) => /DELETE FROM surveys/.test(t));
+	assert.ok(iDel > 0, 'có câu DELETE');
+	assert.ok(texts.slice(0, iDel).some((t) => /set_config\('app.current_user_id'/.test(t)));
+	assert.ok(texts.slice(iDel).includes('COMMIT'));
+});

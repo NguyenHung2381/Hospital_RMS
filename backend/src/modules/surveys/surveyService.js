@@ -1,4 +1,12 @@
-const { getPool, sql, queryAll, nowSql, ilike, withActorTransaction } = require('../../config/db');
+const {
+	getPool,
+	sql,
+	queryAll,
+	nowSql,
+	ilike,
+	withActorTransaction,
+	actorRequest,
+} = require('../../config/db');
 const { randomId } = require('../../utils/idGenerator');
 const { isUniqueViolation } = require('../../utils/dbErrors');
 const { parseJsonArray } = require('../../utils/sqlFilters');
@@ -194,9 +202,10 @@ const update = async (id, data, actorId) => {
 	return getById(id);
 };
 
-const remove = async (id) => {
-	const pool = await getPool();
-	await pool.request().input('id', sql.VarChar(20), id).query('DELETE FROM surveys WHERE id = @id');
+const remove = async (id, actorId) => {
+	await actorRequest(actorId)
+		.input('id', sql.VarChar(20), id)
+		.query('DELETE FROM surveys WHERE id = @id');
 	broadcast('update', { entity: 'survey' });
 };
 
