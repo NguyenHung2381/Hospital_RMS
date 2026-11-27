@@ -236,7 +236,7 @@ test('ghi gộp training-cleanup trên PostgreSQL thật (rollback)', async (t) 
 		const [prog] = await q('SELECT id FROM training_programs LIMIT 1');
 		const tts = await q('SELECT id FROM trainee_types ORDER BY id LIMIT 2');
 		if (!prog || tts.length < 2) return s.skip('thiếu dữ liệu');
-		await setProgramTraineeTypes(prog.id, [tts[1].id, 'KHONG_TON_TAI', tts[0].id]);
+		await setProgramTraineeTypes(tx, prog.id, [tts[1].id, 'KHONG_TON_TAI', tts[0].id]);
 		const r = await q(
 			'SELECT trainee_type_id, display_order FROM program_trainee_types WHERE program_id = @p ORDER BY display_order',
 			{ p: prog.id },
@@ -248,7 +248,7 @@ test('ghi gộp training-cleanup trên PostgreSQL thật (rollback)', async (t) 
 				[tts[0].id, 2],
 			],
 		);
-		await setProgramTraineeTypes(prog.id, []);
+		await setProgramTraineeTypes(tx, prog.id, []);
 		assert.equal(
 			(await q('SELECT 1 FROM program_trainee_types WHERE program_id = @p', { p: prog.id })).length,
 			0,

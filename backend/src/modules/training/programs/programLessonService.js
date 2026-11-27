@@ -131,9 +131,8 @@ const setLessonLecturers = async (programId, lessonId, data, actorId) => {
 };
 
 // Bài đã gỡ khỏi chương trình thì bỏ luôn giảng viên của bài ở chương trình đó.
-const pruneLessonLecturers = async (lessonId) => {
-	const pool = await getPool();
-	await pool.request().input('lesson_id', sql.VarChar(20), lessonId).query(`
+const pruneLessonLecturers = async (tx, lessonId) => {
+	await tx.request().input('lesson_id', sql.VarChar(20), lessonId).query(`
     DELETE FROM program_lesson_lecturers
     WHERE lesson_id = @lesson_id
       AND NOT EXISTS (SELECT 1 FROM lesson_programs lp
@@ -250,24 +249,27 @@ const getLessonProgramIds = async (lessonId) => {
 // khác unlinkLesson (gỡ từng cái 1 ở danh sách bài học/chương trình, có dọn
 // mồ côi) vì đây là hành động sửa có chủ đích của người dùng trên chính bài
 // học, không phải gỡ ngẫu nhiên.
+// Xóa, chèn lại và dọn giảng viên chung 1 transaction: INSERT lỗi thì rollback, bài học không
+// mất hết chương trình (và giảng viên theo chương trình) giữa chừng.
 const setLessonPrograms = async (lessonId, programIds, actorId) => {
-	const pool = await getPool();
 	const ids = [...new Set((programIds || []).filter(Boolean))];
-	await pool
-		.request()
-		.input('lesson_id', sql.VarChar(20), lessonId)
-		.query('DELETE FROM lesson_programs WHERE lesson_id = @lesson_id');
-	if (ids.length)
-		await pool
+	await withTransaction(async (tx) => {
+		await tx
 			.request()
 			.input('lesson_id', sql.VarChar(20), lessonId)
-			.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
-			.input('actor_id', sql.VarChar(20), actorId).query(`
+			.query('DELETE FROM lesson_programs WHERE lesson_id = @lesson_id');
+		if (ids.length)
+			await tx
+				.request()
+				.input('lesson_id', sql.VarChar(20), lessonId)
+				.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(ids))
+				.input('actor_id', sql.VarChar(20), actorId).query(`
         INSERT INTO lesson_programs (id, lesson_id, program_id, display_order, created_by)
         SELECT ${newIdSql('LP', 18)}, @lesson_id, tp.id, j.idx, @actor_id
         FROM ${jsonValues('@ids', { withIndex: true })} j JOIN training_programs tp ON tp.id = j.value
       `);
-	await pruneLessonLecturers(lessonId);
+		await pruneLessonLecturers(tx, lessonId);
+	});
 	broadcast('update', { entity: 'program_lesson' });
 	return getLessonProgramIds(lessonId);
 };
