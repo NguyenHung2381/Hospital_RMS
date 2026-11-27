@@ -14,7 +14,7 @@ const HIDDEN = '[hidden]';
 // Khớp ở BẤT KỲ đâu trong tên trường (vd new_password, pre_auth_token,
 // mentor_phone, national_id_number, date_of_birth).
 const SENSITIVE_PART =
-	/pass|token|secret|otp|authorization|cookie|ticket|national_id|cccd|cmnd|phone|birth/i;
+	/pass|token|secret|api_?key|otp|authorization|cookie|ticket|national_id|cccd|cmnd|phone|birth/i;
 // Khớp CẢ tên trường — chữ chung chung, so khớp một phần sẽ che nhầm (course_code,
 // role_code, contact_person...).
 const SENSITIVE_EXACT = /^(code|backup_code|recovery_code|dob|contact|sig)$/i;

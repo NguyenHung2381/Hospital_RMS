@@ -123,7 +123,8 @@ export type Captcha =
 			min_fill_sec?: number;
 	  }
 	| { provider: 'turnstile'; site_key: string; action: string }
-	| { provider: 'recaptcha'; site_key: string };
+	/** enterprise: khóa Google Cloud — tải enterprise.js, gọi grecaptcha.enterprise */
+	| { provider: 'recaptcha'; site_key: string; enterprise?: boolean };
 
 export const getOpenCourses = () => request<PublicCourse[]>('/courses');
 export const getTraineeTypes = () => request<TraineeTypeOption[]>('/trainee-types');

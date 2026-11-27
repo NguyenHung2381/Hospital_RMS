@@ -5,7 +5,7 @@ const { broadcast } = require('../events/eventService');
 // Cấu hình hệ thống qua UI (2026-09-14_system_settings.sql) — thay .env cho các
 // giá trị nghiệp vụ hay đổi. value NULL = "chưa cấu hình qua UI, dùng .env"
 // (mailService.js/cmeRequirementService.js tự fallback process.env).
-const SECRET_KEYS = new Set(['SMTP_PASS', 'RECAPTCHA_SECRET_KEY']);
+const SECRET_KEYS = new Set(['SMTP_PASS', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_API_KEY']);
 // Whitelist — PUT /:key không được tạo key tùy ý. Thêm key mới = thêm ở đây +
 // trang cấu hình frontend (features/settings).
 const KEYS = [
@@ -58,10 +58,13 @@ const KEYS = [
 	'LEAVE_BACKDATE_DAYS',
 	'LEAVE_AHEAD_DAYS',
 	'LEAVE_MAX_SPAN_DAYS',
-	// Google reCAPTCHA v2 cho form đăng ký công khai — utils/captcha.js (fallback .env)
+	// Google reCAPTCHA cho form đăng ký công khai — utils/captcha.js (fallback .env).
+	// PROJECT_ID + API_KEY: xác minh qua Google Cloud (assessment); SECRET_KEY: cách cũ
 	'RECAPTCHA_SITE_KEY',
 	'RECAPTCHA_SECRET_KEY',
 	'RECAPTCHA_HOSTNAMES',
+	'RECAPTCHA_PROJECT_ID',
+	'RECAPTCHA_API_KEY',
 	// Thực hành GPHN — cảnh báo khi 1 người hướng dẫn kèm quá N học viên cùng lúc
 	'PRACTICE_MENTOR_MAX_TRAINEES',
 	// Lớp ĐTLT / CTCV — training/courses/programClassService.js, utils/classDates.js

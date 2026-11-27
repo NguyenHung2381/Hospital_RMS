@@ -162,21 +162,35 @@ const SECTIONS: Section[] = [
 			},
 			{
 				title: 'Chống bot form đăng ký công khai',
-				desc: 'Google reCAPTCHA v2 cho form đăng ký khóa học / đề tài. Để trống cả hai khóa = dùng kiểm tra chạy ngầm.',
-				more: 'Đặt đủ Site key + Secret key thì form hiện ô tích "Tôi không phải người máy" của Google. Để trống cả hai thì dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ không ra Internet.',
+				desc: 'Google reCAPTCHA cho form đăng ký khóa học / đề tài. Để trống các khóa = dùng kiểm tra chạy ngầm.',
+				more: 'Khóa Google Cloud (khuyến nghị): Site key + Project ID + API key, máy chủ xác minh qua reCAPTCHA Enterprise API. Khóa cũ: Site key + Secret key. Đã đặt Project ID thì Secret key bị bỏ qua. Để trống tất cả thì dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ không ra Internet.',
 				tool: 'recaptcha-test',
 				fields: [
 					{
 						key: 'RECAPTCHA_SITE_KEY',
 						label: 'Site key',
 						hint: 'Máy chủ phải gọi ra được www.google.com, không thì mọi lượt đăng ký bị từ chối.',
-						more: 'Lấy ở google.com/recaptcha/admin → tạo site loại reCAPTCHA v2 "Tôi không phải người máy", thêm tên miền hệ thống.',
+						more: 'Google Cloud → Security → reCAPTCHA → tạo khóa loại Website, kiểu thử thách ô tích "Tôi không phải người máy", thêm tên miền hệ thống. Chép ID khóa vào đây.',
 						placeholder: '6Lc…',
 					},
 					{
-						key: 'RECAPTCHA_SECRET_KEY',
-						label: 'Secret key',
+						key: 'RECAPTCHA_PROJECT_ID',
+						label: 'Project ID (Google Cloud)',
+						hint: 'ID của dự án chứa khóa, không phải tên dự án. Đặt là dùng khóa Google Cloud.',
+						more: 'Xem ở Google Cloud Console → chọn dự án → Project ID. Dự án phải bật "reCAPTCHA Enterprise API".',
+						placeholder: 'rms-benhvien',
+					},
+					{
+						key: 'RECAPTCHA_API_KEY',
+						label: 'API key (Google Cloud)',
 						hint: 'Được che sau khi lưu. Để nguyên nếu không đổi.',
+						more: 'Google Cloud → APIs & Services → Credentials → Create credentials → API key. Nên giới hạn khóa chỉ dùng "reCAPTCHA Enterprise API".',
+						type: 'password',
+					},
+					{
+						key: 'RECAPTCHA_SECRET_KEY',
+						label: 'Secret key (khóa cũ)',
+						hint: 'Chỉ dùng khi chưa đặt Project ID. Được che sau khi lưu.',
 						type: 'password',
 					},
 					{
@@ -1314,7 +1328,13 @@ export default function SystemSettings() {
 		}
 		if (tool === 'doc-check') return <DocCheckPanel />;
 		if (tool === 'recaptcha-test')
-			return <RecaptchaTestPanel siteKey={(saved.RECAPTCHA_SITE_KEY || env.RECAPTCHA_SITE_KEY || '').trim()} dirty={dirty.length > 0} />;
+			return (
+				<RecaptchaTestPanel
+					siteKey={(saved.RECAPTCHA_SITE_KEY || env.RECAPTCHA_SITE_KEY || '').trim()}
+					enterprise={!!(saved.RECAPTCHA_PROJECT_ID || env.RECAPTCHA_PROJECT_ID || '').trim()}
+					dirty={dirty.length > 0}
+				/>
+			);
 		if (tool === 'attendance-helper') {
 			// Bản đồ xem trước tọa độ + bán kính đang nhập (chưa lưu cũng hiện)
 			const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(form.ATTENDANCE_LOCATION ?? '');

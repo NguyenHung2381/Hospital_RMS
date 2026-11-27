@@ -1,10 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
-// Widget Google reCAPTCHA v2 "Tôi không phải người máy" (chỉ dùng khi server
+// Widget Google reCAPTCHA "Tôi không phải người máy" (chỉ dùng khi server
 // bật — xem backend utils/captcha.js). Script tải 1 lần cho cả trang, render
 // thủ công (explicit) để vẽ lại được khi form cần mã mới sau mỗi lần gửi.
+// enterprise: khóa Google Cloud (backend tạo assessment) — tải enterprise.js và gọi
+// grecaptcha.enterprise.* thay cho api.js / grecaptcha.* (cloud.google.com/recaptcha/
+// docs/using-features#migrate-frontend). Cùng tên miền www.google.com/recaptcha/ nên CSP
+// (frontend/nginx.conf) không phải đổi.
 const ONLOAD_CALLBACK = '__rmsRecaptchaOnload';
-const SCRIPT_SRC = `https://www.google.com/recaptcha/api.js?onload=${ONLOAD_CALLBACK}&render=explicit&hl=vi`;
+const scriptSrc = (enterprise: boolean) =>
+	`https://www.google.com/recaptcha/${enterprise ? 'enterprise' : 'api'}.js?onload=${ONLOAD_CALLBACK}&render=explicit&hl=vi`;
 
 type RecaptchaApi = {
 	render: (
@@ -23,39 +28,50 @@ type RecaptchaApi = {
 
 declare global {
 	interface Window {
-		grecaptcha?: RecaptchaApi;
+		grecaptcha?: RecaptchaApi & { enterprise?: RecaptchaApi };
 		__rmsRecaptchaOnload?: () => void;
 	}
 }
 
-let scriptPromise: Promise<RecaptchaApi> | null = null;
+const pickApi = (enterprise: boolean) =>
+	enterprise ? window.grecaptcha?.enterprise : window.grecaptcha;
 
-function loadRecaptcha(): Promise<RecaptchaApi> {
+const scriptPromises: Partial<Record<'api' | 'enterprise', Promise<RecaptchaApi>>> = {};
+
+function loadRecaptcha(enterprise: boolean): Promise<RecaptchaApi> {
 	// window.grecaptcha có thể đã tồn tại trước khi sẵn sàng → chỉ tin khi có render
-	if (window.grecaptcha?.render) return Promise.resolve(window.grecaptcha);
-	scriptPromise ??= new Promise((resolve, reject) => {
-		window[ONLOAD_CALLBACK] = () =>
-			window.grecaptcha ? resolve(window.grecaptcha) : reject(new Error('reCAPTCHA'));
+	const ready = pickApi(enterprise);
+	if (ready?.render) return Promise.resolve(ready);
+	const kind = enterprise ? 'enterprise' : 'api';
+	scriptPromises[kind] ??= new Promise((resolve, reject) => {
+		window[ONLOAD_CALLBACK] = () => {
+			const api = pickApi(enterprise);
+			if (api) resolve(api);
+			else reject(new Error('reCAPTCHA'));
+		};
 		const s = document.createElement('script');
-		s.src = SCRIPT_SRC;
+		s.src = scriptSrc(enterprise);
 		s.async = true;
 		s.defer = true;
 		s.onerror = () => {
-			scriptPromise = null;
+			delete scriptPromises[kind];
 			s.remove();
 			reject(new Error('Không tải được Google reCAPTCHA'));
 		};
 		document.head.appendChild(s);
 	});
-	return scriptPromise;
+	return scriptPromises[kind];
 }
 
 export default function RecaptchaWidget({
 	siteKey,
+	enterprise = false,
 	onToken,
 	onError,
 }: {
 	siteKey: string;
+	/** Khóa Google Cloud — server trả `enterprise: true` */
+	enterprise?: boolean;
 	/** Token mới khi người dùng qua thử thách; '' khi token hết hạn / lỗi */
 	onToken: (token: string) => void;
 	onError?: (message: string) => void;
@@ -71,7 +87,7 @@ export default function RecaptchaWidget({
 	useEffect(() => {
 		const host = ref.current;
 		let cancelled = false;
-		loadRecaptcha()
+		loadRecaptcha(enterprise)
 			.then((api) => {
 				if (cancelled || !host) return;
 				// grecaptcha không có hàm gỡ widget, và báo lỗi nếu render 2 lần vào
@@ -96,7 +112,7 @@ export default function RecaptchaWidget({
 			cancelled = true;
 			if (host) host.replaceChildren();
 		};
-	}, [siteKey]);
+	}, [siteKey, enterprise]);
 
 	return (
 		<div style={{ minHeight: 78 }}>

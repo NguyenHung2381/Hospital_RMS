@@ -15,7 +15,16 @@ type Result = { ok: boolean; message: string };
  * kết nối tới Google có ổn không. Chưa tích: chỉ thử máy chủ gọi được Google. Mỗi token
  * chỉ xác minh được 1 lần nên sau mỗi lần thử vẽ lại ô tích.
  */
-export default function RecaptchaTestPanel({ siteKey, dirty }: { siteKey: string; dirty: boolean }) {
+export default function RecaptchaTestPanel({
+	siteKey,
+	enterprise,
+	dirty,
+}: {
+	siteKey: string;
+	/** Đã đặt Project ID ⇒ xác minh qua Google Cloud, ô tích tải enterprise.js */
+	enterprise: boolean;
+	dirty: boolean;
+}) {
 	const [token, setToken] = useState('');
 	const [widgetKey, setWidgetKey] = useState(0);
 	const [widgetError, setWidgetError] = useState('');
@@ -39,18 +48,21 @@ export default function RecaptchaTestPanel({ siteKey, dirty }: { siteKey: string
 	const note = dirty
 		? 'Lưu thay đổi trước khi kiểm tra'
 		: !siteKey
-			? 'Đang dùng kiểm tra chạy ngầm — điền đủ 2 khóa và lưu để bật reCAPTCHA.'
+			? 'Đang dùng kiểm tra chạy ngầm — điền khóa và lưu để bật reCAPTCHA.'
 			: token
-				? 'Bấm Kiểm tra để thử cả cặp khóa, tên miền và kết nối tới Google.'
-				: 'Tích ô để thử cả cặp khóa. Không tích thì chỉ thử máy chủ gọi được Google.';
+				? 'Bấm Kiểm tra để thử cả khóa, tên miền và kết nối tới Google.'
+				: enterprise
+					? 'Tích ô để thử cả Site key. Không tích thì thử Project ID, API key và kết nối tới Google Cloud.'
+					: 'Tích ô để thử cả cặp khóa. Không tích thì chỉ thử máy chủ gọi được Google.';
 
 	return (
 		<>
 			{siteKey && !dirty && (
 				<div className={ps.widget}>
 					<RecaptchaWidget
-						key={`${siteKey}:${widgetKey}`}
+						key={`${siteKey}:${enterprise}:${widgetKey}`}
 						siteKey={siteKey}
+						enterprise={enterprise}
 						onToken={(t) => {
 							setToken(t);
 							if (t) setWidgetError('');

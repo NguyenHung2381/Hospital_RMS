@@ -230,3 +230,116 @@ test('đặt cả khóa Turnstile → Turnstile được ưu tiên', async () =>
 		delete process.env.TURNSTILE_SECRET_KEY;
 	}
 });
+
+// ─── Google Cloud (assessment) — cloud.google.com/recaptcha/docs/using-features#migrate-backend
+const withEnterprise = async (fn) => {
+	uiSettings.RECAPTCHA_PROJECT_ID = 'rms-benhvien';
+	uiSettings.RECAPTCHA_API_KEY = 'AIzaSy-test-api-key-0123456789 \n';
+	try {
+		await fn();
+	} finally {
+		delete uiSettings.RECAPTCHA_PROJECT_ID;
+		delete uiSettings.RECAPTCHA_API_KEY;
+	}
+};
+const lastJson = () => calls.at(-1).json;
+const mockAssess = (json) => {
+	global.fetch = async (url, opts) => {
+		calls.push({ url, headers: opts.headers, json: JSON.parse(opts.body) });
+		return { json: async () => json };
+	};
+};
+
+test('Google Cloud: client nhận enterprise để tải enterprise.js', () =>
+	withEnterprise(async () => {
+		assert.deepEqual(await generateCaptcha(), {
+			provider: 'recaptcha',
+			site_key: 'site-key-test',
+			enterprise: true,
+		});
+	}));
+
+test('Google Cloud: tạo assessment (API key ở header, không cần secret key)', () =>
+	withEnterprise(async () => {
+		const saved = process.env.RECAPTCHA_SECRET_KEY;
+		delete process.env.RECAPTCHA_SECRET_KEY;
+		try {
+			assert.equal(await captchaProvider(), 'recaptcha');
+			mockAssess({ tokenProperties: { valid: true, hostname: 'rms.benhvien.vn' } });
+			assert.equal(await verifyCaptcha('g-token', undefined, '10.1.2.3'), true);
+			const last = calls.at(-1);
+			assert.equal(
+				last.url,
+				'https://recaptchaenterprise.googleapis.com/v1/projects/rms-benhvien/assessments',
+			);
+			assert.equal(last.headers['X-Goog-Api-Key'], 'AIzaSy-test-api-key-0123456789');
+			assert.equal(last.url.includes('key='), false);
+			assert.deepEqual(lastJson(), {
+				event: { token: 'g-token', siteKey: 'site-key-test', userIpAddress: '10.1.2.3' },
+			});
+		} finally {
+			process.env.RECAPTCHA_SECRET_KEY = saved;
+		}
+	}));
+
+test('Google Cloud: có Project ID nhưng thiếu API key → quay về proof-of-work', async () => {
+	uiSettings.RECAPTCHA_PROJECT_ID = 'rms-benhvien';
+	try {
+		assert.equal(await captchaProvider(), 'pow');
+	} finally {
+		delete uiSettings.RECAPTCHA_PROJECT_ID;
+	}
+});
+
+test('Google Cloud: token không hợp lệ / sai tên miền / lỗi API → không qua', () =>
+	withEnterprise(async () => {
+		for (const reason of ['EXPIRED', 'DUPE', 'BROWSER_ERROR', 'SITE_MISMATCH']) {
+			mockAssess({ tokenProperties: { valid: false, invalidReason: reason } });
+			assert.equal(await verifyCaptcha('g-token', undefined, '10.1.2.3'), false, reason);
+		}
+		mockAssess({ tokenProperties: { valid: true, hostname: 'evil.example' } });
+		assert.equal(await verifyCaptcha('g-token'), false);
+		mockAssess({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'API key not valid.' } });
+		assert.equal(await verifyCaptcha('g-token'), false);
+	}));
+
+test('Google Cloud: kiểm tra không token — API key sai thì báo, đúng thì ok', () =>
+	withEnterprise(async () => {
+		mockAssess({
+			error: {
+				code: 403,
+				status: 'PERMISSION_DENIED',
+				message:
+					'reCAPTCHA Enterprise API has not been used in project 123 before or it is disabled.',
+			},
+		});
+		let r = await testRecaptcha();
+		assert.equal(r.ok, false);
+		assert.match(r.message, /chưa bật "reCAPTCHA Enterprise API"/);
+		mockAssess({ tokenProperties: { valid: false, invalidReason: 'MALFORMED' } });
+		r = await testRecaptcha();
+		assert.equal(r.ok, true);
+		assert.match(r.message, /Project ID và API key dùng được/);
+	}));
+
+test('Google Cloud: kiểm tra có token → nêu lý do / ok', () =>
+	withEnterprise(async () => {
+		mockAssess({ tokenProperties: { valid: false, invalidReason: 'SITE_MISMATCH' } });
+		let r = await testRecaptcha('g-token');
+		assert.equal(r.ok, false);
+		assert.match(r.message, /SITE_MISMATCH: token sinh từ site key khác/);
+		mockAssess({ tokenProperties: { valid: true, hostname: 'localhost' } });
+		r = await testRecaptcha('g-token');
+		assert.deepEqual(r, {
+			ok: true,
+			message: 'Khóa Google Cloud hoạt động bình thường (tên miền localhost).',
+		});
+	}));
+
+test('Google Cloud: kiểm tra giá trị Project ID / API key khi lưu', () => {
+	assert.equal(validateSetting('RECAPTCHA_PROJECT_ID', 'rms-benhvien'), null);
+	assert.match(validateSetting('RECAPTCHA_PROJECT_ID', 'RMS Bệnh viện') ?? '', /Project ID/);
+	assert.equal(validateSetting('RECAPTCHA_API_KEY', '••••••'), null);
+	assert.equal(validateSetting('RECAPTCHA_API_KEY', 'AIzaSyA-0123456789abcdefghij'), null);
+	assert.equal(normalizeSetting('RECAPTCHA_API_KEY', ' k \n'), 'k');
+});

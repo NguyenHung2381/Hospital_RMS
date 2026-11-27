@@ -184,6 +184,7 @@ export function useCaptcha() {
 				<RecaptchaWidget
 					key={widgetKey}
 					siteKey={captcha.site_key}
+					enterprise={captcha.enterprise}
 					onToken={onWidgetToken}
 					onError={setLoadError}
 				/>

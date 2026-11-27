@@ -12,11 +12,15 @@ const systemSettingService = require('../modules/settings/systemSettingService')
 //    thử thách chạy ngầm trên trình duyệt, server xác minh với Cloudflare. Cần
 //    máy chủ gọi ra được https://challenges.cloudflare.com — không gọi được thì
 //    từ chối đăng ký (fail-closed), không lặng lẽ bỏ kiểm tra.
-//  - Google reCAPTCHA v2 "Tôi không phải người máy" (khi đặt RECAPTCHA_SITE_KEY
-//    + RECAPTCHA_SECRET_KEY): ô tích của Google, đôi khi bắt chọn ảnh. Server
-//    xác minh với https://www.google.com/recaptcha/api/siteverify — cũng
-//    fail-closed như Turnstile. Khóa đặt ở Cấu hình hệ thống → tab "Bảo mật &
-//    Tài khoản" (áp dụng ngay, không cần khởi động lại); trống thì lấy .env.
+//  - Google reCAPTCHA "Tôi không phải người máy": ô tích của Google, đôi khi bắt
+//    chọn ảnh — cũng fail-closed như Turnstile. 2 cách xác minh:
+//      · Google Cloud (khuyến nghị — cloud.google.com/recaptcha/docs/using-features
+//        #migrate-backend): RECAPTCHA_SITE_KEY + RECAPTCHA_PROJECT_ID +
+//        RECAPTCHA_API_KEY → tạo "assessment" qua recaptchaenterprise.googleapis.com,
+//        frontend tải enterprise.js. Khóa tạo mới trên Google Cloud không có secret key.
+//      · Cũ (legacy): RECAPTCHA_SITE_KEY + RECAPTCHA_SECRET_KEY → siteverify.
+//    Đặt Project ID là dùng cách Google Cloud (secret key bỏ qua). Khóa đặt ở Cấu
+//    hình hệ thống → tab "Bảo mật & Tài khoản" (áp dụng ngay); trống thì lấy .env.
 //  - Proof-of-work (mặc định, chạy được trong mạng nội bộ không ra Internet):
 //    cùng cơ chế lá chắn đăng nhập (utils/loginShield.js) — trình duyệt phải tìm
 //    `nonce` sao cho SHA-256("<token>:<nonce>") có ≥ `bits` bit 0 ở đầu (~2^bits
@@ -35,21 +39,30 @@ const POW_BITS = Math.min(Math.max(Number(process.env.CAPTCHA_POW_BITS) || 20, 1
 const MIN_FILL_SEC = Number(process.env.CAPTCHA_MIN_FILL_SEC ?? 3);
 const TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+const RECAPTCHA_ASSESS_URL = (projectId) =>
+	`https://recaptchaenterprise.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/assessments`;
 const VERIFY_TIMEOUT_MS = 5000;
 
 const turnstileEnabled = () =>
 	!!(process.env.TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY);
 
-const RECAPTCHA_KEYS = ['RECAPTCHA_SITE_KEY', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_HOSTNAMES'];
+const RECAPTCHA_KEYS = [
+	'RECAPTCHA_SITE_KEY',
+	'RECAPTCHA_SECRET_KEY',
+	'RECAPTCHA_HOSTNAMES',
+	'RECAPTCHA_PROJECT_ID',
+	'RECAPTCHA_API_KEY',
+];
 // Khóa reCAPTCHA: Cấu hình hệ thống, từng key trống thì lấy .env (systemSettingService.getValue).
 // Cắt khoảng trắng: khóa dán từ trang quản trị Google hay dính dấu cách / xuống dòng ở cuối —
 // secret dính khoảng trắng thì Google trả invalid-input-secret, MỌI lượt gửi đều bị từ chối.
 // Cắt cả lúc đọc để giá trị đã lưu trước bản sửa này (chưa cắt) cũng dùng được.
 const recaptchaConfig = async () => {
-	const [siteKey, secretKey, hostnames] = await Promise.all(
+	const [siteKey, secretKey, hostnames, projectId, apiKey] = await Promise.all(
 		RECAPTCHA_KEYS.map(async (k) => (await systemSettingService.getValue(k))?.trim() || undefined),
 	);
-	return { siteKey, secretKey, hostnames };
+	// Có Project ID ⇒ xác minh qua Google Cloud (assessment), không dùng secret key
+	return { siteKey, secretKey, hostnames, projectId, apiKey, enterprise: !!projectId };
 };
 
 // Chuẩn hóa giá trị trước khi lưu (systemSettings.routes.js) — khớp với validateSetting,
@@ -58,10 +71,8 @@ const normalizeSetting = (key, value) =>
 	RECAPTCHA_KEYS.includes(key) && typeof value === 'string' && !/^•+$/.test(value)
 		? value.trim()
 		: value;
-const recaptchaEnabled = async () => {
-	const c = await recaptchaConfig();
-	return !!(c.siteKey && c.secretKey);
-};
+const recaptchaReady = (c) => !!(c.siteKey && (c.enterprise ? c.apiKey : c.secretKey));
+const recaptchaEnabled = async () => recaptchaReady(await recaptchaConfig());
 
 /** @returns {Promise<'turnstile' | 'recaptcha' | 'pow'>} */
 const captchaProvider = async () =>
@@ -69,6 +80,8 @@ const captchaProvider = async () =>
 
 // Kiểm tra khi admin lưu cấu hình (systemSettings.routes.js) — null = hợp lệ
 const KEY_RE = /^[A-Za-z0-9_-]{20,100}$/;
+// Project ID của Google Cloud: 6–30 ký tự, chữ thường/số/"-", bắt đầu bằng chữ
+const PROJECT_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 const HOST_RE =
 	/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/;
 const validateSetting = (key, value) => {
@@ -77,8 +90,13 @@ const validateSetting = (key, value) => {
 		const bad = parseHostnames(value).filter((h) => !HOST_RE.test(h));
 		return bad.length ? `Tên miền không hợp lệ: ${bad.join(', ')}` : null;
 	}
+	if (key === 'RECAPTCHA_PROJECT_ID')
+		return PROJECT_RE.test(value.trim())
+			? null
+			: 'Project ID không hợp lệ (vd rms-benhvien — chữ thường, số, "-", 6–30 ký tự; là ID, không phải tên dự án)';
 	// Khóa secret: UI gửi lại chuỗi che (••••••) khi không đổi — systemSettingService tự giữ nguyên
-	if (key === 'RECAPTCHA_SECRET_KEY' && /^•+$/.test(value)) return null;
+	if ((key === 'RECAPTCHA_SECRET_KEY' || key === 'RECAPTCHA_API_KEY') && /^•+$/.test(value))
+		return null;
 	return KEY_RE.test(value.trim())
 		? null
 		: 'Khóa reCAPTCHA không hợp lệ (chữ, số, "_" hoặc "-", 20–100 ký tự)';
@@ -96,8 +114,15 @@ const generateCaptcha = async () => {
 				site_key: process.env.TURNSTILE_SITE_KEY,
 				action: TURNSTILE_ACTION,
 			};
-		case 'recaptcha':
-			return { provider: 'recaptcha', site_key: (await recaptchaConfig()).siteKey };
+		case 'recaptcha': {
+			const c = await recaptchaConfig();
+			// enterprise: frontend tải enterprise.js thay cho api.js (cùng khóa Google Cloud)
+			return {
+				provider: 'recaptcha',
+				site_key: c.siteKey,
+				...(c.enterprise ? { enterprise: true } : {}),
+			};
+		}
 		default: {
 			const token = signToken(
 				'captcha',
@@ -205,88 +230,168 @@ const recaptchaHints = (codes) =>
 		.filter(Boolean)
 		.join('; ');
 
+// tokenProperties.invalidReason của assessment (Google Cloud)
+const INVALID_REASON_HINTS = {
+	MALFORMED: 'token hỏng hoặc không phải token reCAPTCHA',
+	EXPIRED: 'token quá 2 phút từ lúc tích ô',
+	DUPE: 'token đã được xác minh trước đó (mỗi token chỉ dùng 1 lần)',
+	SITE_MISMATCH:
+		'token sinh từ site key khác — Site key không khớp, hoặc không thuộc Project ID đã đặt',
+	MISSING: 'không có token',
+	BROWSER_ERROR:
+		'trình duyệt gặp lỗi khi lấy token (mạng chập chờn, script Google bị chặn) — tích lại ô',
+};
+
+// Lỗi API Google Cloud ({ error: { code, status, message } }) — thường do cấu hình
+const assessErrorHint = (err) => {
+	const msg = String(err?.message || '');
+	if (/api key not valid|API_KEY_INVALID/i.test(msg)) return 'API key sai';
+	if (/SERVICE_DISABLED|has not been used|is disabled/i.test(msg))
+		return 'chưa bật "reCAPTCHA Enterprise API" cho dự án (Google Cloud → APIs & Services)';
+	if (/API_KEY_.*BLOCKED|blocked/i.test(msg))
+		return 'API key bị giới hạn — cho phép API "reCAPTCHA Enterprise API" và bỏ giới hạn website/IP không khớp máy chủ';
+	if (err?.code === 404 || err?.status === 'NOT_FOUND')
+		return 'Project ID sai hoặc Site key không thuộc dự án này';
+	if (err?.code === 403 || err?.status === 'PERMISSION_DENIED')
+		return 'API key không có quyền với Project ID này (khóa của dự án khác?)';
+	if (err?.code === 429 || err?.status === 'RESOURCE_EXHAUSTED')
+		return 'vượt hạn mức gọi API (miễn phí 10.000 lượt/tháng — cần bật thanh toán)';
+	return '';
+};
+
+// Gọi Google, trả JSON thô — ném lỗi khi lỗi mạng (callWithRetry thử lại)
+const callRecaptcha = async (config, token, ip, timeoutMs) => {
+	if (config.enterprise) {
+		// projects.assessments.create — API key gửi qua header, không để lộ trên URL / log proxy
+		const res = await fetch(RECAPTCHA_ASSESS_URL(config.projectId), {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': config.apiKey || '' },
+			body: JSON.stringify({
+				event: { token, siteKey: config.siteKey, ...(ip ? { userIpAddress: ip } : {}) },
+			}),
+			signal: AbortSignal.timeout(timeoutMs),
+		});
+		return res.json();
+	}
+	// siteverify chỉ nhận body dạng form (application/x-www-form-urlencoded), không nhận JSON
+	const body = new URLSearchParams({ secret: config.secretKey || '', response: token });
+	if (ip) body.set('remoteip', ip);
+	const res = await fetch(RECAPTCHA_VERIFY_URL, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: body.toString(),
+		signal: AbortSignal.timeout(timeoutMs),
+	});
+	return res.json();
+};
+
+/**
+ * Đọc kết quả của 2 kiểu API về 1 dạng.
+ * @returns {{ valid: boolean, hostname?: string, config?: boolean, problem?: string }}
+ * config = true: lỗi cấu hình (khóa / dự án / API) — mọi lượt đều sẽ bị từ chối.
+ */
+const readRecaptcha = (config, json) => {
+	if (config.enterprise) {
+		if (json?.error) {
+			const hint = assessErrorHint(json.error);
+			const what = [json.error.code, json.error.status].filter(Boolean).join(' ');
+			return {
+				valid: false,
+				config: true,
+				problem: `${what || 'lỗi'}${hint ? `: ${hint}` : ''} — ${json.error.message || ''}`.trim(),
+			};
+		}
+		const tp = json?.tokenProperties || {};
+		if (tp.valid !== true) {
+			const reason = tp.invalidReason || 'không rõ lý do';
+			const hint = INVALID_REASON_HINTS[reason];
+			return {
+				valid: false,
+				config: reason === 'SITE_MISMATCH',
+				problem: `${reason}${hint ? `: ${hint}` : ''}`,
+			};
+		}
+		return { valid: true, hostname: String(tp.hostname || '').toLowerCase() };
+	}
+	if (json?.success !== true) {
+		const codes = json?.['error-codes'] || [];
+		const hints = recaptchaHints(codes);
+		return {
+			valid: false,
+			config: codes.some((c) => c.includes('secret')),
+			problem: `${codes.join(', ') || 'không rõ lý do'}${hints ? `: ${hints}` : ''}`,
+		};
+	}
+	return { valid: true, hostname: String(json.hostname || '').toLowerCase() };
+};
+
 // Nút "Kiểm tra" ở Cấu hình hệ thống (systemSettings.routes.js), dùng khóa ĐÃ LƯU.
-// token = token thật admin vừa tích trên trang cấu hình ⇒ thử trọn cặp khóa + tên miền.
-// Không có token thì chỉ thử máy chủ gọi được Google: Google xét token trước khóa bí mật,
-// token giả luôn ra invalid-input-response dù khóa đúng hay sai.
+// token = token thật admin vừa tích trên trang cấu hình ⇒ thử trọn bộ khóa + tên miền.
+// Không có token: siteverify (cũ) xét token trước khóa bí mật — token giả luôn ra
+// invalid-input-response, nên chỉ thử được kết nối; assessment (Google Cloud) thì vẫn báo
+// lỗi Project ID / API key / API chưa bật dù token giả.
 // Trả { ok, message } — ok = false: cấu hình / mạng đang làm mọi lượt đăng ký bị từ chối.
 const testRecaptcha = async (token) => {
 	const config = await recaptchaConfig();
-	if (!config.siteKey || !config.secretKey)
-		return { ok: false, message: 'Chưa đặt đủ Site key và Secret key.' };
+	if (!recaptchaReady(config))
+		return {
+			ok: false,
+			message: config.enterprise
+				? 'Chưa đặt đủ Site key, Project ID và API key.'
+				: 'Chưa đặt đủ Site key và Secret key (hoặc Site key + Project ID + API key của Google Cloud).',
+		};
 	const note = turnstileEnabled()
 		? ' Lưu ý: máy chủ đang đặt khóa Turnstile trong .env nên form công khai dùng Turnstile, không dùng reCAPTCHA.'
 		: '';
+	const host = config.enterprise ? 'recaptchaenterprise.googleapis.com' : 'www.google.com';
 	/** @type {any} */
 	let json;
 	try {
-		const res = await fetch(RECAPTCHA_VERIFY_URL, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams({
-				secret: config.secretKey,
-				response: token || 'kiem-tra',
-			}).toString(),
-			signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS * 2),
-		});
-		json = await res.json();
+		json = await callRecaptcha(config, token || 'kiem-tra', null, VERIFY_TIMEOUT_MS * 2);
 	} catch (err) {
 		return {
 			ok: false,
-			message: `Máy chủ không gọi được www.google.com (${err.cause?.code || err.name}) nên mọi lượt đăng ký đang bị từ chối. Cần mở tường lửa / DNS, hoặc cấu hình proxy cho backend.${note}`,
+			message: `Máy chủ không gọi được ${host} (${err.cause?.code || err.name}) nên mọi lượt đăng ký đang bị từ chối. Cần mở tường lửa / DNS, hoặc cấu hình proxy cho backend.${note}`,
 		};
 	}
-	if (!token)
+	const r = readRecaptcha(config, json);
+	if (!token) {
+		if (!r.valid && r.config)
+			return { ok: false, message: `Google từ chối — ${r.problem}.${note}` };
 		return {
 			ok: true,
-			message: `Máy chủ gọi được Google. Tích ô "Tôi không phải người máy" rồi bấm Kiểm tra để thử cả cặp khóa.${note}`,
-		};
-	if (json.success !== true) {
-		const codes = json['error-codes'] || [];
-		const hints = recaptchaHints(codes);
-		return {
-			ok: false,
-			message: `Google từ chối (${codes.join(', ') || 'không rõ lý do'})${hints ? `: ${hints}` : ''}.${note}`,
+			message: config.enterprise
+				? `Máy chủ gọi được Google Cloud, Project ID và API key dùng được. Tích ô "Tôi không phải người máy" rồi bấm Kiểm tra để thử cả Site key.${note}`
+				: `Máy chủ gọi được Google. Tích ô "Tôi không phải người máy" rồi bấm Kiểm tra để thử cả cặp khóa.${note}`,
 		};
 	}
+	if (!r.valid) return { ok: false, message: `Google từ chối — ${r.problem}.${note}` };
 	const hosts = parseHostnames(config.hostnames);
-	const hostname = String(json.hostname || '').toLowerCase();
-	if (hostname === GOOGLE_TEST_HOSTNAME) return { ok: false, message: testKeyMessage() + note };
-	if (hosts.length && !hosts.includes(hostname))
+	if (!config.enterprise && r.hostname === GOOGLE_TEST_HOSTNAME)
+		return { ok: false, message: testKeyMessage() + note };
+	const what = config.enterprise ? 'Khóa Google Cloud' : 'Cặp khóa';
+	if (hosts.length && !hosts.includes(r.hostname))
 		return {
 			ok: false,
-			message: `Cặp khóa đúng, nhưng tên miền "${hostname}" không có trong "Chỉ nhận từ tên miền" (${hosts.join(', ')}): người dùng mở trang ở tên miền này sẽ bị từ chối.${note}`,
+			message: `${what} đúng, nhưng tên miền "${r.hostname}" không có trong "Chỉ nhận từ tên miền" (${hosts.join(', ')}): người dùng mở trang ở tên miền này sẽ bị từ chối.${note}`,
 		};
-	return { ok: true, message: `Cặp khóa hoạt động bình thường (tên miền ${hostname}).${note}` };
+	return { ok: true, message: `${what} hoạt động bình thường (tên miền ${r.hostname}).${note}` };
 };
 
-// Google chỉ nhận body dạng form (application/x-www-form-urlencoded), không nhận JSON.
 const verifyRecaptcha = async (token, ip) => {
 	const config = await recaptchaConfig();
-	/** @type {any} JSON trả về của Google reCAPTCHA siteverify */
-	const json = await callWithRetry('reCAPTCHA', async () => {
-		const body = new URLSearchParams({
-			secret: config.secretKey || '',
-			response: token,
-		});
-		if (ip) body.set('remoteip', ip);
-		const res = await fetch(RECAPTCHA_VERIFY_URL, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: body.toString(),
-			signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
-		});
-		return res.json();
-	});
+	const name = config.enterprise ? 'reCAPTCHA (Google Cloud)' : 'reCAPTCHA';
+	/** @type {any} JSON trả về của Google */
+	const json = await callWithRetry(name, () => callRecaptcha(config, token, ip, VERIFY_TIMEOUT_MS));
 	if (!json) return false;
-	if (json.success !== true) {
-		const codes = json['error-codes'] || [];
-		const hints = recaptchaHints(codes);
-		logger.warn('[captcha] reCAPTCHA từ chối:', codes.join(','), hints ? `— ${hints}` : '');
+	const r = readRecaptcha(config, json);
+	if (!r.valid) {
+		logger.warn(`[captcha] ${name} từ chối: ${r.problem}`);
 		return false;
 	}
-	if (json.hostname === GOOGLE_TEST_HOSTNAME) logger.warn(`[captcha] ${testKeyMessage()}`);
-	return hostnameAllowed('reCAPTCHA', config.hostnames, json.hostname);
+	if (!config.enterprise && r.hostname === GOOGLE_TEST_HOSTNAME)
+		logger.warn(`[captcha] ${testKeyMessage()}`);
+	return hostnameAllowed(name, config.hostnames, r.hostname);
 };
 
 const verifyPow = async (token, nonce) => {
