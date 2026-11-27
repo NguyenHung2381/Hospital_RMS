@@ -386,16 +386,6 @@
 		border-color var(--transition-fast);
 }
 
-/* Vạch màu bên trái cho ô đang có việc */
-.aTile::before {
-	content: '';
-	position: absolute;
-	inset: 0 auto 0 0;
-	width: 3px;
-	background: var(--a-chip-fg);
-	opacity: 0;
-}
-
 .aTile:hover {
 	box-shadow: var(--dk-card-shadow-hover);
 	transform: translateY(-1px);
@@ -423,11 +413,6 @@
 	--a-count: var(--tone-blue-fg);
 }
 
-.k_pending::before,
-.k_warn::before {
-	opacity: 1;
-}
-
 /* Không có việc → ô lùi về nền, icon dấu tích xanh */
 .aTileZero {
 	--a-bg: var(--color-white);
@@ -438,20 +423,12 @@
 	box-shadow: none;
 }
 
-.aTileZero::before {
-	opacity: 0;
-}
-
 /* Đang tải → trung tính, chưa biết có việc hay không */
 .aTileLoading {
 	--a-bg: var(--color-white);
 	--a-border: var(--color-gray-200);
 	--a-chip-bg: var(--color-gray-100);
 	--a-chip-fg: var(--color-gray-400);
-}
-
-.aTileLoading::before {
-	opacity: 0;
 }
 
 .aIcon {

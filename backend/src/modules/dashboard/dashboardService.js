@@ -449,11 +449,11 @@ const getOverviewStats = async () =>
 		const topicsByMonth = toMap(resultSets[1]);
 		const enrollByMonth = toMap(resultSets[2]);
 		const seminarsByMonth = toMap(resultSets[3]);
-		const now = new Date();
+		// Nhãn tháng theo ngày VN (cùng mốc với @from), không theo giờ máy chủ
 		const monthly = [];
 		for (let i = 11; i >= 0; i--) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+			const d = new Date(Date.UTC(year, today.getUTCMonth() - i, 1));
+			const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 			monthly.push({
 				month: key,
 				topics: topicsByMonth[key] ?? 0,

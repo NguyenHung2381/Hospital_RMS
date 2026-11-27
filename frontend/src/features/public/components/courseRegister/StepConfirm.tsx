@@ -222,7 +222,6 @@ export function StepConfirm({
 							autoComplete='off'
 							spellCheck={false}
 							maxLength={150}
-							aria-required='true'
 							aria-invalid={errors.signature_name ? true : undefined}
 							aria-describedby='sign-note'
 						/>

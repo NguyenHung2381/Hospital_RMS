@@ -33,15 +33,9 @@ test('giữa tháng: nhãn tháng và @from cùng một cửa sổ 12 tháng', a
 	assert.equal(from.toISOString().slice(0, 10), '2025-12-01');
 });
 
-test(
-	'01/12 lúc 03:00 giờ VN (30/11 20:00 UTC): tháng cuối phải là 2026-12 như @from',
-	{
-		todo: 'Lỗi thật: dashboardService.getOverviewStats dùng new Date() (giờ máy) cho nhãn tháng nhưng todayVN() cho @from ⇒ server UTC lệch 1 tháng trong 7 giờ đầu mỗi tháng',
-	},
-	async () => {
-		const { months, from } = await at('2026-11-30T20:00:00Z');
-		assert.equal(from.toISOString().slice(0, 10), '2026-01-01');
-		assert.equal(months[0], '2026-01');
-		assert.equal(months[11], '2026-12');
-	},
-);
+test('01/12 lúc 03:00 giờ VN (30/11 20:00 UTC): tháng cuối phải là 2026-12 như @from', async () => {
+	const { months, from } = await at('2026-11-30T20:00:00Z');
+	assert.equal(from.toISOString().slice(0, 10), '2026-01-01');
+	assert.equal(months[0], '2026-01');
+	assert.equal(months[11], '2026-12');
+});

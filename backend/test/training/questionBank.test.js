@@ -247,31 +247,19 @@ test('POST /exams/questions/bulk: đáp án đúng không nằm trong phương �
 	assert.equal(await call('POST', '/exams/questions/bulk', { questions: [mc()] }), 201);
 });
 
-test(
-	'POST /exams/questions: câu trắc nghiệm có đáp án ngoài phương án ⇒ 400 (như nhập hàng loạt)',
-	{
-		todo: 'Lỗi thật: exams.routes.js:78-90 (tạo lẻ) không kiểm correct_option ∈ options như /questions/bulk ⇒ lưu được câu mà chấm tự động luôn cho 0 điểm (examAttemptService.js:244)',
-	},
-	async () => {
-		reset();
-		assert.equal(await call('POST', '/exams/questions', mc({ correct_option: 'C' })), 400);
-		assert.equal(await call('POST', '/exams/questions', mc({ correct_option: undefined })), 400);
-	},
-);
+test('POST /exams/questions: câu trắc nghiệm có đáp án ngoài phương án ⇒ 400 (như nhập hàng loạt)', async () => {
+	reset();
+	assert.equal(await call('POST', '/exams/questions', mc({ correct_option: 'C' })), 400);
+	assert.equal(await call('POST', '/exams/questions', mc({ correct_option: undefined })), 400);
+});
 
-test(
-	'PUT /exams/questions/:id: nội dung rỗng / điểm âm / đáp án ngoài phương án ⇒ 400',
-	{
-		todo: 'Lỗi thật: exams.routes.js:134 PUT /questions/:id không có validate nào (POST có) ⇒ sửa được câu thành rỗng, điểm âm, đáp án không có trong phương án',
-	},
-	async () => {
-		for (const body of [
-			{ question_text: '   ' },
-			{ points: -5 },
-			{ options: ['A', 'B'], correct_option: 'Z' },
-		]) {
-			reset({ current: current() });
-			assert.equal(await call('PUT', '/exams/questions/QB1', body), 400, JSON.stringify(body));
-		}
-	},
-);
+test('PUT /exams/questions/:id: nội dung rỗng / điểm âm / đáp án ngoài phương án ⇒ 400', async () => {
+	for (const body of [
+		{ question_text: '   ' },
+		{ points: -5 },
+		{ options: ['A', 'B'], correct_option: 'Z' },
+	]) {
+		reset({ current: current() });
+		assert.equal(await call('PUT', '/exams/questions/QB1', body), 400, JSON.stringify(body));
+	}
+});
