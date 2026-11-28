@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BadgeSvg, CheckSvg, ChevRSvg, FilePdfSvg, PlusSvg, UploadSvg, UsersSvg } from '@/assets/icons';
+import { BadgeSvg, CheckSvg, ChevRSvg, FilePdfSvg, FingerprintSvg, PlusSvg, UploadSvg, UsersSvg } from '@/assets/icons';
 import { Badge } from '@/shared/components';
 import { Pagination } from '@/shared/components/Table/Pagination';
 import { BulkBar, BulkButton, SelectCheckbox } from '@/shared/components/Table/RowSelect';
@@ -24,6 +24,7 @@ import s from './Detail.module.css';
 import { CmeStatusBadge } from './ParticipantDrawer';
 import { activeTests, cmeEligible, fullName, resultOf, testMax, testPassed, testScore, unitOf } from './detailUtils';
 import type { TabProps } from './types';
+import { SEMINAR_CHECKIN_LABEL } from '@/shared/utils/attendanceMethods';
 
 const ROLES: { key: 'all' | ParticipationType; label: string }[] = [
 	{ key: 'all', label: 'Tất cả' },
@@ -121,6 +122,16 @@ export function ParticipantsTab({
 								onClick={actions.openImport}
 							>
 								<UploadSvg /> Nhập Excel
+							</button>
+						)}
+						{perms.canImport && sm.checkin_methods?.device !== false && (
+							<button
+								type='button'
+								className={sem.btnGhost}
+								onClick={actions.openDeviceImport}
+								title='Lấy cán bộ nội viện đã chấm vân tay ở máy dành cho hội nghị'
+							>
+								<FingerprintSvg /> Từ máy chấm công
 							</button>
 						)}
 						{perms.canUpdate && ht && (
@@ -340,7 +351,11 @@ export function ParticipantsTab({
 export function CheckinCell({ p }: { p: SeminarParticipant }) {
 	if (p.checked_in_at)
 		return (
-			<span title={`Điểm danh lúc ${formatDateTimeVN(p.checked_in_at)}`}>
+			<span
+				title={`Điểm danh lúc ${formatDateTimeVN(p.checked_in_at)}${
+					p.checkin_method ? ` — ${SEMINAR_CHECKIN_LABEL[p.checkin_method]}` : ''
+				}`}
+			>
 				<Badge
 					tone='green'
 					dot

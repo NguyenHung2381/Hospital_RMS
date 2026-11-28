@@ -1,7 +1,7 @@
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ApproveSvg, ClipboardCheckSvg } from '@/assets/icons';
+import { ApproveSvg, ClipboardCheckSvg, SendSvg } from '@/assets/icons';
 import { Badge, Card, EmptyState, InlineLoading } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import UserLayout from '../../../layouts/UserLayout';
@@ -9,6 +9,7 @@ import { canAccessAdminPanel } from '../../../shared/utils/permissions';
 import { getStoredUser } from '../../../shared/utils/storage';
 import { STATUS_CFG } from '../../topics/utils/topicHelpers';
 import { getMyTasks, type MyTasks as MyTasksData } from '../api/myTasksApi';
+import { signRequestBase } from '../../signing/utils/signRequestPaths';
 
 const ROW_STYLE: CSSProperties = {
 	display: 'flex',
@@ -47,7 +48,9 @@ export default function MyTasks() {
 	const isAdmin = canAccessAdminPanel(getStoredUser());
 	// Trang dùng chung cho 2 cổng: vào từ /admin/... thì giữ layout admin,
 	// tránh bị "nhảy" sang giao diện người dùng khi bấm từ sidebar admin.
-	const Layout = useLocation().pathname.startsWith('/admin') ? AdminLayout : UserLayout;
+	const { pathname } = useLocation();
+	const Layout = pathname.startsWith('/admin') ? AdminLayout : UserLayout;
+	const signBase = signRequestBase(pathname);
 
 	// Bấm vào 1 dòng là mở thẳng nơi xử lý việc đó (trang Phê duyệt chọn sẵn
 	// đúng đề tài) — "Việc của tôi" là hộp thư, không lặp lại chức năng duyệt.
@@ -55,7 +58,7 @@ export default function MyTasks() {
 	return (
 		<Layout
 			pageTitle='Việc của tôi'
-			pageSubtitle='Đề tài đang chờ bạn xử lý'
+			pageSubtitle='Đề tài và văn bản đang chờ bạn xử lý'
 		>
 			{error && (
 				<EmptyState
@@ -70,8 +73,37 @@ export default function MyTasks() {
 				<EmptyState
 					icon={<ApproveSvg />}
 					title='Không có việc nào cần xử lý'
-					desc='Mọi đề tài đang chờ bạn đều đã được xử lý xong.'
+					desc='Mọi đề tài và văn bản đang chờ bạn đều đã được xử lý xong.'
 				/>
+			)}
+
+			{data && !!data.sign_requests?.length && (
+				<Card>
+					<Card.Header
+						icon={<SendSvg />}
+						title='Văn bản chờ bạn ký số'
+						sub={`${data.sign_requests.length} hồ sơ`}
+					/>
+					<Card.Body>
+						<div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+							{data.sign_requests.map((r) => (
+								<TaskRow
+									key={r.id}
+									to={`${signBase}/${r.id}`}
+								>
+									<div>
+										<div style={{ fontWeight: 600, fontSize: 13 }}>{r.title}</div>
+										<div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 2 }}>
+											{r.creator_name} · {r.doc_count} văn bản
+											{r.due_date ? ` · Hạn ${formatDateVN(r.due_date)}` : ''}
+										</div>
+									</div>
+									<Badge tone='pink'>Chờ bạn ký</Badge>
+								</TaskRow>
+							))}
+						</div>
+					</Card.Body>
+				</Card>
 			)}
 
 			{data && data.approvals.length > 0 && (

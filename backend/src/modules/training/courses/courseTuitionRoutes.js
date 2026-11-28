@@ -1,11 +1,14 @@
 const { body } = require('express-validator');
 const tuitionCtrl = require('../tuition/tuitionController');
 const { authorizePermission } = require('../../../middlewares/auth');
+const { requireModule } = require('../../../middlewares/moduleGuard');
 const { validate } = require('../../../middlewares/errorHandler');
 
 // Học phí của khóa (training/tuition/) — gắn vào router của courses.routes.js để :id /
 // :enrollmentId / :paymentId được kiểm phạm vi khóa học như các route khác (router.param).
 module.exports = (router) => {
+	// Thu học phí tắt ở Cấu hình hệ thống (MODULE_TUITION) ⇒ chặn mọi route học phí của khóa.
+	router.use('/:id/tuition', requireModule('TUITION'));
 	// Service kiểm thêm lượt ghi danh / khoản nộp thuộc đúng khóa :id.
 	router.get('/:id/tuition', authorizePermission(['courses', 'read']), tuitionCtrl.listForCourse);
 	router.put(

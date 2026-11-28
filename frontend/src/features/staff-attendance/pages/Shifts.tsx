@@ -191,7 +191,8 @@ export default function Shifts() {
 													<button type='button' className={styles.linkBtn} onClick={() => setAssigning(p)}>
 														{p.course_count} khóa học được gán
 													</button>
-													{p.is_default && <div className={tbl.cellSub}>+ khóa chưa gán mẫu</div>}
+													{p.training_type_names && <div className={tbl.cellSub}>+ loại hình: {p.training_type_names}</div>}
+													{p.is_default && <div className={tbl.cellSub}>+ khóa chưa gán mẫu (loại hình chưa có mẫu)</div>}
 												</td>
 												<td className={`${tbl.td} ${tbl.tdActions}`}>
 													<RowActions

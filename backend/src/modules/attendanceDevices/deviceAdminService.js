@@ -1,18 +1,21 @@
 // Trang quản trị Máy chấm công: danh sách máy, duyệt máy, lượt chấm, lệnh đồng bộ.
 const { getPool, sql, withActorTransaction, jsonValues } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
+const logger = require('../../config/logger');
 const { broadcast } = require('../events/eventService');
 const protocol = require('./iclockProtocol');
 const commands = require('./deviceCommandService');
 const sync = require('./deviceSyncService');
 const matcher = require('./punchMatcher');
+const seminarMatcher = require('./seminarPunchMatcher');
 const { getDeviceSettings } = require('./deviceSettings');
+const { PURPOSES, isTrainingPurpose, trainingDeviceSql } = require('./devicePurpose');
 
 const listDevices = async () => {
 	const pool = await getPool();
 	return (
 		await pool.request().query(`
-      SELECT d.id, d.serial_no, d.name, d.location, d.status, d.name_ascii, d.push_version,
+      SELECT d.id, d.serial_no, d.name, d.location, d.status, d.purpose, d.name_ascii, d.push_version,
              d.firmware, d.fp_algorithm, d.last_seen_at, d.last_ip, d.user_count, d.fp_count,
              d.created_at, d.suspended_at, d.suspend_reason,
              (SELECT COUNT(*) FROM attendance_device_users u WHERE u.device_id = d.id) AS synced_users,
@@ -38,13 +41,12 @@ const getDevice = async (id) => {
 		await pool
 			.request()
 			.input('id', sql.Int, id)
-			.query('SELECT id, status FROM attendance_devices WHERE id = @id')
+			.query('SELECT id, status, purpose FROM attendance_devices WHERE id = @id')
 	).recordset[0];
 	if (!d) throw httpError(404, 'Không tìm thấy máy chấm công');
 	return d;
 };
 
-/** @param {{ name?: string|null, location?: string|null, status?: string, name_ascii?: boolean }} data */
 /** Xếp lệnh CHECK (máy gửi lại toàn bộ người dùng + vân tay) nếu chưa có lệnh đang chờ */
 const queuePullFingerprints = async (id, actorId) => {
 	const pool = await getPool();
@@ -62,8 +64,11 @@ const queuePullFingerprints = async (id, actorId) => {
 	return true;
 };
 
+/** @param {{ name?: string|null, location?: string|null, status?: string, purpose?: string, name_ascii?: boolean }} data */
 const updateDevice = async (id, data, actorId) => {
 	const before = await getDevice(id);
+	if (data.purpose !== undefined && !PURPOSES.includes(data.purpose))
+		throw httpError(400, 'Mục đích máy không hợp lệ');
 	const sets = [];
 	const inputs = [];
 	const add = (col, type, value) => {
@@ -82,6 +87,7 @@ const updateDevice = async (id, data, actorId) => {
 			'suspended_at = NULL',
 			'suspend_reason = NULL',
 		);
+	if (data.purpose !== undefined) add('purpose', sql.VarChar(10), data.purpose);
 	if (data.name_ascii !== undefined) add('name_ascii', sql.Bit, !!data.name_ascii);
 	if (!sets.length) return;
 	await withActorTransaction(actorId, async (tx) => {
@@ -91,14 +97,28 @@ const updateDevice = async (id, data, actorId) => {
         updated_at = (now() AT TIME ZONE 'Asia/Ho_Chi_Minh'), updated_by = @actor_id WHERE id = @id`);
 	});
 	broadcast('update', { entity: 'attendance_device' });
-	// Vừa duyệt / bật lại, hoặc đổi cách ghi tên ⇒ đồng bộ học viên xuống máy
+	const purposeChanged = data.purpose !== undefined && data.purpose !== before.purpose;
+	const purpose = data.purpose ?? before.purpose;
+	// Vừa duyệt / bật lại, đổi cách ghi tên hoặc đổi mục đích ⇒ đồng bộ học viên xuống máy
+	// (máy chuyển sang chỉ dùng cho hội nghị ⇒ gỡ học viên server đã gửi xuống)
 	if (data.status === 'active' && before.status !== 'active') {
 		sync.requestSync();
 		// Lần đầu nối với hệ thống: lấy vân tay học viên đã đăng ký trên máy từ trước để
 		// chép sang máy khác (học viên không phải quét lại)
-		if (before.status === 'pending' && (await getDeviceSettings()).fpSync)
+		if (
+			before.status === 'pending' &&
+			isTrainingPurpose(purpose) &&
+			(await getDeviceSettings()).fpSync
+		)
 			await queuePullFingerprints(id, actorId);
-	} else if (data.name_ascii !== undefined) sync.requestSync();
+	} else if (data.name_ascii !== undefined || purposeChanged) sync.requestSync();
+	// Máy quay lại dùng cho đào tạo / bắt đầu dùng cho hội nghị ⇒ ghép lại lượt chấm gần đây đã
+	// bị bỏ qua vì mục đích máy (chạy nền — có thể tới vài nghìn lượt)
+	const gained = (is) => is(purpose) && !is(before.purpose);
+	if (purposeChanged && (gained(isTrainingPurpose) || gained(seminarMatcher.isSeminarPurpose)))
+		matcher
+			.rematchRecent()
+			.catch((e) => logger.error(`[attendanceDevices] Ghép lại lượt chấm lỗi: ${e.message}`));
 };
 
 const deleteDevice = async (id) => {
@@ -111,10 +131,12 @@ const deleteDevice = async (id) => {
 	broadcast('update', { entity: 'attendance_device' });
 };
 
+// Lượt đã ghép vào hội nghị (seminar_id — seminarPunchMatcher) tính là "đã ghép" dù match_status
+// (kết quả ghép buổi học) là gì
 const MATCH_FILTERS = {
-	unmatched: "p.match_status IN ('pending', 'no_trainee', 'no_session')",
-	matched: "p.match_status = 'matched'",
-	skipped: "p.match_status IN ('kept_manual', 'locked')",
+	unmatched: "p.match_status IN ('pending', 'no_trainee', 'no_session') AND p.seminar_id IS NULL",
+	matched: "(p.match_status = 'matched' OR p.seminar_id IS NOT NULL)",
+	skipped: "p.match_status IN ('kept_manual', 'locked', 'not_training') AND p.seminar_id IS NULL",
 	all: 'TRUE',
 };
 
@@ -141,12 +163,15 @@ const listPunches = async (q) => {
       SELECT p.id, p.pin, p.punched_at, p.verify_mode, p.match_status, p.received_at,
              p.trainee_id, t.full_name AS trainee_name,
              p.session_id, s.session_date, s.start_time, s.end_time, c.id AS course_id, c.name AS course_name,
-             d.id AS device_id, COALESCE(d.name, d.serial_no) AS device_name
+             d.id AS device_id, COALESCE(d.name, d.serial_no) AS device_name,
+             p.seminar_id, sem.title AS seminar_title, sp.full_name AS participant_name
       FROM attendance_punches p
       JOIN attendance_devices d ON d.id = p.device_id
       LEFT JOIN trainees t ON t.id = p.trainee_id
       LEFT JOIN class_sessions s ON s.id = p.session_id
       LEFT JOIN courses c ON c.id = s.course_id
+      LEFT JOIN seminars sem ON sem.id = p.seminar_id
+      LEFT JOIN seminar_participants sp ON sp.id = p.seminar_participant_id
       WHERE ${where.join(' AND ')}
       ORDER BY p.punched_at DESC
       LIMIT 500`)
@@ -294,8 +319,8 @@ const pullFingerprints = async (id, actorId) => {
 };
 
 /**
- * Đẩy tay học viên xuống mọi máy đang hoạt động (trang Tất cả học viên): giữ trên máy
- * DEVICE_CLEANUP_DAYS ngày kể từ hôm nay dù chưa có khóa đang học, rồi đồng bộ ngay.
+ * Đẩy tay học viên xuống mọi máy đào tạo đang hoạt động (trang Tất cả học viên): giữ trên
+ * máy DEVICE_CLEANUP_DAYS ngày kể từ hôm nay dù chưa có khóa đang học, rồi đồng bộ ngay.
  * @param {string[]} traineeIds
  */
 const pushTrainees = async (traineeIds, actorId) => {
@@ -303,9 +328,12 @@ const pushTrainees = async (traineeIds, actorId) => {
 	const active = (
 		await pool
 			.request()
-			.query("SELECT COUNT(*) AS n FROM attendance_devices WHERE status = 'active'")
+			.query(
+				`SELECT COUNT(*) AS n FROM attendance_devices d WHERE d.status = 'active' AND ${trainingDeviceSql('d')}`,
+			)
 	).recordset[0].n;
-	if (!Number(active)) throw httpError(409, 'Chưa có máy chấm công nào đang hoạt động');
+	if (!Number(active))
+		throw httpError(409, 'Chưa có máy chấm công học viên nào đang hoạt động');
 	const ids = [...new Set(traineeIds)];
 	const rows = (
 		await pool

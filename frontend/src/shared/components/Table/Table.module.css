@@ -31,7 +31,7 @@
 
 /* Selector con — cho các bảng dùng <th>/<td> trần (không gắn class) */
 .table thead th {
-	padding: 13px 18px;
+	padding: var(--table-cell-py) var(--table-cell-px);
 	text-align: left;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
@@ -53,7 +53,7 @@
 	background: var(--tone-green-bg);
 }
 .table tbody td {
-	padding: 13px 18px;
+	padding: var(--table-cell-py) var(--table-cell-px);
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-700);
 	vertical-align: middle;
@@ -61,7 +61,7 @@
 
 /* ── Ô tiêu đề ──────────────────────────────────────────────────────────── */
 .th {
-	padding: 13px 18px;
+	padding: var(--table-cell-py) var(--table-cell-px);
 	text-align: left;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
@@ -99,7 +99,7 @@
 
 /* ── Ô dữ liệu ──────────────────────────────────────────────────────────── */
 .td {
-	padding: 13px 18px;
+	padding: var(--table-cell-py) var(--table-cell-px);
 	font-size: var(--font-size-sm);
 	color: var(--color-gray-700);
 	vertical-align: middle;
@@ -138,9 +138,10 @@
 }
 /* Bảng rộng hơn khung (tablet/laptop nhỏ) tự co cột theo nội dung → cột tên chính
    bị ép còn 1-2 từ/dòng. Giữ bề rộng tối thiểu cho ô chứa tên; bảng cuộn ngang thay vì
-   vỡ chữ. Không áp ở chế độ thẻ (≤640px, xem global.css table[data-cards]). */
+   vỡ chữ. Không áp ở chế độ thẻ (≤640px, xem global.css table[data-cards]).
+   Tính cả tên lồng trong khối avatar + tên (tối đa 3 lớp, như ô Người dùng). */
 @media (min-width: 641px) {
-	td:has(> .cellTitle) {
+	td:has(> .cellTitle, > * > .cellTitle, > * > * > .cellTitle) {
 		min-width: 180px;
 	}
 }
@@ -468,15 +469,86 @@
 		flex: 1 1 auto;
 		min-width: 0;
 	}
+	/* Ô tìm kiếm giãn vào chỗ trống (như SearchInput của TableToolbar) — trước đây
+	   khung giãn nhưng ô nhập vẫn 240px nên dính sát trái, lệch với cụm lọc. */
+	.tableControls > .searchWrap {
+		flex: 1 1 200px;
+		min-width: 0;
+	}
+	.tableControls > .searchWrap .searchInput {
+		width: 100%;
+	}
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
+/* Thanh tiêu đề bảng xếp dọc, thẳng mép:
+   1. Tiêu đề một dòng riêng; số đếm thành dòng chữ phụ ngay dưới (chip dài vỡ
+      2 dòng trong viền bo tròn, chen cạnh tiêu đề trông lởm chởm).
+   2. Ô tìm kiếm hết hàng; các ô lọc (select, chọn ngày…) chia đều từng cặp —
+      !important để thắng bề rộng cố định viết thẳng ở trang (vd DatePicker
+      style={{ width: 170 }}) và min-width do selectAutoWidth đặt. */
 @media (max-width: 640px) {
 	.tableHeader {
+		flex-direction: column;
+		align-items: stretch;
+		gap: var(--space-3);
 		padding: var(--space-3) var(--space-4);
 	}
 
-	.tableControls,
+	.tableHeaderLeft {
+		flex-wrap: wrap;
+		gap: 2px var(--space-2);
+	}
+
+	.tableCount {
+		flex-basis: 100%;
+		padding: 0;
+		background: none;
+		border-radius: 0;
+		font-weight: var(--font-weight-medium);
+	}
+
+	.tableControls {
+		width: 100%;
+		margin-left: 0;
+		justify-content: stretch;
+	}
+	.tableControls > * {
+		flex: 1 1 140px;
+		width: auto !important;
+		min-width: 0;
+	}
+	/* Tìm kiếm luôn đứng đầu, hết hàng */
+	.tableControls > .searchWrap {
+		flex-basis: 100%;
+		order: -1;
+	}
+	/* Ô chọn ngày cần ≥170px để hiện đủ dd/mm/yyyy cạnh icon lịch + nút xóa */
+	.tableControls > :has(> [class*='_inputWrapper_']) {
+		flex-basis: 170px;
+	}
+	.tableControls select:not([multiple]) {
+		min-width: 0 !important;
+	}
+	/* Nút lọc dạng dropdown nằm trong khung bọc (vd lọc Khoa/Phòng): giãn theo khung,
+	   mũi tên dạt phải như select */
+	.tableControls > * > .filterSelect:only-child {
+		width: 100%;
+		justify-content: space-between;
+	}
+	/* Cùng chiều cao với ô chọn ngày (44px) — trước lệch 36 / 44 */
+	.tableControls select,
+	.tableControls .searchInput {
+		height: 44px;
+	}
+	/* MultiSelect dùng chung (shared/components/Input/MultiSelect) trong thanh lọc:
+	   giãn hết ô, cao bằng các ô lọc khác */
+	.tableControls > * > button[aria-haspopup]:first-child {
+		width: 100%;
+		max-width: none;
+		min-height: 44px;
+	}
+
 	.searchWrap,
 	.searchInput,
 	.searchInput:focus {

@@ -5,6 +5,8 @@ const { createCrudController } = require('../../shared/crudController');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
 const { sql } = require('../../config/db');
+const { MODES: ATTENDANCE_MODES, DEFAULT_MODE } = require('../../utils/attendanceMode');
+const attendanceMethods = require('../../utils/attendanceMethods');
 
 // ─── Danh mục Đào tạo (trainee_types, training_forms, training_types, hospital_training_topics, professional_fields, practice_forms, sending_units, trainee_document_types, cme_credit_categories, cme_credit_groups) ──
 // "Môn học" (subjects) đã gộp vào Bài học (program_lessons) — xem 2026-11-01_lessons_replace_subjects.sql.
@@ -39,9 +41,49 @@ const PRACTICE_CATALOG_GUARDS = {
 	],
 };
 
+// Loại hình đào tạo: kiểu chấm công + mẫu ca tuần mặc định cho khóa thuộc loại hình
+// (2027-01-22_kieu_cham_cong_theo_loai_hinh.sql, utils/attendanceMode.js) + phương thức điểm
+// danh được phép (2027-01-23_phuong_thuc_diem_danh.sql, utils/attendanceMethods.js)
+const CATALOG_EXTRA_FIELDS = {
+	'training-types': [
+		{ column: 'attendance_mode', sqlType: sql.VarChar(10), default: DEFAULT_MODE },
+		{ column: 'shift_pattern_id', sqlType: sql.Int },
+		{ column: 'attendance_methods', sqlType: sql.VarChar(50) },
+	],
+};
+const CATALOG_EXTRA_RULES = {
+	'training-types': [
+		body('attendance_mode')
+			.optional()
+			.isIn(ATTENDANCE_MODES)
+			.withMessage('Kiểu chấm công không hợp lệ'),
+		body('shift_pattern_id')
+			.optional({ values: 'null' })
+			.isInt({ min: 1 })
+			.withMessage('Mẫu ca tuần không hợp lệ')
+			.toInt(),
+		// Mảng / chuỗi 'qr,device'; null = mọi phương thức đang bật trên hệ thống; [] = chỉ điểm danh tay
+		body('attendance_methods')
+			.optional({ values: 'null' })
+			.custom((v) => {
+				const msg = attendanceMethods.invalidList(v);
+				if (msg) throw new Error(msg);
+				return true;
+			})
+			.customSanitizer((v) => attendanceMethods.toColumn(v)),
+	],
+};
+
 for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
-	const svc = createCrudService(table, 20, '', PRACTICE_CATALOG_GUARDS[path] ?? []);
+	const svc = createCrudService(
+		table,
+		20,
+		'',
+		PRACTICE_CATALOG_GUARDS[path] ?? [],
+		CATALOG_EXTRA_FIELDS[path] ?? [],
+	);
 	const ctrl = createCrudController(svc);
+	const extraRules = CATALOG_EXTRA_RULES[path] ?? [];
 
 	router.get(`/${path}`, authenticate, ctrl.getAll);
 	router.get(`/${path}/:id`, authenticate, ctrl.getById);
@@ -49,7 +91,7 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 		`/${path}`,
 		authenticate,
 		authorizePermission(['training_catalog', 'create']),
-		[body('name').trim().notEmpty().withMessage('Tên không được để trống')],
+		[body('name').trim().notEmpty().withMessage('Tên không được để trống'), ...extraRules],
 		validate,
 		ctrl.createOne,
 	);
@@ -57,6 +99,8 @@ for (const [path, table] of Object.entries(TRAINING_CATALOG_TABLES)) {
 		`/${path}/:id`,
 		authenticate,
 		authorizePermission(['training_catalog', 'update']),
+		extraRules,
+		validate,
 		ctrl.updateOne,
 	);
 	router.delete(

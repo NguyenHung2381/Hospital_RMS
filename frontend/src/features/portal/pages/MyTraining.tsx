@@ -1,6 +1,7 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRSvg, BookOpenSvg, CalendarSvg, ClockSvg, DocPlusSvg, LayersSvg, UsersSvg } from '@/assets/icons';
+import { ArrowRSvg, BookOpenSvg, CalendarSvg, ClipboardCheckSvg, ClockSvg, DocPlusSvg, LayersSvg, UsersSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
@@ -400,13 +401,16 @@ function PendingGradingCard({ onCount }: { onCount?: (n: number) => void }) {
 									<td>{p.trainee_name ?? <span className={tbl.cellCode}>{p.attempt_id}</span>}</td>
 									<td>{p.pending_count}</td>
 									<td>
-										<Button
-											size='sm'
-											variant='secondary'
-											onClick={() => void openAttempt(p.attempt_id)}
-										>
-											Chấm
-										</Button>
+										<RowActions>
+											<RowAction
+												title='Chấm bài'
+												aria-label={`Chấm bài ${p.paper_title}${p.trainee_name ? ` của ${p.trainee_name}` : ''}`}
+												tone='success'
+												onClick={() => void openAttempt(p.attempt_id)}
+											>
+												<ClipboardCheckSvg />
+											</RowAction>
+										</RowActions>
 									</td>
 								</tr>
 							))}

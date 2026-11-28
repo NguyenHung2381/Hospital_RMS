@@ -4,6 +4,7 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const service = require('./deviceAdminService');
 const timesheet = require('./timesheetService');
+const { PURPOSES } = require('./devicePurpose');
 const { buildTimesheetWorkbook, fileNameOf } = require('./exports/timesheetWorkbook');
 const { authenticate, authorizePermission } = require('../../middlewares/auth');
 const { validate } = require('../../middlewares/errorHandler');
@@ -129,7 +130,7 @@ router.post(
 	}),
 );
 
-// Body: { name?, location?, status?: 'active'|'disabled'|'pending', name_ascii? }
+// Body: { name?, location?, status?: 'active'|'disabled'|'pending', purpose?: 'training'|'seminar'|'both', name_ascii? }
 router.patch(
 	'/:id',
 	canManage,
@@ -138,6 +139,7 @@ router.patch(
 		body('name').optional({ values: 'null' }).isString().trim().isLength({ max: 150 }),
 		body('location').optional({ values: 'null' }).isString().trim().isLength({ max: 255 }),
 		body('status').optional().isIn(['active', 'disabled', 'pending']),
+		body('purpose').optional().isIn(PURPOSES),
 		body('name_ascii').optional().isBoolean().toBoolean(),
 	],
 	validate,

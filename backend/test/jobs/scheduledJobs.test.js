@@ -61,20 +61,26 @@ test('run: mỗi (đề tài, mốc) chỉ xử lý 1 lần dù chạy lại / n
 	assert.deepEqual(await sup.run(), { overdue: 1, rejected: 1 });
 });
 
-test('dọn thông báo: xóa theo lô tới khi hết, mỗi ngày 1 lần', async () => {
+test('dọn thông báo: xóa theo lô tới khi hết, rồi dọn lượt gửi rỗng; mỗi ngày 1 lần', async () => {
 	const batches = [nc.BATCH_SIZE, nc.BATCH_SIZE, 7];
-	let calls = 0;
+	const emptyBatches = [nc.BATCH_SIZE, 3];
+	const order = [];
 	nc.deleteBatch = async () => {
-		calls++;
+		order.push('notif');
 		return batches.shift() ?? 0;
+	};
+	nc.deleteEmptyBatches = async () => {
+		order.push('batch');
+		return emptyBatches.shift() ?? 0;
 	};
 	assert.deepEqual(await nc.run({ pauseMs: 0 }), {
 		deleted: nc.BATCH_SIZE * 2 + 7,
 		skipped: false,
 	});
-	assert.equal(calls, 3);
+	// Dọn lượt gửi SAU khi đã xoá hết thông báo cũ (lượt vừa rỗng cũng được dọn)
+	assert.deepEqual(order, ['notif', 'notif', 'notif', 'batch', 'batch']);
 	assert.deepEqual(await nc.run({ pauseMs: 0 }), { deleted: 0, skipped: true });
-	assert.equal(calls, 3);
+	assert.equal(order.length, 5);
 });
 
 test('mốc giữ thông báo: đã đọc 90 ngày, chưa đọc 180 ngày', () => {

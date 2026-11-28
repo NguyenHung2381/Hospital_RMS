@@ -27,7 +27,13 @@ export const NOTIF_TYPE_MAP: Record<string, NotifCategory> = {
 	tuition_submitted: 'approval',
 	tuition_confirmed: 'approval',
 	tuition_rejected: 'warning',
+	tuition_bank_unmatched: 'approval',
 	broadcast: 'system',
+	sign_request: 'approval',
+	sign_request_completed: 'approval',
+	sign_request_rejected: 'warning',
+	sign_request_cancelled: 'system',
+	signing_account: 'system',
 };
 
 export function toNotif(n: ApiNotif): Notif {

@@ -69,7 +69,11 @@ const PROGRAM_FIELDS = {
 
 // Đối tượng học viên: N:N qua program_trainee_types (2026-11-14). trainee_type_name
 // = tên các đối tượng nối bằng ", " (chương trình chưa chuyển sang bảng mới thì lấy cột cũ).
-const programSelect = `
+// `source`: nguồn dòng chương trình (alias p). Danh sách truyền vào 1 trang đã lọc + cắt sẵn
+// để các cột tổng hợp (LATERAL ls, đếm, vòng thực hành) chỉ tính cho các dòng của trang —
+// đặt ngay trên training_programs thì PG tính LATERAL cho MỌI chương trình rồi mới sắp
+// xếp + cắt trang (EXPLAIN 2026-11-27: 89 chương trình → 89 lần gộp bài học cho 20 dòng).
+const programSelectFrom = (source) => `
   SELECT p.*, d.name AS department_name, tp.name AS training_type_name,
          pf.name AS professional_field_name, pfo.name AS practice_form_name,
          (SELECT ${stringAgg('x.trainee_type_id', ',', 'x.display_order')}
@@ -94,7 +98,7 @@ const programSelect = `
            WHERE lp.program_id = p.id AND pl.lesson_kind = 'rotation'`,
 						'lp.display_order, pl.created_at',
 					)} AS rotations
-  FROM training_programs p
+  FROM ${source} p
   LEFT JOIN LATERAL (
     SELECT COALESCE(SUM(pl.theory_hours), 0) AS lesson_theory_hours,
            COALESCE(SUM(pl.practice_hours), 0) AS lesson_practice_hours,
@@ -109,6 +113,7 @@ const programSelect = `
   LEFT JOIN professional_fields pf ON pf.id = p.professional_field_id
   LEFT JOIN practice_forms pfo ON pfo.id = p.practice_form_id
 `;
+const programSelect = programSelectFrom('training_programs');
 
 const withRotations = (row) => ({
 	...row,
@@ -182,11 +187,12 @@ const getAll = async ({
 		req.input('training_type_id', sql.VarChar(20), training_type_id);
 	}
 	const whereSql = `WHERE ${where.join(' AND ')}`;
+	const order = 'ORDER BY p.display_order ASC, p.created_at DESC, p.id';
 
 	const sets = await queryAll(req, [
 		`
-    ${programSelect} ${whereSql} ORDER BY p.display_order ASC, p.created_at DESC
-    ${pg.fetchClause}
+    ${programSelectFrom(`(SELECT p.* FROM training_programs p ${whereSql} ${order} ${pg.fetchClause})`)}
+    ${order}
 		`,
 		`
     SELECT COUNT(*) AS total FROM training_programs p ${whereSql}

@@ -61,6 +61,11 @@ const ActivityLogs = lazy(
 );
 const SystemSettings = lazy(() => import('../../features/settings/pages/SystemSettings'));
 const FormConfigs = lazy(() => import('../../features/form-config/pages/FormConfigs'));
+const SigningAdmin = lazy(() => import('../../features/signing/pages/SigningAdmin'));
+const SignDocument = lazy(() => import('../../features/signing/pages/SignDocument'));
+const SignRequests = lazy(() => import('../../features/signing/pages/SignRequests'));
+const SignRequestCreate = lazy(() => import('../../features/signing/pages/SignRequestCreate'));
+const SignRequestDetail = lazy(() => import('../../features/signing/pages/SignRequestDetail'));
 const Venues = lazy(() => import('../../features/venue/pages/Venues'));
 const Trainees = lazy(() => import('../../features/trainee/pages/Trainees'));
 const TraineeDetail = lazy(() => import('../../features/trainee/pages/TraineeDetail'));
@@ -98,6 +103,7 @@ const Lecturers = lazy(() => import('../../features/lecturer/pages/Lecturers'));
 const Courses = lazy(() => import('../../features/course/pages/Courses'));
 const PendingEnrollments = lazy(() => import('../../features/course/pages/PendingEnrollments'));
 const CourseDetail = lazy(() => import('../../features/course/pages/CourseDetail'));
+const BankReconcile = lazy(() => import('../../features/tuition/pages/BankReconcile'));
 const PracticeBoard = lazy(() => import('../../features/course/pages/PracticeBoard'));
 const PracticeRecords = lazy(() => import('../../features/course/pages/PracticeRecords'));
 const PracticeResults = lazy(() => import('../../features/course/pages/PracticeResults'));
@@ -213,6 +219,10 @@ export const adminRoutes: RouteObject[] = [
 		element: admin('Tổng quan hội nghị & tín chỉ CME', <SeminarDashboard />),
 	},
 	{ path: '/admin/profile', element: admin('Hồ sơ cá nhân', <UserProfile />) },
+	{ path: '/admin/ky-tai-lieu', element: admin('Ký tài liệu', <SignDocument />) },
+	{ path: '/admin/trinh-ky', element: admin('Trình ký văn bản', <SignRequests />) },
+	{ path: '/admin/trinh-ky/tao-moi', element: admin('Tạo hồ sơ trình ký', <SignRequestCreate />) },
+	{ path: '/admin/trinh-ky/:id', element: admin('Hồ sơ trình ký', <SignRequestDetail />) },
 	{
 		path: '/admin/viec-cua-toi',
 		element: admin('Việc của tôi', <MyTasks />),
@@ -286,6 +296,14 @@ export const adminRoutes: RouteObject[] = [
 		element: (
 			<RequirePermission perm='system_settings:manage'>
 				{admin('Cấu hình hệ thống', <SystemSettings />)}
+			</RequirePermission>
+		),
+	},
+	{
+		path: '/admin/ky-so',
+		element: (
+			<RequirePermission perm='signing:manage'>
+				{admin('Ký số', <SigningAdmin />)}
 			</RequirePermission>
 		),
 	},
@@ -497,6 +515,10 @@ export const adminRoutes: RouteObject[] = [
 		path: '/admin/courses/:id',
 		element: admin('Chi tiết khóa học', <CourseDetail />),
 	},
+	{
+		path: '/admin/doi-soat-ngan-hang',
+		element: <RequirePermission perm='courses:approve'>{admin('Đối soát ngân hàng', <BankReconcile />)}</RequirePermission>,
+	},
 	// Trang soạn đề thi riêng (trước đây nằm trong tab Thi & kiểm tra của chi tiết khóa học)
 	...['/admin/courses/:id/exams/new', '/admin/courses/:id/exams/:examId/edit'].map((path) => ({
 		path,
@@ -512,15 +534,6 @@ export const adminRoutes: RouteObject[] = [
 			<RequirePermission perm='exams:manage'>
 				{admin('Ngân hàng câu hỏi', <QuestionBank />)}
 			</RequirePermission>
-		),
-	},
-	{
-		path: '/admin/class-schedule',
-		element: (
-			<Navigate
-				to='/admin/dtlt/lich-hoc'
-				replace
-			/>
 		),
 	},
 	{
@@ -596,6 +609,10 @@ export const userRoutes: RouteObject[] = [
 		element: user('Đánh giá tiến độ đề tài', <UserCouncilProgress />),
 	},
 	{ path: '/user/profile', element: user('Hồ sơ cá nhân', <UserProfile />) },
+	{ path: '/user/ky-tai-lieu', element: user('Ký tài liệu', <SignDocument />) },
+	{ path: '/user/trinh-ky', element: user('Trình ký văn bản', <SignRequests />) },
+	{ path: '/user/trinh-ky/tao-moi', element: user('Tạo hồ sơ trình ký', <SignRequestCreate />) },
+	{ path: '/user/trinh-ky/:id', element: user('Hồ sơ trình ký', <SignRequestDetail />) },
 	{
 		path: '/user/department-accounts',
 		element: user('Tài khoản trong khoa', <DepartmentAccounts />),
@@ -633,11 +650,6 @@ export const userRoutes: RouteObject[] = [
 		element: user('Nhập điểm', <UserMyTeachingGrades />),
 	},
 	{
-		// Điểm danh chuyển sang cổng học viên — nhân viên không điểm danh nữa.
-		path: '/user/cham-cong',
-		element: <Navigate to='/user' replace />,
-	},
-	{
 		path: '/user/huong-dan',
 		element: user('Hướng dẫn thực hành', <UserMyMentoring />),
 	},
@@ -648,11 +660,6 @@ export const userRoutes: RouteObject[] = [
 	{
 		path: '/user/cme',
 		element: user('Tín chỉ CME của tôi', <UserMyCme />),
-	},
-	{
-		path: '/user/thi-online',
-		// Thi online đã gộp vào chi tiết khóa học — giữ đường dẫn cũ cho link/bookmark.
-		element: <Navigate to='/user/khoa-hoc' replace />,
 	},
 	{
 		path: '/user/register-topic',
@@ -688,8 +695,6 @@ export const traineeRoutes: RouteObject[] = [
 	{ path: '/hoc-vien/giay-to', element: user('Giấy tờ hồ sơ', <TraineeDocuments />) },
 	{ path: '/hoc-vien/diem-danh', element: user('Điểm danh QR', <AttendanceCheckIn />) },
 	{ path: '/hoc-vien/diem-danh-ca', element: user('Điểm danh & xin phép', <UserMyAttendance />) },
-	// Đường dẫn cũ khi mục này còn tên "Chấm công"
-	{ path: '/hoc-vien/cham-cong', element: <Navigate to='/hoc-vien/diem-danh-ca' replace /> },
 	{ path: '/hoc-vien/khao-sat', element: user('Khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/khao-sat/:id', element: user('Trả lời khảo sát', <UserSurveys />) },
 	{ path: '/hoc-vien/thong-bao', element: user('Thông báo', <UserNotifications />) },

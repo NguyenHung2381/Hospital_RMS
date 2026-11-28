@@ -26,7 +26,7 @@ export default function AttendanceTimesheet() {
 		<AdminLayout
 			pageTitle='Bảng công'
 			pageSubtitle='Giờ vào, giờ ra của từng người theo ngày từ máy chấm công vân tay, kèm ca và đi muộn / về sớm'
-			breadcrumbs={[{ label: 'Ca & điểm danh học viên' }]}
+			breadcrumbs={[{ label: 'Đào tạo' }]}
 		>
 			<div className={base.tableCard}>
 				<TimesheetPanel devices={devices} />

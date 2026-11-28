@@ -14,7 +14,15 @@ const path = require('path');
 const espree = require('espree');
 
 const SRC = path.join(__dirname, '../src');
-const CORE = new Set(['events', 'settings', 'notifications', 'audit', 'access', 'persons']);
+const CORE = new Set([
+	'events',
+	'settings',
+	'notifications',
+	'audit',
+	'access',
+	'persons',
+	'signing',
+]);
 const AGGREGATE = new Set(['portal', 'public', 'dashboard']);
 const INFRA = new Set(['config', 'utils', 'middlewares', 'permissions', 'shared', 'database']);
 

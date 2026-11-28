@@ -22,6 +22,8 @@ import {
 } from '../api/registrationApi';
 import styles from './RegistrationReviewTab.module.css';
 import cs from '../pages/Courses.module.css';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 const DATE_KEYS = new Set(['dob', 'national_id_issued_date']);
 
@@ -95,6 +97,7 @@ export function RegistrationReviewTab({
 	const [data, setData] = useState<RegistrationReview | null>(null);
 	const [loadError, setLoadError] = useState('');
 	const [downloading, setDownloading] = useState(false);
+	const [sign, setSign] = useSignPreference('registration-documents');
 	const [viewer, setViewer] = useState<{ url: string; name: string; isWord: boolean } | null>(null);
 
 	const load = useCallback(
@@ -117,7 +120,11 @@ export function RegistrationReviewTab({
 	const download = async () => {
 		setDownloading(true);
 		try {
-			saveBlob(await downloadRegistrationApplication(enrollmentId), `don-dang-ky_${fileSlug(traineeName)}_${data.registration_code}.docx`);
+			saveBlob(
+				await downloadRegistrationApplication(enrollmentId, sign),
+				`don-dang-ky_${fileSlug(traineeName)}_${data.registration_code}${sign ? '_ky-so' : ''}.docx`,
+			);
+			if (sign) showToast('success', 'Đã tải đơn có chữ ký số của bạn');
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Không tạo được đơn đăng ký');
 		} finally {
@@ -437,8 +444,17 @@ export function RegistrationReviewTab({
 							disabled={downloading}
 							onClick={() => void download()}
 						>
-							<DocSvg /> {downloading ? 'Đang tạo…' : 'Tải đơn đăng ký (.docx)'}
+							<DocSvg /> {downloading ? (sign ? 'Đang tạo và ký…' : 'Đang tạo…') : 'Tải đơn đăng ký (.docx)'}
 						</button>
+						<div style={{ flexBasis: '100%', maxWidth: 520 }}>
+							<SignToggle
+								feature='training_documents'
+								source='personal'
+								checked={sign}
+								onChange={setSign}
+								disabled={downloading}
+							/>
+						</div>
 					</>
 				) : (
 					<span className={cs.hint}>

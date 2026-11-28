@@ -147,7 +147,8 @@ export default function Survey() {
 														<BarChartSvg />
 													</RowAction>
 													<RowAction
-														title='Sao chép link trả lời khảo sát'
+														title='Sao chép link'
+														aria-label='Sao chép link trả lời khảo sát'
 														onClick={() => d.copyRespondLink(survey)}
 													>
 														<LinkSvg />

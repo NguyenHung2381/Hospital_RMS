@@ -19,9 +19,20 @@ export interface MyTaskProgressReview {
 	department_name: string | null;
 }
 
+export interface MyTaskSignRequest {
+	id: number;
+	title: string;
+	creator_name: string;
+	doc_count: number;
+	due_date: string | null;
+	created_at: string;
+}
+
 export interface MyTasks {
 	approvals: MyTaskApproval[];
 	progress_reviews: MyTaskProgressReview[];
+	/** Hồ sơ trình ký đang tới lượt tôi ký */
+	sign_requests?: MyTaskSignRequest[];
 	total: number;
 }
 

@@ -24,6 +24,7 @@ const EVENT_DEFAULTS = {
 	TOPIC_SUBMITTED: false, // có đề tài mới cần duyệt (gửi người duyệt)
 	ACCOUNT_GRANTED: false, // cấp tài khoản thành viên đề tài
 	BROADCAST: false, // thông báo chung do quản trị gửi
+	SIGN_REQUEST: true, // trình ký văn bản: tới lượt ký, bị từ chối, hoàn tất
 };
 
 // Không truyền event = chỉ xét công tắc tổng (OTP quên mật khẩu đã có công tắc riêng).

@@ -256,6 +256,25 @@ router.post(
 	uploadExcel.single('file'),
 	ctrl.importParticipants,
 );
+// Lấy danh sách người tham dự nội viện từ lượt chấm ở máy chấm công dành cho hội nghị
+// (seminarDeviceImportService) — dry_run = xem trước; from/to 'YYYY-MM-DDTHH:mm' giờ VN;
+// pins = mã trên máy cần thêm (bỏ trống = mọi người khớp được)
+router.post(
+	'/:id/participants/import-device',
+	authenticate,
+	canImport,
+	[
+		body('dry_run').optional().isBoolean().toBoolean(),
+		body('from').optional({ values: 'falsy' }).isString().isLength({ max: 16 }),
+		body('to').optional({ values: 'falsy' }).isString().isLength({ max: 16 }),
+		body('device_ids').optional().isArray({ max: 100 }),
+		body('device_ids.*').isInt({ min: 1 }).toInt(),
+		body('pins').optional().isArray({ max: 5000 }),
+		body('pins.*').isString().isLength({ min: 1, max: 24 }),
+	],
+	validate,
+	ctrl.importFromDevice,
+);
 // Tập huấn bệnh viện: chọn nhân sự theo khoa / "Thêm cả khoa"
 router.get(
 	'/:id/department-staff',
@@ -449,12 +468,14 @@ router.post(
 		res.end(pdf);
 	}),
 );
+// Xuất kèm chữ ký số bằng chứng thư bệnh viện: body sign = true (JSON) / "1" (form) —
+// seminarCertificateService.signerFor (cần thêm quyền signing:sign).
 // Người tham dự đã có số CME (participant_ids rỗng = tất cả)
 router.post(
 	'/:id/certificates',
 	authenticate,
 	canCme,
-	[body('participant_ids').optional().isArray()],
+	[body('participant_ids').optional().isArray(), body('sign').optional().isBoolean()],
 	validate,
 	asyncHandler(async (req, res) => {
 		const people = await certificateService.peopleFromParticipants(
@@ -467,11 +488,13 @@ router.post(
 				message: 'Chưa có người nào được cấp số CME để in giấy chứng nhận.',
 			});
 		}
+		const signer = await certificateService.signerFor(req.params.id, req.user, req.body?.sign);
 		await certificateService.streamZip(
 			res,
 			req.params.id,
 			people,
-			`giay-chung-nhan-cme-${req.params.id}.zip`,
+			`giay-chung-nhan-cme-${req.params.id}${signer ? '-ky-so' : ''}.zip`,
+			{ signer },
 		);
 	}),
 );
@@ -485,11 +508,13 @@ router.post(
 		if (!req.file)
 			return res.status(400).json({ success: false, message: 'Chưa chọn file Excel.' });
 		const people = await certificateService.peopleFromExcel(req.params.id, req.file.buffer);
+		const signer = await certificateService.signerFor(req.params.id, req.user, req.body?.sign);
 		await certificateService.streamZip(
 			res,
 			req.params.id,
 			people,
-			`giay-chung-nhan-cme-${req.params.id}.zip`,
+			`giay-chung-nhan-cme-${req.params.id}${signer ? '-ky-so' : ''}.zip`,
+			{ signer },
 		);
 	}),
 );

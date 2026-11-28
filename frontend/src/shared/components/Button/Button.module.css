@@ -133,6 +133,16 @@
 	display: flex;
 	align-items: center;
 }
+/* Nhãn của nút chỉ có icon — ẩn mặc định, global.css bật lên ở thanh nút đầu trang
+   trên điện thoại (không có tooltip khi chạm). */
+.iconOnlyLabel {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
 .spinner {
 	width: 14px;
 	height: 14px;

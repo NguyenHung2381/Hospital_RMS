@@ -3,6 +3,8 @@
 # (check-dependencies.yml chặn bản beta/rc/next và nguồn gói lạ).
 # cooldown: chỉ đề xuất bản đã phát hành đủ lâu — gói bị chiếm tài khoản thường
 # bị phát hiện và gỡ trong vài ngày đầu.
+# commit-message: tiêu đề PR theo Conventional Commits (chore(deps): …, ci(deps): …,
+# build(deps): …) — qua được check-pr-title.yml và vào đúng mục của bản phát hành.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -12,6 +14,10 @@ updates:
     cooldown:
       default-days: 7
       semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
     groups:
       minor-patch:
         update-types: [minor, patch]
@@ -27,6 +33,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: ci
+      include: scope
     cooldown:
       default-days: 7
     groups:
@@ -36,6 +45,9 @@ updates:
     directories: ['/backend', '/frontend']
     schedule:
       interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
     cooldown:
       default-days: 7
     ignore:

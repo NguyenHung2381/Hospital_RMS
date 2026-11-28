@@ -23,6 +23,9 @@ export function Button({
 	type = 'button',
 	...props
 }: ButtonProps) {
+	// Nút chỉ có icon: giữ tên (aria-label / title) thành chữ ẩn để nơi cần hiện nhãn
+	// (thanh nút đầu trang trên điện thoại, global.css [data-page-actions]) bật lên.
+	const iconOnlyLabel = !children && icon ? (props['aria-label'] ?? props.title) : undefined;
 	return (
 		<button
 			type={type}
@@ -42,6 +45,14 @@ export function Button({
 				<span className={styles.icon}>{icon}</span>
 			) : null}
 			{children}
+			{iconOnlyLabel && (
+				<span
+					className={styles.iconOnlyLabel}
+					aria-hidden='true'
+				>
+					{iconOnlyLabel}
+				</span>
+			)}
 		</button>
 	);
 }

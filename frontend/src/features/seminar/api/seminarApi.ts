@@ -126,6 +126,57 @@ export interface TicketCheckIn {
 export const checkInTicket = (seminarId: string, code: string) =>
 	apiClient.post<TicketCheckIn>(`/seminars/${seg(seminarId)}/checkin-ticket`, { code });
 
+// ─── Lấy người tham dự nội viện từ máy chấm công (backend seminarDeviceImportService) ───
+export interface DeviceImportRow {
+	/** Mã trên máy */
+	pin: string;
+	/** UTC ISO */
+	first_at: string;
+	last_at: string;
+	punches: number;
+	status: 'new' | 'existing' | 'unmatched';
+	reason?: string;
+	/** Tên người dùng khai trên máy (chưa xác minh) — giúp nhận ra mã không khớp */
+	device_name: string | null;
+	user: { id: string; full_name: string; staff_number: number; department_name: string | null } | null;
+	participant: { id: string; full_name: string; checked_in_at: string | null; checkin_method: string | null } | null;
+}
+export interface DeviceImportPreview {
+	dry_run: true;
+	/** 'YYYY-MM-DDTHH:mm' giờ VN */
+	from: string;
+	to: string;
+	devices: { id: number; name: string; serial_no: string; purpose: string; last_seen_at: string | null; selected: boolean }[];
+	method_enabled: boolean;
+	summary: { new: number; existing: number; unmatched: number; punches: number };
+	warnings: string[];
+	rows: DeviceImportRow[];
+}
+export interface DeviceImportResult {
+	dry_run: false;
+	inserted: number;
+	checked_in: number;
+	linked_punches: number;
+	warnings: string[];
+}
+export interface DeviceImportInput {
+	from?: string;
+	to?: string;
+	device_ids?: number[];
+	/** Mã trên máy cần thêm khi xác nhận */
+	pins?: string[];
+}
+export const previewDeviceImport = (seminarId: string, input: DeviceImportInput) =>
+	apiClient.post<DeviceImportPreview>(`/seminars/${seg(seminarId)}/participants/import-device`, {
+		...input,
+		dry_run: true,
+	});
+export const commitDeviceImport = (seminarId: string, input: DeviceImportInput) =>
+	apiClient.post<DeviceImportResult>(`/seminars/${seg(seminarId)}/participants/import-device`, {
+		...input,
+		dry_run: false,
+	});
+
 // Đề kiểm tra — nhiều đề / hội nghị
 export const createSeminarTest = (seminarId: string, data: SeminarTestInput) =>
 	apiClient.post<SeminarTest>(`/seminars/${seg(seminarId)}/tests`, data);
@@ -369,13 +420,17 @@ export const saveCertificateInfo = (seminarId: string, values: Partial<Record<Ce
 export const previewCertificate = (seminarId: string) =>
 	apiClient.postBlob(`/seminars/${seg(seminarId)}/certificate-template/preview`, {});
 
-/** participantIds rỗng = mọi người đã có số CME */
-export const exportCertificates = (seminarId: string, participantIds?: string[]) =>
-	apiClient.postBlob(`/seminars/${seg(seminarId)}/certificates`, { participant_ids: participantIds });
+/** participantIds rỗng = mọi người đã có số CME. sign: ký số bằng chứng thư bệnh viện */
+export const exportCertificates = (seminarId: string, participantIds?: string[], sign = false) =>
+	apiClient.postBlob(`/seminars/${seg(seminarId)}/certificates`, {
+		participant_ids: participantIds,
+		...(sign ? { sign: true } : {}),
+	});
 
-export const exportCertificatesFromExcel = (seminarId: string, file: File) => {
+export const exportCertificatesFromExcel = (seminarId: string, file: File, sign = false) => {
 	const form = new FormData();
 	form.append('file', file);
+	if (sign) form.append('sign', '1');
 	return apiClient.postBlob(`/seminars/${seg(seminarId)}/certificates/from-excel`, form);
 };
 

@@ -15,10 +15,12 @@ push / PR ──► CI (ci.yml, chỉ điều phối) ─┬─ Phụ thuộc   
                         cho image cũ → GHCR ──► ký cosign (khoá riêng, environment image-signing)
                 ──► Deploy staging (nếu bật) ──► Deploy production (duyệt / chạy tay)
 Deploy (deploy.yml):
-   cổng: SHA nằm trên main + có lần CI push-main xanh  (GitHub-hosted)
-   ──► runner tại server: xác minh chữ ký cosign → kéo đúng digest → scripts/deploy.sh:
+   cổng: SHA nằm trên main + có lần CI push-main xanh + lý do (chạy tay) + đã xanh ở staging (production, khi bật staging)  (GitHub-hosted)
+   ──► runner tại server [hook trước job: chỉ nhận ci.yml/deploy.yml trên main]: xác minh chữ ký cosign → kéo đúng digest → scripts/deploy.sh:
        kiểm tra máy chủ (Docker, ổ đĩa, file env, compose) → backup DB + migration → up --no-build → smoke test + theo dõi → hỏng thì tự rollback
-   ──► bản ghi kiểm toán JSON (artifact 365 ngày + logs/deploy-audit.jsonl trên máy chủ) + logs/deploy-history.log
+   ──► bản ghi kiểm toán JSON (artifact 90 ngày + logs/deploy-audit.jsonl trên máy chủ) + logs/deploy-history.log
+   ──► production xanh: bản phát hành prod-YYYY.MM.DD.N (GitHub Release: commit theo loại, migration mới, lý do, người deploy)
+PR ──► Tiêu đề PR (check-pr-title.yml, riêng): Conventional Commits
 ```
 
 | File | Vai trò |
@@ -28,12 +30,15 @@ Deploy (deploy.yml):
 | `.github/workflows/check-secrets.yml` | Không commit `.env`/khoá/bản dump, chuỗi bí mật, gitleaks |
 | `.github/workflows/check-sast.yml` | Semgrep |
 | `.github/workflows/check-infra.yml` | actionlint, zizmor (bảo mật workflow), hadolint (`.hadolint.yaml`), shellcheck, `docker compose config` |
-| `.github/workflows/check-governance.yml` | Giấy phép thư viện (`scripts/ci/check-licenses.mjs`), quy tắc migration (`scripts/ci/check-migrations.mjs`), vệ sinh repo (`scripts/ci/check-hygiene.mjs`), vết duyệt thay đổi vào main. Báo cáo giấy phép + vết duyệt lưu artifact 365 ngày |
+| `.github/workflows/check-governance.yml` | Giấy phép thư viện (`scripts/ci/check-licenses.mjs`), quy tắc migration (`scripts/ci/check-migrations.mjs`), vệ sinh repo (`scripts/ci/check-hygiene.mjs`), vết duyệt thay đổi vào main. Báo cáo giấy phép + vết duyệt lưu artifact (repo public: tối đa 90 ngày) |
 | `.github/workflows/check-backend.yml` | Lint · Prettier · tsc / kiến trúc + phân quyền route / test theo nhóm / coverage / PostgreSQL thật / nâng cấp DB từ schema bản trước + chạy lại migration mới lần 2 |
 | `.github/workflows/check-image.yml` | Build image prod 2 app (đọc cache main, không ghi) → `scripts/ci/smoke-prod.sh`: registry tạm, PostgreSQL có SSL, `docker-compose.prod.yml`, `scripts/deploy.sh` đường chính + tự rollback, kiểm tra HTTP/header/quyền, Chrome headless (`scripts/ci/browser-smoke.mjs`). Chạy được trên máy dev có Docker |
 | `.github/workflows/check-frontend.yml` | Lint + tsc / build production (chặn source map) |
 | `.github/workflows/build-image.yml` | Chỉ build app có thay đổi (so với commit trước của lần push); app không đổi thì gắn tag SHA mới cho image cũ trên registry (vài giây). Vẫn build lại khi đổi workflow này, commit trước không có image, push đè lịch sử, hoặc image gốc quá 7 ngày (lấy bản vá base image). Chỉ ci.yml gọi được, không chạy tay |
-| `.github/workflows/deploy.yml` | Deploy 1 SHA lên 1 môi trường. Chạy tay = **rollback**. Cổng (SHA trên main + CI xanh), xác minh chữ ký image, bản ghi kiểm toán |
+| `.github/workflows/deploy.yml` | Deploy 1 SHA lên 1 môi trường. Chạy tay = deploy production / **rollback**, bắt buộc ghi lý do. Cổng (SHA trên main + CI xanh + thăng cấp staging → production), xác minh chữ ký image, bản ghi kiểm toán, bản phát hành production |
+| `.github/workflows/check-pr-title.yml` | Tiêu đề PR theo Conventional Commits (`fix(seminars): …`). Workflow riêng vì phải chạy lại khi sửa tiêu đề |
+| `.github/workflows/ci-notify.yml` | Chạy sau khi lần chạy CI (push main / lịch tuần) kết thúc hẳn (`workflow_run`): hỏng → issue `ci-hong` kèm lỗi trích từ annotation/log; cả lần chạy xanh (gồm deploy, kể cả chạy lại job hỏng) → đóng issue. Chỉ đọc API, không checkout, bỏ qua PR / fork |
+| `infra/runner/job-started.sh` | Hook chạy trước mỗi job trên runner máy chủ: chỉ cho `ci.yml` / `deploy.yml` trên `main` chạy (chặn workflow lạ từ nhánh khác chạy lệnh trên production). Cài ở máy chủ, không phải trong repo |
 | `.github/license-policy.json` | Giấy phép cấm / cần xem xét, ngoại lệ **có hạn** kèm lý do (hết hạn → CI đỏ) |
 | `.github/prerelease-allowlist.json` | Gói **gián tiếp** là bản tiền phát hành tạm chấp nhận, kèm lý do. Phụ thuộc trực tiếp không bao giờ được vào đây |
 | `scripts/deploy.sh` | Logic deploy/backup/smoke test/rollback (bash). GitHub sự cố vẫn chạy tay được trên server |
@@ -42,7 +47,7 @@ Deploy (deploy.yml):
 
 ## Cài đặt 1 lần
 
-1. **Branch protection cho `main`** (Settings → Branches, hoặc lệnh dưới). Repo private cần gói GitHub Pro/Team trở lên.
+1. **Branch protection cho `main`** (Settings → Branches, hoặc lệnh dưới). Repo đang **public** nên dùng miễn phí; nếu chuyển sang private thì cần gói GitHub Pro/Team trở lên.
    ```bash
    gh api -X PUT repos/NguyenHung2381/Hospital_RMS/branches/main/protection --input - <<'EOF'
    {"required_status_checks":{"strict":true,"contexts":["CI · kết quả"]},
@@ -50,13 +55,15 @@ Deploy (deploy.yml):
     "required_conversation_resolution":true,"restrictions":null,"allow_force_pushes":false,"allow_deletions":false}
    EOF
    ```
+   Merge PR kiểu *squash* thì thêm `"Tiêu đề PR"` vào `contexts` (tiêu đề PR thành commit trên main → bản phát hành nhóm đúng loại).
    `enforce_admins:false` để admin còn sửa gấp được khi chỉ có 1 người review. Mọi lần vượt (push thẳng, tự merge) đều bị job **Duyệt trước khi vào main** ghi lại (Summary + artifact `review-audit-<sha>`). Khi nhóm có ≥ 2 người: đặt `enforce_admins:true` và biến repo `REQUIRE_REVIEWED_CHANGES=true` → commit vào main không có PR được người **khác** tác giả duyệt thì CI đỏ, không build image, không deploy được.
 2. **Runner trên server** (Settings → Actions → Runners → New self-hosted runner, **Linux**). Lúc cài, thêm nhãn `rms-production` (staging: `rms-staging`) và chạy dưới dạng service (`svc.sh install`) bằng user thuộc nhóm `docker`. Server tự kết nối ra GitHub, không cần mở cổng vào. Từng bước: `infra/cai-dat-may-ao-ubuntu.md` mục 15.
-   Settings → Actions → General → *Fork pull request workflows*: **không** chạy workflow từ fork. Runner chỉ nhận job deploy, PR không bao giờ chạy trên runner này.
+   Settings → Actions → General → *Approval for running fork pull request workflows from contributors*: chọn **Require approval for all external contributors** (repo public không tắt hẳn được workflow từ fork; tuỳ chọn "không chạy workflow từ fork" chỉ có ở repo private). Repo public + runner tự host là trường hợp GitHub khuyến cáo tránh, nên lớp chặn thật sự để PR không chạy trên runner máy chủ là hook bên dưới — **chưa cài hook thì đừng để runner chạy**.
+   **Bắt buộc cài hook trước job** (`infra/runner/job-started.sh`, cách cài ở đầu file và `infra/cai-dat-may-ao-ubuntu.md` mục 15.1): nhãn `rms-production` chỉ là quy ước — ai có quyền ghi repo cũng đẩy được 1 nhánh có workflow `runs-on: [self-hosted, rms-production]` và chạy lệnh tuỳ ý trên máy chủ, không qua review / environment / cổng deploy (OWASP CICD-SEC-4). Hook nằm trên máy chủ, từ chối mọi job không phải `ci.yml`/`deploy.yml` trên `main` (sự kiện push / workflow_dispatch) và ghi `auth.warning` vào syslog (`journalctl -t rms-runner-hook`). Tài khoản tổ chức có *runner group* giới hạn workflow thì dùng thêm.
 3. **Environments** (Settings → Environments) `production` (và `staging` nếu dùng):
    - *Deployment branches*: chỉ `main`.
-   - *Required reviewers*: chỉ có ở repo public hoặc gói Enterprise. Có thì bật, rồi đặt biến repo `AUTO_DEPLOY_PRODUCTION=true`.
-     Không có thì production luôn deploy **bằng tay** (bước "Deploy production" bên dưới). Đây là bước duyệt.
+   - *Required reviewers* (chỉ `production`): bật, thêm người duyệt. Làm một mình thì **không** tick *Prevent self-review*. Có người duyệt rồi mới đặt biến repo `AUTO_DEPLOY_PRODUCTION=true` — mỗi lần push lên main, job Deploy production dừng ở *Waiting* chờ **Review deployments → Approve and deploy**.
+     Repo public có sẵn tính năng này; nếu chuyển sang private thì cần gói Enterprise — khi đó bỏ `AUTO_DEPLOY_PRODUCTION`, production luôn deploy **bằng tay** (bước "Deploy production" bên dưới) và đó là bước duyệt.
    - Biến (*Variables*): `DEPLOY_DIR` (thư mục source trên server, chứa `backend/.env*` và `.env`), `APP_URL`, `MIGRATION_BACKUP_DIR` (thư mục trên server để `pg_dump` trước migration; user runner phải ghi được, máy cần `pg_dump` — cài cùng PostgreSQL).
      Staging cùng máy thì thêm `COMPOSE_PROJECT=hospital_rms_staging`, `BACKEND_URL`/`FRONTEND_URL` với cổng khác, và đặt `BACKEND_BIND`/`FRONTEND_BIND` + `DB_DATABASE` riêng trong `.env`/`backend/.env.production` của thư mục staging.
    - Secret (*Secrets*): `MIGRATION_DB_USER` (`rms_migrate`), `MIGRATION_DB_PASSWORD`. Role chủ DB, chỉ dùng cho bước backup + migration. Không đặt thì `deploy.sh` dùng `rms_migrate` với mật khẩu lấy từ `~/.pgpass` của user chạy runner (dòng `127.0.0.1:5432:*:rms_migrate:<mật khẩu>`); không tìm được mật khẩu thì dừng trước khi backup — migration không bao giờ chạy bằng `rms_app` (thiếu quyền CREATE trên schema public). App vẫn chạy bằng role quyền hẹp `rms_app` trong `.env.production`. Backup kết nối `127.0.0.1:5432/rms_hospital`; khác thì đặt `MIGRATION_DB_HOST` / `MIGRATION_DB_PORT` / `MIGRATION_DB_NAME`.
@@ -72,22 +79,23 @@ Deploy (deploy.yml):
    - Cất `cosign.key` + mật khẩu ở kho bí mật của bệnh viện (két / password manager), **xoá** bản trên máy. Không commit.
    - Từ lúc đặt `COSIGN_PUBLIC_KEY`, deploy **từ chối** image chưa ký. Image build trước đó: chạy lại CI của commit cần deploy (Actions → CI → Re-run) để job *Ký image* ký bù, hoặc deploy bản mới hơn.
    - Đổi khoá (lộ khoá, người giữ nghỉ việc): tạo cặp mới, thay cả 3 giá trị, chạy lại CI của commit đang chạy production để ký bằng khoá mới.
-   Chữ ký không đẩy lên log minh bạch công khai (Rekor) nên tên repo private không lộ ra ngoài; đổi lại, việc xác minh chỉ dựa vào khoá công khai ở trên.
+   Chữ ký không đẩy lên log minh bạch công khai (Rekor): khoá tự quản nên Rekor không thêm bảo đảm đáng kể, và nếu repo chuyển private thì tên repo không lộ ra ngoài. Việc xác minh chỉ dựa vào khoá công khai ở trên.
 
 ## Vận hành
 
-- **Deploy production (bằng tay)**: Actions → *Deploy* → Run workflow → `production` + commit SHA (SHA lấy ở trang tóm tắt lần chạy CI, mục Image).
-- **Rollback**: giống hệt, nhập SHA của bản cũ. Image cũ còn nguyên trên GHCR (Packages) và trong Docker của server. Không có GitHub thì chạy trên server:
+- **Deploy production (bằng tay)**: Actions → *Deploy* → Run workflow → `production` + commit SHA (SHA lấy ở trang tóm tắt lần chạy CI, mục Image) + **lý do** (≥ 10 ký tự: số phiếu thay đổi / sự cố / nội dung — vào bản ghi kiểm toán và bản phát hành). Bật staging thì SHA phải đã deploy xanh ở staging trước.
+- **Rollback**: giống hệt, nhập SHA của bản cũ (tab *Releases*: mỗi tag `prod-*` là 1 bản từng chạy production; bản đã từng chạy production luôn được deploy lại, không cần qua staging). Image cũ còn nguyên trên GHCR (Packages) và trong Docker của server. Không có GitHub thì chạy trên server:
   `scripts/deploy.sh <sha> ghcr.io/nguyenhung2381` (cần `docker login ghcr.io` bằng PAT có quyền `read:packages`; đặt `DEPLOY_DIR`, `MIGRATION_*` như trên).
 - **Kiểm tra máy chủ** (đầu `scripts/deploy.sh`, cả khi chạy tay): Docker chạy được, ổ chứa dữ liệu Docker còn ≥ `MIN_FREE_GB` (mặc định 3), có `backend/.env.production`, `docker-compose.prod.yml` hợp lệ với `.env` thật, `MIGRATION_BACKUP_DIR` ghi được + có `pg_dump`. Hỏng → dừng trước khi kéo image, bản đang chạy không bị đụng (`FAILED-PREFLIGHT` trong `deploy-history.log`). Biến khai báo trong `backend/.env.example` mà máy chưa đặt → cảnh báo.
-- **Cổng deploy** (job *Điều kiện deploy*, cả khi chạy tay): SHA phải đủ 40 ký tự, nằm trên `main`, và có lần chạy CI do **push vào main** với *CI · kết quả* xanh. Không deploy được nhánh khác, commit chưa merge, hay commit CI đỏ.
+- **Cổng deploy** (job *Điều kiện deploy*, cả khi chạy tay): SHA phải đủ 40 ký tự, nằm trên `main`, và có lần chạy CI do **push vào main** với *CI · kết quả* xanh. Không deploy được nhánh khác, commit chưa merge, hay commit CI đỏ. Chạy tay phải có lý do. Production khi `ENABLE_STAGING=true`: SHA phải có lần deploy staging xanh (CI tự deploy, hoặc lần chạy tay tên `Deploy staging · <sha>`) hoặc đã từng chạy production (rollback).
+- **Bản phát hành** (job *Bản phát hành production*): mỗi lần production đổi sang bản khác → GitHub Release + tag `prod-YYYY.MM.DD.N` (giờ VN) trỏ đúng commit: commit nhóm theo loại (Tính năng / Sửa lỗi / Hiệu năng / Hoàn tác / Khác — theo tiền tố Conventional Commits), migration mới, lý do, người deploy, link lần deploy + CI. Rollback → bản phát hành "rollback về …" liệt kê commit bị gỡ. Deploy lại đúng bản đang chạy thì không tạo. Lỗi tạo bản phát hành chỉ cảnh báo, không làm đỏ lần deploy đã xong.
 - **Tự rollback**: smoke test (`/health` đúng version, `/health/db`, trang chủ, không restart trong 60s) hỏng thì script tự quay lại image trước đó, và job báo đỏ.
 - **Migration**: rollback ứng dụng **không** hoàn tác schema. Vì vậy:
   - Migration phải tương thích ngược: thêm cột/bảng thì được; xoá hoặc đổi tên thì để 1 bản phát hành sau, khi code cũ không còn dùng.
   - Viết idempotent như các file hiện có.
   - Migration hỏng thì deploy dừng **trước** khi đổi container (bản cũ vẫn chạy). Cần khôi phục thì `pg_restore` file `.dump` mới nhất trong `MIGRATION_BACKUP_DIR` (tên có 8 ký tự đầu của SHA).
-- **Lịch sử deploy**: tab *Environments* trên GitHub (ai, SHA, lúc nào, link lần chạy), `logs/deploy-history.log` trên server, và artifact `deploy-audit-<môi trường>-<run>` (JSON: thời điểm UTC, commit, digest 2 image, đã xác minh chữ ký chưa, người kích hoạt, lần chạy CI, kết quả).
-- **Bằng chứng kiểm tra** (artifact 365 ngày, tải ở trang lần chạy hoặc `gh run download`): `trivy-<app>-<sha>` (báo cáo quét image đầy đủ), `license-report-<sha>` (danh mục giấy phép), `review-audit-<sha>` (commit nào qua PR, ai duyệt), `deploy-audit-*` (bản ghi này còn được ghi thêm vào `$DEPLOY_DIR/logs/deploy-audit.jsonl` trên máy chủ và Summary của lần chạy — máy chủ không tải được artifact lên GitHub thì job chỉ cảnh báo, không đỏ). Thời hạn thực tế không vượt cài đặt repo (Settings → Actions → General → *Artifact and log retention*); cần giữ lâu hơn thì tải về lưu trữ của bệnh viện định kỳ.
+- **Lịch sử deploy**: tab *Releases* (bản production, kèm thay đổi), `logs/deploy-history.log` trên server, artifact `deploy-audit-<môi trường>-<run>` (JSON: thời điểm UTC, commit, digest 2 image, đã xác minh chữ ký chưa, người kích hoạt, **lý do**, lần chạy CI, kết quả), và tên lần chạy `Deploy <môi trường> · <sha>` ở tab Actions. Tab *Environments* ghi SHA của **nhánh lúc chạy** (main), không phải SHA được deploy khi chạy tay một bản cũ — đừng dùng nó để tra bản đang chạy.
+- **Bằng chứng kiểm tra** (artifact — workflow đặt 365 ngày nhưng repo public bị GitHub cắt còn **tối đa 90 ngày**; tải ở trang lần chạy hoặc `gh run download`): `trivy-<app>-<sha>` (báo cáo quét image đầy đủ), `license-report-<sha>` (danh mục giấy phép), `review-audit-<sha>` (commit nào qua PR, ai duyệt), `deploy-audit-*` (bản ghi này còn được ghi thêm vào `$DEPLOY_DIR/logs/deploy-audit.jsonl` trên máy chủ và Summary của lần chạy — máy chủ không tải được artifact lên GitHub thì job chỉ cảnh báo, không đỏ). Thời hạn thực tế không vượt cài đặt repo (Settings → Actions → General → *Artifact and log retention*); cần giữ lâu hơn thì tải về lưu trữ của bệnh viện định kỳ.
 - **Tự xác minh 1 image**: `docker run --rm -e COSIGN_PUBLIC_KEY="$(cat cosign.pub)" ghcr.io/sigstore/cosign/cosign:v2.6.5 verify --key env://COSIGN_PUBLIC_KEY --insecure-ignore-tlog=true ghcr.io/nguyenhung2381/hospital_rms-backend:<sha>` (cần `docker login ghcr.io`).
 - **Truy vết**: production → `GET /health` trả `version` = commit SHA đã build image backend (bằng SHA deploy, hoặc commit gần nhất đổi `backend/` nếu image được gắn lại tag) → image `ghcr.io/…:<sha>` (label `org.opencontainers.image.url` trỏ về lần chạy CI có kết quả test, coverage, quét) → commit.
 
@@ -163,7 +171,10 @@ Cổng dùng: 55432, 5055, 13001, 18081, 19222 (đổi bằng `PG_PORT`, `REG_PO
 | Deploy nhầm commit chưa merge / CI đỏ, image giả | Cổng deploy · xác minh chữ ký cosign | deploy |
 | Máy chủ đầy ổ, mất file env, thư mục backup không ghi được, Docker tắt | Kiểm tra máy chủ (đầu deploy.sh) | deploy |
 | Bản mới khởi động rồi crash, không kết nối DB | Smoke test + theo dõi trong deploy.sh → tự rollback | deploy |
-| Pipeline main hỏng mà không ai biết | Issue `ci-hong` (gom 1 issue, ghi job + bước hỏng kèm thông báo lỗi, tự đóng khi xanh lại) | main · hằng tuần |
+| Pipeline main hỏng mà không ai biết | Issue `ci-hong` (gom 1 issue, ghi job + bước hỏng kèm thông báo lỗi, tự đóng khi cả lần chạy — gồm deploy — xanh lại; `ci-notify.yml`) | main · hằng tuần |
+| Workflow lạ (nhánh khác) chạy lệnh trên máy chủ production qua runner | Hook trước job trên runner (`infra/runner/job-started.sh`) | mọi job tới runner |
+| Đưa thẳng lên production bản chưa thử ở staging | Cổng deploy (thăng cấp, khi bật staging) | deploy |
+| Deploy tay không rõ vì sao / không biết production đang chạy gì, đổi gì | Lý do bắt buộc · bản phát hành `prod-*` | deploy |
 
 **Chưa tự động được** (cần làm tay / công cụ khác): runner trên server offline (job deploy xếp hàng chờ — xem Settings → Actions → Runners); lỗi chỉ xảy ra với dữ liệu production (chạy migration trên bản sao DB trước khi deploy migration lớn); hiệu năng / tải; trang sau đăng nhập trong trình duyệt (cần tài khoản thử); chứng chỉ HTTPS sắp hết hạn.
 
@@ -191,8 +202,34 @@ Cổng dùng: 55432, 5055, 13001, 18081, 19222 (đổi bằng `PG_PORT`, `REG_PO
 | **4. Security** | SAST Semgrep · SCA `npm audit` + chữ ký registry + Dependabot · gitleaks · Trivy quét image (chặn CRITICAL có bản vá + bí mật HIGH+ trong image) · action ghim SHA, image công cụ ghim digest · zizmor + actionlint cho workflow, hadolint, shellcheck · `permissions` tối thiểu từng job, secret theo environment, khoá ký chỉ ở environment `image-signing` (nhánh main), PR từ fork không có secret và không chạy trên runner · SBOM + provenance gắn vào image · **ký image cosign, deploy xác minh chữ ký** · Node production là bản LTS, cùng bản CI test |
 | **5. Deployment** | cổng: chỉ SHA trên main có CI push-main xanh · staging / production theo environment · duyệt (required reviewers hoặc chạy tay) · biến/secret theo environment + file `.env` riêng trên từng server · migration có theo dõi + backup · smoke test · *rolling/blue-green: chưa, 1 server nên có downtime vài giây lúc tạo lại container* |
 | **6. Rollback & Recovery** | Tự rollback + rollback tay theo SHA · image cũ còn trên GHCR · migration tương thích ngược + backup · `timeout-minutes` mọi job, pull có retry · bảng trách nhiệm ở trên |
-| **7. Monitoring & Audit** | Log Actions tự che secret · issue + email khi hỏng · lịch sử deploy (Environments + `deploy-history.log` + bản ghi kiểm toán JSON 365 ngày) · truy vết SHA ↔ digest ↔ chữ ký ↔ lần chạy CI · vết duyệt từng commit vào main. *Error rate/latency sau deploy: chỉ có theo dõi restart 60s; dashboard cần Loki/Grafana ở prod (hiện chỉ có ở dev)* |
-| **8. Tuân thủ & kiểm duyệt** | Giấy phép thư viện (chặn copyleft, ngoại lệ có hạn) · quy tắc migration (không sửa file đã chạy, lệnh phá huỷ phải ghi lý do) · PR template có mục dữ liệu cá nhân / phân quyền / rủi ro + rollback · CODEOWNERS cho DB, hạ tầng, Dockerfile, CI · vết duyệt mọi commit vào main (bật chặn bằng `REQUIRE_REVIEWED_CHANGES`) · bằng chứng lưu 365 ngày |
+| **7. Monitoring & Audit** | Log Actions tự che secret · issue + email khi hỏng · lịch sử deploy (Environments + `deploy-history.log` + bản ghi kiểm toán JSON: artifact 90 ngày, bản lâu dài trên máy chủ) · truy vết SHA ↔ digest ↔ chữ ký ↔ lần chạy CI · vết duyệt từng commit vào main. *Error rate/latency sau deploy: chỉ có theo dõi restart 60s; dashboard cần Loki/Grafana ở prod (hiện chỉ có ở dev)* |
+| **8. Tuân thủ & kiểm duyệt** | Giấy phép thư viện (chặn copyleft, ngoại lệ có hạn) · quy tắc migration (không sửa file đã chạy, lệnh phá huỷ phải ghi lý do) · PR template có mục dữ liệu cá nhân / phân quyền / rủi ro + rollback · CODEOWNERS cho DB, hạ tầng, Dockerfile, CI · vết duyệt mọi commit vào main (bật chặn bằng `REQUIRE_REVIEWED_CHANGES`) · bằng chứng lưu artifact 90 ngày (lâu hơn: tải về định kỳ) |
+
+## Đối chiếu chuẩn ngành
+
+Các khung tham chiếu mà dự án lớn thường dùng để đánh giá CI/CD, và chỗ pipeline này đáp ứng:
+
+| Khung | Ý chính | Ở đây |
+|---|---|---|
+| **OWASP Top 10 CI/CD Security Risks** | SEC-1 kiểm soát luồng · SEC-2 danh tính/quyền · SEC-3 chuỗi phụ thuộc · SEC-4 pipeline bị đầu độc (PPE) · SEC-5 quyền pipeline · SEC-6 bí mật · SEC-7 cấu hình hệ thống · SEC-8 dịch vụ bên thứ 3 · SEC-9 toàn vẹn artifact · SEC-10 nhật ký | SEC-1: branch protection + cổng deploy + thăng cấp staging. SEC-3: chỉ bản chính thức, chữ ký npm, cooldown Dependabot. **SEC-4/SEC-7: hook runner** (chỉ mã trên main chạy trên máy chủ), PR fork không có secret. SEC-5: `permissions` từng job, khoá ký ở environment riêng. SEC-6: gitleaks, Trivy secret. SEC-8: action/công cụ ghim SHA/digest, zizmor. SEC-9: cosign + xác minh digest. SEC-10: bản ghi kiểm toán, vết duyệt, bản phát hành |
+| **SLSA v1 (Build track)** | L1 có provenance · L2 provenance do nền tảng build được host sinh và ký · L3 build cô lập, khoá ký ngoài tầm tay bước build | Provenance `mode=max` + SBOM do BuildKit sinh trên runner GitHub, ký cả image index (gồm attestation) bằng cosign, deploy xác minh → tương đương **L2**. L3 cần builder cô lập (vd. reusable workflow tin cậy + artifact attestations — repo public dùng được, xem bảng dưới) |
+| **NIST SSDF (SP 800-218)** | PO chuẩn bị · PS bảo vệ phần mềm · PW làm ra phần mềm an toàn · RV xử lý lỗ hổng | PS: ký image, ghim phụ thuộc, lưu bằng chứng (artifact 90 ngày, bản ghi deploy lâu dài trên máy chủ). PW: review bắt buộc, SAST, test, kiểm migration. RV: audit hằng tuần, Trivy, build lại image > 7 ngày |
+| **DORA** (tần suất deploy, thời gian từ commit tới production, tỷ lệ deploy hỏng, thời gian khôi phục, tỷ lệ deploy sửa gấp) | Đo năng lực giao hàng: nhanh mà ổn định | Dữ liệu có sẵn: tab Releases (tần suất, commit trong mỗi bản → lead time), bản phát hành rollback + deploy hỏng trong bản ghi kiểm toán (tỷ lệ hỏng, thời gian khôi phục). Chưa có trang tổng hợp số liệu |
+| **Trunk-based + 1 artifact cho mọi môi trường** | Nhánh ngắn, main luôn deploy được, build 1 lần, thăng cấp qua môi trường, rollback = deploy bản cũ | PR vào main, image tag = SHA, `up --no-build`, cổng thăng cấp staging → production, rollback theo SHA |
+| **Quản lý thay đổi (ITIL / ISO 27001 A.8.32)** | Mỗi thay đổi có yêu cầu, người duyệt, lý do, ghi nhận, khả năng quay lại | PR template (dữ liệu cá nhân, rủi ro, rollback) · review + CODEOWNERS · **lý do bắt buộc khi deploy tay** · bản phát hành ghi thay đổi từng lần production |
+
+**Chưa làm — có chủ đích hoặc cần điều kiện ngoài repo:**
+
+| Việc | Vì sao chưa |
+|---|---|
+| CodeQL (code scanning), artifact attestations | **Repo public dùng được miễn phí — nên làm tiếp.** CodeQL bổ sung cho Semgrep (phân tích luồng dữ liệu JS/TS xuyên file); `actions/attest-build-provenance` cho image + deploy xác minh bằng `gh attestation verify` → tiến gần SLSA L3. Chưa thêm vì cần chạy thử trên GitHub. Nếu repo chuyển private thì mất cả hai (cần GitHub Advanced Security / Enterprise) |
+| Merge queue (`merge_group`) | Chỉ có ở repo thuộc tổ chức (organization), repo của tài khoản cá nhân không bật được dù public; hiện dùng `strict: true` (nhánh phải cập nhật với main). Chuyển sang tổ chức thì thêm trigger `merge_group` vào `ci.yml` |
+| Runner group giới hạn workflow | Chỉ có với tài khoản tổ chức. Đang thay bằng hook runner |
+| Lưu bằng chứng quá 90 ngày | Repo public: GitHub giữ artifact tối đa 90 ngày (workflow đặt 365 nhưng bị cắt). Bản ghi deploy đã có bản lâu dài trên máy chủ (`logs/deploy-audit.jsonl`); báo cáo Trivy / giấy phép / vết duyệt thì phải tải về định kỳ (`gh run download`) nếu quy định đòi giữ lâu hơn |
+| Test đơn vị frontend, E2E sau đăng nhập | Frontend chưa có bộ test (chưa có script `test`); E2E cần tài khoản thử trên môi trường thử. Khi thêm Vitest / Playwright: gọi trong `check-frontend.yml` |
+| Tự nâng image công cụ (Trivy, Semgrep, gitleaks…) | Dependabot không đọc image ghi trong `env:` của workflow. Đang nâng tay — xem lại mỗi quý, bản đang ghim đã khá cũ |
+| Khung giờ deploy / tạm khoá deploy | Chưa có quy định của bệnh viện; deploy production đang chạy tay nên người chạy tự chọn giờ ít người dùng |
+| Trang số liệu DORA | Dữ liệu đã đủ (Releases + bản ghi kiểm toán); làm khi cần báo cáo định kỳ |
 
 ## Đối chiếu nhóm yêu cầu quy định
 

@@ -1,0 +1,405 @@
+/* Chữ ký trên văn bản (Hồ sơ cá nhân → Chữ ký số) + khung vẽ chữ ký */
+
+.section {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	padding-top: var(--space-5);
+	border-top: 1px solid var(--color-gray-100);
+}
+
+.head {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.title {
+	margin: 0;
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.desc {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--space-5);
+}
+
+/* ── Khung xem trước: nền chấm mờ như mặt giấy kẻ, chữ ký là trung tâm ── */
+.stage {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 260px;
+	padding: var(--space-8, 2rem) var(--space-5) var(--space-6);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background-color: var(--color-white);
+	background-image: radial-gradient(var(--color-gray-200) 1px, transparent 1px);
+	background-size: 16px 16px;
+	background-position: -8px -8px;
+}
+
+.stageTools {
+	position: absolute;
+	top: var(--space-3);
+	right: var(--space-3);
+	display: flex;
+	gap: 6px;
+}
+.iconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-600);
+	cursor: pointer;
+	transition:
+		border-color var(--transition-fast),
+		color var(--transition-fast),
+		background var(--transition-fast);
+}
+.iconBtn svg {
+	width: 16px;
+	height: 16px;
+}
+.iconBtn:hover:not(:disabled) {
+	border-color: var(--color-gray-400);
+	color: var(--color-gray-900);
+}
+.iconDanger:hover:not(:disabled) {
+	border-color: var(--tone-red-border, var(--tone-red-fg));
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+.confirm {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	padding: 4px 4px 4px var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+	box-shadow: var(--shadow-sm);
+}
+.confirmDanger,
+.confirmCancel {
+	height: 28px;
+	padding: 0 var(--space-3);
+	border: 0;
+	border-radius: calc(var(--radius-md) - 2px);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.confirmDanger {
+	background: var(--tone-red-fg);
+	color: var(--color-white);
+}
+.confirmCancel {
+	background: var(--color-gray-100);
+	color: var(--color-gray-700);
+}
+
+/* Khối ký: chữ ký → đường ký → chức vụ → họ tên */
+.block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: min(380px, 100%);
+}
+.sigArea {
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	width: 100%;
+	min-height: 128px;
+}
+.sigImg {
+	max-width: 100%;
+	max-height: 128px;
+	object-fit: contain;
+	margin-bottom: -8px;
+}
+.line {
+	width: 100%;
+	border-top: 1.5px solid var(--color-gray-300);
+}
+.pvCaption {
+	margin-top: var(--space-2);
+	max-width: 100%;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-bold);
+	line-height: 1.35;
+	color: var(--color-gray-900);
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+.pvPlaceholder {
+	font-weight: var(--font-weight-medium);
+	color: var(--color-gray-400);
+}
+.pvName {
+	margin-top: 4px;
+	min-height: 1.4em;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	text-align: center;
+}
+.muted {
+	margin-bottom: var(--space-4);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-400);
+}
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+}
+.emptyText {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	text-align: center;
+}
+.emptyActions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--space-2);
+}
+
+/* ── Nút ── */
+.btnPrimary,
+.btnGhost {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 38px;
+	padding: 0 var(--space-4);
+	border-radius: var(--radius-md);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast);
+}
+.btnPrimary svg,
+.btnGhost svg {
+	width: 15px;
+	height: 15px;
+}
+.btnPrimary {
+	border: 1px solid var(--color-primary-dark);
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+}
+.btnPrimary:hover:not(:disabled) {
+	border-color: var(--color-primary-darker);
+	background: var(--color-primary-darker);
+}
+.btnGhost {
+	border: 1px solid var(--color-gray-200);
+	background: var(--color-white);
+	color: var(--color-gray-800);
+}
+.btnGhost:hover:not(:disabled) {
+	border-color: var(--color-gray-400);
+}
+
+/* ── Thông tin in kèm ── */
+.info {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	align-content: start;
+	gap: var(--space-4);
+}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+.label {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+.input {
+	width: 100%;
+	height: 40px;
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-900);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	transition:
+		border-color var(--transition-fast),
+		box-shadow var(--transition-fast);
+}
+.input::placeholder {
+	color: var(--color-gray-400);
+}
+.input:hover {
+	border-color: var(--color-gray-300);
+}
+.input:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: var(--select-focus-ring);
+}
+.help {
+	font-size: var(--font-size-compact);
+	line-height: 1.45;
+	color: var(--color-gray-500);
+}
+.suggest {
+	align-self: flex-start;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-compact);
+	text-align: left;
+	cursor: pointer;
+	text-underline-offset: 3px;
+}
+.suggest:hover {
+	text-decoration: underline;
+}
+.formActions {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+.formActions:empty {
+	display: none;
+}
+.saved {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--tone-green-fg);
+}
+.saved svg {
+	width: 15px;
+	height: 15px;
+}
+
+.iconBtn:focus-visible,
+.btnPrimary:focus-visible,
+.btnGhost:focus-visible,
+.confirmDanger:focus-visible,
+.confirmCancel:focus-visible,
+.suggest:focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+.iconBtn:disabled,
+.btnPrimary:disabled,
+.btnGhost:disabled,
+.confirmDanger:disabled,
+.confirmCancel:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+/* Khối rộng: xem trước bên trái, thông tin bên phải */
+@container (min-width: 760px) {
+	.layout {
+		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+		align-items: start;
+	}
+	.info {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+/* Khối hẹp: 1 ô mỗi hàng, chừa chỗ cho nút ở góc khung */
+@container (max-width: 480px) {
+	.info {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.stage {
+		min-height: 240px;
+		padding-top: calc(var(--space-6) + 34px);
+	}
+}
+
+/* ── Khung vẽ (SignaturePadModal) ── */
+.padWrap {
+	position: relative;
+	width: 100%;
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	overflow: hidden;
+}
+.pad {
+	display: block;
+	width: 100%;
+	height: auto;
+	touch-action: none;
+	cursor: crosshair;
+}
+.padLine {
+	position: absolute;
+	left: 8%;
+	right: 8%;
+	bottom: 26%;
+	border-bottom: 1px dashed var(--color-gray-300);
+	pointer-events: none;
+}
+.padHint {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-400);
+	pointer-events: none;
+}
+
+.textBtn {
+	margin-right: auto;
+	height: 36px;
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	color: var(--color-gray-700);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.textBtn:disabled {
+	opacity: 0.5;
+	cursor: default;
+}

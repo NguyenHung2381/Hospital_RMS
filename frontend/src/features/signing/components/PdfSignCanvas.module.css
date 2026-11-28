@@ -1,0 +1,120 @@
+/* Trang PDF + khung chữ ký kéo thả (Ký tài liệu) */
+
+.root {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--space-5);
+	width: 100%;
+}
+
+.page {
+	position: relative;
+	flex: none;
+	background: var(--color-white);
+	box-shadow: var(--shadow-md, 0 2px 8px rgba(13, 24, 32, 0.1));
+	user-select: none;
+}
+/* Có khung đang chọn: bấm vào trang để đưa khung tới đó */
+.placeable {
+	cursor: copy;
+}
+.canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+.loading {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-400);
+}
+.pageNo {
+	position: absolute;
+	right: -2px;
+	bottom: -22px;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Khung chữ ký: khung đang chỉnh viền xanh nét đứt; của người khác viền xám; đã ký nền xanh nhạt */
+.box {
+	position: absolute;
+	border: 1.5px dashed var(--color-gray-400);
+	border-radius: 4px;
+	background: rgba(82, 101, 116, 0.06);
+	touch-action: none;
+	transition: box-shadow var(--transition-fast);
+}
+.active {
+	border-color: var(--color-primary-dark);
+	background: rgba(10, 155, 74, 0.08);
+	z-index: 2;
+}
+.done {
+	border-style: solid;
+	border-color: var(--tone-green-border);
+	background: rgba(10, 155, 74, 0.04);
+}
+.editable {
+	cursor: grab;
+}
+.editable:hover {
+	background: rgba(10, 155, 74, 0.12);
+}
+.editable:active {
+	cursor: grabbing;
+}
+.box:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(10, 155, 74, 0.3);
+}
+/* Tên người ký trên mép khung */
+.tag {
+	position: absolute;
+	left: -1px;
+	bottom: 100%;
+	max-width: calc(100% + 40px);
+	margin-bottom: 2px;
+	padding: 1px 6px;
+	border-radius: 4px 4px 4px 0;
+	background: var(--color-gray-600);
+	color: var(--color-white);
+	font-size: 11px;
+	font-weight: var(--font-weight-semibold);
+	line-height: 16px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+}
+.active .tag {
+	background: var(--color-primary-dark);
+}
+.done .tag {
+	background: var(--tone-green-fg);
+}
+.boxInner {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+.handle {
+	position: absolute;
+	right: -6px;
+	bottom: -6px;
+	width: 12px;
+	height: 12px;
+	border: 2px solid var(--color-white);
+	border-radius: 50%;
+	background: var(--color-primary-dark);
+	box-shadow: var(--shadow-sm);
+	cursor: nwse-resize;
+	touch-action: none;
+}

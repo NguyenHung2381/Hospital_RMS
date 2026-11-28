@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../api/axios';
 
-export type ModuleKey = 'research' | 'training' | 'seminar' | 'survey' | 'attendance';
+export type ModuleKey = 'research' | 'training' | 'seminar' | 'survey' | 'attendance' | 'tuition';
 export type Modules = Record<ModuleKey, boolean>;
 
 // Điểm danh mặc định tắt (backend moduleGuard.DEFAULT_OFF)
-const ALL_ON: Modules = { research: true, training: true, seminar: true, survey: true, attendance: false };
+const ALL_ON: Modules = { research: true, training: true, seminar: true, survey: true, attendance: false, tuition: true };
 let cache: Modules | null = null;
 let inflight: Promise<Modules> | null = null;
 

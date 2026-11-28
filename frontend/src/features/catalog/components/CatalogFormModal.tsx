@@ -7,6 +7,18 @@ import { apiClient } from '@/shared/api/axios';
 import { EMPTY_FORM, TAB_CONFIG } from '../hooks/useCatalog';
 import type { CatalogFormData, CatalogItem, CatalogTab, LevelOption } from '../types/catalog.type';
 import styles from './CatalogFormModal.module.css';
+import { patternApi, type ShiftPattern } from '@/features/staff-attendance/api/shiftApi';
+import {
+	ATTENDANCE_MODE,
+	ATTENDANCE_MODE_ORDER,
+	type AttendanceMode,
+} from '@/shared/utils/attendanceMode';
+import {
+	TRAINING_METHOD,
+	TRAINING_METHOD_ORDER,
+	parseMethodList,
+	type TrainingMethod,
+} from '@/shared/utils/attendanceMethods';
 
 export function CatalogFormModal({
 	mode,
@@ -27,6 +39,7 @@ export function CatalogFormModal({
 	const label = cfg.label.toLowerCase();
 	const isRoundType = tab === 'round-types';
 	const isDocType = tab === 'trainee-document-types';
+	const isTrainingType = tab === 'training-types';
 	const uid = useId();
 	const [form, setForm] = useState<CatalogFormData>(
 		item ? { name: item.name, description: item.description ?? '' } : EMPTY_FORM,
@@ -45,7 +58,33 @@ export function CatalogFormModal({
 			.then((r) => setTrainingTypes(r.data))
 			.catch(() => {});
 	}, [isDocType]);
-	const [errors, setErrors] = useState<Partial<CatalogFormData>>({});
+	const [errors, setErrors] = useState<Partial<Record<keyof CatalogFormData, string>>>({});
+
+	// ── Loại hình đào tạo: kiểu chấm công + mẫu ca tuần mặc định ──
+	const [attMode, setAttMode] = useState<AttendanceMode>(item?.attendance_mode ?? 'both');
+	const [patternId, setPatternId] = useState<number | null>(item?.shift_pattern_id ?? null);
+	// null = chưa tải / không có quyền xem mẫu ca (phân hệ Ca & điểm danh) ⇒ ẩn ô chọn mẫu
+	const [patterns, setPatterns] = useState<ShiftPattern[] | null>(null);
+	useEffect(() => {
+		if (!isTrainingType) return;
+		let alive = true;
+		patternApi
+			.list()
+			.then((ps) => alive && setPatterns(ps))
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, [isTrainingType]);
+	const usesShifts = attMode === 'shift' || attMode === 'both';
+	// Phương thức điểm danh được phép — chưa cấu hình (null) = mọi phương thức
+	const [methods, setMethods] = useState<TrainingMethod[]>(
+		parseMethodList(item?.attendance_methods) ?? TRAINING_METHOD_ORDER,
+	);
+	const toggleMethod = (k: TrainingMethod) =>
+		setMethods((prev) =>
+			prev.includes(k) ? prev.filter((x) => x !== k) : TRAINING_METHOD_ORDER.filter((x) => x === k || prev.includes(x)),
+		);
 
 	// ── Cấp độ cho phép (chỉ tab "Loại đợt") ──
 	const [levels, setLevels] = useState<LevelOption[]>([]);
@@ -97,6 +136,17 @@ export function CatalogFormModal({
 			});
 			return;
 		}
+		if (isTrainingType) {
+			onSave({
+				...form,
+				attendance_mode: attMode,
+				// Tick đủ ⇒ backend lưu NULL (theo hệ thống)
+				attendance_methods: methods,
+				// Chưa tải được danh sách mẫu ⇒ không đụng tới mẫu đang gán
+				...(patterns ? { shift_pattern_id: usesShifts ? patternId : null } : {}),
+			});
+			return;
+		}
 		onSave(isRoundType ? { ...form, level_ids: levelIds } : form);
 	};
 
@@ -138,6 +188,95 @@ export function CatalogFormModal({
 						placeholder='Mô tả ngắn...'
 					/>
 				</FormField>
+
+				{isTrainingType && (
+					<>
+						<fieldset className={styles.modeGroup}>
+							<legend className={m.formLabel}>Kiểu chấm công</legend>
+							<div className={styles.hint}>
+								Áp dụng cho mọi khóa học thuộc loại hình này. Khóa nào cần khác thì chọn riêng ở form khóa học.
+							</div>
+							<div className={styles.modeList}>
+								{ATTENDANCE_MODE_ORDER.map((k) => (
+									<label
+										key={k}
+										className={styles.modeCard}
+									>
+										<input
+											type='radio'
+											name={`${uid}-attendance-mode`}
+											value={k}
+											checked={attMode === k}
+											onChange={() => setAttMode(k)}
+										/>
+										<span className={styles.modeText}>
+											<span className={styles.modeTitle}>{ATTENDANCE_MODE[k].label}</span>
+											<span className={styles.modeHint}>{ATTENDANCE_MODE[k].hint}</span>
+										</span>
+									</label>
+								))}
+							</div>
+						</fieldset>
+						{attMode !== 'none' && (
+							<fieldset className={styles.modeGroup}>
+								<legend className={m.formLabel}>Phương thức điểm danh được phép</legend>
+								<div className={styles.hint}>
+									Giảng viên luôn điểm danh tay được. Phương thức đang tắt ở Cấu hình hệ thống → Điểm danh thì không dùng được dù có tick.
+								</div>
+								<div className={styles.modeList}>
+									{TRAINING_METHOD_ORDER.map((k) => {
+										const applies = TRAINING_METHOD[k].modes.includes(attMode);
+										return (
+											<label
+												key={k}
+												className={`${styles.modeCard} ${applies ? '' : styles.modeCardOff}`}
+											>
+												<input
+													type='checkbox'
+													checked={methods.includes(k)}
+													onChange={() => toggleMethod(k)}
+												/>
+												<span className={styles.modeText}>
+													<span className={styles.modeTitle}>{TRAINING_METHOD[k].label}</span>
+													<span className={styles.modeHint}>
+														{applies
+															? TRAINING_METHOD[k].hint
+															: `Không áp dụng với kiểu "${ATTENDANCE_MODE[attMode].label.toLowerCase()}".`}
+													</span>
+												</span>
+											</label>
+										);
+									})}
+								</div>
+							</fieldset>
+						)}
+						{usesShifts && patterns && (
+							<FormField label='Mẫu ca tuần mặc định'>
+								<select
+									className={m.formInput}
+									value={patternId ?? ''}
+									onChange={(e) => setPatternId(e.target.value ? Number(e.target.value) : null)}
+								>
+									<option value=''>
+										Mẫu mặc định toàn viện
+										{patterns.find((p) => p.is_default) ? ` (${patterns.find((p) => p.is_default)!.name})` : ''}
+									</option>
+									{patterns.map((p) => (
+										<option
+											key={p.id}
+											value={p.id}
+										>
+											{p.name}
+										</option>
+									))}
+								</select>
+								<div className={styles.hint}>
+									Khóa học thuộc loại hình này mà chưa gán mẫu riêng (trang Ca &amp; mẫu ca tuần) sẽ dùng mẫu này.
+								</div>
+							</FormField>
+						)}
+					</>
+				)}
 
 				{isDocType && (
 					<>

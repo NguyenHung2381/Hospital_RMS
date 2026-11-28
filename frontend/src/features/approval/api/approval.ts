@@ -34,6 +34,8 @@ export interface Approval {
 export interface ApprovalPayload {
 	status: Extract<ApprovalStatus, 'approved' | 'rejected' | 'supplement'>;
 	comment?: string | null;
+	/** Ký phiếu phê duyệt bằng chứng thư cá nhân của người duyệt (lưu vào tài liệu đề tài) */
+	sign?: boolean;
 }
 
 export interface TopicApprovalStats {
@@ -77,11 +79,11 @@ export const updateTopicApproval = (
 	payload: ApprovalPayload,
 ) => apiClient.post<Approval>(`/topics/${topicId}/approve`, payload);
 
-export const approveTopic = (topicId: string, comment?: string) =>
-	updateTopicApproval(topicId, { status: 'approved', comment });
+export const approveTopic = (topicId: string, comment?: string, sign = false) =>
+	updateTopicApproval(topicId, { status: 'approved', comment, ...(sign ? { sign } : {}) });
 
-export const rejectTopic = (topicId: string, comment?: string) =>
-	updateTopicApproval(topicId, { status: 'rejected', comment });
+export const rejectTopic = (topicId: string, comment?: string, sign = false) =>
+	updateTopicApproval(topicId, { status: 'rejected', comment, ...(sign ? { sign } : {}) });
 
-export const requestSupplementTopic = (topicId: string, comment: string) =>
-	updateTopicApproval(topicId, { status: 'supplement', comment });
+export const requestSupplementTopic = (topicId: string, comment: string, sign = false) =>
+	updateTopicApproval(topicId, { status: 'supplement', comment, ...(sign ? { sign } : {}) });

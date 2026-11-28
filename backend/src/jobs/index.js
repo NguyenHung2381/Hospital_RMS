@@ -8,6 +8,7 @@ const dataRetentionJob = require('./dataRetentionJob');
 const attendanceDeviceJob = require('./attendanceDeviceJob');
 const practiceAutoService = require('../modules/training/courses/practiceAutoService');
 const docCheckWorker = require('../modules/training/registration/docCheck/docCheckWorker');
+const holidaySync = require('../modules/settings/holidaySync');
 const logger = require('../config/logger');
 
 const TZ = process.env.CRON_TZ || 'Asia/Ho_Chi_Minh';
@@ -74,6 +75,11 @@ const start = () => {
 	});
 	// 04:45 sáng: xóa lượt chấm thô > 1 năm, lịch sử lệnh máy chấm công > 90 ngày
 	cron.schedule('45 4 * * *', runSafely('attendance_device_purge', attendanceDeviceJob.purge), {
+		timezone: TZ,
+	});
+
+	// 05:15 sáng thứ Hai: đồng bộ lịch nghỉ lễ (khi bật TRAINING_HOLIDAYS_SYNC), có khác biệt mới ⇒ báo quản trị
+	cron.schedule('15 5 * * 1', runSafely('holiday_sync', holidaySync.runJob), {
 		timezone: TZ,
 	});
 

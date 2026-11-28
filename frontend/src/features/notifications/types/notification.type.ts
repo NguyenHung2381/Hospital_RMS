@@ -17,6 +17,12 @@ export const NOTIF_TYPES: { value: string; label: string; category: NotifCategor
 	{ value: 'tuition_submitted', label: 'Học viên báo đã nộp học phí', category: 'approval' },
 	{ value: 'tuition_confirmed', label: 'Xác nhận học phí', category: 'approval' },
 	{ value: 'tuition_rejected', label: 'Từ chối khoản học phí', category: 'warning' },
+	{ value: 'tuition_bank_unmatched', label: 'Giao dịch ngân hàng chưa khớp học phí', category: 'approval' },
+	{ value: 'sign_request', label: 'Văn bản cần ký', category: 'approval' },
+	{ value: 'sign_request_completed', label: 'Văn bản đã ký xong', category: 'approval' },
+	{ value: 'sign_request_rejected', label: 'Văn bản bị từ chối ký', category: 'warning' },
+	{ value: 'sign_request_cancelled', label: 'Hồ sơ trình ký đã hủy', category: 'system' },
+	{ value: 'signing_account', label: 'Chứng thư số', category: 'system' },
 ];
 
 export type TargetType = 'all' | 'department' | 'users';

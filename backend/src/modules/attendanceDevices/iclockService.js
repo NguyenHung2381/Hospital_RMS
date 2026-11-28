@@ -18,6 +18,7 @@ const { normalizeIp } = require('../../utils/activityDescribe');
 const matcher = () => require('./punchMatcher');
 const fingerprints = () => require('./fingerprintService');
 const sync = () => require('./deviceSyncService');
+const people = () => require('./devicePeopleService');
 
 const MAX_PENDING = 20;
 // ICLOCK_DEBUG_RAW=true ⇒ ghi cả nội dung máy gửi vào log (dùng khi chốt định dạng firmware)
@@ -193,6 +194,10 @@ const receive = async (sn, query, body, ip) => {
 	if (['OPERLOG', 'BIODATA', 'USERINFO', 'FINGERTMP'].includes(table)) {
 		const parsed = protocol.parseOperlog(body);
 		await fingerprints().saveFromDevice(device, parsed.fingers);
+		// Tên người dùng trên máy — chỉ để hiển thị mã không khớp; lỗi không chặn phần còn lại
+		await people()
+			.saveFromDevice(device.id, parsed.users)
+			.catch((e) => logger.warn(`[iclock] ${device.serial_no}: lưu tên người dùng lỗi: ${e.message}`));
 		if (parsed.fingers.length) sync().requestSync();
 		if (table === 'OPERLOG')
 			await setStamp(device.id, 'operlog_stamp', query.OpStamp ?? query.Stamp);

@@ -22,6 +22,7 @@ import { fmtDate, useProfile } from '../hooks/useProfile';
 import ProfileExtraCard from '../components/ProfileExtraCard';
 import TraineeProfileCard from '../components/TraineeProfileCard';
 import { useFormConfig } from '@/shared/formConfig/useFormConfig';
+import MySignatureCard from '../../signing/components/MySignatureCard';
 import styles from './Profile.module.css';
 
 const SPINNER = (
@@ -692,6 +693,9 @@ export default function Profile() {
 							</div>
 						) : null}
 					</div>
+
+					{/* Chữ ký số VIN-HSM (tài khoản cá nhân) */}
+					<MySignatureCard />
 
 					{/* Security: revoke all sessions */}
 					<div className={styles.detailCard}>

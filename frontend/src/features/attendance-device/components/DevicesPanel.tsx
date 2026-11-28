@@ -1,4 +1,14 @@
-import { EditSvg, RefreshSvg, DownloadSvg, TrashSvg, FingerprintSvg } from '@/assets/icons';
+import {
+	ApproveSvg,
+	CheckCircleSvg,
+	DownloadSvg,
+	EditSvg,
+	FingerprintSvg,
+	RefreshSvg,
+	TrashSvg,
+	XCircleSvg,
+} from '@/assets/icons';
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { Badge, DatePicker, Modal, ModalActions, TableEmpty } from '@/shared/components';
 import { FormField } from '@/shared/components/Input/FormField';
 import { SkeletonTable } from '@/shared/components/Loading';
@@ -10,7 +20,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { attendanceDeviceApi } from '../api/attendanceDeviceApi';
 import type { AttendanceDevice, DeviceFormData } from '../types/attendanceDevice.type';
-import { DEVICE_STATUS, deviceLabel, isOnline, timesheetHref } from '../utils/labels';
+import { DEVICE_PURPOSE, DEVICE_STATUS, deviceLabel, isOnline, timesheetHref } from '../utils/labels';
 import { DeviceFormModal } from './DeviceFormModal';
 import styles from '../pages/AttendanceDevices.module.css';
 
@@ -134,6 +144,12 @@ export function DevicesPanel({
 														SN {d.serial_no}
 														{d.location ? ` · ${d.location}` : ''}
 													</div>
+													<div
+														className={tbl.cellSub}
+														title={DEVICE_PURPOSE[d.purpose]?.hint}
+													>
+														Dùng cho: {DEVICE_PURPOSE[d.purpose]?.label ?? d.purpose}
+													</div>
 												</div>
 											</div>
 										</td>
@@ -187,67 +203,82 @@ export function DevicesPanel({
 										{canManage && (
 											<td className={`${base.td} ${base.tdActions}`}>
 												{d.status === 'pending' ? (
-													<button
-														className={styles.approveBtn}
-														onClick={() => setEditing(d)}
-														disabled={busy}
-													>
-														Duyệt máy
-													</button>
+													<RowActions>
+														<RowAction
+															title='Duyệt máy'
+															aria-label={`Duyệt máy ${deviceLabel(d)}`}
+															tone='success'
+															disabled={busy}
+															onClick={() => setEditing(d)}
+														>
+															<ApproveSvg />
+														</RowAction>
+													</RowActions>
 												) : (
-													<div className={base.actionBtns}>
-														<div
-															className={base.actionBtn}
-															title='Sửa tên, vị trí'
+													<RowActions
+														itemName={`máy ${deviceLabel(d)}`}
+														deleteLabel='Xóa máy'
+														onDelete={() => setDeleting(d)}
+													>
+														<RowAction
+															title='Sửa'
+															aria-label={`Sửa tên, vị trí, mục đích của máy ${deviceLabel(d)}`}
 															onClick={() => setEditing(d)}
 														>
 															<EditSvg />
-														</div>
+														</RowAction>
 														{d.status === 'active' && (
 															<>
-																<div
-																	className={base.actionBtn}
-																	title='Gửi lại toàn bộ học viên xuống máy'
-																	onClick={() => !busy && resync(d)}
+																<RowAction
+																	title='Đồng bộ lại học viên'
+																	aria-label='Gửi lại toàn bộ học viên xuống máy'
+																	disabled={busy}
+																	onClick={() => resync(d)}
 																>
 																	<RefreshSvg />
-																</div>
-																<div
-																	className={base.actionBtn}
-																	title='Kéo lại lượt chấm cũ từ máy'
+																</RowAction>
+																<RowAction
+																	title='Kéo lượt chấm cũ'
+																	aria-label='Kéo lại lượt chấm cũ từ máy'
 																	onClick={() => setPulling(d)}
 																>
 																	<DownloadSvg />
-																</div>
-																<div
-																	className={base.actionBtn}
-																	title='Lấy vân tay có sẵn trên máy (học viên đã đăng ký từ trước) để chép sang máy khác'
-																	onClick={() => !busy && pullFingerprints(d)}
+																</RowAction>
+																<RowAction
+																	title='Lấy vân tay từ máy'
+																	aria-label='Lấy vân tay có sẵn trên máy (học viên đã đăng ký từ trước) để chép sang máy khác'
+																	disabled={busy}
+																	onClick={() => pullFingerprints(d)}
 																>
 																	<FingerprintSvg />
-																</div>
+																</RowAction>
 															</>
 														)}
-														<button
-															className={styles.textAction}
-															onClick={() => toggleActive(d)}
-															disabled={busy}
-															title={
-																d.status === 'suspended'
-																	? 'Kiểm tra máy thật vẫn ở đúng chỗ rồi mở khoá. Máy giả còn gửi thì sẽ bị khoá lại.'
-																	: undefined
-															}
-														>
-															{d.status === 'active' ? 'Tắt' : d.status === 'suspended' ? 'Mở khoá' : 'Bật'}
-														</button>
-														<div
-															className={`${base.actionBtn} ${base.danger}`}
-															title='Xóa máy'
-															onClick={() => setDeleting(d)}
-														>
-															<TrashSvg />
-														</div>
-													</div>
+														{d.status === 'active' ? (
+															<RowAction
+																title='Tắt máy'
+																tone='warn'
+																disabled={busy}
+																onClick={() => toggleActive(d)}
+															>
+																<XCircleSvg />
+															</RowAction>
+														) : (
+															<RowAction
+																title={d.status === 'suspended' ? 'Mở khoá' : 'Bật máy'}
+																aria-label={
+																	d.status === 'suspended'
+																		? 'Mở khoá — kiểm tra máy thật vẫn ở đúng chỗ rồi mở khoá. Máy giả còn gửi thì sẽ bị khoá lại.'
+																		: undefined
+																}
+																tone='success'
+																disabled={busy}
+																onClick={() => toggleActive(d)}
+															>
+																<CheckCircleSvg />
+															</RowAction>
+														)}
+													</RowActions>
 												)}
 											</td>
 										)}

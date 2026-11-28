@@ -13,6 +13,8 @@ import {
 import { ENROLLMENT_STATUS_CFG } from '../types/course.type';
 import styles from '../pages/Courses.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 const groupKey = (g: ProposalGroup) => `${g.department_id}|${g.program_id ?? ''}`;
 
@@ -30,6 +32,7 @@ export function CourseProposalsModal({
 	const [groups, setGroups] = useState<ProposalGroup[] | null>(null);
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState<string | null>(null);
+	const [sign, setSign] = useSignPreference('registration-documents');
 
 	useEffect(() => {
 		getCourseProposals(courseId)
@@ -40,8 +43,12 @@ export function CourseProposalsModal({
 	const download = async (g: ProposalGroup) => {
 		setBusy(groupKey(g));
 		try {
-			const blob = await downloadCourseProposal(courseId, g.department_id, g.program_id);
-			saveBlob(blob, `to-trinh_${fileSlug(g.department_name)}_${fileSlug(g.program_name ?? courseName)}.docx`);
+			const blob = await downloadCourseProposal(courseId, g.department_id, g.program_id, sign);
+			saveBlob(
+				blob,
+				`to-trinh_${fileSlug(g.department_name)}_${fileSlug(g.program_name ?? courseName)}${sign ? '_ky-so' : ''}.docx`,
+			);
+			if (sign) showToast('success', 'Đã tải tờ trình có chữ ký số của bạn');
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Không tạo được tờ trình');
 		} finally {
@@ -71,6 +78,15 @@ export function CourseProposalsModal({
 					>
 						Mỗi khoa / chương trình 1 tờ trình. Người bị từ chối không có trong danh sách cử đi; ô kỹ thuật và lý do để trống cho
 						khoa ghi tay.
+					</div>
+					<div style={{ marginBottom: 'var(--space-3)', maxWidth: 520 }}>
+						<SignToggle
+							feature='training_documents'
+							source='personal'
+							checked={sign}
+							onChange={setSign}
+							disabled={!!busy}
+						/>
 					</div>
 					<div className={styles.subList}>
 						{groups.map((g) => (

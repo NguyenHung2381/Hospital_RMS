@@ -1,4 +1,5 @@
 import {
+	ChevDSvg,
 	ChevLSvg,
 	LogoutSvg,
 	MenuSvg,
@@ -42,13 +43,17 @@ import {
 	NAV_GROUPS,
 	PATH_TO_KEY,
 	SECTION_TABS,
+	type SectionTab,
 	moduleOf,
 	sectionTabsOf,
+	switchTabOf,
+	tabsAreSwitches,
 } from './nav';
 
 // ─── STORAGE KEY ──────────────────────────
 const SIDEBAR_KEY = 'rms_sidebar_collapsed';
 const NAV_SCROLL_KEY = 'rms_sidebar_scroll';
+const NAV_GROUPS_KEY = 'rms_sidebar_closed_groups';
 
 // Badge nav nào là "việc đang chờ bạn" (magenta). Các badge khác chỉ là số đếm.
 const PENDING_BADGE_KEYS = new Set(['myTasks', 'notifications']);
@@ -84,9 +89,12 @@ export default function AdminLayout({
 	const { has } = usePermission();
 	const modules = useModules();
 	const hiddenMenus = useHiddenMenus('admin', ADMIN_MENU);
-	// Mục gộp nhiều tab: hiện khi có quyền ít nhất 1 tab.
+	// Mục gộp nhiều tab: hiện khi còn ít nhất 1 tab có quyền và không bị tắt.
+	// Tab mang key (trang trước đây là mục menu riêng) tắt riêng từng tab.
+	const tabVisible = (t: SectionTab) =>
+		has(t.perm) && !(t.key && hiddenMenus.has(t.key));
 	const allowedTabs = (key: string) =>
-		SECTION_TABS[key]?.filter((t) => has(t.perm)) ?? null;
+		SECTION_TABS[key]?.filter(tabVisible) ?? null;
 	const navGroups = NAV_GROUPS.map((g) => ({
 		...g,
 		items: g.items.filter(
@@ -94,7 +102,7 @@ export default function AdminLayout({
 				has(it.perm) &&
 				allowedTabs(it.key)?.length !== 0 &&
 				modules[moduleOf(g.section, it.key)] !== false &&
-				!hiddenMenus.has(it.key),
+				(tabsAreSwitches(it.key) || !hiddenMenus.has(it.key)),
 		),
 	})).filter((g) => g.items.length > 0);
 	const moduleOff = [
@@ -122,7 +130,13 @@ export default function AdminLayout({
 		PATH_TO_KEY[location.pathname.replace(/\/[^/]+$/, '')] ??
 		'dashboard';
 	// Vào thẳng URL của mục đã tắt (kể cả trang con) cũng chặn như module tắt.
-	const pageOff = moduleOff || hiddenMenus.has(activePage);
+	// Mục có tab mang key: chặn theo tab đang đứng.
+	const currentTab = switchTabOf(activePage, location.pathname);
+	const pageOff =
+		moduleOff ||
+		(tabsAreSwitches(activePage)
+			? !!currentTab?.key && hiddenMenus.has(currentTab.key)
+			: hiddenMenus.has(activePage));
 
 	// ── Ngày hôm nay (topbar) ──
 	const todayLabel = new Date().toLocaleDateString('vi-VN', {
@@ -154,6 +168,29 @@ export default function AdminLayout({
 		initialFocusRef: drawerCloseRef,
 		triggerRef: mobileTriggerRef,
 	});
+
+	// ── Nhóm menu thu gọn (persist) ──────────
+	// Lưu tên các nhóm đang đóng. Nhóm chứa trang đang mở luôn mở ra khi vào
+	// trang (layout remount mỗi lần chuyển trang nên tính lúc khởi tạo là đủ).
+	const activeSection = NAV_GROUPS.find((g) =>
+		g.items.some((it) => it.key === activePage),
+	)?.section;
+	const [closedGroups, setClosedGroups] = useState<Set<string>>(() => {
+		let saved: string[] = [];
+		try {
+			saved = JSON.parse(localStorage.getItem(NAV_GROUPS_KEY) ?? '[]');
+		} catch {
+			/* giá trị hỏng → coi như mở hết */
+		}
+		return new Set(saved.filter((s) => s !== activeSection));
+	});
+	const toggleGroup = (section: string) =>
+		setClosedGroups((prev) => {
+			const next = new Set(prev);
+			if (!next.delete(section)) next.add(section);
+			localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify([...next]));
+			return next;
+		});
 
 	const toggleSidebar = useCallback(() => {
 		setCollapsed((prev) => {
@@ -239,9 +276,7 @@ export default function AdminLayout({
 		NAV_GROUPS.flatMap((g) => g.items).find((i) => i.key === activePage)
 			?.label ?? 'Tổng quan';
 
-	const sectionTabs = sectionTabsOf(location.pathname)?.filter((t) =>
-		has(t.perm),
-	);
+	const sectionTabs = sectionTabsOf(location.pathname)?.filter(tabVisible);
 
 	// ── Nav target ────────────────────────────
 	// Mục nav là link thật (<a href>): mở tab mới / chép link / aria-current được.
@@ -332,48 +367,75 @@ export default function AdminLayout({
 						)
 					}
 				>
-					{navGroups.map((group) => (
-						<React.Fragment key={group.section}>
-							<div className={styles.navSection}>{group.section}</div>
-							{group.items.map((item) => (
-								<Link
-									key={item.key}
-									ref={activePage === item.key ? activeItemRef : undefined}
-									to={navPathOf(item.key)}
-									aria-current={activePage === item.key ? 'page' : undefined}
-									className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
-									data-label={item.label}
-									onClick={closeMobileNav}
-									onMouseEnter={(e) => {
-										const r = e.currentTarget.getBoundingClientRect();
-										e.currentTarget.style.setProperty(
-											'--tip-y',
-											`${r.top + r.height / 2}px`,
-										);
-									}}
-									title={collapsed ? item.label : undefined}
+					{navGroups.map((group, gi) => {
+						// Sidebar dạng icon không có tiêu đề nhóm → luôn hiện đủ mục.
+						const open = effectiveCollapsed || !closedGroups.has(group.section);
+						const groupId = `admin-nav-group-${gi}`;
+						// Nhóm đóng mà còn việc chờ bạn (Việc của tôi, thông báo chưa đọc) → chấm magenta ở tiêu đề.
+						const pendingHidden =
+							!open &&
+							group.items.some(
+								(it) =>
+									PENDING_BADGE_KEYS.has(it.key) &&
+									(badges[it.key as keyof typeof badges] ?? 0) > 0,
+							);
+						return (
+							<React.Fragment key={group.section}>
+								<button
+									type='button'
+									className={styles.navSection}
+									aria-expanded={open}
+									aria-controls={groupId}
+									onClick={() => toggleGroup(group.section)}
 								>
-									{item.icon}
-									<span className={styles.navLabel}>{item.label}</span>
-									{badges[item.key as keyof typeof badges] !== undefined && (
-										<span
-											className={
-												// Magenta CHỈ cho việc đang chờ chính người này xử lý
-												// (myTasks, thông báo chưa đọc) — tổng số đề tài là
-												// thông tin, luôn xám dù lớn bao nhiêu.
-												PENDING_BADGE_KEYS.has(item.key) &&
-												(badges[item.key as keyof typeof badges] ?? 0) > 0
-													? styles.navBadge
-													: styles.navBadgeGray
-											}
-										>
-											{badges[item.key as keyof typeof badges]}
-										</span>
+									<span className={styles.navSectionLabel}>{group.section}</span>
+									{pendingHidden && (
+										<span className={styles.navSectionDot} role='img' aria-label='Có việc chờ xử lý' />
 									)}
-								</Link>
-							))}
-						</React.Fragment>
-					))}
+									<ChevDSvg className={styles.navSectionChev} aria-hidden />
+								</button>
+								<div id={groupId} className={styles.navGroupItems} hidden={!open}>
+									{group.items.map((item) => (
+										<Link
+											key={item.key}
+											ref={activePage === item.key ? activeItemRef : undefined}
+											to={navPathOf(item.key)}
+											aria-current={activePage === item.key ? 'page' : undefined}
+											className={`${styles.navItem} ${activePage === item.key ? styles.active : ''}`}
+											data-label={item.label}
+											onClick={closeMobileNav}
+											onMouseEnter={(e) => {
+												const r = e.currentTarget.getBoundingClientRect();
+												e.currentTarget.style.setProperty(
+													'--tip-y',
+													`${r.top + r.height / 2}px`,
+												);
+											}}
+											title={collapsed ? item.label : undefined}
+										>
+											{item.icon}
+											<span className={styles.navLabel}>{item.label}</span>
+											{badges[item.key as keyof typeof badges] !== undefined && (
+												<span
+													className={
+														// Magenta CHỈ cho việc đang chờ chính người này xử lý
+														// (myTasks, thông báo chưa đọc) — tổng số đề tài là
+														// thông tin, luôn xám dù lớn bao nhiêu.
+														PENDING_BADGE_KEYS.has(item.key) &&
+														(badges[item.key as keyof typeof badges] ?? 0) > 0
+															? styles.navBadge
+															: styles.navBadgeGray
+													}
+												>
+													{badges[item.key as keyof typeof badges]}
+												</span>
+											)}
+										</Link>
+									))}
+								</div>
+							</React.Fragment>
+						);
+					})}
 				</nav>
 
 				{/* Footer user */}
@@ -469,7 +531,11 @@ export default function AdminLayout({
 							aria-label='Vị trí trang'
 						>
 							<ol className={styles.breadcrumbList}>
-								{['Hospital RMS', ...(breadcrumbs?.map((bc) => bc.label) ?? [])].map(
+								{[
+									'Hospital RMS',
+									// Bỏ cấp trùng tên mục menu (vd trang CME ghi "Tín chỉ CME" = tên mục gộp)
+									...(breadcrumbs?.map((bc) => bc.label).filter((l) => l !== currentLabel) ?? []),
+								].map(
 									(label, i) => (
 										<li
 											key={i}
@@ -554,7 +620,7 @@ export default function AdminLayout({
 								)}
 							</div>
 							{headerActions && (
-								<div className={styles.pageHeaderRight}>{headerActions}</div>
+								<div className={styles.pageHeaderRight} data-page-actions=''>{headerActions}</div>
 							)}
 						</div>
 					)}

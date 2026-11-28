@@ -1,8 +1,9 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckSvg, XSvg } from '@/assets/icons';
 import AdminLayout from '@/layouts/AdminLayout';
 import { useRealtimeUpdate } from '@/layouts/hooks/useRealtime';
-import { Badge, Button, DatePicker, Modal, ModalActions, Pagination, TableEmpty } from '@/shared/components';
+import { Badge, DatePicker, Modal, ModalActions, Pagination, TableEmpty } from '@/shared/components';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { FormField } from '@/shared/components/Input/FormField';
 import m from '@/shared/components/Modal/Modal.module.css';
@@ -206,7 +207,7 @@ export default function LeaveRequests() {
 								<th className={tbl.th}>Thời gian</th>
 								<th className={tbl.th}>Lý do</th>
 								<th className={tbl.th}>Trạng thái</th>
-								<th className={tbl.th}>Thao tác</th>
+								<th className={`${tbl.th} ${tbl.thRight}`}>Thao tác</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -259,25 +260,22 @@ export default function LeaveRequests() {
 										</td>
 										<td className={tbl.td}>
 											{r.status === 'pending' ? (
-												<span
-													style={{
-														display: 'inline-flex',
-														gap: 6,
-														flexWrap: 'wrap',
-													}}
-												>
-													<Button size='sm' icon={<CheckSvg />} onClick={() => setReviewing({ req: r, decision: 'approved' })}>
-														Duyệt
-													</Button>
-													<Button
-														size='sm'
-														variant='secondary'
-														icon={<XSvg />}
+												<RowActions>
+													<RowAction
+														title='Duyệt'
+														tone='success'
+														onClick={() => setReviewing({ req: r, decision: 'approved' })}
+													>
+														<CheckSvg />
+													</RowAction>
+													<RowAction
+														title='Từ chối'
+														danger
 														onClick={() => setReviewing({ req: r, decision: 'rejected' })}
 													>
-														Từ chối
-													</Button>
-												</span>
+														<XSvg />
+													</RowAction>
+												</RowActions>
 											) : (
 												<span className={tbl.cellSub}>—</span>
 											)}

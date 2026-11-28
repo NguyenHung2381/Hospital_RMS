@@ -22,3 +22,77 @@
 	border-radius: 8px;
 	border: 1px solid var(--color-gray-200);
 }
+
+/* ── Loại hình đào tạo: kiểu chấm công ─── */
+.modeGroup {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+.modeList {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--space-2);
+}
+@media (max-width: 640px) {
+	.modeList {
+		grid-template-columns: 1fr;
+	}
+}
+.modeCard {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	cursor: pointer;
+	transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.modeCard:hover {
+	border-color: var(--color-primary-light);
+}
+.modeCard:has(input:checked) {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+}
+.modeCard:has(input:focus-visible) {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.modeCard input {
+	width: 16px;
+	height: 16px;
+	margin: 2px 0 0;
+	flex-shrink: 0;
+	accent-color: var(--color-primary);
+}
+.modeText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.modeTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.modeHint {
+	font-size: var(--font-size-2xs);
+	line-height: 1.45;
+	color: var(--color-gray-500);
+}
+
+/* Phương thức không áp dụng với kiểu chấm công đang chọn: vẫn tick được (giữ cấu hình khi đổi kiểu) */
+.modeCardOff,
+.modeCardOff:has(input:checked) {
+	background: var(--color-gray-50);
+	border-style: dashed;
+	border-color: var(--color-gray-300);
+}
+.modeCardOff .modeTitle {
+	color: var(--color-gray-500);
+}

@@ -72,24 +72,6 @@
 	composes: filterActive from '../../../shared/components/Table/Table.module.css';
 }
 
-/* ── Vai trò dạng tabs (chuẩn tham chiếu) ─────────────────────────────────── */
-.tabsRow {
-	composes: tabsRow from '../../../shared/components/Table/Table.module.css';
-}
-.tabsRowWrap {
-	flex-wrap: wrap;
-	overflow-x: visible;
-}
-.tab {
-	composes: tab from '../../../shared/components/Table/Table.module.css';
-}
-.tabActive {
-	composes: tabActive from '../../../shared/components/Table/Table.module.css';
-}
-.tabBadge {
-	composes: tabBadge from '../../../shared/components/Table/Table.module.css';
-}
-
 /* ── TABLE ──────────────────────────────── */
 .tableWrap {
 	overflow-x: auto;

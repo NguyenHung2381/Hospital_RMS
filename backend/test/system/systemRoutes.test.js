@@ -188,11 +188,13 @@ test('GET /modules: khóa viết thường; ATTENDANCE mặc định tắt, modu
 			seminar: true,
 			survey: true,
 			attendance: false,
+			tuition: true,
 		});
-		flags = { MODULE_TRAINING: 'false', MODULE_ATTENDANCE: 'true' };
+		flags = { MODULE_TRAINING: 'false', MODULE_ATTENDANCE: 'true', MODULE_TUITION: 'false' };
 		j = await (await fetch(`${base}/modules`)).json();
 		assert.equal(j.data.training, false);
 		assert.equal(j.data.attendance, true);
+		assert.equal(j.data.tuition, false);
 	});
 	flags = {};
 });

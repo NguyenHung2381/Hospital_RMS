@@ -1,4 +1,5 @@
 import { Modal, TableEmpty } from '@/shared/components';
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import { BuildingSvg, EditSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
@@ -270,30 +271,27 @@ export default function Venues() {
 										</td>
 										{showActions && (
 											<td className={`${base.td} ${base.tdActions}`}>
-												<div className={base.actionBtns}>
+												<RowActions>
 													{canUpdate && (
-														<button
-															type='button'
-															className={base.actionBtn}
+														<RowAction
 															title='Chỉnh sửa'
 															aria-label={`Chỉnh sửa địa điểm ${v.name}`}
 															onClick={() => setEditing(v)}
 														>
 															<EditSvg />
-														</button>
+														</RowAction>
 													)}
 													{canDelete && (
-														<button
-															type='button'
-															className={`${base.actionBtn} ${base.danger}`}
+														<RowAction
 															title='Xóa'
 															aria-label={`Xóa địa điểm ${v.name}`}
+															danger
 															onClick={() => setDeleting(v)}
 														>
 															<TrashSvg />
-														</button>
+														</RowAction>
 													)}
-												</div>
+												</RowActions>
 											</td>
 										)}
 									</tr>

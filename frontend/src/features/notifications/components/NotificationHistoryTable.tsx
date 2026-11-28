@@ -1,3 +1,4 @@
+import { RowActions } from '@/shared/components/Table/TableToolbar';
 import { Fragment } from 'react';
 import {
 	BellSvg,
@@ -5,7 +6,6 @@ import {
 	ChevDSvg,
 	RefreshSvg,
 	SearchSvg,
-	TrashSvg,
 	WarnSvg,
 } from '@/assets/icons';
 import type { AdminNotification, NotificationRecipient } from '../api/notificationApi';
@@ -235,15 +235,10 @@ export function NotificationHistoryTable({
 												<div className={styles.timeText}>{relativeTime(row.created_at)}</div>
 											</td>
 											<td className={styles.td}>
-												<button
-													type='button'
-													className={`${styles.actionBtn} ${styles.danger}`}
-													onClick={() => onDeleteRequest(row)}
-													title='Xóa'
-													aria-label={`Xóa thông báo ${row.title}`}
-												>
-													<TrashSvg />
-												</button>
+												<RowActions
+													itemName={`thông báo ${row.title}`}
+													onDelete={() => onDeleteRequest(row)}
+												/>
 											</td>
 										</tr>
 										{isExpanded && (

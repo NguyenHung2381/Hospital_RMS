@@ -17,12 +17,16 @@ export const savePracticeDocument = async (
 	type: PracticeDocumentType,
 	who: string,
 	rotation?: { id: string; label: string },
+	sign = false,
 ) => {
 	try {
-		const blob = await downloadPracticeDocument(enrollmentId, type, rotation?.id);
 		const zip = type === 'phieu-nhan-xet' && !rotation;
+		// Gói .zip nhiều phiếu không ký được — tải bản thường
+		const signNow = sign && !zip;
+		const blob = await downloadPracticeDocument(enrollmentId, type, rotation?.id, signNow);
 		const suffix = rotation ? `_${fileSlug(rotation.label)}` : '';
-		saveBlob(blob, `${type}_${fileSlug(who)}${suffix}.${zip ? 'zip' : 'docx'}`);
+		saveBlob(blob, `${type}_${fileSlug(who)}${suffix}${signNow ? '_ky-so' : ''}.${zip ? 'zip' : 'docx'}`);
+		if (signNow) showToast('success', 'Đã tải giấy tờ có chữ ký số');
 	} catch (err) {
 		showToast('error', err instanceof Error ? err.message : 'Không tạo được giấy tờ');
 	}

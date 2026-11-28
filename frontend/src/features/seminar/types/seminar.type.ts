@@ -1,4 +1,5 @@
 import type { CustomValues } from '../../../shared/formConfig/types';
+import type { SeminarMethod, SeminarMethods } from '../../../shared/utils/attendanceMethods';
 
 // ─── Hội thảo / Hội nghị & CME ────────────────────────────────────────────────
 
@@ -88,6 +89,8 @@ export interface SeminarParticipant {
 	 */
 	created_by?: string | null;
 	checked_in_at: string | null;
+	/** Cách điểm danh: qr = tự quét QR hội trường, ticket = quét vé, device = máy chấm công vân tay */
+	checkin_method?: SeminarMethod | null;
 	/** Bài làm theo từng đề kiểm tra (chỉ đề đã bắt đầu / đã nộp) */
 	test_results?: SeminarTestResult[];
 	user_full_name?: string | null;
@@ -99,6 +102,8 @@ export interface Seminar {
 	id: string;
 	title: string;
 	event_type: SeminarEventType;
+	/** Chỉ ở chi tiết: phương thức điểm danh dùng được theo loại hội nghị (hệ thống × loại) */
+	checkin_methods?: SeminarMethods;
 	event_type_raw: string | null;
 	scope: SeminarScope;
 	location: string | null;

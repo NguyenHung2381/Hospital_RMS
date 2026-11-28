@@ -25,6 +25,7 @@ const formCustomValueService = require('../forms/formCustomValueService');
 const personService = require('../persons/personService');
 const { normalizeGender } = require('../../utils/gender');
 const { httpError } = require('../../utils/httpError');
+const attendanceMethods = require('../../utils/attendanceMethods');
 const { isUniqueViolation, constraintName } = require('../../utils/dbErrors');
 const { randomId } = require('../../utils/idGenerator');
 const { deptAccountJoinSql, isDeptAccountJoinedSql } = require('../../utils/deptAccount');
@@ -470,8 +471,11 @@ const remove = async (seminarId, pid, actorId, { canCme = false } = {}) => {
 // tạo participant mới nếu chưa có trong danh sách (tránh lộ khả năng "tự đăng
 // ký tham dự" qua đường quét QR). Tự đăng ký tập huấn trên cổng thì có tạo dòng
 // (hospitalTrainingSelfService.register) — dòng đó vẫn phải điểm danh (SELF_CREATED_SQL).
-const generateCheckInQrToken = (seminarId) =>
-	signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
+// Loại hội nghị không nhận QR (utils/attendanceMethods) ⇒ không phát mã
+const generateCheckInQrToken = async (seminarId) => {
+	await attendanceMethods.assertSeminar(seminarId, 'qr');
+	return signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
+};
 
 const checkInSelf = async (token, deviceId, actor) => {
 	let decoded;
@@ -483,6 +487,8 @@ const checkInSelf = async (token, deviceId, actor) => {
 	if (decoded.purpose !== CHECKIN_QR_PURPOSE) {
 		throw httpError(401, 'Mã QR không hợp lệ.');
 	}
+	// Mã phát trước khi tắt phương thức QR cũng không nhận
+	await attendanceMethods.assertSeminar(decoded.seminar_id, 'qr');
 
 	const pool = await getPool();
 	const req = () =>
@@ -504,7 +510,8 @@ const checkInSelf = async (token, deviceId, actor) => {
 	}
 	if (!row.device_taken) {
 		await req().query(`
-      UPDATE seminar_participants SET checked_in_at = ${utcNowSql}, checkin_device_id = @device_id
+      UPDATE seminar_participants SET checked_in_at = ${utcNowSql}, checkin_device_id = @device_id,
+             checkin_method = 'qr'
       WHERE seminar_id = @seminar_id AND user_id = @user_id`);
 	}
 	if (row.device_taken) {

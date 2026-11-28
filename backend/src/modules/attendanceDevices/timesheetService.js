@@ -3,6 +3,7 @@
 // punched_at lưu UTC ⇒ đổi sang giờ VN ngay trong SQL và trả chuỗi, tránh lệch múi giờ ở JS.
 const { getPool, sql, jsonValues } = require('../../config/db');
 const { httpError } = require('../../utils/httpError');
+const { trainingDeviceSql } = require('./devicePurpose');
 
 const MAX_DAYS = 93;
 const MAX_DAY_ROWS = 5000;
@@ -30,7 +31,11 @@ const punchesCte = (q, req) => {
 	if (q.device_id) {
 		req.input('device_id', sql.Int, q.device_id);
 		where.push('p.device_id = @device_id');
-	}
+	} else
+		// Bảng công học viên: mặc định bỏ máy chỉ dành cho hội nghị (chọn đúng máy thì vẫn xem được)
+		where.push(
+			`p.device_id IN (SELECT d.id FROM attendance_devices d WHERE ${trainingDeviceSql('d')})`,
+		);
 	return `
     WITH p AS (
       SELECT p.id, p.pin, p.device_id, p.session_id, p.match_status, p.verify_mode,

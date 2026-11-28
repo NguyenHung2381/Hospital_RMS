@@ -651,7 +651,7 @@ step_repo() {
 	sudo chown "$USER:$USER" "$(dirname "$APP_DIR")"
 
 	if [[ "$REPO_URL" == git@github.com:* ]]; then
-		# Repo private: deploy key chỉ đọc, chỉ dùng cho repo này
+		# Clone bằng SSH: deploy key chỉ đọc, chỉ dùng cho repo này (repo private bắt buộc; public vẫn dùng để không phụ thuộc chế độ hiển thị)
 		mkdir -p ~/.ssh && chmod 700 ~/.ssh
 		[ -f ~/.ssh/rms_deploy ] || ssh-keygen -q -t ed25519 -f ~/.ssh/rms_deploy -N "" -C "rms-vm-deploy"
 		if ! grep -q 'IdentityFile ~/.ssh/rms_deploy' ~/.ssh/config 2>/dev/null; then

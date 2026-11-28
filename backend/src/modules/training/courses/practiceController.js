@@ -5,6 +5,7 @@ const practiceDocumentService = require('./practiceDocumentService');
 const practiceBookImportService = require('./practiceBookImportService');
 const practiceBookExportService = require('./practiceBookExportService');
 const practiceAutoService = require('./practiceAutoService');
+const signingService = require('../../signing/signingService');
 const { success } = require('../../../utils/response');
 const { hasPermission } = require('../../../permissions/authz');
 const { asyncHandler } = require('../../../utils/asyncHandler');
@@ -127,11 +128,25 @@ const downloadPracticeDocument = asyncHandler(async (req, res) => {
 			message: 'Giấy tờ có số CCCD của học viên — cần quyền xem dữ liệu nhạy cảm của học viên.',
 		});
 	}
-	const out = await practiceDocumentService.generate(
+	let out = await practiceDocumentService.generate(
 		req.params.enrollmentId,
 		req.body.type,
 		req.body.rotation_id || null,
 	);
+	// sign = true: ký bằng chứng thư cá nhân của người tải (signingService)
+	if (signingService.wantsSign(req.body.sign)) {
+		// Phiếu nhận xét mọi vòng là file .zip — ký từng phiếu ở dòng vòng
+		if (out.mime !== practiceDocumentService.DOCX_MIME) {
+			return res.status(400).json({
+				success: false,
+				message: 'Gói nhiều phiếu (.zip) không ký số được — tải và ký từng phiếu ở dòng vòng.',
+			});
+		}
+		out = await signingService.signDocxDownload(req.user, out, {
+			docType: 'practice_document',
+			docRef: `${req.params.enrollmentId}:${req.body.type}`,
+		});
+	}
 	res.setHeader('Content-Type', out.mime);
 	res.setHeader(
 		'Content-Disposition',

@@ -2,6 +2,8 @@ import { useEffect, useId, useRef } from 'react';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { CheckCircleSvg, MessageSvg, XCircleSvg } from '@/assets/icons';
 import styles from '../pages/Approval.module.css';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 type ActionType = 'approve' | 'reject' | 'request';
 
@@ -62,6 +64,8 @@ export function ConfirmModal({
 	}, []);
 
 	const cfg = MODAL_CFG[type];
+	// Đọc cùng khóa ở useApproval.handleAction
+	const [sign, setSign] = useSignPreference('topic-approval');
 	const needComment = type !== 'approve';
 	const canSubmit = !needComment || comment.trim().length > 0;
 
@@ -115,6 +119,20 @@ export function ConfirmModal({
 						rows={3}
 						maxLength={500}
 					/>
+					<SignToggle
+						feature='topic_approval'
+						source='personal'
+						checked={sign}
+						onChange={setSign}
+						disabled={loading}
+						style={{ marginTop: 'var(--space-3)', textAlign: 'left' }}
+					/>
+					{sign && (
+						<p className={styles.modalDesc} style={{ marginTop: 'var(--space-2)', marginBottom: 0 }}>
+							Hệ thống tạo phiếu phê duyệt PDF, ký bằng chứng thư của bạn rồi lưu vào tài liệu đề tài. Ký không
+							được thì quyết định chưa được ghi.
+						</p>
+					)}
 				</div>
 				<div className={styles.modalFooter}>
 					<button

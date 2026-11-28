@@ -50,6 +50,12 @@ app.use(cors({ origin: corsOrigins }));
 // mount TRƯỚC parser toàn cục (urlencoded sẽ nuốt body), ngoài /api/v1 (không qua
 // activityLogger / rate-limit chung — router có giới hạn riêng).
 app.use('/iclock', require('./modules/attendanceDevices/iclock.routes'));
+// Ngân hàng báo giao dịch học phí: xác thực bằng chữ ký trên body THÔ ⇒ cũng mount TRƯỚC
+// parser json dùng chung (router tự giới hạn tốc độ, kiểm công tắc phân hệ).
+app.use(
+	'/api/v1/bank-webhooks',
+	require('./modules/training/tuition/bank/bankWebhook.routes'),
+);
 // Parser nhỏ cho /excel đặt TRƯỚC parser toàn cục: body-parser bỏ qua body đã parse nên
 // giới hạn 2 MB này thắng 10 MB (chặn dựng workbook cỡ lớn làm hết heap worker).
 app.use('/api/v1/excel', express.json({ limit: '2mb' }));
@@ -263,7 +269,14 @@ app.use(
 app.use(
 	`${API}/me/tuition`,
 	requireModule('TRAINING'),
+	requireModule('TUITION'),
 	require('./modules/training/tuition/myTuition.routes'),
+);
+app.use(
+	`${API}/tuition-bank`,
+	requireModule('TRAINING'),
+	requireModule('TUITION'),
+	require('./modules/training/tuition/bank/bankAdmin.routes'),
 );
 app.use(`${API}/me`, require('./modules/portal/me.routes'));
 app.use(
@@ -294,6 +307,8 @@ app.use(
 	require('./modules/training/registration/docCheck/docCheck.routes'),
 );
 app.use(`${API}/system-settings`, require('./modules/settings/systemSettings.routes'));
+app.use(`${API}/signing`, require('./modules/signing/signing.routes'));
+app.use(`${API}/sign-requests`, require('./modules/signing/requests/signRequests.routes'));
 app.use(`${API}/form-configs`, require('./modules/forms/formConfig.routes'));
 app.use(`${API}/persons`, require('./modules/persons/persons.routes'));
 app.use(`${API}/public`, require('./modules/public/public.routes'));

@@ -26,6 +26,7 @@ import { DISPLAY_STATUS_CFG, TRAINING_TYPE, type Course, type CourseFormData } f
 import ProgramTags from '../components/ProgramTags';
 import styles from './Courses.module.css';
 import { CustomValuesInline, useFormConfig } from '@/shared/formConfig';
+import { useModules } from '@/shared/hooks/useModules';
 
 type Step = DetailTab;
 
@@ -64,6 +65,8 @@ export default function CourseDetail() {
 	const [cloning, setCloning] = useState(false);
 	const [exporting, setExporting] = useState(false);
 	const d = useCourseDetail(id);
+	// Thu học phí tắt ở Cấu hình hệ thống ⇒ bỏ tab Học phí
+	const tuitionOn = useModules().tuition;
 	const { reload } = d;
 
 	const loadCourse = useCallback(
@@ -118,7 +121,9 @@ export default function CourseDetail() {
 	const showList = programMode && !selected && !tabParam && programParam !== '_none';
 	const scope = selected?.program_id;
 
-	const steps = practice ? STEPS.filter((s) => PRACTICE_STEPS.has(s.key)) : STEPS;
+	const steps = (practice ? STEPS.filter((s) => PRACTICE_STEPS.has(s.key)) : STEPS).filter(
+		(s) => tuitionOn || s.key !== 'tuition',
+	);
 	const tab = steps.find((s) => s.key === tabParam)?.key ?? 'enrollments';
 
 	const programsOf = (ids: string | null) => (ids ?? '').split(',');

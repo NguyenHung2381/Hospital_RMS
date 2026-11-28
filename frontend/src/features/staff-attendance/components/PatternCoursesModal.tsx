@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { attendanceModeLabel } from '@/shared/utils/attendanceMode';
 import { BookOpenSvg } from '@/assets/icons';
 import { Badge, InlineLoading, Modal, ModalActions, SelectCheckbox } from '@/shared/components';
 import m from '@/shared/components/Modal/Modal.module.css';
@@ -134,8 +135,17 @@ export function PatternCoursesModal({
 									<div className={tbl.cellSub}>
 										{c.id} · {courseDates(c)} · {c.trainee_count} học viên
 									</div>
+									<div className={tbl.cellSub}>
+										{c.training_type_name ? `${c.training_type_name} · ` : ''}Chấm công: {attendanceModeLabel(c.attendance_mode).toLowerCase()}
+										{!c.shift_pattern_id && c.type_shift_pattern_id && !selected.has(c.id)
+											? ` · đang theo mẫu của loại hình (${nameOf.get(c.type_shift_pattern_id) ?? '?'})`
+											: ''}
+									</div>
 								</div>
 								{c.ended && <Badge tone='gray'>Đã kết thúc</Badge>}
+								{(c.attendance_mode === 'session' || c.attendance_mode === 'none') && (
+									<Badge tone='amber'>Không chấm theo ca</Badge>
+								)}
 								{c.shift_pattern_id && c.shift_pattern_id !== pattern.id && (
 									<Badge tone='gray'>{nameOf.get(c.shift_pattern_id) ?? 'Mẫu khác'}</Badge>
 								)}

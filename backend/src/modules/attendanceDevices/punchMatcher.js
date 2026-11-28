@@ -3,18 +3,27 @@
 //   được duyệt, đúng lớp/chương trình (SESSION_IN_PROGRAM_SQL — như điểm danh QR).
 //   Hợp lệ khi chấm trong [bắt đầu − EARLY, kết thúc]; ≤ bắt đầu + LATE ⇒ có mặt, sau đó ⇒ muộn.
 //   Nhiều buổi cùng khớp ⇒ buổi có giờ bắt đầu gần lượt chấm nhất.
-// Sau đó ghi luôn điểm danh theo ca của học viên (attendance/deviceShiftService).
+//   Chỉ khóa chấm công theo buổi học (utils/attendanceMode: session / both).
+// Sau đó ghi luôn điểm danh theo ca của học viên (attendance/deviceShiftService), và ghép lượt ở
+// máy dành cho hội nghị vào người tham dự hội nghị (seminarPunchMatcher.js).
+// Lượt ở máy chỉ dành cho hội nghị (devicePurpose.js), hoặc khi phương thức "máy chấm công" đang tắt
+// trên toàn hệ thống (utils/attendanceMethods) ⇒ 'not_training', không ghép. Khóa có loại hình không
+// cho chấm bằng máy ⇒ không tính là buổi của học viên (thường ra 'no_session').
 const { getPool, sql, jsonValues } = require('../../config/db');
 const logger = require('../../config/logger');
 const { broadcast } = require('../events/eventService');
 const { SESSION_IN_PROGRAM_SQL } = require('../training/courses/sessionScope');
 const { traineeIdFromPin } = require('./iclockProtocol');
 const { getDeviceSettings } = require('./deviceSettings');
+const { isTrainingPurpose, trainingDeviceSql } = require('./devicePurpose');
+const { SESSION_MODES, modeInSql } = require('../../utils/attendanceMode');
+const attendanceMethods = require('../../utils/attendanceMethods');
 
 // require muộn — courseAttendanceService kéo theo gradebook / certificate...
 const attendance = () => require('../training/courses/courseAttendanceService');
 const lessonProgress = () => require('../training/courses/lessonProgressService');
 const deviceShift = () => require('../attendance/deviceShiftService');
+const seminarMatcher = require('./seminarPunchMatcher');
 
 // Điểm danh theo ca (phân hệ Ca & điểm danh) — lỗi ở đây không làm hỏng việc ghép buổi học
 const syncShifts = async (fn) => {
@@ -22,6 +31,16 @@ const syncShifts = async (fn) => {
 		await fn(deviceShift());
 	} catch (e) {
 		logger.error(`[attendanceDevices] Ghi điểm danh ca lỗi: ${e.message}`);
+	}
+};
+
+// Điểm danh hội nghị — lỗi ở đây không làm hỏng việc ghép buổi học
+const syncSeminars = async (fn) => {
+	try {
+		return await fn();
+	} catch (e) {
+		logger.error(`[attendanceDevices] Ghép lượt chấm vào hội nghị lỗi: ${e.message}`);
+		return 0;
 	}
 };
 
@@ -72,8 +91,11 @@ const sessionsOfTraineeOnDate = async (pool, traineeId, date) =>
       SELECT sess.id AS session_id, sess.start_time, sess.end_time, e.id AS enrollment_id
       FROM class_sessions sess
       JOIN course_enrollments e ON e.course_id = sess.course_id AND e.status = 'approved'
+      JOIN courses c ON c.id = sess.course_id
       WHERE e.trainee_id = @trainee_id AND sess.session_date = @d
-        AND ${SESSION_IN_PROGRAM_SQL('sess', 'e')}`)
+        AND ${SESSION_IN_PROGRAM_SQL('sess', 'e')}
+        AND ${modeInSql('c', SESSION_MODES)}
+        AND ${attendanceMethods.courseAllowsSql('c', 'device')}`)
 	).recordset;
 
 const traineeExists = async (pool, traineeId) =>
@@ -99,8 +121,12 @@ const RESULT_RANK = { matched: 0, kept_manual: 1, locked: 2 };
 
 const matchOne = async (pool, punch, settings) => {
 	const traineeId = traineeIdFromPin(punch.pin);
-	if (!traineeId || !(await traineeExists(pool, traineeId)))
-		return { status: 'no_trainee', traineeId: null, sessionId: null };
+	const known = !!traineeId && (await traineeExists(pool, traineeId));
+	// Máy chỉ dành cho hội nghị / phương thức máy chấm công đang tắt: giữ lượt chấm để xem,
+	// không tính vào buổi học / ca (bật lại thì rematchRecent ghép lại lượt gần đây)
+	if (!isTrainingPurpose(punch.purpose) || !settings.deviceMethodOn)
+		return { status: 'not_training', traineeId: known ? traineeId : null, sessionId: null };
+	if (!known) return { status: 'no_trainee', traineeId: null, sessionId: null };
 	const { date, minute } = vnParts(punch.punched_at);
 	const rows = await sessionsOfTraineeOnDate(pool, traineeId, date);
 	const sessions = [...new Map(rows.map((r) => [r.session_id, r])).values()];
@@ -129,12 +155,15 @@ const matchPunches = async (punchIds) => {
 	const pool = await getPool();
 	const punches = (
 		await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(punchIds)).query(`
-      SELECT p.id, p.pin, p.punched_at, d.serial_no
+      SELECT p.id, p.pin, p.punched_at, p.seminar_id, d.serial_no, d.purpose
       FROM attendance_punches p JOIN attendance_devices d ON d.id = p.device_id
       WHERE p.id IN ${jsonValues('@ids', { type: 'BIGINT' })}
       ORDER BY p.punched_at`)
 	).recordset;
-	const settings = await getDeviceSettings();
+	const settings = {
+		...(await getDeviceSettings()),
+		deviceMethodOn: (await attendanceMethods.systemTraining()).device,
+	};
 	const touchedSessions = new Set();
 	let matched = 0;
 	for (const punch of punches) {
@@ -162,24 +191,34 @@ const matchPunches = async (punchIds) => {
 	for (const sessionId of touchedSessions) await lessonProgress().recompute({ sessionId });
 	if (touchedSessions.size) broadcast('update', { entity: 'attendance' });
 	await syncShifts((svc) => svc.recordPunches(punches.map((p) => p.id)));
+	const seminarMatched = await syncSeminars(() => seminarMatcher.matchSeminarPunches(punches));
 	broadcast('update', { entity: 'attendance_punch' });
-	return { matched, total: punches.length };
+	return { matched, total: punches.length, seminar_matched: seminarMatched };
 };
 
-/** Ghép lại lượt chưa khớp trong N ngày gần nhất (buổi / ghi danh có thể tạo sau khi chấm) */
+/**
+ * Ghép lại lượt chưa khớp trong N ngày gần nhất (buổi / ghi danh có thể tạo sau khi chấm),
+ * kể cả lượt bị bỏ qua vì máy từng chỉ dành cho hội nghị mà nay đã dùng lại cho đào tạo.
+ */
 const rematchRecent = async (days = 7) => {
 	const pool = await getPool();
+	// Phương thức máy chấm công đang tắt: lượt 'not_training' ghép lại cũng vẫn vậy — bỏ qua
+	const deviceOn = (await attendanceMethods.systemTraining()).device;
 	const ids = (
 		await pool.request().input('days', sql.Int, days).query(`
-      SELECT id FROM attendance_punches
-      WHERE match_status IN ('pending', 'no_trainee', 'no_session')
-        AND punched_at >= (now() AT TIME ZONE 'UTC') - make_interval(days => @days)
-      ORDER BY id LIMIT 5000`)
+      SELECT p.id FROM attendance_punches p
+      JOIN attendance_devices d ON d.id = p.device_id
+      WHERE (p.match_status IN ('pending', 'no_trainee', 'no_session')
+             OR (${deviceOn ? 'TRUE' : 'FALSE'} AND p.match_status = 'not_training' AND ${trainingDeviceSql('d')}))
+        AND p.punched_at >= (now() AT TIME ZONE 'UTC') - make_interval(days => @days)
+      ORDER BY p.id LIMIT 5000`)
 	).recordset.map((r) => r.id);
 	const result = await matchPunches(ids);
 	// Mọi lượt (kể cả đã ghép buổi học): ca / phân ca có thể được xếp sau khi đã chấm
 	await syncShifts((svc) => svc.syncRecent(days));
-	return result;
+	// Lượt ở máy hội nghị chưa ghép: người tham dự / giờ hội nghị có thể được thêm sau khi chấm
+	const seminarMatched = await syncSeminars(() => seminarMatcher.rematchRecent(days));
+	return { ...result, seminar_matched: (result.seminar_matched ?? 0) + seminarMatched };
 };
 
 module.exports = { matchPunches, rematchRecent, pickSession, vnParts };

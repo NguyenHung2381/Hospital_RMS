@@ -87,6 +87,7 @@ module.exports = (router) => {
 			body('type')
 				.isIn(['don-de-nghi', 'hop-dong', 'phieu-nhan-xet'])
 				.withMessage('Loại giấy tờ không hợp lệ'),
+			body('sign').optional().isBoolean(),
 		],
 		validate,
 		ctrl.downloadPracticeDocument,

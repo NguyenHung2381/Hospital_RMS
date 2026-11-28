@@ -91,6 +91,7 @@ const courseSelect = `
   SELECT c.*,
          tf.name AS training_form_name,
          tt.name AS training_type_name,
+         tt.attendance_mode AS type_attendance_mode,
          (SELECT STRING_AGG(cp.program_id, ',') FROM course_programs cp WHERE cp.course_id = c.id) AS program_ids,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) AS enrollment_count,
          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id AND status = 'approved') AS approved_count,
@@ -213,6 +214,8 @@ const create = async (data, actorId) => {
 				.input('name', sql.NVarChar(255), data.name)
 				.input('training_form_id', sql.VarChar(20), data.training_form_id || null)
 				.input('training_type_id', sql.VarChar(20), data.training_type_id || null)
+				// NULL = theo kiểu chấm công của loại hình đào tạo (utils/attendanceMode)
+				.input('attendance_mode', sql.VarChar(10), data.attendance_mode || null)
 				.input('batch_no', sql.Int, data.batch_no || null)
 				.input('is_rolling', sql.Bit, data.is_rolling ? 1 : 0)
 				.input('start_date', sql.Date, data.start_date || null)
@@ -225,8 +228,8 @@ const create = async (data, actorId) => {
 				.input('prerequisites', sql.NVarChar(sql.MAX), JSON.stringify(data.prerequisites || []))
 				.input('objectives', sql.NVarChar(sql.MAX), JSON.stringify(data.objectives || [])),
 			[
-				`INSERT INTO courses (id, name, training_form_id, training_type_id, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
-      VALUES (@new_id, @name, @training_form_id, @training_type_id, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id)`,
+				`INSERT INTO courses (id, name, training_form_id, training_type_id, attendance_mode, batch_no, is_rolling, start_date, end_date, enrollment_start_date, enrollment_end_date, status, is_public_registration, description, prerequisites, objectives, created_by)
+      VALUES (@new_id, @name, @training_form_id, @training_type_id, @attendance_mode, @batch_no, @is_rolling, @start_date, @end_date, @enrollment_start_date, @enrollment_end_date, @status, @is_public_registration, @description, @prerequisites, @objectives, @actor_id)`,
 				`SELECT @new_id AS id`,
 			],
 		);
@@ -255,6 +258,7 @@ const update = async (id, data, actorId) => {
 			name: sql.NVarChar(255),
 			training_form_id: sql.VarChar(20),
 			training_type_id: sql.VarChar(20),
+			attendance_mode: sql.VarChar(10),
 			batch_no: sql.Int,
 			is_rolling: sql.Bit,
 			start_date: sql.Date,

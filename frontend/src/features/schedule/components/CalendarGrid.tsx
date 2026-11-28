@@ -26,7 +26,26 @@ export interface CalItem {
 	subtitle?: string;
 	/** Thanh nhạt màu (thời gian đợt / khóa học) */
 	muted?: boolean;
+	/** Nhãn ngày nghỉ lễ — chỉ để đọc, không bấm được */
+	holiday?: boolean;
 	onClick: () => void;
+}
+
+/** Ngày nghỉ lễ: 'YYYY-MM-DD' (giờ máy) → tên lễ */
+export type HolidayMap = ReadonlyMap<string, string>;
+
+const isoDay = (d: Date) =>
+	`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Nhãn ngày lễ của các ngày đang hiển thị — xếp như sự kiện cả ngày, luôn ở dòng đầu. */
+function holidayItems(days: CalDay[], holidays?: HolidayMap): CalItem[] {
+	if (!holidays?.size) return [];
+	return days.flatMap((day) => {
+		const name = holidays.get(isoDay(day.date));
+		return name
+			? [{ id: `holiday-${day.key}`, title: name, color: '', start: day.date, end: day.date, holiday: true, onClick: () => {} }]
+			: [];
+	});
 }
 
 const SLOT_H = 20;
@@ -51,6 +70,7 @@ const tooltip = (it: CalItem) =>
 
 /** Thứ tự như Google: nhiều ngày (dài trước) → cả ngày → có giờ (sớm trước). */
 function compareItems(a: CalItem, b: CalItem): number {
+	if (!!a.holiday !== !!b.holiday) return a.holiday ? -1 : 1;
 	const ma = isMultiDay(a);
 	if (ma !== isMultiDay(b)) return ma ? -1 : 1;
 	const byStart = a.start.getTime() - b.start.getTime();
@@ -117,6 +137,12 @@ function Chip({ item, flatL, flatR, onClick }: {
 	flatR?: boolean;
 	onClick: () => void;
 }) {
+	if (item.holiday)
+		return (
+			<span className={`${styles.chip} ${styles.chipHoliday}`} title={`Nghỉ lễ: ${item.title}`}>
+				<span className={styles.chipTitle}>{item.title}</span>
+			</span>
+		);
 	const timed = isTimed(item);
 	const cls = [
 		styles.chip,
@@ -279,12 +305,15 @@ function DayPopover({ state, items, onClose, onAdd }: {
 
 interface GridProps {
 	items: CalItem[];
+	/** Có thì tô ô ngày lễ + nhãn tên lễ ở dòng đầu (lịch học). */
+	holidays?: HolidayMap;
 	/** Bấm vào ô trống / nút thêm trong popover (lịch NCKH: thêm mốc) */
 	onAdd?: () => void;
 }
 
-export function MonthGrid({ weeks, items, onAdd }: GridProps & { weeks: CalDay[][] }) {
+export function MonthGrid({ weeks, items: events, onAdd, holidays }: GridProps & { weeks: CalDay[][] }) {
 	const ref = useRef<HTMLDivElement>(null);
+	const items = [...holidayItems(weeks.flat(), holidays), ...events];
 	const compact = useCompact();
 	// Tối thiểu đủ 3 dòng sự kiện/ô; màn thấp quá thì trang cuộn thay vì ô bé lại
 	const height = useFitHeight(ref, DOW_ROW_H + weeks.length * (DAY_HEAD_H + 3 * SLOT + 2));
@@ -306,7 +335,7 @@ export function MonthGrid({ weeks, items, onAdd }: GridProps & { weeks: CalDay[]
 					{days.map((day) => (
 						<div
 							key={day.key}
-							className={`${styles.dayCell}${day.isCurrentMonth ? '' : ` ${styles.otherMonth}`}${onAdd ? ` ${styles.clickable}` : ''}`}
+							className={`${styles.dayCell}${day.isCurrentMonth ? '' : ` ${styles.otherMonth}`}${holidays?.has(isoDay(day.date)) ? ` ${styles.holidayCell}` : ''}${onAdd ? ` ${styles.clickable}` : ''}`}
 							onClick={onAdd}
 						>
 							<span className={`${styles.dayNum}${day.isToday ? ` ${styles.today}` : ''}`}>{day.dayNum}</span>
@@ -370,7 +399,9 @@ function layoutDay(items: CalItem[]): TimedEvent[] {
 	return evs;
 }
 
-export function WeekGrid({ days, items, onAdd }: GridProps & { days: CalDay[] }) {
+export function WeekGrid({ days, items: events, onAdd, holidays }: GridProps & { days: CalDay[] }) {
+	const items = [...holidayItems(days, holidays), ...events];
+	const isHoliday = (day: CalDay) => !!holidays?.has(isoDay(day.date));
 	const ref = useRef<HTMLDivElement>(null);
 	const compact = useCompact();
 	const height = useFitHeight(ref, 480);
@@ -402,7 +433,7 @@ export function WeekGrid({ days, items, onAdd }: GridProps & { days: CalDay[] })
 			<div className={styles.weekHead} style={{ height: HEAD_H, gridTemplateColumns: `${GUTTER}px repeat(7, minmax(0, 1fr))` }}>
 				<div />
 				{days.map((day, i) => (
-					<div key={day.key} className={`${styles.weekHeadCell}${day.isToday ? ` ${styles.weekHeadToday}` : ''}`}>
+					<div key={day.key} className={`${styles.weekHeadCell}${day.isToday ? ` ${styles.weekHeadToday}` : ''}${isHoliday(day) ? ` ${styles.holidayHead}` : ''}`}>
 						<span className={styles.weekHeadDow}>{(compact ? DOW_SHORT : DOW)[i]}</span>
 						<span className={`${styles.weekHeadNum}${day.isToday ? ` ${styles.today}` : ''}`}>{day.dayNum}</span>
 					</div>
@@ -413,7 +444,11 @@ export function WeekGrid({ days, items, onAdd }: GridProps & { days: CalDay[] })
 				<div className={styles.gutterLabel}>Cả ngày</div>
 				<div className={styles.allDayBody}>
 					{days.map((day, c) => (
-						<div key={day.key} className={styles.allDayCell} style={{ left: `${(c / 7) * 100}%` }} />
+						<div
+							key={day.key}
+							className={`${styles.allDayCell}${isHoliday(day) ? ` ${styles.holidayCell}` : ''}`}
+							style={{ left: `${(c / 7) * 100}%`, width: `${100 / 7}%` }}
+						/>
 					))}
 					<WeekItems
 						days={days}
@@ -436,7 +471,7 @@ export function WeekGrid({ days, items, onAdd }: GridProps & { days: CalDay[] })
 				{days.map((day) => (
 					<div
 						key={day.key}
-						className={`${styles.dayCol}${onAdd ? ` ${styles.clickable}` : ''}`}
+						className={`${styles.dayCol}${isHoliday(day) ? ` ${styles.holidayCol}` : ''}${onAdd ? ` ${styles.clickable}` : ''}`}
 						style={{ height: hours.length * hourH, backgroundSize: `100% ${hourH}px` }}
 						onClick={onAdd}
 					>

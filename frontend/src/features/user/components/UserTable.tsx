@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { EditSvg, KeySvg, TrashSvg, UsersSvg } from '@/assets/icons';
+import { EditSvg, KeySvg, UsersSvg } from '@/assets/icons';
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import {
 	Badge,
 	BulkBar,
@@ -230,36 +231,26 @@ export function UserTable({
 										</span>
 									</td>
 									<td className={`${styles.td} ${styles.tdActions}`}>
-										<div className={styles.actionBtns}>
-											<button
-												type='button'
-												className={styles.actionBtn}
+										<RowActions
+											itemName={`tài khoản ${u.full_name}`}
+											onDelete={() => setDeleteUser(u)}
+										>
+											<RowAction
 												title='Chỉnh sửa'
 												aria-label={`Chỉnh sửa tài khoản ${u.full_name}`}
 												onClick={() => setEditUser(u)}
 											>
 												<EditSvg />
-											</button>
-											<button
-												type='button'
-												className={styles.actionBtn}
-												title='Đặt lại mật khẩu (về tên đăng nhập)'
-												aria-label={`Đặt lại mật khẩu của ${u.full_name}`}
+											</RowAction>
+											<RowAction
+												title='Đặt lại mật khẩu'
+												aria-label={`Đặt lại mật khẩu của ${u.full_name} (về tên đăng nhập)`}
+												tone='warn'
 												onClick={() => setResetUser(u)}
-												style={{ color: 'var(--tone-amber-fg)' }}
 											>
 												<KeySvg />
-											</button>
-											<button
-												type='button'
-												className={`${styles.actionBtn} ${styles.danger}`}
-												title='Xóa'
-												aria-label={`Xóa tài khoản ${u.full_name}`}
-												onClick={() => setDeleteUser(u)}
-											>
-												<TrashSvg />
-											</button>
-										</div>
+											</RowAction>
+										</RowActions>
 									</td>
 								</tr>
 							);

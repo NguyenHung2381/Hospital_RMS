@@ -94,10 +94,51 @@ function verifyRaw(sigAlg, digestOid, publicKey, data, signature) {
 	}
 	if (!hash) return 'unsupported';
 	try {
-		return crypto.verify(hash, data, key, signature) ? 'ok' : 'bad';
+		if (crypto.verify(hash, data, key, signature)) return 'ok';
 	} catch {
 		return 'bad';
 	}
+	return oid !== RSA_PSS && pkcs1NoNullOk(hash, publicKey, data, signature) ? 'ok' : 'bad';
+}
+
+// DER của OID hàm băm (trong DigestInfo của RSA PKCS#1 v1.5)
+const HASH_OID_DER = {
+	sha1: '06052b0e03021a',
+	sha224: '0609608648016503040204',
+	sha256: '0609608648016503040201',
+	sha384: '0609608648016503040202',
+	sha512: '0609608648016503040203',
+};
+
+/**
+ * RSA PKCS#1 v1.5 với DigestInfo BỎ trường NULL của AlgorithmIdentifier
+ * (30 2f 30 0b 06 09 <oid> 04 20 <hash> thay vì 30 31 30 0d ... 05 00 ...). RFC 8017 §9.2
+ * ghi chú 2 cho phép bên kiểm chấp nhận dạng này; node:crypto / OpenSSL 3 thì từ chối. Dịch vụ ký
+ * từ xa VIN-HSM ký theo dạng này (kiểm 27/11/2026). Chỉ nhận đúng nguyên văn dạng đó.
+ * @param {string} hash
+ * @param {crypto.KeyObject} publicKey
+ * @param {Buffer} data
+ * @param {Buffer} signature
+ */
+function pkcs1NoNullOk(hash, publicKey, data, signature) {
+	const oidDer = HASH_OID_DER[hash];
+	if (!oidDer || publicKey.asymmetricKeyType !== 'rsa') return false;
+	const digest = crypto.createHash(hash).update(data).digest();
+	const algId = Buffer.concat([Buffer.from([0x30, oidDer.length / 2]), Buffer.from(oidDer, 'hex')]);
+	const octet = Buffer.concat([Buffer.from([0x04, digest.length]), digest]);
+	const body = Buffer.concat([algId, octet]);
+	const expected = Buffer.concat([Buffer.from([0x30, body.length]), body]);
+	let recovered;
+	try {
+		// Kiểm cả khối đệm PKCS#1 kiểu 1 (00 01 FF..FF 00), trả phần DigestInfo phía sau
+		recovered = crypto.publicDecrypt(
+			{ key: publicKey, padding: crypto.constants.RSA_PKCS1_PADDING },
+			signature,
+		);
+	} catch {
+		return false;
+	}
+	return recovered.length === expected.length && crypto.timingSafeEqual(recovered, expected);
 }
 
 /**

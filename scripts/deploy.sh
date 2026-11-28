@@ -9,7 +9,8 @@
 #
 #   0. Kiểm tra máy chủ: Docker, ổ đĩa, file env, compose với cấu hình thật, thư mục backup.
 #   1. Ghi nhớ image đang chạy (để tự quay lại khi hỏng).
-#   2. Kéo image backend/frontend tag = commit SHA từ registry (không build lại).
+#   2. Kéo image backend/frontend tag = commit SHA từ registry (không build lại;
+#      SKIP_PULL=true: dùng image deploy.yml đã kéo + xác minh chữ ký).
 #   3. Có migration mới + đặt MIGRATION_BACKUP_DIR: pg_dump DB ra thư mục đó (trên
 #      máy này). Chạy migration bằng image MỚI (backend/scripts/migrate.js). Lỗi →
 #      dừng, bản cũ vẫn chạy.
@@ -28,6 +29,8 @@
 #   COMPOSE_PROJECT     GIỮ "hospital_rms" cho production — volume dữ liệu mang tiền tố này
 #   BACKEND_URL         mặc định http://127.0.0.1:3001
 #   FRONTEND_URL        mặc định http://127.0.0.1:8081
+#   SKIP_PULL           true: không kéo image, dùng image đã có trên máy (deploy.yml đặt
+#                       sau khi tự kéo + xác minh chữ ký theo digest). Chạy tay: để trống
 #   SOAK_SECONDS        mặc định 60
 #   SMOKE_TIMEOUT       giây chờ bản mới khoẻ trước khi coi là hỏng, mặc định 180
 #   MIN_FREE_GB         dung lượng trống tối thiểu ở thư mục dữ liệu Docker, mặc định 3
@@ -249,13 +252,37 @@ registry_lc="$(printf '%s' "$REGISTRY" | tr '[:upper:]' '[:lower:]')"
 export BACKEND_IMAGE="$registry_lc/hospital_rms-backend:$TAG"
 export FRONTEND_IMAGE="$registry_lc/hospital_rms-frontend:$TAG"
 
-echo "── Kéo image $TAG"
-for i in 1 2 3; do
-	if compose pull backend frontend; then break; fi
-	[ "$i" -lt 3 ] || exit 1
-	echo "Thử lại ($i)..."
-	sleep 15
-done
+if [ "${SKIP_PULL:-}" = true ]; then
+	# deploy.yml đã kéo image theo digest (đã xác minh chữ ký cosign khi bật) và gắn tag
+	# SHA trên máy. Kéo lại theo tag sẽ chạy image registry đang trỏ tới lúc này — có thể
+	# không phải image vừa xác minh — và thêm 1 lần phụ thuộc mạng tới registry.
+	echo "── Dùng image đã kéo + xác minh ở bước trước ($TAG)"
+	for img in "$BACKEND_IMAGE" "$FRONTEND_IMAGE"; do
+		docker image inspect "$img" >/dev/null 2>&1 || {
+			echo "::error::SKIP_PULL=true nhưng máy chưa có image $img"
+			write_history FAILED-PULL "${prev_backend:-}"
+			exit 1
+		}
+	done
+else
+	echo "── Kéo image $TAG"
+	pulled=false
+	for i in 1 2 3; do
+		if compose pull backend frontend; then
+			pulled=true
+			break
+		fi
+		if [ "$i" -lt 3 ]; then
+			echo "Thử lại ($i)..."
+			sleep 15
+		fi
+	done
+	if [ "$pulled" != true ]; then
+		echo "::error::Không kéo được image $TAG từ $registry_lc sau 3 lần — kiểm tra mạng máy chủ ra registry"
+		write_history FAILED-PULL "${prev_backend:-}"
+		exit 1
+	fi
+fi
 
 # Version /health phải trả = GIT_SHA nhúng trong image backend. Thường bằng $TAG;
 # khác khi backend không đổi ở commit này và CI chỉ gắn thêm tag cho image của

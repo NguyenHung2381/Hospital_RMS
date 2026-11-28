@@ -1,0 +1,47 @@
+# Tiêu đề PR theo Conventional Commits: `<loại>(<phạm vi>): <mô tả>` — vd
+# `fix(seminars): tra lại vé tách nội viện / ngoại viện`. Merge kiểu squash thì tiêu
+# đề PR thành commit trên main; bản phát hành production (deploy.yml, job release)
+# nhóm commit theo <loại> → tiêu đề sai loại thì rơi vào mục "Khác".
+#
+# Workflow riêng (không nằm trong ci.yml) vì phải chạy lại khi SỬA tiêu đề (sự kiện
+# `edited`) — gộp vào ci.yml thì mỗi lần sửa mô tả PR lại chạy toàn bộ CI và huỷ lần
+# đang chạy. Muốn bắt buộc: thêm check "Tiêu đề PR" vào branch protection cạnh
+# "CI · kết quả" (.github/CICD.md, Cài đặt 1 lần).
+name: Kiểm tra · Tiêu đề PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: Tiêu đề PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          types='feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert'
+          re="^($types)(\([a-z0-9._/-]+\))?!?: [^ ].{2,}$"
+          if [[ "$TITLE" =~ $re ]]; then
+            echo "Đạt: $TITLE"
+            exit 0
+          fi
+          {
+            echo "### Tiêu đề PR chưa đúng Conventional Commits"
+            echo ""
+            echo "Hiện tại: \`$TITLE\`"
+            echo ""
+            echo "Mẫu: \`<loại>(<phạm vi>): <mô tả>\` — loại: \`${types//|/\`, \`}\`; phạm vi viết thường, tuỳ chọn; thêm \`!\` trước \`:\` nếu thay đổi phá tương thích."
+            echo "Vd: \`feat(attendance): xuất bảng công theo khoa\`, \`fix: sửa lỗi đăng nhập 2FA\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Tiêu đề PR phải theo dạng <loại>(<phạm vi>): <mô tả> — loại: ${types//|/, }"
+          exit 1

@@ -57,39 +57,6 @@
 	text-decoration: underline;
 }
 
-/* Duyệt máy = việc đang chờ bạn xử lý */
-.approveBtn {
-	height: 32px;
-	padding: 0 var(--space-3);
-	border-radius: var(--radius-md);
-	border: 1px solid var(--tone-pink-border);
-	background: var(--tone-pink-bg);
-	color: var(--tone-pink-fg);
-	font-family: var(--font-body);
-	font-size: var(--font-size-sm);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-}
-.approveBtn:hover:not(:disabled) {
-	border-color: var(--color-accent);
-}
-
-.textAction {
-	height: 30px;
-	padding: 0 var(--space-2);
-	border: 1px solid var(--color-gray-200);
-	border-radius: var(--radius-md);
-	background: transparent;
-	color: var(--color-gray-700);
-	font-family: var(--font-body);
-	font-size: var(--font-size-compact);
-	font-weight: var(--font-weight-semibold);
-	cursor: pointer;
-}
-.textAction:hover:not(:disabled) {
-	background: var(--color-gray-50);
-}
-
 .pendingBadge {
 	font-size: var(--font-size-2xs);
 	padding: 1px 7px;
@@ -444,4 +411,69 @@
 	.pushRight {
 		margin-left: 0;
 	}
+}
+
+/* ── Mục đích máy: thẻ chọn trong hộp sửa máy ─── */
+.purposeGroup {
+	margin: 0 0 var(--space-4);
+	padding: 0;
+	border: 0;
+	min-width: 0;
+}
+.purposeLegend {
+	margin-bottom: var(--space-2);
+	padding: 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.purposeList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.purposeCard {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--space-3);
+	padding: var(--space-3);
+	border: 1.5px solid var(--color-gray-200);
+	border-radius: var(--radius-lg);
+	background: var(--color-white);
+	cursor: pointer;
+	transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.purposeCard:hover {
+	border-color: var(--color-primary-light);
+}
+.purposeCard:has(input:checked) {
+	border-color: var(--color-primary);
+	background: var(--color-primary-pale);
+}
+.purposeCard:has(input:focus-visible) {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+.purposeCard input {
+	width: 16px;
+	height: 16px;
+	margin: 2px 0 0;
+	flex-shrink: 0;
+	accent-color: var(--color-primary);
+}
+.purposeText {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+.purposeTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800, var(--color-gray-700));
+}
+.purposeHint {
+	font-size: var(--font-size-compact);
+	line-height: 1.5;
+	color: var(--color-gray-500);
 }

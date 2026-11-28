@@ -3,6 +3,7 @@
 //   cần có  = học viên ghi danh 'approved' của khóa chưa hủy, đã/sắp bắt đầu (≤ 7 ngày)
 //             và chưa quá DEVICE_CLEANUP_DAYS ngày sau khi kết thúc
 //   đang có = attendance_device_users (những gì server đã gửi xuống từng máy)
+// Máy chỉ dành cho hội nghị (purpose = 'seminar', devicePurpose.js) "cần có" = rỗng.
 // Chỉ xóa khỏi máy học viên do server gửi xuống — người dùng khác trên máy (nhân viên
 // do phần mềm khác thêm) không bao giờ bị đụng tới.
 const { getPool, sql, withTransaction, lockResource } = require('../../config/db');
@@ -13,6 +14,7 @@ const commands = require('./deviceCommandService');
 const fingerprints = require('./fingerprintService');
 const { getDeviceSettings } = require('./deviceSettings');
 const { desiredTrainees } = require('./desiredTrainees');
+const { isTrainingPurpose } = require('./devicePurpose');
 
 // Lệnh hỏng trong 24 giờ qua ⇒ không tự xếp lại (tránh vòng lặp với lỗi cố định)
 const FAILED_COOLDOWN_HOURS = 24;
@@ -147,7 +149,7 @@ const reconcile = async ({ deviceId, actorId = null } = {}) => {
 		if (deviceId) devReq.input('id', sql.Int, deviceId);
 		const devices = (
 			await devReq.query(
-				`SELECT id, serial_no, name_ascii, push_version, fp_algorithm FROM attendance_devices
+				`SELECT id, serial_no, name_ascii, push_version, fp_algorithm, purpose FROM attendance_devices
          WHERE status = 'active'${deviceId ? ' AND id = @id' : ''}`,
 			)
 		).recordset;
@@ -160,8 +162,16 @@ const reconcile = async ({ deviceId, actorId = null } = {}) => {
 				)
 			: new Map();
 		let queued = 0;
+		// Máy chỉ dành cho hội nghị không cần học viên nào ⇒ học viên server đã gửi xuống bị gỡ
 		for (const device of devices)
-			queued += await syncDevice(tx, device, desired, meta, settings, actorId);
+			queued += await syncDevice(
+				tx,
+				device,
+				isTrainingPurpose(device.purpose) ? desired : [],
+				meta,
+				settings,
+				actorId,
+			);
 		// Tối thiểu hóa dữ liệu sinh trắc: học viên không còn cần trên máy nào ⇒ xóa mẫu vân tay
 		await tx
 			.request()

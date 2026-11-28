@@ -62,7 +62,10 @@ const run = async () => {
 		}
 		if (!(await markOnce(JOB, `${row.id}:${row.deadline_id}`))) continue;
 		const comment = `Tự động từ chối: quá hạn bổ sung "${row.deadline_name}" (${fmtDateVN(row.deadline_date)}) mà chưa được duyệt lại.`;
-		await topicApprovalService.approve(row.id, 'rejected', comment, row.requested_by);
+		// Đề tài đang chờ bổ sung (không phải chờ duyệt) ⇒ khai báo rõ trạng thái nguồn
+		await topicApprovalService.approve(row.id, 'rejected', comment, row.requested_by, {
+			from: ['supplement'],
+		});
 		rejected++;
 	}
 	if (rows.length) {

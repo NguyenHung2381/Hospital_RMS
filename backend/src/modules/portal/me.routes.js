@@ -11,6 +11,7 @@ const { formConfigGuard } = require('../forms/formConfigGuard');
 const formCustomValueService = require('../forms/formCustomValueService');
 const classSessionService = require('../training/courses/classSessionService');
 const traineeRecordService = require('../training/trainees/traineeRecordService');
+const holidaySync = require('../settings/holidaySync');
 
 router.use(authenticate);
 
@@ -34,6 +35,18 @@ router.get(
 	'/training',
 	asyncHandler(async (req, res) => {
 		return success(res, await portalService.getMyTraining(req.user));
+	}),
+);
+
+// Ngày nghỉ lễ đang áp dụng (Cấu hình hệ thống → Ngày nghỉ lễ) — các lịch học tô ngày lễ.
+// Mọi tài khoản đã đăng nhập đều xem được; không trả cấu hình gốc, chỉ ngày + tên lễ.
+router.get(
+	'/holidays',
+	[query('year').isInt({ min: 1900, max: 2199 }).withMessage('Năm không hợp lệ')],
+	validate,
+	asyncHandler(async (req, res) => {
+		// Express 5: req.query chỉ đọc — .toInt() không đổi được, tự ép số (vnHolidays cộng trừ theo năm)
+		return success(res, await holidaySync.effectiveHolidays(Number(req.query.year)));
 	}),
 );
 
@@ -137,6 +150,13 @@ const registrationPortalService = require('./registrationPortalService');
 // sang uploads/training/course_registration/<enrollmentId>/ (nội viện) hoặc hồ sơ học viên (ngoại viện)
 const { registrationFileUpload } = require('../training/registration/registrationUpload');
 const { UPLOADABLE_KINDS } = require('../training/registration/registrationFileKinds');
+const signingService = require('../signing/signingService');
+
+// ?sign=1: ký file Word bằng chứng thư cá nhân của chính người tải (signingService)
+const maybeSign = (req, out, docRef) =>
+	signingService.wantsSign(req.query.sign)
+		? signingService.signDocxDownload(req.user, out, { docType: 'registration_document', docRef })
+		: out;
 
 // File .docx tải về (Đơn đăng ký, Tờ trình) — tên có dấu nên dùng filename*
 const sendDocx = (res, out) => {
@@ -158,7 +178,14 @@ router.get(
 router.get(
 	'/course-registrations/:enrollmentId/application',
 	asyncHandler(async (req, res) =>
-		sendDocx(res, await registrationPortalService.myApplication(req.params.enrollmentId, req.user)),
+		sendDocx(
+			res,
+			await maybeSign(
+				req,
+				await registrationPortalService.myApplication(req.params.enrollmentId, req.user),
+				`${req.params.enrollmentId}:don`,
+			),
+		),
 	),
 );
 // Kiểm tra bản khai của mình / loại hồ sơ / trạng thái đơn TRƯỚC khi multer ghi file
@@ -215,11 +242,15 @@ router.get(
 	asyncHandler(async (req, res) =>
 		sendDocx(
 			res,
-			await registrationPortalService.departmentProposalDocument(req.user, {
-				course_id: String(req.query.course_id),
-				program_id: req.query.program_id ? String(req.query.program_id) : null,
-				department_id: req.query.department_id ? String(req.query.department_id) : null,
-			}),
+			await maybeSign(
+				req,
+				await registrationPortalService.departmentProposalDocument(req.user, {
+					course_id: String(req.query.course_id),
+					program_id: req.query.program_id ? String(req.query.program_id) : null,
+					department_id: req.query.department_id ? String(req.query.department_id) : null,
+				}),
+				`${String(req.query.course_id)}:to-trinh`,
+			),
 		),
 	),
 );

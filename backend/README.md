@@ -57,6 +57,7 @@ src/
 | `notifications` | `/notifications` | thông báo trong hệ thống, `mailService` |
 | `events` | `/events` | SSE realtime (`eventService.broadcast`) |
 | `settings` | `/system-settings` | cấu hình hệ thống |
+| `signing` | `/signing` | ký số từ xa qua VIN-HSM (AWS SigV4): tài khoản ký tổ chức / cá nhân (secret mã hoá bằng `secretBox`), nhật ký `signing_logs`; module nghiệp vụ gọi `signingService` để ký giấy chứng nhận CME, giấy tờ đào tạo, phiếu phê duyệt đề tài |
 | `audit` | `/activity-logs`, `/security-events` | nhật ký thao tác, sự kiện/cảnh báo bảo mật |
 | `dashboard` | `/dashboard` | số liệu tổng hợp, báo cáo đào tạo |
 | `portal` | `/me`, `/my-tasks` | dữ liệu "của tôi" (đọc chéo nhiều module) |

@@ -8,6 +8,7 @@ const leaveRequestService = require('./leaveRequestService');
 const { normalizeIp } = require('../../utils/activityDescribe');
 const { todayKeyVN } = require('../../utils/vnDate');
 const { badRequest } = require('../../utils/httpError');
+const attendanceMethods = require('../../utils/attendanceMethods');
 
 // Điểm danh HỌC VIÊN theo khóa đào tạo (2026-10-29_staff_attendance.sql +
 // 2026-10-30_attendance_shifts.sql + 2026-11-30_trainee_attendance.sql). Tên bảng
@@ -73,10 +74,11 @@ const loadContext = async (userId) => {
 
 // Gọi được với mọi tài khoản (Cấu hình hệ thống dùng client_ip); không phải học viên → is_trainee false
 const getMine = async (userId, ip) => {
-	const [ctx, policy, leave] = await Promise.all([
+	const [ctx, policy, leave, system] = await Promise.all([
 		loadContext(userId),
 		attendancePolicy.getPolicy(),
 		leavePolicy.getPolicy(),
+		attendanceMethods.systemTraining(),
 	]);
 	const { today, trainee, courseOn, assignments, shiftsById, records } = ctx;
 	// Lịch 7 ngày tới: course_id null = không học khóa nào; shifts null = không có lịch ca (điểm danh tự do)
@@ -112,7 +114,11 @@ const getMine = async (userId, ip) => {
 			course_id: current.course_id,
 			course_name: current.course_name,
 			pattern_name: current.pattern?.name ?? null,
+			// Phương thức của khóa hôm nay (utils/attendanceMethods) — app = bấm vào / ra ở trang này
+			methods: attendanceMethods.forTypeValue(system, current.attendance_methods),
 		},
+		// Điểm danh trên ứng dụng: tắt trên toàn hệ thống thì trang chỉ để xem lịch sử / gửi đơn
+		app_enabled: system.app,
 		client_ip: normalizeIp(ip),
 		ip_ok: policy.ipRanges.length ? attendancePolicy.ipAllowed(ip, policy.ipRanges) : false,
 		configured: policy.ipRanges.length > 0 && !!policy.location,
@@ -157,6 +163,18 @@ const check = async (userId, { ip, lat, lng, accuracy, shift_id, work_date }) =>
 		option = pickOption(options, { shift_id, work_date });
 	} catch (err) {
 		result.reasons.unshift(err.message);
+	}
+	// Phương thức "bấm trên ứng dụng" bị tắt (toàn hệ thống / loại hình của khóa) — kể cả khi đạt IP + GPS
+	if (option) {
+		const system = await attendanceMethods.systemTraining();
+		const course = ctx.courseOn(option.work_date);
+		const methods = attendanceMethods.forTypeValue(system, course?.attendance_methods ?? null);
+		if (!methods.app)
+			result.reasons.unshift(
+				system.app
+					? 'Khóa học này không điểm danh trên ứng dụng — vui lòng chấm công bằng máy chấm công hoặc báo giảng viên'
+					: 'Điểm danh trên ứng dụng đang tắt trên toàn hệ thống — vui lòng chấm công bằng máy chấm công hoặc báo giảng viên',
+			);
 	}
 	if (result.reasons.length)
 		throw badRequest(result.reasons.join('. '), { reasons: result.reasons });
@@ -285,10 +303,13 @@ const getByDate = async (dateArg, actor) => {
 		req.query(`
       SELECT a.*, t.id AS trainee_id, t.full_name, d.name AS department_name,
              COALESCE(dvi.name, dvi.serial_no) AS check_in_device,
-             COALESCE(dvo.name, dvo.serial_no) AS check_out_device
+             COALESCE(dvo.name, dvo.serial_no) AS check_out_device,
+             tt.name AS training_type_name
       FROM staff_attendance a
       ${crossApply(`SELECT * FROM trainees WHERE user_id = a.user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY`, 't')}
       LEFT JOIN departments d ON d.id = t.department_id
+      LEFT JOIN courses c ON c.id = a.course_id
+      LEFT JOIN training_types tt ON tt.id = c.training_type_id
       LEFT JOIN attendance_devices dvi ON dvi.id = a.check_in_device_id
       LEFT JOIN attendance_devices dvo ON dvo.id = a.check_out_device_id
       WHERE a.work_date = @date AND a.course_id IS NOT NULL${dept !== undefined ? ' AND t.department_id = @dept' : ''}
@@ -323,6 +344,7 @@ const getByDate = async (dateArg, actor) => {
 				department_name: u.department_name,
 				course_id: course.course_id,
 				course_name: course.course_name,
+				training_type_name: course.training_type_name ?? null,
 				work_date: date,
 				shift_id: id,
 				shift_name: shift.name,

@@ -8,6 +8,7 @@ export const courseToForm = (course: Course): CourseFormData => ({
 	program_ids: course.program_ids,
 	training_form_id: course.training_form_id ?? '',
 	training_type_id: course.training_type_id ?? '',
+	attendance_mode: course.attendance_mode ?? '',
 	batch_no: course.batch_no != null ? String(course.batch_no) : '',
 	is_rolling: course.is_rolling,
 	start_date: day(course.start_date),

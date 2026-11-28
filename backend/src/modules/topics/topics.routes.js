@@ -229,7 +229,10 @@ router.get('/:id/approvals', authorizePermission(['topics', 'read']), ctrl.getAp
 router.post(
 	'/:id/approve',
 	authorizePermission(['topics', 'approve']),
-	[body('status').isIn(['approved', 'rejected', 'supplement'])],
+	[
+		body('status').isIn(['approved', 'rejected', 'supplement']),
+		body('sign').optional().isBoolean(),
+	],
 	validate,
 	ctrl.approve,
 );

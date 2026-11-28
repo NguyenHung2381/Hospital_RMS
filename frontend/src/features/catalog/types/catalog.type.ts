@@ -1,3 +1,6 @@
+import type { AttendanceMode } from '@/shared/utils/attendanceMode';
+import type { TrainingMethod } from '@/shared/utils/attendanceMethods';
+
 /** Nhóm trang danh mục: NCKH (/admin/categories…) và Đào tạo (/admin/trainee-types…). */
 export type CatalogGroup = 'research' | 'training';
 
@@ -24,6 +27,11 @@ export interface CatalogItem {
 	/** Tab "Loại giấy tờ": loại khóa (training_types.id) bắt buộc nộp, cách nhau dấu phẩy */
 	required_for_types?: string | null;
 	display_order?: number;
+	/** Tab "Loại hình đào tạo": kiểu chấm công + mẫu ca tuần mặc định của khóa thuộc loại hình */
+	attendance_mode?: AttendanceMode;
+	shift_pattern_id?: number | null;
+	/** Phương thức điểm danh được phép ('qr,device'); null = mọi phương thức đang bật trên hệ thống */
+	attendance_methods?: string | null;
 }
 
 export interface CatalogFormData {
@@ -35,6 +43,10 @@ export interface CatalogFormData {
 	id?: string;
 	required_for_types?: string | null;
 	display_order?: number;
+	/** Chỉ tab "Loại hình đào tạo". */
+	attendance_mode?: AttendanceMode;
+	shift_pattern_id?: number | null;
+	attendance_methods?: TrainingMethod[];
 }
 
 export interface LevelOption {

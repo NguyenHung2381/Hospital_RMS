@@ -17,6 +17,7 @@ const MATCH_LABEL = {
 	no_session: 'Không có buổi học',
 	kept_manual: 'Giữ điểm danh tay',
 	locked: 'Điểm đã khóa',
+	not_training: 'Máy dành cho hội nghị',
 };
 
 // Kiểu xác thực theo mã firmware ZKTeco

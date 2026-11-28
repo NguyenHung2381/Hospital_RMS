@@ -21,8 +21,14 @@ const log = install(async (text, inputs) => {
 	if (text.includes('SELECT enrollment_id, status FROM attendance')) return S.currentStatus;
 	if (text.includes('SELECT method, checked_in_at FROM attendance'))
 		return S.deviceRow ? [S.deviceRow] : [];
+	// Phương thức điểm danh của loại hình (utils/attendanceMethods.forSession)
+	if (text.includes('tt.attendance_methods FROM class_sessions'))
+		return S.typeMethods === undefined ? [] : [{ id: 'KH1', attendance_methods: S.typeMethods }];
+	if (text.includes('AS attendance_mode') && S.mode) return [{ attendance_mode: S.mode }];
 	return [];
 });
+// Cấu hình hệ thống (công tắc phương thức) — không qua bảng system_settings giả
+require('../../src/modules/settings/systemSettingService').getValue = async (k) => S.settings[k];
 
 const gradebook = require('../../src/modules/training/courses/gradebookService');
 gradebook.lockedEnrollmentIds = async (ids) => new Set(ids.filter((id) => S.locked.includes(id)));
@@ -45,6 +51,9 @@ const reset = (over = {}) => {
 		currentStatus: [],
 		locked: [],
 		deviceRow: null,
+		typeMethods: undefined, // undefined = không thấy buổi; null = loại hình theo hệ thống
+		mode: undefined,
+		settings: {},
 		...over,
 	});
 	log.length = 0;
@@ -52,6 +61,8 @@ const reset = (over = {}) => {
 };
 const writes = () => log.filter((l) => /^\s*(INSERT INTO|UPDATE) attendance/.test(l.text));
 const ME = { id: 'U1' };
+const qr = (sessionId) =>
+	signToken('attendance-qr', { session_id: sessionId, purpose: 'course_attendance_qr' }, '1m');
 
 test('checkInSelf: mã QR sai / ký cho mục đích khác / sai purpose ⇒ 401, không ghi', async () => {
 	reset();
@@ -66,7 +77,7 @@ test('checkInSelf: mã QR sai / ký cho mục đích khác / sai purpose ⇒ 401
 });
 
 test('checkInSelf: không thuộc lớp của buổi ⇒ 403; mọi lượt ghi danh đã khóa điểm ⇒ 409', async () => {
-	const token = svc.generateAttendanceQrToken('BH1');
+	const token = qr('BH1');
 	reset({ myEnrollments: [] });
 	await assert.rejects(svc.checkInSelf(token, 'dev1', ME), { statusCode: 403 });
 	reset({ locked: ['GD1'] });
@@ -76,7 +87,7 @@ test('checkInSelf: không thuộc lớp của buổi ⇒ 403; mọi lượt ghi 
 
 test('checkInSelf: thiết bị đã điểm danh cho học viên khác trong buổi ⇒ 403, không ghi', async () => {
 	reset({ deviceTaken: true });
-	await assert.rejects(svc.checkInSelf(svc.generateAttendanceQrToken('BH1'), 'dev1', ME), {
+	await assert.rejects(svc.checkInSelf(qr('BH1'), 'dev1', ME), {
 		statusCode: 403,
 		message: /Thiết bị này đã dùng/,
 	});
@@ -96,7 +107,7 @@ test('checkInSelf: nhiều lớp trong khóa ⇒ ghi mọi lượt chưa khóa (
 		existing: ['GD2'],
 		locked: ['GD3'],
 	});
-	const r = await svc.checkInSelf(svc.generateAttendanceQrToken('BH7'), 'dev9', ME);
+	const r = await svc.checkInSelf(qr('BH7'), 'dev9', ME);
 	assert.deepEqual(r, { session_id: 'BH7' });
 	const w = writes();
 	assert.deepEqual(
@@ -215,4 +226,39 @@ test('recordDeviceCheckIn: đã có lần chấm sớm hơn ⇒ giữ; lần ch�
 	const [upd] = writes();
 	assert.match(upd.text, /UPDATE attendance SET status = @status, method = 'device'/);
 	assert.equal(upd.inputs.checked_in_at.toISOString(), '2026-12-01T00:05:00.000Z');
+});
+
+test('generateAttendanceQrToken: chỉ phát mã khi khóa dùng được QR (hệ thống + loại hình + theo buổi)', async () => {
+	reset({ typeMethods: null, mode: 'both' });
+	assert.equal(typeof (await svc.generateAttendanceQrToken('BH1')), 'string');
+	reset({ typeMethods: 'device', mode: 'both' });
+	await assert.rejects(svc.generateAttendanceQrToken('BH1'), {
+		statusCode: 409,
+		message: /loại hình đào tạo/,
+	});
+	reset({ typeMethods: null, mode: 'both', settings: { ATTENDANCE_METHOD_QR: 'false' } });
+	await assert.rejects(svc.generateAttendanceQrToken('BH1'), {
+		statusCode: 409,
+		message: /toàn hệ thống/,
+	});
+	reset({ typeMethods: null, mode: 'shift' });
+	await assert.rejects(svc.generateAttendanceQrToken('BH1'), {
+		statusCode: 409,
+		message: /không điểm danh theo buổi học/,
+	});
+	reset();
+	await assert.rejects(svc.generateAttendanceQrToken('BH1'), { statusCode: 404 });
+});
+
+test('checkInSelf: loại hình / hệ thống tắt QR ⇒ 409, mã đã phát cũng không nhận, không ghi', async () => {
+	reset({ typeMethods: '' });
+	await assert.rejects(svc.checkInSelf(qr('BH1'), 'dev1', ME), { statusCode: 409 });
+	reset({ typeMethods: 'qr,device', settings: { ATTENDANCE_METHOD_QR: 'false' } });
+	await assert.rejects(svc.checkInSelf(qr('BH1'), 'dev1', ME), {
+		statusCode: 409,
+		message: /toàn hệ thống/,
+	});
+	assert.equal(writes().length, 0);
+	reset({ typeMethods: 'qr' });
+	assert.deepEqual(await svc.checkInSelf(qr('BH1'), 'dev1', ME), { session_id: 'BH1' });
 });

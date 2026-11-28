@@ -41,6 +41,7 @@ const ACTION_LABELS = {
 	manage: 'Quản lý',
 	roster: 'Phân ca',
 	unlock: 'Mở khóa',
+	sign: 'Ký số',
 };
 
 // Thứ tự module = thứ tự hiển thị (sortOrder bên dưới)

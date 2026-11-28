@@ -333,7 +333,7 @@ export default function CmeCompliance() {
 		<AdminLayout
 			pageTitle='Theo dõi ngưỡng tín chỉ'
 			pageSubtitle='Ngưỡng tín chỉ đào tạo y khoa liên tục theo năm và danh sách nhân sự chưa đạt'
-			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
+			breadcrumbs={[{ label: 'Hội nghị & tín chỉ CME' }]}
 			headerActions={
 				// Xuất Excel là báo cáo theo năm — không áp dụng cho chế độ chu kỳ
 				view === 'year' ? (
@@ -481,17 +481,16 @@ export default function CmeCompliance() {
 														</Badge>
 													</td>
 													<td className={styles.tdRight}>
-														<div className={styles.actionBtns}>
-															<button
-																className={styles.actionBtn}
-																title='Xuất phiếu CME cá nhân (Excel)'
+														<RowActions>
+															<RowAction
+																title='Xuất phiếu CME'
 																aria-label={`Xuất phiếu CME cá nhân của ${row.full_name}`}
 																disabled={exportingId !== null}
 																onClick={() => exportPerson(row.id, row.full_name, year)}
 															>
 																{exportingId === row.id ? <span className={styles.spinner} /> : <DownloadSvg />}
-															</button>
-														</div>
+															</RowAction>
+														</RowActions>
 													</td>
 												</tr>
 											))

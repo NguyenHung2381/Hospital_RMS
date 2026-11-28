@@ -25,6 +25,8 @@ import {
 import styles from '../pages/SelfService.module.css';
 import own from './MyCourseRegistrations.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 type Viewer = { url: string; name: string; isWord: boolean };
 
@@ -39,6 +41,7 @@ const classTitle = (course: string | null, program: string | null) =>
 export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegistration[]; onChanged: () => void }) {
 	const [viewer, setViewer] = useState<Viewer | null>(null);
 	const [busy, setBusy] = useState<string | null>(null);
+	const [sign, setSign] = useSignPreference('my-application');
 	const fileRef = useRef<HTMLInputElement>(null);
 	const target = useRef<{ reg: MyCourseRegistration; item: RegistrationFileItem } | null>(null);
 	const policy = useUploadPolicy();
@@ -47,7 +50,10 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 	const download = async (r: MyCourseRegistration) => {
 		setBusy(`dl-${r.enrollment_id}`);
 		try {
-			saveBlob(await downloadMyApplication(r.enrollment_id), `don-dang-ky_${fileSlug(r.course_name ?? 'khoa-hoc')}_${r.registration_code}.docx`);
+			saveBlob(
+				await downloadMyApplication(r.enrollment_id, sign),
+				`don-dang-ky_${fileSlug(r.course_name ?? 'khoa-hoc')}_${r.registration_code}${sign ? '_ky-so' : ''}.docx`,
+			);
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Không tải được đơn đăng ký');
 		} finally {
@@ -98,6 +104,14 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
 				}
 			/>
 			<Card.Body>
+				<SignToggle
+					feature='training_documents'
+					source='personal'
+					checked={sign}
+					onChange={setSign}
+					hideWhenUnavailable
+					style={{ marginBottom: 'var(--space-3)', maxWidth: 520 }}
+				/>
 				<div className={styles.list}>
 					{items.map((r) => {
 						return (
@@ -236,14 +250,15 @@ export function MyRegistrationsCard({ items, onChanged }: { items: MyCourseRegis
  *  nhóm của mình; tài khoản khoa / trưởng khoa thấy mọi nhóm của khoa. */
 export function DepartmentProposalsCard({ groups }: { groups: MyDepartmentProposal[] }) {
 	const [busy, setBusy] = useState<string | null>(null);
+	const [sign, setSign] = useSignPreference('department-proposal');
 	const keyOf = (g: MyDepartmentProposal) => `${g.course_id}|${g.program_id ?? ''}|${g.department_id}`;
 
 	const download = async (g: MyDepartmentProposal) => {
 		setBusy(keyOf(g));
 		try {
 			saveBlob(
-				await downloadDepartmentProposal(g),
-				`to-trinh_${fileSlug(g.department_name)}_${fileSlug(g.program_name ?? g.course_name)}.docx`,
+				await downloadDepartmentProposal(g, sign),
+				`to-trinh_${fileSlug(g.department_name)}_${fileSlug(g.program_name ?? g.course_name)}${sign ? '_ky-so' : ''}.docx`,
 			);
 		} catch (err) {
 			showToast('error', err instanceof Error ? err.message : 'Không tạo được tờ trình');
@@ -260,6 +275,15 @@ export function DepartmentProposalsCard({ groups }: { groups: MyDepartmentPropos
 				sub='Danh sách để khoa lập tờ trình cử cán bộ đi học'
 			/>
 			<Card.Body>
+				<div style={{ marginBottom: 'var(--space-3)', maxWidth: 520 }}>
+					<SignToggle
+						feature='training_documents'
+						source='personal'
+						checked={sign}
+						onChange={setSign}
+						disabled={!!busy}
+					/>
+				</div>
 				<div className={styles.list}>
 					{groups.map((g) => (
 						<div

@@ -12,6 +12,8 @@ const PERMS = [
 	{ resource: 'rounds', action: 'read', scope: 'all' },
 	{ resource: 'rounds', action: 'create', scope: 'all' },
 	{ resource: 'reports', action: 'read', scope: 'all' },
+	{ resource: 'courses', action: 'read', scope: 'all' },
+	{ resource: 'courses', action: 'approve', scope: 'all' },
 ];
 
 install(async (text, inputs) => {
@@ -81,6 +83,12 @@ const RESEARCH = [
 ];
 const TRAINING = [['GET', '/dashboard/training-stats']];
 const SEMINAR = [['GET', '/dashboard/seminar-stats']];
+// Thu học phí (MODULE_TUITION) — phân hệ con của Đào tạo
+const TUITION = [
+	['GET', '/courses/tuition-pending'],
+	['GET', '/courses/C1/tuition'],
+	['GET', '/me/tuition'],
+];
 
 const expectDisabled = async (routes) => {
 	for (const [m, p, b] of routes) {
@@ -105,9 +113,23 @@ test('tắt SEMINAR: /dashboard/seminar-stats bị chặn', async () => {
 	await expectDisabled(SEMINAR);
 });
 
+test('tắt TUITION: route học phí bị chặn, route khác của Đào tạo vẫn qua', async () => {
+	setModules(['TUITION']);
+	await expectDisabled(TUITION);
+	for (const [m, p, b] of [...TRAINING, ['GET', '/courses']]) {
+		const r = await send(m, p, b);
+		assert.notEqual(r.code, 'MODULE_DISABLED', `${m} ${p}`);
+	}
+});
+
+test('tắt TRAINING: route học phí cũng bị chặn', async () => {
+	setModules(['TRAINING']);
+	await expectDisabled(TUITION);
+});
+
 test('bật hết: các route đi qua công tắc (không còn MODULE_DISABLED)', async () => {
 	setModules([]);
-	for (const [m, p, b] of [...RESEARCH, ...TRAINING, ...SEMINAR]) {
+	for (const [m, p, b] of [...RESEARCH, ...TRAINING, ...SEMINAR, ...TUITION]) {
 		const r = await send(m, p, b);
 		assert.notEqual(r.code, 'MODULE_DISABLED', `${m} ${p}`);
 	}

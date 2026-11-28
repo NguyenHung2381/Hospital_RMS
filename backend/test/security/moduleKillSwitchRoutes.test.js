@@ -173,3 +173,27 @@ test('tắt TRAINING: không còn ghi hồ sơ đính kèm / đăng ký ẩn dan
 		assert.equal(r.code, 'MODULE_DISABLED');
 	});
 });
+
+test('tắt TUITION: cổng công khai vẫn liệt kê khóa nhưng không lộ học phí của chương trình', async () => {
+	const portal = require('../../src/modules/public/publicPortalService');
+	const original = portal.getOpenCourses;
+	portal.getOpenCourses = async () => [
+		{ id: 'KH1', programs: [{ id: 'CT1', tuition_fee: 5000000 }] },
+		{ id: 'KH2', programs: [] },
+	];
+	const fees = async (base) => {
+		const res = await fetch(`${base}/api/v1/public/courses`);
+		assert.equal(res.status, 200);
+		const { data } = await res.json();
+		return data.map((c) => c.programs.map((p) => p.tuition_fee));
+	};
+	try {
+		setModules([]);
+		assert.deepEqual(await withServer(fees), [[5000000], []]);
+		setModules(['TUITION']);
+		assert.deepEqual(await withServer(fees), [[null], []]);
+	} finally {
+		portal.getOpenCourses = original;
+		setModules([]);
+	}
+});

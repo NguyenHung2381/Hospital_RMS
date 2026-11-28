@@ -1,6 +1,8 @@
 import type { CustomValues } from '@/shared/formConfig';
 import { apiClient } from '../../../shared/api/axios';
 import { getCheckInDeviceId } from '../../../shared/utils/storage';
+import type { TrainingMethods } from '../../../shared/utils/attendanceMethods';
+import type { AttendanceMode } from '../../../shared/utils/attendanceMode';
 import type {
 	AttendanceRow,
 	Certificate,
@@ -41,6 +43,8 @@ const toPayload = (form: CourseFormData) => ({
 	program_ids: form.program_ids,
 	training_form_id: form.training_form_id || null,
 	training_type_id: form.training_type_id || null,
+	// null = theo kiểu chấm công của loại hình đào tạo
+	attendance_mode: form.attendance_mode || null,
 	batch_no: form.batch_no ? Number(form.batch_no) : null,
 	is_rolling: form.is_rolling,
 	// Khóa ĐTLT / CTCV: ngày khóa tự tính từ ngày các lớp — không gửi để khỏi ghi đè.
@@ -266,8 +270,18 @@ export interface PracticeDocumentInfo {
 export const getPracticeDocuments = (enrollmentId: string) =>
 	apiClient.get<PracticeDocumentInfo>(`/courses/enrollments/${seg(enrollmentId)}/documents`);
 /** .docx; phiếu nhận xét không chọn vòng ⇒ .zip gồm phiếu mọi vòng. */
-export const downloadPracticeDocument = (enrollmentId: string, type: PracticeDocumentType, rotationId?: string) =>
-	apiClient.postBlob(`/courses/enrollments/${seg(enrollmentId)}/documents`, { type, rotation_id: rotationId ?? null });
+/** sign: ký file Word bằng chứng thư cá nhân của người tải (không áp dụng gói .zip nhiều phiếu) */
+export const downloadPracticeDocument = (
+	enrollmentId: string,
+	type: PracticeDocumentType,
+	rotationId?: string,
+	sign = false,
+) =>
+	apiClient.postBlob(`/courses/enrollments/${seg(enrollmentId)}/documents`, {
+		type,
+		rotation_id: rotationId ?? null,
+		...(sign ? { sign: true } : {}),
+	});
 
 export const searchMentors = (search: string, departmentId?: string) => {
 	const qs = new URLSearchParams({ search, limit: '15' });
@@ -396,6 +410,12 @@ export const saveAttendance = (
 
 export const getAttendanceQrToken = (sessionId: string) =>
 	apiClient.get<{ token: string }>(`/courses/sessions/${seg(sessionId)}/attendance-qr`);
+
+/** Phương thức điểm danh khóa của buổi đang dùng được (hệ thống × loại hình × kiểu chấm công) */
+export const getAttendanceMethods = (sessionId: string) =>
+	apiClient.get<TrainingMethods & { attendance_mode: AttendanceMode | null }>(
+		`/courses/sessions/${seg(sessionId)}/attendance-methods`,
+	);
 
 export const checkInAttendance = (token: string) =>
 	apiClient.post<{ session_id: string }>('/courses/attendance/check-in', {

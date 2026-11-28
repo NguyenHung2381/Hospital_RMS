@@ -303,4 +303,17 @@
 	--shadow-xs: 0 1px 2px rgba(13, 24, 32, 0.04);
 	--touch-target-min: 48px; /* vùng chạm tối thiểu trên màn cảm ứng */
 	--state-disabled-opacity: 0.5; /* phần tử bị vô hiệu hóa khi không dùng màu riêng */
+
+	/* === BẢNG === đệm ô dùng chung (Table.module.css); gọn lại ở màn vừa, xem @media bên dưới */
+	--table-cell-py: 13px;
+	--table-cell-px: 18px;
+}
+
+/* Laptop / máy tính bảng ngang (còn sidebar): ô gọn hơn để bảng 7–9 cột vừa khung
+   thay vì cuộn ngang và đẩy cột Thao tác ra khỏi màn hình. */
+@media (max-width: 1439px) {
+	:root {
+		--table-cell-py: 10px;
+		--table-cell-px: 12px;
+	}
 }

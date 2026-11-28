@@ -1,7 +1,7 @@
 import { beginUpload, trackRequest } from '../utils/feedback';
 import { clearAuth, getToken, updateStoredUser } from '../utils/storage';
 import { BASE_URL } from './endpoints';
-import { postFormWithProgress, readJson, safeFetch } from './http';
+import { apiErrorFrom, postFormWithProgress, readJson, safeFetch } from './http';
 import { handle401, refreshQueued } from './interceptors';
 
 // Khớp FORCE_PASSWORD_PATH (app/router/authHelpers.ts) — không import từ router
@@ -42,7 +42,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	checkPasswordChangeRequired(res.status, json);
 
 	if (!res.ok || !json?.success) {
-		throw new Error(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+		throw apiErrorFrom(json);
 	}
 
 	return json.data as T;

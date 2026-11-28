@@ -1,7 +1,8 @@
 # Triển khai 1 image ĐÃ BUILD SẴN (tag = commit SHA) lên 1 môi trường.
 #  - ci.yml gọi tự động sau khi build image trên main (staging → production).
 #  - Chạy tay (Actions → Deploy → Run workflow) để ROLLBACK: chọn môi trường,
-#    nhập SHA của bản cũ (xem tab Environments hoặc logs/deploy-history.log).
+#    nhập SHA của bản cũ (xem tab Releases — tag prod-* — hoặc logs/deploy-history.log)
+#    và lý do.
 # Production cần người duyệt (Environment protection rules, xem .github/CICD.md).
 #
 # Các lớp kiểm soát trước khi đụng vào server:
@@ -10,10 +11,23 @@
 #           kể cả khi chạy tay.
 #   deploy  xác minh chữ ký cosign của cả 2 image (khi đã đặt COSIGN_PUBLIC_KEY)
 #           → image không do pipeline ký thì không chạy.
-# Mỗi lần deploy (đạt hay hỏng) ghi 1 bản ghi kiểm toán JSON (ai, khi nào, SHA,
-# digest image, lần chạy CI, kết quả) → artifact 365 ngày, cùng với
+#   promote (production, khi bật staging) bản này phải đã deploy xanh ở staging,
+#           hoặc đã từng chạy production (rollback) — build 1 lần rồi thăng cấp
+#           qua từng môi trường, không đưa thẳng bản chưa thử lên production.
+#   reason  chạy tay phải ghi lý do (số phiếu / sự cố / nội dung) — vào bản ghi
+#           kiểm toán và bản phát hành.
+# Mỗi lần deploy (đạt hay hỏng) ghi 1 bản ghi kiểm toán JSON (ai, khi nào, vì sao,
+# SHA, digest image, lần chạy CI, kết quả) → artifact 365 ngày, cùng với
 # logs/deploy-history.log trên server và tab Environments.
+# Deploy production thành công → 1 bản phát hành (GitHub Release, tag
+# prod-YYYY.MM.DD.N) liệt kê commit + migration mới so với bản production trước;
+# rollback cũng có bản phát hành, ghi rõ commit bị gỡ.
+#
+# Tab Environments ghi SHA của nhánh lúc chạy (main), KHÔNG phải SHA được deploy khi
+# chạy tay một bản cũ → SHA thật ở tên lần chạy ("Deploy <môi trường> · <sha>"),
+# bản phát hành hoặc bản ghi kiểm toán.
 name: Deploy
+run-name: Deploy ${{ inputs.environment }} · ${{ inputs.tag }}
 
 on:
   workflow_call:
@@ -24,6 +38,10 @@ on:
       tag:
         type: string
         required: true
+      reason:
+        type: string
+        required: false
+        default: ''
   workflow_dispatch:
     inputs:
       environment:
@@ -32,6 +50,10 @@ on:
         required: true
       tag:
         description: Commit SHA đầy đủ (40 ký tự) của bản cần triển khai
+        type: string
+        required: true
+      reason:
+        description: Lý do (số phiếu thay đổi / sự cố, hoặc nội dung — vd "Rollback do lỗi xuất Excel bảng công")
         type: string
         required: true
 
@@ -49,12 +71,16 @@ jobs:
       contents: read
     outputs:
       ci_run: ${{ steps.check.outputs.ci_run }}
+      reason: ${{ steps.check.outputs.reason }}
     steps:
       - id: check
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
           ENVIRONMENT: ${{ inputs.environment }}
+          REASON: ${{ inputs.reason }}
+          EVENT: ${{ github.event_name }}
+          ENABLE_STAGING: ${{ vars.ENABLE_STAGING }}
         run: |
           repo="$GITHUB_REPOSITORY"
           fail() { echo "::error::$1"; echo "- ❌ $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
@@ -85,6 +111,44 @@ jobs:
           [ -n "$ci_run" ] || fail "commit ${TAG::7} chưa có lần chạy CI (push vào main) với \"CI · kết quả\" xanh"
           pass "CI xanh: $GITHUB_SERVER_URL/$repo/actions/runs/$ci_run"
           echo "ci_run=$ci_run" >> "$GITHUB_OUTPUT"
+
+          # Lý do: chạy tay bắt buộc (quản lý thay đổi); CI tự deploy thì ghi nguồn.
+          # Gộp khoảng trắng / xuống dòng thành 1 dòng; mã hoá JSON bằng jq cho bản ghi kiểm toán.
+          REASON=$(printf '%s' "$REASON" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+          if [ "$EVENT" = workflow_dispatch ]; then
+            [ "${#REASON}" -ge 10 ] || fail "chạy tay phải ghi lý do ≥ 10 ký tự (số phiếu / sự cố / nội dung)"
+          else
+            REASON="${REASON:-Tự động sau CI ($EVENT vào main)}"
+          fi
+          pass "lý do: $REASON"
+          echo "reason=$(jq -cn --arg r "$REASON" '$r')" >> "$GITHUB_OUTPUT"
+
+          # Thăng cấp qua môi trường: có staging thì production chỉ nhận bản đã deploy
+          # xanh ở staging, hoặc bản đã từng chạy production (rollback). Bằng chứng là
+          # lần chạy, không dùng tab Environments (ghi sai SHA khi chạy tay bản cũ):
+          #   - lần CI push main của SHA này có job "Deploy <env> / Deploy <env>" xanh;
+          #   - lần chạy tay Deploy xanh tên "Deploy <env> · <SHA>" (run-name ở đầu file).
+          deployed_ok() {
+            local env="$1" id ok
+            for id in $(gh api "repos/$repo/actions/workflows/ci.yml/runs?head_sha=$TAG&event=push&branch=main&per_page=20" --jq '.workflow_runs[].id'); do
+              ok=$(gh api --paginate "repos/$repo/actions/runs/$id/jobs?filter=all" \
+                --jq ".jobs[] | select(.name == \"Deploy $env / Deploy $env\" and .conclusion == \"success\") | .id")
+              if [ -n "$ok" ]; then echo "$GITHUB_SERVER_URL/$repo/actions/runs/$id"; return 0; fi
+            done
+            id=$(gh api "repos/$repo/actions/workflows/deploy.yml/runs?event=workflow_dispatch&status=success&per_page=100" \
+              --jq "[.workflow_runs[] | select(.display_title == \"Deploy $env · $TAG\")][0].id // empty")
+            if [ -n "$id" ]; then echo "$GITHUB_SERVER_URL/$repo/actions/runs/$id"; return 0; fi
+            return 1
+          }
+          if [ "$ENVIRONMENT" = production ] && [ "$ENABLE_STAGING" = true ]; then
+            if run=$(deployed_ok staging); then
+              pass "đã chạy xanh ở staging: $run"
+            elif run=$(deployed_ok production); then
+              pass "đã từng chạy production (rollback): $run"
+            else
+              fail "commit ${TAG::7} chưa deploy xanh ở staging — deploy staging trước rồi mới production"
+            fi
+          fi
 
   deploy:
     name: Deploy ${{ inputs.environment }}
@@ -189,6 +253,9 @@ jobs:
           MIGRATION_BACKUP_DIR: ${{ vars.MIGRATION_BACKUP_DIR }}
           MIGRATION_DB_USER: ${{ secrets.MIGRATION_DB_USER }}
           MIGRATION_DB_PASSWORD: ${{ secrets.MIGRATION_DB_PASSWORD }}
+          # Bước trên đã kéo đúng digest đã xác minh và gắn tag SHA trên máy → deploy.sh
+          # không kéo lại theo tag (tag trên registry có thể đã trỏ sang image khác)
+          SKIP_PULL: 'true'
         run: scripts/deploy.sh "$TAG" "$REGISTRY"
       - name: Đăng xuất registry
         if: always()
@@ -196,7 +263,8 @@ jobs:
       - name: Bản ghi kiểm toán
         id: audit
         if: always()
-        # Giá trị đều do GitHub sinh (SHA, login, digest, số) → không cần escape JSON
+        # Giá trị đều do GitHub sinh (SHA, login, digest, số) → không cần escape JSON;
+        # riêng lý do (người nhập) đã được job gate mã hoá thành chuỗi JSON bằng jq
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           TAG: ${{ inputs.tag }}
@@ -208,14 +276,15 @@ jobs:
           DEPLOY: ${{ steps.deploy.outcome }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           DEPLOY_DIR: ${{ vars.DEPLOY_DIR || github.workspace }}
+          REASON_JSON: ${{ needs.gate.outputs.reason || '""' }}
         run: |
           mkdir -p "$RUNNER_TEMP/audit"
           file="$RUNNER_TEMP/audit/deploy-$ENVIRONMENT-${TAG:0:12}-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.json"
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs"
           printf '{"time":"%s","environment":"%s","commit":"%s","result":"%s","verify":"%s","signatureVerified":%s,' \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ENVIRONMENT" "$TAG" "${DEPLOY:-skipped}" "${VERIFY:-skipped}" "$SIGNED" > "$file"
-          printf '"images":{"backend":"%s","frontend":"%s"},"actor":"%s","triggeringActor":"%s","event":"%s",' \
-            "$BACKEND_DIGEST" "$FRONTEND_DIGEST" "$GITHUB_ACTOR" "$TRIGGERING_ACTOR" "$GITHUB_EVENT_NAME" >> "$file"
+          printf '"images":{"backend":"%s","frontend":"%s"},"actor":"%s","triggeringActor":"%s","event":"%s","reason":%s,' \
+            "$BACKEND_DIGEST" "$FRONTEND_DIGEST" "$GITHUB_ACTOR" "$TRIGGERING_ACTOR" "$GITHUB_EVENT_NAME" "$REASON_JSON" >> "$file"
           printf '"workflowRef":"%s","run":"%s/%s/attempts/%s","ciRun":"%s/%s","runner":"%s"}\n' \
             "$GITHUB_WORKFLOW_REF" "$url" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$url" "$CI_RUN" "$RUNNER_NAME" >> "$file"
           cat "$file"
@@ -262,3 +331,92 @@ jobs:
           msg+=" Bản ghi vẫn có ở Summary của lần chạy này và $DEPLOY_DIR/logs/deploy-audit.jsonl trên máy chủ."
           msg+=" Kiểm tra máy chủ ra được *.actions.githubusercontent.com và *.blob.core.windows.net."
           echo "::warning::$msg"
+
+  # Bản phát hành cho mỗi lần production đổi bản (GitHub Release + tag prod-YYYY.MM.DD.N,
+  # theo giờ Việt Nam): commit theo loại (feat/fix/...), migration mới, lý do, người
+  # deploy, link lần deploy + CI. Rollback (bản cũ hơn bản đang chạy) cũng có bản phát
+  # hành, liệt kê commit bị gỡ. Deploy lại đúng bản đang chạy thì không tạo.
+  # Chạy trên runner GitHub (không phải máy chủ), chỉ gọi API, không checkout.
+  # Lỗi ở đây không làm đỏ lần deploy đã xong (production đã chạy bản mới).
+  release:
+    name: Bản phát hành production
+    needs: [gate, deploy]
+    if: inputs.environment == 'production' && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: write
+    steps:
+      - name: Tạo bản phát hành
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          REASON_JSON: ${{ needs.gate.outputs.reason || '""' }}
+          CI_RUN: ${{ needs.gate.outputs.ci_run }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          url="$GITHUB_SERVER_URL/$repo"
+          reason=$(jq -r . <<<"$REASON_JSON")
+
+          prev_tag=$(gh api "repos/$repo/releases?per_page=50" \
+            --jq '[.[] | select((.draft | not) and (.tag_name | startswith("prod-")))][0].tag_name // empty')
+          prev_sha=""
+          if [ -n "$prev_tag" ]; then prev_sha=$(gh api "repos/$repo/commits/$prev_tag" --jq .sha); fi
+          if [ "$prev_sha" = "$TAG" ]; then
+            echo "- Bản phát hành: không tạo mới — production vẫn là $prev_tag (\`${TAG::7}\`)" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          day=$(TZ=Asia/Ho_Chi_Minh date +%Y.%m.%d)
+          n=$(gh api "repos/$repo/git/matching-refs/tags/prod-$day." --jq length)
+          new="prod-$day.$((n + 1))"
+
+          # Danh sách commit (mới nhất trước) nhóm theo loại Conventional Commits.
+          # API compare trả tối đa 250 commit / 300 file — vượt thì xem link so sánh.
+          # $url, $c… là biến của jq, không phải của shell
+          # shellcheck disable=SC2016
+          notes='
+            def subj: .commit.message | split("\n")[0];
+            def kind: ((subj | capture("^(?<t>[a-z]+)(\\([^)]*\\))?!?: ")) // {t: ""}).t;
+            def group: kind as $k
+              | if $k == "feat" then "1 Tính năng" elif $k == "fix" then "2 Sửa lỗi"
+                elif $k == "perf" then "3 Hiệu năng" elif $k == "revert" then "4 Hoàn tác"
+                else "5 Khác" end;
+            ([.commits[] | {g: group, l: "- \(subj) ([`\(.sha[0:7])`](\($url)/commit/\(.sha)))"}]
+              | reverse | group_by(.g)
+              | map("#### \(.[0].g[2:])\n" + (map(.l) | join("\n"))) | join("\n\n")),
+            ([.files[]? | select(.status == "added" and (.filename | test("^backend/database/migrations/.+\\.sql$")))
+              | "- `\(.filename | split("/") | last)`"] as $m
+              | if ($m | length) > 0 then "\n#### Migration mới (chạy khi deploy, rollback ứng dụng KHÔNG hoàn tác)\n" + ($m | join("\n")) else empty end)'
+
+          title="Production ${new#prod-}"
+          if [ -z "$prev_sha" ]; then
+            changes="Bản phát hành production đầu tiên được ghi nhận."
+          else
+            status=$(gh api "repos/$repo/compare/$prev_sha...$TAG" --jq .status)
+            if [ "$status" = behind ]; then
+              title="$title — rollback về ${TAG::7}"
+              changes="### ⚠️ Rollback: gỡ khỏi production các commit sau ($prev_tag → \`${TAG::7}\`)"$'\n\n'
+              changes+=$(gh api "repos/$repo/compare/$TAG...$prev_sha" | jq -r --arg url "$url" "$notes")
+            else
+              changes="### Thay đổi so với $prev_tag"$'\n\n'
+              changes+=$(gh api "repos/$repo/compare/$prev_sha...$TAG" | jq -r --arg url "$url" "$notes")
+              [ "$status" = ahead ] || changes+=$'\n\n'"_(Lịch sử rẽ nhánh so với bản trước: $status.)_"
+            fi
+            changes+=$'\n\n'"[So sánh đầy đủ]($url/compare/$prev_sha...$TAG)"
+          fi
+
+          f="$RUNNER_TEMP/release.md"
+          {
+            echo "**Commit:** [\`${TAG::7}\`]($url/commit/$TAG) · **Người deploy:** $TRIGGERING_ACTOR · **Sự kiện:** $GITHUB_EVENT_NAME"
+            echo ""
+            echo "**Lý do:** $reason"
+            echo ""
+            echo "**Lần deploy:** $url/actions/runs/$GITHUB_RUN_ID · **CI:** $url/actions/runs/$CI_RUN"
+            echo ""
+            echo "$changes"
+          } > "$f"
+          gh release create "$new" --repo "$repo" --target "$TAG" --title "$title" --notes-file "$f" --latest
+          echo "- Bản phát hành: [$new]($url/releases/tag/$new)" >> "$GITHUB_STEP_SUMMARY"

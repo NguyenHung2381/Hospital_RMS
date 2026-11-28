@@ -1,3 +1,4 @@
+import type { AttendanceMode } from '@/shared/utils/attendanceMode';
 import type { CustomValues } from '../../../shared/formConfig/types';
 import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import type { EnrollmentRegistrationFlag } from '../api/registrationApi';
@@ -25,6 +26,9 @@ export interface Course {
 	training_form_name: string | null;
 	training_type_id: string | null;
 	training_type_name: string | null;
+	/** Kiểu chấm công riêng của khóa; null = theo loại hình (type_attendance_mode) */
+	attendance_mode: AttendanceMode | null;
+	type_attendance_mode: AttendanceMode | null;
 	batch_no: number | null;
 	/** Khóa mở liên tục (GPHN): không có ngày khóa/cửa sổ đăng ký, học viên có lịch riêng. */
 	is_rolling: boolean;
@@ -53,6 +57,8 @@ export interface CourseFormData {
 	program_ids: string[];
 	training_form_id: string;
 	training_type_id: string;
+	/** '' = theo loại hình đào tạo */
+	attendance_mode: AttendanceMode | '';
 	batch_no: string;
 	is_rolling: boolean;
 	start_date: string;
@@ -80,6 +86,7 @@ export const EMPTY_FORM: CourseFormData = {
 	program_ids: [],
 	training_form_id: '',
 	training_type_id: '',
+	attendance_mode: '',
 	batch_no: '',
 	is_rolling: false,
 	start_date: '',

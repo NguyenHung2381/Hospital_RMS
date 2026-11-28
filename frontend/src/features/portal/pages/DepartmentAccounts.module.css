@@ -335,17 +335,6 @@
 	height: 14px;
 }
 
-.actionEdit:hover {
-	border-color: var(--tone-blue-solid);
-	color: var(--tone-blue-fg);
-	background: var(--tone-blue-bg);
-}
-.actionDelete:hover {
-	border-color: var(--color-error);
-	color: var(--tone-red-fg);
-	background: var(--tone-red-bg);
-}
-
 /* ── EMPTY STATE ────────────────────────── */
 .emptyState {
 	composes: emptyState from '../../../shared/components/Table/Table.module.css';

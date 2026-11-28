@@ -51,7 +51,7 @@ const findLecturerClashes = async (sessionIds) => {
 };
 
 // ─── Buổi học ────────────────────────────────────────────────────────────
-// Lịch học toàn hệ thống (trang /admin/class-schedule): mọi buổi học trong
+// Lịch học toàn hệ thống (trang /admin/dtlt/lich-hoc, /admin/ctcv/lich-hoc): mọi buổi học trong
 // khoảng [from, to] kèm tên khóa, cùng các khóa có thời gian học giao khoảng
 // đó (để vẽ thanh thời gian khóa học). training_type_id: chỉ khóa của 1 loại
 // (lịch học riêng ĐTLT / CTCV). Giảng viên phạm vi 'assigned' chỉ thấy khóa

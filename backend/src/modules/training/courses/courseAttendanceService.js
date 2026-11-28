@@ -4,6 +4,8 @@ const { genAttendanceId } = require('../../../utils/idGenerator');
 const { broadcast } = require('../../events/eventService');
 const { httpError } = require('../../../utils/httpError');
 const { SESSION_IN_PROGRAM_SQL } = require('./sessionScope');
+const { courseModeSql, usesSessions } = require('../../../utils/attendanceMode');
+const attendanceMethods = require('../../../utils/attendanceMethods');
 const lessonProgressService = require('./lessonProgressService');
 const { TRAINEE_OF_USER_SQL } = require('../trainees/traineeOfUser');
 
@@ -138,15 +140,41 @@ const bulkSetAttendance = async (sessionId, records, actorId) => {
 	await lessonProgressService.recompute({ sessionId });
 };
 
+// Phương thức điểm danh dùng được ở buổi học (utils/attendanceMethods) + kiểu chấm công của khóa
+// — modal điểm danh dùng để ẩn nút "Hiện mã QR" khi khóa không nhận QR.
+const sessionMethods = async (sessionId) => {
+	const [methods, course] = await Promise.all([
+		attendanceMethods.forSession(sessionId),
+		getPool().then((pool) =>
+			pool.request().input('session_id', sql.VarChar(20), sessionId).query(`
+        SELECT ${courseModeSql('c')} AS attendance_mode
+        FROM class_sessions sess JOIN courses c ON c.id = sess.course_id
+        WHERE sess.id = @session_id`),
+		),
+	]);
+	if (!methods) throw httpError(404, 'Không tìm thấy buổi học.');
+	const mode = course.recordset[0]?.attendance_mode ?? null;
+	// QR chỉ có nghĩa với khóa chấm theo buổi học
+	return { ...methods, qr: methods.qr && usesSessions(mode), attendance_mode: mode };
+};
+
 // Sinh mã QR điểm danh cho 1 buổi học — giảng viên/quản lý (đã qua
 // authorizePermission courses:update ở route) hiển thị lên màn hình lớp,
 // học viên tự quét bằng tài khoản đã đăng nhập (checkInSelf).
-const generateAttendanceQrToken = (sessionId) =>
-	signToken(
+// Khóa không nhận QR (phương thức bị tắt / chấm theo ca) ⇒ không phát mã.
+const generateAttendanceQrToken = async (sessionId) => {
+	const methods = await sessionMethods(sessionId);
+	if (!methods.qr) {
+		if (!usesSessions(methods.attendance_mode))
+			throw httpError(409, 'Khóa học này không điểm danh theo buổi học nên không dùng mã QR.');
+		attendanceMethods.assertTraining(methods, 'qr', await attendanceMethods.systemTraining());
+	}
+	return signToken(
 		'attendance-qr',
 		{ session_id: sessionId, purpose: ATTENDANCE_QR_PURPOSE },
 		ATTENDANCE_QR_TTL,
 	);
+};
 
 // Học viên tự điểm danh bằng mã QR vừa quét — actor phải là tài khoản đã được
 // gắn với 1 trainee (tài khoản học viên hoặc nhân viên nội viện — traineeOfUser) có ghi danh 'approved' vào
@@ -163,6 +191,24 @@ const checkInSelf = async (token, deviceId, actor) => {
 	}
 
 	const pool = await getPool();
+	// Khóa chấm công theo ca / không chấm công: buổi học không nhận QR (giảng viên vẫn điểm danh tay)
+	const course = (
+		await pool.request().input('session_id', sql.VarChar(20), decoded.session_id).query(`
+      SELECT ${courseModeSql('c')} AS attendance_mode
+      FROM class_sessions sess JOIN courses c ON c.id = sess.course_id
+      WHERE sess.id = @session_id`)
+	).recordset[0];
+	if (course && !usesSessions(course.attendance_mode)) {
+		throw httpError(
+			409,
+			course.attendance_mode === 'shift'
+				? 'Khóa học này chấm công theo ca — vui lòng điểm danh vào/ra ở mục Điểm danh, không quét QR buổi học.'
+				: 'Khóa học này không điểm danh bằng mã QR.',
+		);
+	}
+	// Phương thức QR bị tắt (toàn hệ thống / loại hình) — mã đã phát trước khi tắt cũng không nhận
+	const methods = await attendanceMethods.forSession(decoded.session_id);
+	if (methods) attendanceMethods.assertTraining(methods, 'qr', await attendanceMethods.systemTraining());
 	// Học viên học nhiều lớp trong khóa: buổi chung (không gắn bài) khớp nhiều lượt
 	// ghi danh ⇒ quét 1 lần ghi đủ các lượt đó.
 	const enrollRes = await pool
@@ -266,5 +312,6 @@ module.exports = {
 	setAttendance,
 	bulkSetAttendance,
 	generateAttendanceQrToken,
+	sessionMethods,
 	checkInSelf,
 };

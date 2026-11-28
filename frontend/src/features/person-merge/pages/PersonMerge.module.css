@@ -82,10 +82,6 @@
 	margin-top: 2px;
 }
 
-.reviewBtn {
-	composes: btn secondary from '@/shared/components/Button/Button.module.css';
-}
-
 .emptyBlock {
 	padding: var(--space-12) var(--space-6);
 	text-align: center;

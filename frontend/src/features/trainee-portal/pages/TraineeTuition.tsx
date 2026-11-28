@@ -3,6 +3,7 @@ import { DownloadSvg, WalletSvg } from '@/assets/icons';
 import { Badge, Button, EmptyState, InlineLoading, confirmDialog } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import { notify } from '@/shared/utils/feedback';
+import { useModules } from '@/shared/hooks/useModules';
 import TraineeLayout from '../../../layouts/TraineeLayout';
 import { useRealtimeUpdate } from '../../../layouts/hooks/useRealtime';
 import { myTuitionApi } from '../../tuition/api/tuitionApi';
@@ -19,6 +20,7 @@ export default function TraineeTuition() {
 	const [data, setData] = useState<MyTuition | null>(null);
 	const [error, setError] = useState('');
 	const [paying, setPaying] = useState<{ item: TuitionItem; max: number } | null>(null);
+	const tuitionOn = useModules().tuition;
 
 	const load = useCallback(() => {
 		myTuitionApi
@@ -53,8 +55,15 @@ export default function TraineeTuition() {
 			pageTitle='Học phí'
 			pageSubtitle='Số tiền phải nộp, chuyển khoản bằng mã QR và biên lai các khóa bạn học'
 		>
-			{error && <EmptyState title='Không tải được học phí' desc={error} />}
-			{!data && !error && <InlineLoading />}
+			{!tuitionOn && (
+				<EmptyState
+					icon={<WalletSvg />}
+					title='Chức năng học phí đang tắt'
+					desc='Bệnh viện hiện không thu học phí qua hệ thống. Liên hệ phòng Đào tạo nếu cần thông tin về khoản đã nộp.'
+				/>
+			)}
+			{tuitionOn && error && <EmptyState title='Không tải được học phí' desc={error} />}
+			{tuitionOn && !data && !error && <InlineLoading />}
 			{data && data.items.length === 0 && (
 				<EmptyState
 					icon={<WalletSvg />}

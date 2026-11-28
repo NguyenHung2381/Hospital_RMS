@@ -31,17 +31,45 @@ const deleteBatch = async () => {
 	return r.rowsAffected[0] ?? 0;
 };
 
-const run = async ({ pauseMs = PAUSE_MS } = {}) => {
-	if (!(await markOnce(JOB, todayKeyVN()))) return { deleted: 0, skipped: true };
+// Lượt gửi (notification_batches) không còn thông báo nào — sau khi xoá thông báo cũ ở
+// trên, hoặc người nhận bị xoá tài khoản. Trang quản trị đọc thẳng bảng lượt gửi nên
+// phải dọn, không thì hiện dòng "0 người nhận". Lượt đang ghi dở nằm trong transaction
+// chưa commit (insertNotifications) nên không bị thấy ở đây.
+const deleteEmptyBatches = async () => {
+	const pool = await getPool();
+	const r = await pool.request().input('batch', sql.Int, BATCH_SIZE).query(`
+      DELETE FROM notification_batches WHERE id IN (
+        SELECT b.id FROM notification_batches b
+        WHERE NOT EXISTS (SELECT 1 FROM notifications n WHERE n.batch_id = b.id)
+        ORDER BY b.id OFFSET 0 ROWS FETCH NEXT @batch ROWS ONLY)
+    `);
+	return r.rowsAffected[0] ?? 0;
+};
+
+const drain = async (fn, pauseMs) => {
 	let total = 0;
 	for (;;) {
-		const n = await module.exports.deleteBatch();
+		const n = await fn();
 		total += n;
-		if (n < BATCH_SIZE) break;
+		if (n < BATCH_SIZE) return total;
 		await new Promise((r) => setTimeout(r, pauseMs));
 	}
+};
+
+const run = async ({ pauseMs = PAUSE_MS } = {}) => {
+	if (!(await markOnce(JOB, todayKeyVN()))) return { deleted: 0, skipped: true };
+	const total = await drain(() => module.exports.deleteBatch(), pauseMs);
 	if (total) logger.info(`[job:${JOB}] Đã xóa ${total} thông báo cũ.`);
+	const batches = await drain(() => module.exports.deleteEmptyBatches(), pauseMs);
+	if (batches) logger.info(`[job:${JOB}] Đã xóa ${batches} lượt gửi không còn thông báo.`);
 	return { deleted: total, skipped: false };
 };
 
-module.exports = { run, deleteBatch, BATCH_SIZE, READ_RETENTION_DAYS, UNREAD_RETENTION_DAYS };
+module.exports = {
+	run,
+	deleteBatch,
+	deleteEmptyBatches,
+	BATCH_SIZE,
+	READ_RETENTION_DAYS,
+	UNREAD_RETENTION_DAYS,
+};

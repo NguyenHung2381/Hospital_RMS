@@ -46,15 +46,107 @@
 }
 .action {
 	composes: actionBtn from './Table.module.css';
+	position: relative;
+	gap: 6px;
+	font-family: inherit;
+	text-decoration: none;
+}
+.actionIcon {
+	display: inline-flex;
+}
+/* Nhãn chữ: ẩn khỏi mắt trên bảng (đã có tooltip), hiện trên thẻ điện thoại.
+   aria-label của nút đã là tên truy cập nên span này không bị đọc lặp. */
+.actionLabel {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+.action[aria-disabled='true'] {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+.action[aria-disabled='true']:hover {
+	background: var(--color-white);
+	border-color: var(--color-gray-200);
+	color: var(--color-gray-500);
 }
 /* Tách Xóa khỏi Sửa thêm một nhịp — giảm bấm nhầm thao tác không hoàn tác được */
 .actionDanger {
 	margin-left: var(--space-2);
 }
-.actionDanger:hover {
+.actionDanger:not([aria-disabled='true']):hover {
 	background: var(--tone-red-bg);
 	border-color: var(--tone-red-border);
 	color: var(--tone-red-fg);
+}
+.toneSuccess {
+	color: var(--tone-green-fg);
+}
+.toneSuccess:not([aria-disabled='true']):hover {
+	background: var(--tone-green-bg);
+	border-color: var(--tone-green-border);
+	color: var(--tone-green-fg);
+}
+.toneWarn {
+	color: var(--tone-amber-fg);
+}
+.toneWarn:not([aria-disabled='true']):hover {
+	background: var(--tone-amber-bg);
+	border-color: var(--tone-amber-border);
+	color: var(--tone-amber-fg);
+}
+
+/* Icon trong menu "…" cùng cỡ với icon trên dòng */
+.menuIcon {
+	display: inline-flex;
+	color: inherit;
+}
+.menuIcon svg {
+	width: 15px;
+	height: 15px;
+}
+
+/* Thẻ điện thoại: nút thành icon + chữ, thao tác nguy hiểm đỏ sẵn để nhận ra
+   mà không cần rê chuột. */
+@media (max-width: 640px) {
+	/* Nhân đôi class: thắng bề rộng cố định 32/40px của .actionBtn (kể cả luật
+	   pointer: coarse trong Table.module.css, nạp sau file này). */
+	.action.action {
+		flex: 1 1 auto;
+		width: auto;
+		padding: 0 var(--space-3);
+	}
+	/* Hàng nút cuối thẻ: giãn đều hết bề ngang, hết chỗ thì xuống dòng */
+	.actions {
+		flex: 1 1 100%;
+		flex-wrap: wrap;
+	}
+	.actionLabel {
+		position: static;
+		width: auto;
+		height: auto;
+		overflow: visible;
+		clip-path: none;
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-medium);
+		color: var(--color-gray-700);
+	}
+	.actionDanger {
+		margin-left: 0;
+	}
+	.actionDanger,
+	.actionDanger .actionLabel {
+		color: var(--tone-red-fg);
+	}
+	.toneSuccess .actionLabel {
+		color: var(--tone-green-fg);
+	}
+	.toneWarn .actionLabel {
+		color: var(--tone-amber-fg);
+	}
 }
 
 /* Màn hẹp: ô tìm kiếm giãn vào chỗ trống còn lại trên hàng thay vì

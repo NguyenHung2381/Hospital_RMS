@@ -11,6 +11,7 @@ import { Pagination } from '../../../shared/components/Table/Pagination';
 import sel from '../../../shared/components/Table/RowSelect.module.css';
 import { SelectCheckbox } from '../../../shared/components/Table/RowSelect';
 import { useRowSelection } from '../../../shared/hooks/useRowSelection';
+import { useModules } from '../../../shared/hooks/useModules';
 import { TrainingProgramDeleteModal } from '../components/TrainingProgramDeleteModal';
 import { TrainingProgramDetailModal } from '../components/TrainingProgramDetailModal';
 import { TrainingProgramFormModal } from '../components/TrainingProgramFormModal';
@@ -104,6 +105,7 @@ function TraineeTypeChips({ names }: { names: string | null }) {
 
 export default function TrainingPrograms() {
 	const customCfg = useFormConfig('training_program', 'admin');
+	const tuitionOn = useModules().tuition;
 	const d = useTrainingPrograms();
 	const rowSel = useRowSelection(d.paged.map((x) => x.id));
 
@@ -119,7 +121,8 @@ export default function TrainingPrograms() {
 		{ header: 'Số giờ tín chỉ', value: (x) => x.credit_hours },
 		{ header: 'Thời lượng', key: 'duration', value: (x) => x.duration },
 		{ header: 'Đối tượng (ghi chú)', value: (x) => x.target_audience },
-		{ header: 'Học phí', value: (x) => x.tuition_fee },
+		// Thu học phí tắt ⇒ không xuất cột học phí
+		...(tuitionOn ? [{ header: 'Học phí', value: (x: TrainingProgram) => x.tuition_fee }] : []),
 		{ header: 'Khoa phòng', key: 'department', value: (x) => x.department_name ?? x.department_note },
 		{
 			header: 'Vòng thực hành',

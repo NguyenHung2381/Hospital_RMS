@@ -182,7 +182,7 @@ export function ClassScheduleBoard({
 
 				{viewMode === 'calendar' && !loading && !error && (
 					<p className={styles.hint}>
-						Mỗi khóa học một màu · Thanh nhạt màu là thời gian học của khóa · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
+						Mỗi khóa học một màu · Ô đỏ nhạt là ngày nghỉ lễ · Nhấp vào buổi học để xem chi tiết · Lăn chuột để chuyển tuần/tháng
 					</p>
 				)}
 			</div>

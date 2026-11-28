@@ -24,6 +24,7 @@ import {
 import { MentorPicker } from './MentorPicker';
 import { RotationDateRange } from './RotationDateRange';
 import { savePracticeDocument } from '../utils/practiceDocuments';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 import styles from '../pages/Courses.module.css';
 import { getDepartmentOptions } from '@/features/department/api/departmentApi';
 
@@ -122,6 +123,8 @@ export function RotationsPanel({
 	const [busy, setBusy] = useState(false);
 	const [startDate, setStartDate] = useState(day(enrollmentStart));
 	const [firstLesson, setFirstLesson] = useState('');
+	// Công tắc "Ký số" ở thanh giấy tờ thực hành (PracticeDocumentsBar)
+	const [signDocs] = useSignPreference('practice-documents');
 
 	const load = useCallback(
 		() =>
@@ -348,12 +351,22 @@ export function RotationsPanel({
 										type='button'
 										className={styles.btnSmall}
 										disabled={busy}
-										title='Tải phiếu nhận xét quá trình thực hành của vòng này (.docx)'
+										title={
+											signDocs
+												? 'Tải phiếu nhận xét của vòng này (.docx) có chữ ký số của bạn'
+												: 'Tải phiếu nhận xét quá trình thực hành của vòng này (.docx)'
+										}
 										onClick={() =>
-											savePracticeDocument(enrollmentId, 'phieu-nhan-xet', who, {
-												id: r.id,
-												label: r.department_name || r.round_title || `vong-${i + 1}`,
-											})
+											savePracticeDocument(
+												enrollmentId,
+												'phieu-nhan-xet',
+												who,
+												{
+													id: r.id,
+													label: r.department_name || r.round_title || `vong-${i + 1}`,
+												},
+												signDocs,
+											)
 										}
 									>
 										Phiếu nhận xét

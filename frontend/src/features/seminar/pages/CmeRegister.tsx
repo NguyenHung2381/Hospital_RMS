@@ -1,4 +1,4 @@
-import { SearchInput } from '@/shared/components/Table/TableToolbar';
+import { RowAction, RowActions, SearchInput } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -460,30 +460,26 @@ export default function CmeRegister() {
 									</td>
 									<td className={styles.muted}>{e.seminar_title}</td>
 									<td className={styles.tdRight}>
-										<div className={styles.actionBtns}>
-											<button
-												type='button'
-												className={styles.actionBtn}
+										<RowActions>
+											<RowAction
 												title='Mở hội nghị'
 												aria-label={`Mở hội nghị ${e.seminar_title}`}
 												onClick={() => navigate(`/admin/seminars/${e.seminar_id}`)}
 											>
 												<UsersSvg />
-											</button>
+											</RowAction>
 											{perms.canCme && (
-												<button
-													type='button'
-													className={`${styles.actionBtn} ${styles.danger}`}
+												<RowAction
 													title='Thu hồi số CME'
 													aria-label={`Thu hồi số CME ${e.cme_certificate_no} của ${e.full_name}`}
+													danger
 													disabled={revokingId !== null}
-													style={revokingId === e.id ? { opacity: 0.5 } : undefined}
 													onClick={() => handleRevoke(e.seminar_id, e.id, e.cme_seq)}
 												>
 													<XSvg />
-												</button>
+												</RowAction>
 											)}
-										</div>
+										</RowActions>
 									</td>
 								</tr>
 							))

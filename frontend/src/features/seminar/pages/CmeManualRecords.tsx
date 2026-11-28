@@ -1,4 +1,4 @@
-import { SearchInput } from '@/shared/components/Table/TableToolbar';
+import { RowAction, RowActions, SearchInput } from '@/shared/components/Table/TableToolbar';
 import { formatDateVN } from '../../../shared/utils/formatDate';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
@@ -2005,7 +2005,7 @@ export default function CmeManualRecords() {
 		<AdminLayout
 			pageTitle='Ghi nhận độc lập'
 			pageSubtitle='Ghi nhận tín chỉ CME không qua sự kiện hội thảo (tự học, học online, minh chứng đính kèm)'
-			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
+			breadcrumbs={[{ label: 'Hội nghị & tín chỉ CME' }]}
 			headerActions={
 				perms.canCme ? (
 					<div style={{ display: 'flex', gap: 8 }}>
@@ -2281,51 +2281,46 @@ export default function CmeManualRecords() {
 </td>
 										<td className={styles.tdActions}>
 											{perms.canCme && (
-												<div className={styles.actionBtns}>
+												<RowActions>
 		{r.approval_status !== 'approved' && (
-			<button
-				type='button'
-				className={styles.actionBtn}
-				title='Duyệt và nhập tín chỉ'
+			<RowAction
+				title='Duyệt'
+				tone='success'
 				aria-label={`Duyệt và nhập tín chỉ: ${r.title} (${r.user_name})`}
 				onClick={() => openApprove(r)}
 			>
 				<CheckSvg />
-			</button>
+			</RowAction>
 		)}
 		{r.approval_status !== 'rejected' && (
-			<button
-				type='button'
-				className={`${styles.actionBtn} ${styles.danger}`}
+			<RowAction
 				title='Từ chối'
 				aria-label={`Từ chối: ${r.title} (${r.user_name})`}
+				danger
 				onClick={() => {
 					setRejecting(r);
 					setRejectReason('');
 				}}
 			>
 				<XSvg />
-			</button>
+			</RowAction>
 		)}
-													<button
-														type='button'
-														className={styles.actionBtn}
+													<RowAction
 														title='Sửa'
 														aria-label={`Sửa ghi nhận: ${r.title} (${r.user_name})`}
 														onClick={() => setEditing(r)}
 													>
 														<EditSvg />
-													</button>
-													<button
-														type='button'
-														className={`${styles.actionBtn} ${styles.danger}`}
+													</RowAction>
+													<RowAction
 														title='Xóa'
 														aria-label={`Xóa ghi nhận: ${r.title} (${r.user_name})`}
+														danger
 														onClick={() => setDeletingId(r.id)}
 													>
 														<TrashSvg />
-													</button>
-												</div>
+													</RowAction>
+												</RowActions>
 											)}
 										</td>
 									</tr>

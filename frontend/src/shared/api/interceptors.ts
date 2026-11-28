@@ -6,7 +6,7 @@ import {
 	tokenUserId,
 } from '../utils/storage';
 import { BASE_URL } from './endpoints';
-import { readJson, safeFetch, ServiceUnavailableError } from './http';
+import { apiErrorFrom, readJson, safeFetch, ServiceUnavailableError } from './http';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -97,7 +97,7 @@ export async function handle401<T>(
 		});
 		const retryJson = await readJson(retryRes);
 		if (!retryRes.ok || !retryJson?.success) {
-			throw new Error(retryJson?.message ?? 'Có lỗi xảy ra, vui lòng thử lại');
+			throw apiErrorFrom(retryJson);
 		}
 		return retryJson.data as T;
 	}

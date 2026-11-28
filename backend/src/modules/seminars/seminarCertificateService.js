@@ -52,6 +52,8 @@ const {
 } = require('./certificate/certificateFonts');
 const participantService = require('./seminarParticipantService');
 const importService = require('./seminarImportService');
+const signingService = require('../signing/signingService');
+const { hasPermission } = require('../../permissions/authz');
 
 const ROLE_LABELS = {
 	attendee: 'Đại biểu',
@@ -524,19 +526,49 @@ const fileNameOf = (p, i, used) => {
 };
 
 /**
- * Ghi ZIP các giấy chứng nhận ra `res`. Sinh file đầu tiên TRƯỚC khi gửi header
- * để lỗi mẫu/dữ liệu còn trả được JSON; sau đó lỗi chỉ có thể cắt kết nối.
+ * Bộ ký số giấy chứng nhận bằng chứng thư bệnh viện, hoặc null khi không yêu cầu ký.
+ * `wanted`: true (JSON) / "true" / "1" (form multipart). Cần quyền signing:sign.
+ * Lấy tài khoản ký trước khi dựng giấy nào — thiếu cấu hình thì báo lỗi JSON ngay.
+ * @param {string} seminarId
+ * @param {any} user  req.user
+ * @param {unknown} wanted
+ */
+const signerFor = async (seminarId, user, wanted) => {
+	if (!(wanted === true || wanted === 'true' || wanted === '1')) return null;
+	if (!hasPermission(user, 'signing', 'sign')) {
+		throw httpError(403, 'Cần quyền "Ký bằng chứng thư bệnh viện" để xuất giấy có chữ ký số.');
+	}
+	return signingService.certificateSigner({
+		docType: 'seminar_certificate',
+		docRef: seminarId,
+		actorId: user.id,
+	});
+};
+
+// Số giấy gửi ký số cùng lúc (mỗi giấy 1 request tới VIN-HSM)
+const SIGN_BATCH = 4;
+
+/**
+ * Ghi ZIP các giấy chứng nhận ra `res`. Sinh (và ký, nếu có `signer`) file đầu tiên
+ * TRƯỚC khi gửi header để lỗi mẫu / dữ liệu / ký số còn trả được JSON; sau đó lỗi chỉ
+ * có thể cắt kết nối.
  * @param {import('express').Response} res
  * @param {string} seminarId
  * @param {CertPerson[]} people
  * @param {string} zipName
+ * @param {{ signer?: ((pdf: Buffer, ref?: string) => Promise<Buffer>) | null }} [opts]  ký số từng giấy
+ *   (signingService.certificateSigner)
  */
-const streamZip = async (res, seminarId, people, zipName) => {
+const streamZip = async (res, seminarId, people, zipName, { signer = null } = {}) => {
 	if (!people.length) throw httpError(400, 'Không có người nào để xuất giấy chứng nhận.');
 	const { meta, pdf } = await loadTemplate(seminarId);
 	const render = await createRenderer(pdf, meta);
+	/** @type {(pdf: Buffer, ref?: string) => Promise<Buffer>} */
+	const finish = signer ?? (async (b) => b);
+	// Nhật ký ký số ghi "<mã hội nghị>:<số giấy>"
+	const refOf = (/** @type {CertPerson} */ p) => `${seminarId}:${p.so || p.full_name}`.slice(0, 60);
 	const used = new Set();
-	const first = await render(fieldValues(people[0]));
+	const first = await finish(Buffer.from(await render(fieldValues(people[0]))), refOf(people[0]));
 
 	res.setHeader('Content-Type', 'application/zip');
 	res.setHeader(
@@ -544,11 +576,20 @@ const streamZip = async (res, seminarId, people, zipName) => {
 		`attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`,
 	);
 	res.setHeader('X-Certificate-Count', String(people.length));
+	if (signer) res.setHeader('X-Certificate-Signed', '1');
 	const zip = new ZipStoreWriter(res);
 	try {
 		await zip.add(fileNameOf(people[0], 0, used), first);
-		for (let i = 1; i < people.length; i++) {
-			await zip.add(fileNameOf(people[i], i, used), await render(fieldValues(people[i])));
+		const step = signer ? SIGN_BATCH : 1;
+		for (let i = 1; i < people.length; i += step) {
+			const batch = people.slice(i, i + step);
+			// Dựng PDF tuần tự (tốn CPU), ký song song (chờ mạng), ghi ZIP đúng thứ tự
+			const pdfs = [];
+			for (const p of batch) pdfs.push(Buffer.from(await render(fieldValues(p))));
+			const done = await Promise.all(pdfs.map((b, k) => finish(b, refOf(batch[k]))));
+			for (const [k, file] of done.entries()) {
+				await zip.add(fileNameOf(batch[k], i + k, used), file);
+			}
 		}
 		await zip.finish();
 	} catch (err) {
@@ -564,6 +605,7 @@ const previewPdf = async (seminarId) => {
 };
 
 module.exports = {
+	signerFor,
 	getTemplate,
 	saveTemplate,
 	deleteTemplate,

@@ -328,6 +328,27 @@ table {
 	}
 }
 
+/* Bảng rộng hơn khung (laptop nhỏ, máy tính bảng) phải cuộn ngang → cột Thao tác
+   dính mép phải để luôn bấm được, không phải kéo tới cuối dòng. data-scroll-x /
+   data-sticky-end do shared/utils/mobileTableCards.ts gắn (chỉ khi bảng thật sự
+   tràn và cột cuối là cụm nút thao tác). Nền ô dính lấy theo nền dòng (inherit)
+   để giữ màu rê chuột / dòng đang chọn; dòng không tô thì nền trắng. */
+@media (min-width: 641px) {
+	:where(table[data-scroll-x][data-sticky-end]) > tbody > tr {
+		background-color: var(--color-white);
+	}
+	:where(table[data-scroll-x][data-sticky-end]) > * > tr > :last-child:not([colspan]) {
+		position: sticky;
+		right: 0;
+		z-index: 1;
+		background-color: inherit;
+		box-shadow: inset 1px 0 0 var(--color-gray-200);
+	}
+	:where(table[data-scroll-x][data-sticky-end]) > thead > tr > :last-child:not([colspan]) {
+		background-color: var(--color-gray-50);
+	}
+}
+
 /* Bảng danh sách → danh sách thẻ trên điện thoại. data-cards/data-label do
    shared/utils/mobileTableCards.ts gắn (nhãn = tiêu đề cột). !important vì mỗi
    feature tự đặt padding/width/nowrap/sticky cho th/td bằng class riêng. */
@@ -409,6 +430,15 @@ table {
 	table[data-cards] td[data-label='']::before {
 		display: none;
 	}
+	/* Ô tên/tiêu đề đầu tiên làm đầu thẻ: bỏ nhãn cột ("Người dùng", "Tên"…) vốn
+	   thừa, tràn hết bề ngang thẻ. */
+	table[data-cards] td[data-card-title] {
+		padding-left: 0 !important;
+		padding-bottom: var(--space-1) !important;
+	}
+	table[data-cards] td[data-card-title]::before {
+		display: none;
+	}
 	/* Ô gộp cột (dòng rỗng/chi tiết) giữ dạng khối */
 	table[data-cards] td[colspan] {
 		display: block;
@@ -427,6 +457,66 @@ table {
 	table[data-cards] td[data-label='STT'],
 	table[data-cards] td[data-label='#'] {
 		display: none;
+	}
+}
+
+/* Nút hành động đầu trang (headerActions của AdminLayout / UserLayout / TraineeLayout,
+   gắn data-page-actions) trên điện thoại: gọn còn MỘT hàng thay vì 2–3 hàng nút to.
+   - Các div bọc nhóm nút (ExcelActions, headerBtns…) được làm phẳng (display: contents)
+     để mọi nút cùng một hàng flex.
+   - Nút chính = nút cuối cùng (quy ước mọi trang): giữ chữ đầy đủ, lấp phần còn lại;
+     hết chỗ (< 120px) thì xuống hàng riêng.
+   - Nút phụ (variant secondary, hoặc nút nào còn nút đứng sau): ô gọn icon trên, nhãn
+     nhỏ dưới — vẫn luôn có chữ. Nút chỉ có icon hiện nhãn lấy từ aria-label/title.
+   Chỉ áp khi có nút chính; trang chỉ có nút phụ giữ nguyên dạng nút chữ giãn đều. */
+@media (max-width: 640px) {
+	[data-page-actions] {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: stretch;
+		gap: var(--space-2);
+		width: 100%;
+	}
+	/* !important: nhiều trang bọc nút bằng <div style={{ display: 'flex' }}> */
+	[data-page-actions] div:has(> button, > a) {
+		display: contents !important;
+	}
+	/* height:auto + stretch: các nút cùng hàng cao bằng nhau (Button đặt height: fit-content) */
+	[data-page-actions] :is(button, a) {
+		flex: 1 1 auto;
+		justify-content: center;
+		align-self: stretch;
+		height: auto;
+	}
+	[data-page-actions]:has([class*='_primary_']) :is(button, a):is([class*='_secondary_'], :has(~ button, ~ a)) {
+		flex: 0 1 auto;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 64px;
+		max-width: 108px;
+		min-height: 52px;
+		padding: 6px 8px;
+		font-size: var(--font-size-2xs);
+		font-weight: var(--font-weight-medium);
+		line-height: 1.2;
+		text-align: center;
+		white-space: normal;
+	}
+	[data-page-actions]:has([class*='_primary_']) :is(button, a):is([class*='_secondary_'], :has(~ button, ~ a)) svg {
+		width: 18px;
+		height: 18px;
+	}
+	[data-page-actions]:has([class*='_primary_'])
+		:is(button, a):not([class*='_secondary_']):not(:has(~ button, ~ a)) {
+		flex: 1 1 120px;
+		min-height: 52px;
+	}
+	[data-page-actions] [class*='_iconOnlyLabel_'] {
+		position: static;
+		width: auto;
+		height: auto;
+		overflow: visible;
+		clip-path: none;
 	}
 }
 

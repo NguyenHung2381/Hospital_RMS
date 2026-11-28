@@ -1,5 +1,7 @@
 const topicService = require('../topics/topicService');
 const councilProgressService = require('../councils/councilProgressService');
+const signRequestService = require('../signing/requests/signRequestService');
+const signingConfig = require('../signing/signingConfig');
 
 // Hộp thư "Việc của tôi" — gộp 2 nguồn việc-cần-làm ĐÃ tính theo người dùng cụ
 // thể (không chỉ theo quyền chung chung, vốn không nói lên "việc CỦA TÔI"):
@@ -10,9 +12,16 @@ const councilProgressService = require('../councils/councilProgressService');
 //      tài đó chưa có kết luận cuối (result = null — đã kết luận thì không
 //      còn là "việc cần làm" nữa dù trước đó chưa chấm).
 const getMyTasks = async (actor) => {
-	const [topicResult, progressList] = await Promise.all([
+	const [topicResult, progressList, signTodo] = await Promise.all([
 		topicService.getAll({ status: 'submitted', limit: 0 }, actor),
 		councilProgressService.getMyProgress(actor.id).catch(() => []),
+		// 3. Hồ sơ trình ký đang tới lượt actor ký (không tính khi quản trị tắt Trình ký văn bản)
+		/** @type {Promise<{ items: any[] }>} */ (
+			(async () =>
+				(await signingConfig.isFeatureOn('sign_requests'))
+					? signRequestService.list(actor, { box: 'todo' }, { offset: 0, limit: 50, page: 1 })
+					: { items: [] })().catch(() => ({ items: [] }))
+		),
 	]);
 
 	const approvals = topicResult.data.filter((t) => (t.allowed_actions || []).includes('approve'));
@@ -39,7 +48,15 @@ const getMyTasks = async (actor) => {
 			defense_date: t.defense_date,
 			department_name: t.department_name,
 		})),
-		total: approvals.length + progressReviews.length,
+		sign_requests: signTodo.items.map((r) => ({
+			id: r.id,
+			title: r.title,
+			creator_name: r.creator_name,
+			doc_count: r.doc_count,
+			due_date: r.due_date,
+			created_at: r.created_at,
+		})),
+		total: approvals.length + progressReviews.length + signTodo.items.length,
 	};
 };
 

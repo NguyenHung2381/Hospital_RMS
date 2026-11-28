@@ -12,6 +12,7 @@
 #   check-image.yml         Chạy thử bản production: image prod + compose + deploy.sh + tự rollback
 #   build-image.yml         Build image 1 lần (tag = SHA), Trivy (lỗ hổng + bí mật), SBOM + provenance → GHCR, ký cosign
 #   deploy.yml              Cổng (SHA trên main + CI xanh) → xác minh chữ ký → deploy → bản ghi kiểm toán
+#   ci-notify.yml           Sau khi CI kết thúc: hỏng → issue "ci-hong" kèm lỗi; xanh lại → đóng issue
 #
 # PR chỉ chạy backend/frontend khi có file thuộc phần đó đổi; các kiểm tra bảo
 # mật luôn chạy. Push vào main / lịch tuần: chạy tất cả.
@@ -159,9 +160,12 @@ jobs:
     needs: image
     if: vars.ENABLE_STAGING == 'true'
     uses: ./.github/workflows/deploy.yml
+    # Trần quyền cho cả deploy.yml: GitHub kiểm quyền của MỌI job con lúc nạp workflow,
+    # kể cả job release (contents: write, chỉ chạy cho production). Job deploy trên máy
+    # chủ vẫn chỉ có contents/packages: read (khai báo trong deploy.yml).
     permissions:
       actions: read # cổng deploy đọc kết quả CI của commit
-      contents: read
+      contents: write # job release (bản phát hành production)
       packages: read
     with:
       environment: staging
@@ -179,86 +183,8 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     permissions:
       actions: read # cổng deploy đọc kết quả CI của commit
-      contents: read
+      contents: write # job release (bản phát hành production)
       packages: read
     with:
       environment: production
       tag: ${{ github.sha }}
-
-  # Pipeline trên main / lịch tuần hỏng → 1 issue nhãn "ci-hong" ghi rõ job/bước nào hỏng
-  # kèm thông báo lỗi trích từ annotation hoặc log,
-  # giao người kích hoạt (GitHub cũng gửi email). Đang có issue mở thì bình luận vào
-  # đó thay vì mở thêm. PR hỏng thì tác giả đã thấy ngay trên PR.
-  notify:
-    name: Báo lỗi pipeline
-    needs: [result, image, deploy-staging, deploy-production]
-    if: failure() && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      actions: read # danh sách job + log
-      checks: read # thông báo lỗi (annotation) của từng job
-      issues: write
-    steps:
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          # Mỗi job hỏng: tên, bước hỏng, link log và chính thông báo lỗi —
-          # lấy annotation ::error:: trước; không có thì trích đoạn log quanh ##[error].
-          jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
-            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
-              | [.id, .name, .conclusion, .html_url, ([.steps[]? | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", "))]
-              | @tsv')
-          failed=""
-          while IFS=$'\t' read -r id name concl url steps; do
-            [ -n "$id" ] || continue
-            failed+="### ❌ $name ($concl)"$'\n'"Bước hỏng: ${steps:-(không rõ)} · [Xem log]($url)"$'\n'
-            errs=$(gh api "repos/$GITHUB_REPOSITORY/check-runs/$id/annotations" \
-              --jq '.[] | select(.annotation_level == "failure")
-                | select(.message | test("^Process completed with exit code") | not)
-                | (if .path and .path != ".github" then "\(.path):\(.start_line) " else "" end) + .message' \
-              2>/dev/null | head -n 30)
-            if [ -z "$errs" ]; then
-              errs=$(gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$id/logs" 2>/dev/null \
-                | sed -E 's/^[0-9]{4}-[0-9-]+T[0-9:.]+Z ?//' \
-                | grep -B 25 -m 1 -E '^##\[error\]' \
-                | grep -vE '^##\[(group|endgroup)\]' | tail -n 30)
-            fi
-            failed+=$'```text\n'"${errs:-(không trích được lỗi — mở log)}"$'\n```\n\n'
-          done <<< "$jobs"
-          body="Lần chạy: $RUN_URL
-          Commit: $GITHUB_SHA ($GITHUB_EVENT_NAME, $GITHUB_REF_NAME)
-          Người kích hoạt: @$GITHUB_ACTOR
-
-          Job hỏng:
-          ${failed:-"(không lấy được danh sách — xem lần chạy)"}
-
-          Người nhận xử lý hoặc chuyển đúng người (.github/CICD.md → Trách nhiệm). Issue tự đóng khi pipeline main xanh lại."
-          gh label create ci-hong --color B60205 --description "Pipeline CI/CD trên main hỏng" --repo "$GITHUB_REPOSITORY" 2>/dev/null || true
-          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-hong --state open --limit 1 --json number --jq '.[0].number // empty')
-          if [ -n "$open" ]; then
-            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "Vẫn hỏng — $body"
-            gh issue edit "$open" --repo "$GITHUB_REPOSITORY" --add-assignee "$GITHUB_ACTOR" || true
-          else
-            gh issue create --repo "$GITHUB_REPOSITORY" --label ci-hong --assignee "$GITHUB_ACTOR" \
-              --title "CI/CD hỏng: ${GITHUB_SHA::7} ($GITHUB_EVENT_NAME)" --body "$body"
-          fi
-
-  # main / lịch tuần xanh lại → đóng issue "ci-hong" đang mở
-  recovered:
-    name: Đóng issue lỗi cũ
-    needs: [result, image]
-    if: success() && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      issues: write
-    steps:
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-hong --state open --json number --jq '.[].number' 2>/dev/null); do
-            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Pipeline xanh lại ở ${GITHUB_SHA::7}: $RUN_URL"
-          done

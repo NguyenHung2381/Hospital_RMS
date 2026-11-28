@@ -71,9 +71,53 @@ export interface DocCheckStatus {
 	};
 }
 
+/** 1 ngày nghỉ trong bảng xem trước (POST /system-settings/holidays/preview) */
+export interface HolidayPreviewItem {
+	date: string;
+	name: string;
+	/** auto = tự tính theo luật; manual = nhập tay */
+	source: 'auto' | 'manual';
+	compensatory?: boolean;
+	/** Bị bỏ bằng "-ngày" ở ô nhập tay */
+	removed: boolean;
+}
+
+/** Khác biệt giữa lịch đồng bộ (Google) và lịch đang dùng */
+export interface HolidaySuggestion {
+	date: string;
+	/** add = nguồn có nghỉ mà lịch đang dùng thiếu; remove = lịch tự tính có mà nguồn không nghỉ */
+	action: 'add' | 'remove';
+	name: string;
+}
+
+export interface HolidayPreview {
+	days: HolidayPreviewItem[];
+	/** null = chưa đồng bộ lần nào */
+	sync: {
+		source: string;
+		fetched_at: string | null;
+		error: string | null;
+		error_at: string | null;
+		/** Nguồn có dữ liệu năm đang xem */
+		covered: boolean;
+		suggestions: HolidaySuggestion[];
+	} | null;
+}
+
 export const settingsApi = {
 	list: () => apiClient.get<SettingRow[]>('/system-settings'),
 	update: (key: string, value: string) => apiClient.put<SettingRow>(`/system-settings/${seg(key)}`, { value }),
+	/**
+	 * Lưu nhiều cấu hình trong một transaction. Có ô sai thì không lưu gì — ApiError.errors
+	 * là { KEY: "thông báo lỗi" } để tô đỏ đúng ô.
+	 */
+	saveMany: (values: Record<string, string>) => apiClient.put<{ saved: number }>('/system-settings', { values }),
+	/** Xem trước ngày nghỉ của 1 năm theo giá trị đang nhập (chưa lưu cũng được) */
+	previewHolidays: (year: number, auto: boolean, text: string) =>
+		apiClient.post<HolidayPreview>('/system-settings/holidays/preview', { year, auto, text }),
+	/** Tải lịch ngày lễ ngay — lỗi (không ra Internet…) trả trong `error`, không ném */
+	syncHolidays: () =>
+		apiClient.post<{ fetched_at: string | null; error: string | null; count: number }>('/system-settings/holidays/sync', {}),
 	testMail: (to: string) => apiClient.post<null>('/system-settings/test-mail', { to }),
 	testClamav: () => apiClient.post<{ host: string; port: number; version: string | null }>('/system-settings/test-clamav', {}),
 	/** token = token reCAPTCHA vừa tích (thử cả cặp khóa); bỏ trống = chỉ thử kết nối tới Google */

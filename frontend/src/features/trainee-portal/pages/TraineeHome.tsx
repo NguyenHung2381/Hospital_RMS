@@ -12,19 +12,24 @@ import { useMyTraining } from '../hooks/useMyTraining';
 import { coursePath } from '../utils/traineePaths';
 import { myTuitionApi } from '../../tuition/api/tuitionApi';
 import { formatVnd, type TuitionItem } from '../../tuition/types/tuition.type';
+import { useModules } from '@/shared/hooks/useModules';
 import styles from './TraineePortal.module.css';
 
 /** Trang chủ cổng học viên: việc cần làm hôm nay + khóa đang học + lịch sắp tới. */
 export default function TraineeHome() {
 	const { data, error } = useMyTraining();
 	// Học phí còn phải nộp (chưa tính khoản đang chờ xác nhận) — nhắc ở "Việc cần chú ý"
-	const [unpaid, setUnpaid] = useState<TuitionItem[]>([]);
+	const [unpaidRaw, setUnpaid] = useState<TuitionItem[]>([]);
+	// Thu học phí tắt ở Cấu hình hệ thống ⇒ không nhắc (API cũng trả 403)
+	const tuitionOn = useModules().tuition;
+	const unpaid = tuitionOn ? unpaidRaw : [];
 	useEffect(() => {
+		if (!tuitionOn) return;
 		myTuitionApi
 			.get()
 			.then((t) => setUnpaid(t.items.filter((i) => i.remaining - i.pending > 0)))
 			.catch(() => setUnpaid([]));
-	}, []);
+	}, [tuitionOn]);
 	const name = getStoredUser<StoredUser>()?.full_name ?? '';
 
 	const enrolled = data?.enrolled ?? [];

@@ -20,6 +20,8 @@ interface Row {
 	department_name: string | null;
 	course_id: string | null;
 	course_name: string | null;
+	/** Loại hình đào tạo của khóa */
+	training_type_name?: string | null;
 	/** checked = đã điểm danh; pending = có ca chưa hết mà chưa điểm danh; absent = hết ca không điểm danh */
 	status: 'checked' | 'pending' | 'absent' | 'excused';
 	/** Đơn xin phép chờ duyệt / đã duyệt phủ dòng này (đơn cả ngày khớp mọi ca). */
@@ -90,6 +92,7 @@ const EXCEL_COLS: ExcelColumn<Row>[] = [
 	{ header: 'Mã học viên', value: (r) => r.trainee_id },
 	{ header: 'Họ và tên', value: (r) => r.full_name },
 	{ header: 'Khóa học', value: (r) => r.course_name },
+	{ header: 'Loại hình', value: (r) => r.training_type_name ?? '' },
 	{ header: 'Khoa/phòng', value: (r) => r.department_name },
 	{ header: 'Ca', value: (r) => r.shift_name },
 	{ header: 'Giờ ca', value: (r) => (r.shift_start_at ? `${formatTimeVN(r.shift_start_at)}–${formatTimeVN(r.shift_end_at)}` : '') },
@@ -110,6 +113,7 @@ export default function StaffAttendance() {
 	const [search, setSearch] = useState('');
 	const [dept, setDept] = useState('');
 	const [course, setCourse] = useState('');
+	const [ttype, setTtype] = useState('');
 	const [status, setStatus] = useState<StatusFilter>('');
 
 	const load = useCallback(() => {
@@ -128,19 +132,24 @@ export default function StaffAttendance() {
 	);
 	const courses = useMemo(() => {
 		const map = new Map<string, string>();
-		for (const r of rows) if (r.course_id) map.set(r.course_id, r.course_name ?? r.course_id);
+		for (const r of rows) if (r.course_id && (!ttype || r.training_type_name === ttype)) map.set(r.course_id, r.course_name ?? r.course_id);
 		return [...map].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
-	}, [rows]);
+	}, [rows, ttype]);
+	const trainingTypes = useMemo(
+		() => [...new Set(rows.map((r) => r.training_type_name).filter((t): t is string => !!t))].sort((a, b) => a.localeCompare(b, 'vi')),
+		[rows],
+	);
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		return rows.filter(
 			(r) =>
 				matches(r, status) &&
 				(!dept || r.department_name === dept) &&
+				(!ttype || r.training_type_name === ttype) &&
 				(!course || r.course_id === course) &&
 				(!q || r.full_name.toLowerCase().includes(q) || r.trainee_id.toLowerCase() === q),
 		);
-	}, [rows, search, dept, course, status]);
+	}, [rows, search, dept, ttype, course, status]);
 	const pg = useClientPaging(filtered);
 	const counts = useMemo(
 		() => ({
@@ -190,6 +199,24 @@ export default function StaffAttendance() {
 								</option>
 							))}
 						</select>
+						{(trainingTypes.length > 1 || ttype) && (
+							<select
+								className={tbl.filterSelect}
+								value={ttype}
+								onChange={(e) => {
+									setTtype(e.target.value);
+									setCourse('');
+								}}
+								aria-label='Loại hình đào tạo'
+							>
+								<option value=''>Tất cả loại hình</option>
+								{trainingTypes.map((t) => (
+									<option key={t} value={t}>
+										{t}
+									</option>
+								))}
+							</select>
+						)}
 						{courses.length > 0 && (
 							<select className={tbl.filterSelect} value={course} onChange={(e) => setCourse(e.target.value)} aria-label='Khóa học'>
 								<option value=''>Tất cả khóa học</option>
@@ -245,7 +272,10 @@ export default function StaffAttendance() {
 												{r.department_name ? ` · ${r.department_name}` : ''}
 											</div>
 										</td>
-										<td className={tbl.td}>{r.course_name ?? <span className={tbl.cellSub}>—</span>}</td>
+										<td className={tbl.td}>
+											{r.course_name ?? <span className={tbl.cellSub}>—</span>}
+											{r.training_type_name && <div className={tbl.cellSub}>{r.training_type_name}</div>}
+										</td>
 										<td className={tbl.td}>
 											{r.shift_id != null || r.shift_name ? (
 												<>

@@ -6,7 +6,7 @@ import { saveBlob } from '@/shared/utils/saveBlob';
 import { createUser, exportUsersExcel } from '../api/userApi';
 import { ExcelActions, type ExcelColumn } from '@/shared/components/Excel';
 import { matchLabel, nameMap } from '@/shared/components/Excel/excelHelpers';
-import { EmptyState } from '@/shared/components';
+import { EmptyState, MultiSelect } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { UserDeleteModal } from '../components/UserDeleteModal';
@@ -129,6 +129,21 @@ export default function UserList() {
 							placeholder='Tìm theo tên, tên đăng nhập, email...'
 						/>
 
+						{/* Lọc theo vai trò (chọn nhiều) */}
+						<MultiSelect
+							aria-label='Lọc theo vai trò'
+							placeholder='Tất cả vai trò'
+							options={d.roles.map((r) => ({
+								id: r.id,
+								label: `${r.name} (${d.roleCounts[r.id] ?? 0})`,
+							}))}
+							selected={new Set(d.roleFilters)}
+							onChange={(next) => {
+								d.setRoleFilters([...next]);
+								d.setCurrentPage(1);
+							}}
+						/>
+						
 						{/* Multi-select Dept */}
 						<div
 							className='dept-dropdown-container'
@@ -232,47 +247,6 @@ export default function UserList() {
 							)}
 						</div>
 					</div>
-				</div>
-
-				{/* Lọc theo vai trò (chọn nhiều) — xuống dòng thay vì cuộn ngang để không cắt chữ */}
-				<div
-					className={`${styles.tabsRow} ${styles.tabsRowWrap}`}
-					role='group'
-					aria-label='Lọc theo vai trò'
-				>
-					<button
-						type='button'
-						aria-pressed={d.roleFilters.length === 0}
-						className={`${styles.tab} ${d.roleFilters.length === 0 ? styles.tabActive : ''}`}
-						onClick={() => {
-							d.setRoleFilters([]);
-							d.setCurrentPage(1);
-						}}
-					>
-						Tất cả vai trò
-						<span className={styles.tabBadge}>
-							{Object.values(d.roleCounts).reduce((a, b) => a + b, 0)}
-						</span>
-					</button>
-					{d.roles.map((r) => (
-						<button
-							type='button'
-							key={r.id}
-							aria-pressed={d.roleFilters.includes(r.id)}
-							className={`${styles.tab} ${d.roleFilters.includes(r.id) ? styles.tabActive : ''}`}
-							onClick={() => {
-								d.setRoleFilters((prev) =>
-									prev.includes(r.id)
-										? prev.filter((v) => v !== r.id)
-										: [...prev, r.id],
-								);
-								d.setCurrentPage(1);
-							}}
-						>
-							{r.name}
-							<span className={styles.tabBadge}>{d.roleCounts[r.id] ?? 0}</span>
-						</button>
-					))}
 				</div>
 
 				{/* USER TABLE */}

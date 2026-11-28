@@ -19,6 +19,14 @@ const {
 const { httpError } = require('../../utils/httpError');
 const { scopeOf } = require('../../permissions/authz');
 const { todayKeyVN } = require('../../utils/vnDate');
+const {
+	SHIFT_MODES,
+	usesShifts,
+	courseModeSql,
+	coursePatternSql,
+	modeInSql,
+} = require('../../utils/attendanceMode');
+const attendanceMethods = require('../../utils/attendanceMethods');
 
 // Ca, mẫu ca tuần, phân ca theo ngày (2026-10-30_attendance_shifts.sql) cho điểm danh
 // HỌC VIÊN theo khóa đào tạo (2026-11-30_trainee_attendance.sql): mẫu ca tuần gán theo
@@ -147,7 +155,8 @@ const listPatterns = async () => {
 	const pool = await getPool();
 	const rows = (
 		await pool.request().query(`
-      SELECT p.*, (SELECT COUNT(*) FROM courses c WHERE c.shift_pattern_id = p.id AND c.status <> 'cancelled') AS course_count
+      SELECT p.*, (SELECT COUNT(*) FROM courses c WHERE c.shift_pattern_id = p.id AND c.status <> 'cancelled') AS course_count,
+             (SELECT STRING_AGG(tt.name, ', ' ORDER BY tt.name) FROM training_types tt WHERE tt.shift_pattern_id = p.id) AS training_type_names
       FROM shift_patterns p
       ORDER BY p.is_default DESC, p.name
     `)
@@ -224,15 +233,20 @@ const removePattern = async (id) => {
 	changed();
 };
 
-// Khóa học chưa hủy (chọn khóa áp dụng mẫu ca); ended = đã qua ngày kết thúc
+// Khóa học chưa hủy (chọn khóa áp dụng mẫu ca); ended = đã qua ngày kết thúc.
+// type_shift_pattern_id = mẫu của loại hình (khóa chưa gán mẫu riêng thì dùng mẫu này);
+// attendance_mode = kiểu chấm công thực tế của khóa (utils/attendanceMode).
 const listCourses = async () => {
 	const pool = await getPool();
 	return (
 		await pool.request().input('today', sql.Date, todayKeyVN()).query(`
       SELECT c.id, c.name, c.start_date, c.end_date, c.is_rolling, c.shift_pattern_id,
+             tt.name AS training_type_name, tt.shift_pattern_id AS type_shift_pattern_id,
+             ${courseModeSql('c')} AS attendance_mode,
              ${boolExpr(`c.is_rolling = 'false' AND c.end_date < @today`)} AS ended,
              (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND e.status = 'approved') AS trainee_count
       FROM courses c
+      LEFT JOIN training_types tt ON tt.id = c.training_type_id
       WHERE c.status <> 'cancelled'
       ORDER BY ended, c.start_date DESC, c.name
     `)
@@ -273,13 +287,19 @@ const setPatternCourses = async (id, courseIds) => {
 // Lượt học trong [from, to] của học viên có tài khoản: ghi danh 'approved', khóa chưa hủy.
 // Thời gian học = thời gian riêng của lượt ghi danh (khóa mở liên tục) hoặc của khóa;
 // khóa thường chưa có ngày bắt đầu thì chưa tính. Ngày NULL = không giới hạn phía đó.
+// Chỉ khóa có kiểu chấm công thuộc `modes` (utils/attendanceMode — mặc định: có chấm theo ca).
+// shift_pattern_id = mẫu ca của khóa, chưa có thì của loại hình đào tạo.
 //   → [{ user_id, trainee_id, full_name, department_id, department_name,
-//        course_id, course_name, shift_pattern_id, start_date, end_date }]
-/** @param {{ from: unknown, to: unknown, userId?: unknown, departmentId?: unknown }} opts */
-const traineePeriods = async ({ from, to, userId, departmentId }) => {
+//        course_id, course_name, training_type_id, training_type_name, attendance_mode,
+//        shift_pattern_id, start_date, end_date }]
+// method: chỉ khóa có loại hình cho phép phương thức điểm danh này (utils/attendanceMethods).
+// attendance_methods = giá trị cột của loại hình (NULL = mọi phương thức đang bật trên hệ thống).
+/** @param {{ from: unknown, to: unknown, userId?: unknown, departmentId?: unknown, modes?: string[], method?: string }} opts */
+const traineePeriods = async ({ from, to, userId, departmentId, modes = SHIFT_MODES, method }) => {
 	const pool = await getPool();
 	const req = pool.request().input('from', sql.Date, from).input('to', sql.Date, to);
-	const where = [];
+	const where = [modeInSql('c', modes)];
+	if (method) where.push(attendanceMethods.courseAllowsSql('c', method));
 	if (userId) {
 		req.input('user_id', sql.VarChar(20), userId);
 		where.push('t.user_id = @user_id');
@@ -291,12 +311,16 @@ const traineePeriods = async ({ from, to, userId, departmentId }) => {
 	const rows = (
 		await req.query(`
       SELECT t.user_id, t.id AS trainee_id, t.full_name, t.department_id, d.name AS department_name,
-             c.id AS course_id, c.name AS course_name, c.shift_pattern_id, p.start_date, p.end_date
+             c.id AS course_id, c.name AS course_name, c.training_type_id, tt.name AS training_type_name,
+             tt.attendance_methods,
+             ${courseModeSql('c')} AS attendance_mode, ${coursePatternSql('c')} AS shift_pattern_id,
+             p.start_date, p.end_date
       FROM course_enrollments e
       JOIN courses c ON c.id = e.course_id
       JOIN trainees t ON t.id = e.trainee_id
       JOIN users u ON u.id = t.user_id AND u.is_active = 'true'
       LEFT JOIN departments d ON d.id = t.department_id
+      LEFT JOIN training_types tt ON tt.id = c.training_type_id
       ${crossApply(
 				`SELECT COALESCE(e.start_date, c.start_date) AS start_date,
                           COALESCE(e.end_date, c.end_date) AS end_date`,
@@ -334,6 +358,9 @@ const groupByTrainee = (periods) => {
 		map.get(p.user_id).periods.push({
 			course_id: p.course_id,
 			course_name: p.course_name,
+			training_type_id: p.training_type_id,
+			training_type_name: p.training_type_name,
+			attendance_mode: p.attendance_mode,
 			shift_pattern_id: p.shift_pattern_id,
 			start_date: p.start_date,
 			end_date: p.end_date,
@@ -342,8 +369,9 @@ const groupByTrainee = (periods) => {
 	return [...map.values()];
 };
 
-// (dateKey) → { course_id, course_name, pattern } | null: khóa đang học ngày đó + mẫu ca tuần
-// của khóa (khóa chưa gán mẫu → mẫu mặc định, không có nữa → null = điểm danh tự do)
+// (dateKey) → { course_id, course_name, attendance_mode, pattern } | null: khóa đang học ngày đó
+// + mẫu ca tuần (của khóa → của loại hình → mẫu mặc định; không có nữa → null = điểm danh tự do).
+// Khóa không chấm theo ca (chỉ theo buổi học) ⇒ pattern null.
 const courseResolver = (periods, patterns) => {
 	const byId = new Map(patterns.map((p) => [p.id, p]));
 	const fallback = patterns.find((p) => p.is_default) ?? null;
@@ -353,7 +381,12 @@ const courseResolver = (periods, patterns) => {
 		return {
 			course_id: p.course_id,
 			course_name: p.course_name,
-			pattern: (p.shift_pattern_id && byId.get(p.shift_pattern_id)) || fallback,
+			training_type_name: p.training_type_name ?? null,
+			attendance_methods: p.attendance_methods ?? null,
+			attendance_mode: p.attendance_mode,
+			pattern: usesShifts(p.attendance_mode)
+				? (p.shift_pattern_id && byId.get(p.shift_pattern_id)) || fallback
+				: null,
 		};
 	};
 };

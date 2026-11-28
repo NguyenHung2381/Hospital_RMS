@@ -201,9 +201,13 @@ export default function MyAttendance() {
 		? 'Chức năng điểm danh đang tắt. Vui lòng liên hệ phòng Đào tạo.'
 		: data && !data.is_trainee
 			? 'Điểm danh chỉ dành cho học viên đang học khóa đào tạo tại bệnh viện.'
-			: data && !data.configured
-				? 'Quản trị chưa cấu hình điểm danh. Vui lòng liên hệ phòng CNTT.'
-				: '';
+			: data && data.app_enabled === false
+				? 'Điểm danh trên ứng dụng đang tắt. Vui lòng chấm công bằng máy chấm công hoặc báo giảng viên.'
+				: data?.current_course?.methods?.app === false
+					? 'Khóa học của bạn không điểm danh trên ứng dụng. Vui lòng chấm công bằng máy chấm công hoặc báo giảng viên.'
+					: data && !data.configured
+						? 'Quản trị chưa cấu hình điểm danh. Vui lòng liên hệ phòng CNTT.'
+						: '';
 	const noCourseWeek = data?.week.every((d) => !d.course_id) ?? true;
 
 	return (

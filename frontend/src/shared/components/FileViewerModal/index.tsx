@@ -1,80 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { BASE_URL } from '../../api/axios';
-import { getToken } from '../../utils/storage';
+import { DocumentView, type DocumentViewFile } from './DocumentView';
 import styles from './FileViewerModal.module.css';
 
+export { DocumentView } from './DocumentView';
+export type { DocumentViewFile } from './DocumentView';
+
 interface FileViewerModalProps {
-	file: { url: string; name: string; isWord: boolean };
+	file: DocumentViewFile;
 	onClose: () => void;
 }
 
 export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
-	const containerRef = useRef<HTMLDivElement>(null);
-	const blobUrlRef = useRef<string | null>(null);
-	const [renderState, setRenderState] = useState<'loading' | 'done' | 'error'>(
-		'loading',
-	);
-	const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-	const [imageBlobUrl, setImageBlobUrl] = useState<string | null>(null);
-
-	useEffect(() => {
-		let cancelled = false;
-
-		const render = async () => {
-			try {
-				const token = getToken();
-				const fetchUrl = file.url.startsWith('http')
-					? file.url
-					: `${BASE_URL}${file.url}`;
-				const response = await fetch(fetchUrl, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				});
-				if (!response.ok) throw new Error(`${response.status}`);
-				const contentType = response.headers.get('content-type') ?? '';
-				const buffer = await response.arrayBuffer();
-				if (cancelled) return;
-
-				if (contentType.startsWith('image/')) {
-					const url = URL.createObjectURL(new Blob([buffer], { type: contentType }));
-					blobUrlRef.current = url;
-					setImageBlobUrl(url);
-				} else if (file.isWord) {
-					const { renderAsync } = await import('docx-preview');
-					if (containerRef.current) {
-						containerRef.current.innerHTML = '';
-						await renderAsync(buffer, containerRef.current, undefined, {
-							className: 'docxViewer',
-							inWrapper: true,
-							breakPages: true,
-							useBase64URL: true,
-							// altChunk = HTML nhúng nguyên văn trong .docx, docx-preview đổ vào iframe
-							// srcdoc cùng origin ứng dụng ⇒ file tải lên chạy được script nếu thiếu CSP.
-							renderAltChunks: false,
-						});
-					}
-				} else {
-					const blob = new Blob([buffer], { type: 'application/pdf' });
-					const url = URL.createObjectURL(blob);
-					blobUrlRef.current = url;
-					if (!cancelled) setPdfBlobUrl(url);
-				}
-
-				if (!cancelled) setRenderState('done');
-			} catch {
-				if (!cancelled) setRenderState('error');
-			}
-		};
-
-		void render();
-		return () => {
-			cancelled = true;
-			if (blobUrlRef.current) {
-				URL.revokeObjectURL(blobUrlRef.current);
-				blobUrlRef.current = null;
-			}
-		};
-	}, [file.url, file.isWord]);
-
 	return (
 		<div
 			className={styles.viewerBackdrop}
@@ -94,48 +29,7 @@ export function FileViewerModal({ file, onClose }: FileViewerModalProps) {
 						<span aria-hidden='true'>✕</span>
 					</button>
 				</div>
-
-				{renderState === 'loading' && (
-					<div className={styles.viewerStatus}>
-						<span className={styles.spinner} />
-						Đang tải tài liệu...
-					</div>
-				)}
-				{renderState === 'error' && (
-					<div
-						className={styles.viewerStatus}
-						style={{ color: 'var(--tone-red-fg)' }}
-					>
-						Không thể tải tài liệu. Hãy thử tải về.
-					</div>
-				)}
-
-				{imageBlobUrl && (
-					<div className={styles.viewerDocxWrap}>
-						<img
-							src={imageBlobUrl}
-							alt={file.name}
-							style={{ display: 'block', maxWidth: '100%', margin: '0 auto' }}
-						/>
-					</div>
-				)}
-
-				{file.isWord && !imageBlobUrl && (
-					<div
-						className={styles.viewerDocxWrap}
-						style={{ display: renderState === 'done' ? 'block' : 'none' }}
-					>
-						<div ref={containerRef} />
-					</div>
-				)}
-
-				{!file.isWord && renderState === 'done' && pdfBlobUrl && (
-					<embed
-						src={pdfBlobUrl}
-						type='application/pdf'
-						className={styles.viewerFrame}
-					/>
-				)}
+				<DocumentView file={file} />
 			</div>
 		</div>
 	);

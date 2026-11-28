@@ -208,7 +208,8 @@ jobs:
           echo "- Gắn tag: $repo:$GITHUB_SHA ← ${BEFORE::7} ($digest)" >> "$GITHUB_STEP_SUMMARY"
 
   # Ký image của commit này bằng cosign (khoá riêng của bệnh viện, KHÔNG đẩy lên log
-  # minh bạch công khai Rekor → không lộ tên repo private). Job deploy xác minh chữ ký
+  # minh bạch công khai Rekor — khoá tự quản nên Rekor không thêm bảo đảm, và repo có chuyển
+  # private cũng không lộ tên). Job deploy xác minh chữ ký
   # bằng khoá công khai (biến COSIGN_PUBLIC_KEY) trước khi chạy → image không do
   # pipeline này build/ký thì không lên được server.
   # Khoá riêng nằm ở environment "image-signing" (chỉ nhánh main) — PR, kể cả PR

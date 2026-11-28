@@ -9,7 +9,9 @@ import { selfCreated } from './detailUtils';
 import type { TabProps } from './types';
 
 /** Tab "Đăng ký & điểm danh" (hội nghị BV tổ chức): QR đăng ký, quét vé, ai chưa điểm danh. */
-export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
+export function CheckinTab({ seminar, participants, counts, perms, actions }: TabProps) {
+	// Loại hội nghị / Cấu hình hệ thống tắt quét vé ⇒ ẩn nút (thiếu dữ liệu = vẫn hiện, server tự chặn)
+	const ticketOn = seminar.checkin_methods?.ticket !== false;
 	// Tự đăng ký (QR có vé / cổng tập huấn) mà chưa điểm danh — chưa đủ điều kiện CME
 	const waiting = useMemo(() => participants.filter((p) => selfCreated(p) && !p.checked_in_at), [participants]);
 	const recent = useMemo(
@@ -54,8 +56,11 @@ export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
 						<div>
 							<div className={s.cardTitle}>Công cụ tổ chức</div>
 							<div className={s.cardSub}>
-								Người tham dự quét mã QR để tự đăng ký và nhận vé; tại hội trường ban tổ chức quét vé để điểm
-								danh.
+								{ticketOn
+									? 'Người tham dự quét mã QR để tự đăng ký và nhận vé; tại hội trường ban tổ chức quét vé để điểm danh.'
+									: 'Người tham dự quét mã QR để tự đăng ký và nhận vé. Loại hội nghị này không điểm danh bằng quét vé (Cấu hình hệ thống → Điểm danh).'}
+								{seminar.checkin_methods?.device &&
+									' Người đã có trong danh sách cũng điểm danh được bằng vân tay ở máy chấm công dành cho hội nghị (mã trên máy = mã nhân viên).'}
 							</div>
 						</div>
 						<div className={s.cardActions}>
@@ -66,13 +71,15 @@ export function CheckinTab({ participants, counts, perms, actions }: TabProps) {
 							>
 								<QrSvg /> Mã QR đăng ký
 							</button>
-							<button
-								type='button'
-								className={sem.btnPrimary}
-								onClick={actions.scanTickets}
-							>
-								<ClipboardCheckSvg /> Quét vé điểm danh
-							</button>
+							{ticketOn && (
+								<button
+									type='button'
+									className={sem.btnPrimary}
+									onClick={actions.scanTickets}
+								>
+									<ClipboardCheckSvg /> Quét vé điểm danh
+								</button>
+							)}
 						</div>
 					</div>
 				</section>

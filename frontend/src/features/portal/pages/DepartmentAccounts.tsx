@@ -1,3 +1,4 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { Toggle } from '@/shared/components/Input/Toggle';
 import React from 'react';
 import {
@@ -369,40 +370,30 @@ export default function DepartmentAccounts() {
 												</span>
 											</td>
 											<td className={`${styles.td} ${styles.tdActions}`}>
-												{canUpdate && (
-													<button
-														type='button'
-														className={`${styles.actionBtn} ${styles.actionEdit}`}
-														title='Chỉnh sửa'
-														aria-label={`Chỉnh sửa tài khoản ${u.username}`}
-														onClick={() => d.setEditUser(u)}
-													>
-														<EditSvg />
-													</button>
-												)}
-												{canUpdate && (
-													<button
-														type='button'
-														className={styles.actionBtn}
-														title='Đặt lại mật khẩu (về tên đăng nhập)'
-														aria-label={`Đặt lại mật khẩu của tài khoản ${u.username}`}
-														onClick={() => d.setResetUser(u)}
-														style={{ color: 'var(--tone-amber-fg)' }}
-													>
-														<KeySvg />
-													</button>
-												)}
-												{canDelete && (
-													<button
-														type='button'
-														className={`${styles.actionBtn} ${styles.actionDelete}`}
-														title='Xóa'
-														aria-label={`Xóa tài khoản ${u.username}`}
-														onClick={() => d.setDeleteUser(u)}
-													>
-														<TrashSvg />
-													</button>
-												)}
+												<RowActions
+													itemName={`tài khoản ${u.username}`}
+													onDelete={canDelete ? () => d.setDeleteUser(u) : undefined}
+												>
+													{canUpdate && (
+														<>
+															<RowAction
+																title='Chỉnh sửa'
+																aria-label={`Chỉnh sửa tài khoản ${u.username}`}
+																onClick={() => d.setEditUser(u)}
+															>
+																<EditSvg />
+															</RowAction>
+															<RowAction
+																title='Đặt lại mật khẩu'
+																aria-label={`Đặt lại mật khẩu của tài khoản ${u.username} (về tên đăng nhập)`}
+																tone='warn'
+																onClick={() => d.setResetUser(u)}
+															>
+																<KeySvg />
+															</RowAction>
+														</>
+													)}
+												</RowActions>
 											</td>
 										</tr>
 									);

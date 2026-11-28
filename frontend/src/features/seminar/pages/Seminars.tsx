@@ -1,12 +1,11 @@
-import { SearchInput } from '@/shared/components/Table/TableToolbar';
+import { RowAction, RowActions, RowMenu, SearchInput } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
 import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dropdown, type MenuProps } from 'antd';
+import type { MenuProps } from 'antd';
 import {
 	DownloadSvg,
 	EditSvg,
-	MoreVSvg,
 	PlusSvg,
 	QrSvg,
 	TrashSvg,
@@ -382,19 +381,15 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 												</div>
 											</td>
 											<td className={ls.colActions}>
-												<div className={ls.actions}>
-													<button
-														type='button'
-														className={ls.actionBtn}
-														title='Người tham dự & cấp CME'
+												<RowActions>
+													<RowAction
+														title='Người tham dự & CME'
 														aria-label='Người tham dự & cấp CME'
-														onClick={() => navigate(detailUrl)}
+														to={detailUrl}
 													>
 														<UsersSvg />
-													</button>
-													<Dropdown
-														trigger={['click']}
-														placement='bottomRight'
+													</RowAction>
+													<RowMenu
 														menu={{
 															items: rowMenu(row),
 															onClick: ({ key, domEvent }) => {
@@ -402,17 +397,8 @@ export default function Seminars({ hospitalTraining = false }: { hospitalTrainin
 																onRowMenu(row, key);
 															},
 														}}
-													>
-														<button
-															type='button'
-															className={ls.actionBtn}
-															title='Thao tác khác'
-															aria-label='Thao tác khác'
-														>
-															<MoreVSvg />
-														</button>
-													</Dropdown>
-												</div>
+													/>
+												</RowActions>
 											</td>
 										</tr>
 									);

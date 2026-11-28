@@ -1,0 +1,390 @@
+/* Chi tiết hồ sơ trình ký */
+
+.notFound {
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+}
+
+.workspace {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 340px;
+	align-items: start;
+	gap: var(--space-6);
+}
+.main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	min-width: 0;
+}
+.viewer {
+	min-height: 320px;
+	padding: var(--space-6) var(--space-4) var(--space-8);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background: var(--color-gray-100);
+}
+
+.docTabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.docTab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 260px;
+	height: 34px;
+	padding: 0 var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-700);
+	cursor: pointer;
+}
+.docTab svg {
+	flex: none;
+	width: 15px;
+	height: 15px;
+	color: var(--tone-red-fg);
+}
+.docTab span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.docTabOn {
+	border-color: var(--color-primary-dark);
+	background: var(--tone-green-bg);
+	color: var(--color-gray-900);
+	font-weight: var(--font-weight-semibold);
+}
+/* Văn bản tôi còn phải tự đặt khung — việc đang chờ tôi */
+.needs {
+	flex: none;
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--color-accent, #df0984);
+}
+
+/* ── Bảng bên phải ── */
+.panel {
+	position: sticky;
+	top: var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+	padding: var(--space-5);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background: var(--color-white);
+}
+.statusRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+}
+.sub {
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+}
+.message {
+	margin: 0;
+	padding: var(--space-3);
+	border-radius: var(--radius-md);
+	background: var(--color-gray-50);
+	font-size: var(--font-size-sm);
+	line-height: 1.55;
+	color: var(--color-gray-700);
+	white-space: pre-line;
+}
+
+/* Tới lượt tôi: việc đang chờ bạn xử lý */
+.myTurn {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding: var(--space-4);
+	border: 1px solid var(--tone-pink-border);
+	border-radius: var(--radius-lg);
+	background: var(--tone-pink-bg);
+}
+.myTurn > button:first-of-type {
+	width: 100%;
+	justify-content: center;
+}
+.myTurnText {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+	color: var(--color-gray-800);
+}
+.warn {
+	margin: 0;
+	font-size: var(--font-size-compact);
+	color: var(--tone-amber-fg);
+}
+.textDanger,
+.textBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	align-self: flex-start;
+	padding: 4px 6px;
+	border: 0;
+	border-radius: var(--radius-md);
+	background: none;
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.textDanger {
+	color: var(--tone-red-fg);
+}
+.textBtn {
+	color: var(--color-primary-dark);
+}
+.textDanger svg,
+.textBtn svg {
+	width: 15px;
+	height: 15px;
+}
+.textDanger:hover:not(:disabled) {
+	background: var(--tone-red-bg);
+}
+.textBtn:hover:not(:disabled) {
+	background: var(--color-gray-100);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--color-gray-100);
+}
+.sectionTitle {
+	margin: 0;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+/* Tiến trình: đường dọc nối các bước */
+.timeline {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.tStep {
+	position: relative;
+	padding: 0 0 var(--space-4) 34px;
+}
+.tStep:not(:last-child)::before {
+	content: '';
+	position: absolute;
+	left: 11px;
+	top: 24px;
+	bottom: 2px;
+	border-left: 2px solid var(--color-gray-200);
+}
+.tDone:not(:last-child)::before {
+	border-color: var(--color-primary);
+}
+.tHead {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	min-height: 24px;
+}
+.tDot {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border: 2px solid var(--color-gray-300);
+	border-radius: 50%;
+	background: var(--color-white);
+	font-size: 11px;
+	font-weight: var(--font-weight-bold);
+	color: var(--color-gray-500);
+}
+.tDot svg {
+	width: 13px;
+	height: 13px;
+}
+.tDone .tDot {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	color: var(--color-white);
+}
+.tCurrent .tDot {
+	border-color: var(--color-primary-dark);
+	color: var(--color-primary-dark);
+}
+.tTitle {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.tSigners {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: var(--space-2) 0 0;
+	padding: 0;
+	list-style: none;
+}
+.tSigner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+}
+.tName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-800);
+}
+
+.docList {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.docList li {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+.docName {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+}
+.iconBtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-gray-600);
+	cursor: pointer;
+}
+.iconBtn svg {
+	width: 15px;
+	height: 15px;
+}
+.iconBtn:hover {
+	background: var(--color-gray-100);
+	color: var(--color-gray-900);
+}
+
+.events {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-700);
+}
+.events li {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+.eTime {
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+.textarea {
+	width: 100%;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+	resize: vertical;
+}
+.textarea:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: var(--select-focus-ring);
+}
+
+/* Nội dung khung chữ ký của tôi */
+.stamp {
+	container-type: size;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	width: 100%;
+	height: 100%;
+	padding: 2% 3%;
+}
+.stampImg {
+	flex: 1 1 auto;
+	min-height: 0;
+	max-width: 100%;
+	object-fit: contain;
+	object-position: center bottom;
+}
+.stampCaption {
+	flex: none;
+	max-width: 100%;
+	font-size: 13cqh;
+	font-weight: var(--font-weight-bold);
+	line-height: 1.25;
+	color: #1a2a35;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.textDanger:focus-visible,
+.textBtn:focus-visible,
+.iconBtn:focus-visible,
+.docTab:focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+@media (max-width: 1100px) {
+	.workspace {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.panel {
+		position: static;
+		order: -1;
+	}
+}

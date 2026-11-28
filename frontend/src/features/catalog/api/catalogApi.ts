@@ -8,6 +8,13 @@ import type {
 } from '../types/catalog.type';
 import { seg } from '../../../shared/api/path';
 
+// Tab "Loại hình đào tạo": kiểu chấm công + mẫu ca tuần mặc định + phương thức điểm danh (chỉ gửi khi form có)
+const attendanceFields = (form: CatalogFormData) => ({
+	...(form.attendance_mode !== undefined ? { attendance_mode: form.attendance_mode } : {}),
+	...(form.shift_pattern_id !== undefined ? { shift_pattern_id: form.shift_pattern_id } : {}),
+	...(form.attendance_methods !== undefined ? { attendance_methods: form.attendance_methods } : {}),
+});
+
 export const catalogApi = {
 	list: (tab: CatalogTab) =>
 		apiClient.get<CatalogListResponse>(`/${seg(tab)}?limit=0`),
@@ -32,12 +39,14 @@ export const catalogApi = {
 		apiClient.post<CatalogItem>(`/${seg(tab)}`, {
 			name: form.name,
 			description: form.description || null,
+			...attendanceFields(form),
 		}),
 
 	update: (tab: CatalogTab, id: string, form: CatalogFormData) =>
 		apiClient.put<CatalogItem>(`/${seg(tab)}/${seg(id)}`, {
 			name: form.name,
 			description: form.description || null,
+			...attendanceFields(form),
 		}),
 
 	remove: (tab: CatalogTab, id: string) =>

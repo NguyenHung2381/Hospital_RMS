@@ -13,6 +13,7 @@ const {
 	nowSql,
 	ilike,
 } = require('../../config/db');
+const attendanceMethods = require('../../utils/attendanceMethods');
 const { randomId, randomHex32 } = require('../../utils/idGenerator');
 const { broadcast } = require('../events/eventService');
 const { paging } = require('../../utils/paging');
@@ -165,6 +166,10 @@ const getById = async (id) => {
 		results.get(r.participant_id).push(r);
 	}
 	seminar.tests = sets[2];
+	// Phương thức điểm danh dùng được theo loại hội nghị (utils/attendanceMethods) — ẩn nút quét vé...
+	seminar.checkin_methods = attendanceMethods.publicSeminar(
+		await attendanceMethods.forSeminarType(seminar.event_type),
+	);
 	seminar.participants = sets[1].map((p) => ({
 		...omitLegacyTest(p, LEGACY_PARTICIPANT_TEST),
 		test_results: results.get(p.id) ?? [],

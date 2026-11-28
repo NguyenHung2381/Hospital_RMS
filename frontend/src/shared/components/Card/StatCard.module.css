@@ -159,6 +159,19 @@
 	.statsRow {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
+	/* Lưới 2 cột mà số thẻ lẻ → thẻ cuối nằm lẻ loi một nửa hàng: cho nó kéo hết hàng */
+	.statsRow > :last-child:nth-child(odd):not(:only-child) {
+		grid-column: 1 / -1;
+	}
+}
+/* Đúng 3 thẻ: còn đủ chỗ (máy tính bảng, laptop nhỏ) thì giữ 3 cột một hàng thay vì 2 + 1 */
+@media (min-width: 641px) and (max-width: 1280px) {
+	.statsRow:has(> :nth-child(3):last-child) {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.statsRow:has(> :nth-child(3):last-child) > :last-child {
+		grid-column: auto;
+	}
 }
 
 @media (max-width: 640px) {

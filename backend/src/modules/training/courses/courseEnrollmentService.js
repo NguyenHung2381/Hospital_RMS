@@ -133,6 +133,13 @@ const assertNotLecturerOfCourse = async (courseId, traineeId) => {
 		throw httpError(400, 'Giảng viên của khóa học không thể ghi danh làm học viên của khóa này.');
 };
 
+// courses.status chỉ còn ý nghĩa với 'cancelled' (trạng thái hiển thị suy từ ngày —
+// courseService.computeDisplayStatus). Khóa đã hủy: không ghi danh / duyệt thêm.
+const assertNotCancelled = (course) => {
+	if (course.status === 'cancelled')
+		throw httpError(409, 'Khóa học đã hủy — không ghi danh hay duyệt thêm học viên.');
+};
+
 // Thêm học viên vào khóa học. Chặn nếu khóa học đang đóng cửa sổ đăng ký, trừ
 // khi options.bypassWindow (admin / quản lý đào tạo ghi danh hộ — xem
 // courseController.registerTrainee). options.programId: chương trình học viên
@@ -147,6 +154,8 @@ const registerTrainee = async (
 	if (!course) {
 		throw httpError(404, 'Khóa học không tồn tại.');
 	}
+	// Trước cả bypassWindow: ghi danh hộ cũng không vào được khóa đã hủy
+	assertNotCancelled(course);
 	if (!course.enrollment_open && !bypassWindow) {
 		throw httpError(403, 'Khóa học hiện không trong thời gian đăng ký.');
 	}
@@ -293,36 +302,59 @@ const decideEnrollment = async (enrollmentId, decision, actorId, note) => {
 		throw httpError(404, 'Không tìm thấy đăng ký.');
 	}
 
-	// Duyệt hồ sơ cũ (ghi danh trước khi người đó được phân công giảng dạy) cũng phải chặn.
-	if (decision === 'approved') await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
-
 	const course = await getById(row.course_id);
+	if (decision === 'approved') {
+		assertNotCancelled(course);
+		// Duyệt hồ sơ cũ (ghi danh trước khi người đó được phân công giảng dạy) cũng phải chặn.
+		await assertNotLecturerOfCourse(row.course_id, row.trainee_id);
+	}
 	const classRule = !!row.program_id && programClassService.appliesTo(course);
-	let finalStatus = decision;
-	// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
-	if (decision === 'approved' && classRule && row.status !== 'approved')
-		finalStatus =
-			(await programClassService.statusOnApprove(course, row.program_id, row.trainee_id)) ??
-			decision;
 
-	await pool
-		.request()
-		.input('id', sql.VarChar(20), enrollmentId)
-		.input('status', sql.VarChar(15), finalStatus)
-		.input('decided_by', sql.VarChar(20), actorId)
-		.input('note', sql.NVarChar(500), note || null).query(`
-      UPDATE course_enrollments
-      SET status = @status, decided_by = @decided_by, decided_at = ${nowSql}, note = @note,
-          updated_at = ${nowSql}, updated_by = @decided_by
-      WHERE id = @id
-    `);
+	// Duyệt vào lớp có sĩ số: đếm chỗ trống + ghi phải nằm trong cùng khoá với
+	// fillFromWaitlist / waitlistTransferService.transfer (khoá chung course-class-waitlist,
+	// giữ tới khi commit). Trước đây đọc chỗ trống rồi ghi riêng, không khoá ⇒ 2 người duyệt
+	// cùng lúc (hoặc duyệt trong lúc đang kéo người chờ vào lớp) cùng lấy 1 chỗ, vượt sĩ số.
+	// Đếm chỗ (statusOnApprove) đọc qua kết nối khác: mọi thao tác giữ khoá trước đã commit.
+	const { finalStatus, prevStatus } = await withTransaction(async (tx) => {
+		let prev = row.status;
+		let next = decision;
+		if (decision === 'approved' && classRule) {
+			await programClassService.lockWaitlist(tx);
+			// Đọc lại sau khi có khoá: người khác có thể vừa duyệt / xếp chính hồ sơ này
+			const cur = (
+				await tx
+					.request()
+					.input('id', sql.VarChar(20), enrollmentId)
+					.query('SELECT status FROM course_enrollments WHERE id = @id')
+			).recordset[0];
+			if (!cur) throw httpError(404, 'Không tìm thấy đăng ký.');
+			prev = cur.status;
+			// Hồ sơ đã duyệt (đang chiếm chỗ) thì giữ nguyên.
+			if (prev !== 'approved')
+				next =
+					(await programClassService.statusOnApprove(course, row.program_id, row.trainee_id)) ??
+					decision;
+		}
+		await tx
+			.request()
+			.input('id', sql.VarChar(20), enrollmentId)
+			.input('status', sql.VarChar(15), next)
+			.input('decided_by', sql.VarChar(20), actorId)
+			.input('note', sql.NVarChar(500), note || null).query(`
+        UPDATE course_enrollments
+        SET status = @status, decided_by = @decided_by, decided_at = ${nowSql}, note = @note,
+            updated_at = ${nowSql}, updated_by = @decided_by
+        WHERE id = @id
+      `);
+		return { finalStatus: next, prevStatus: prev };
+	});
 
 	let waitlistPosition = null;
 	if (classRule) {
-		if (finalStatus === 'approved' && row.status !== 'approved')
+		if (finalStatus === 'approved' && prevStatus !== 'approved')
 			await programClassService.notifyIfReady(course.id, row.program_id);
 		// Rời lớp ⇒ lớp có chỗ trống, gọi người chờ vào.
-		else if (row.status === 'approved' && finalStatus !== 'approved')
+		else if (prevStatus === 'approved' && finalStatus !== 'approved')
 			await programClassService.fillFromWaitlist(course.id, actorId, { programId: row.program_id });
 		if (finalStatus === 'waitlisted') {
 			// Nội viện, lớp đầy: chờ đợt sau — cán bộ chuyển tay khi có đợt mới (waitlistTransferService).

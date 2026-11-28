@@ -5,9 +5,17 @@ const { broadcast } = require('../events/eventService');
 // Cấu hình hệ thống qua UI (2026-09-14_system_settings.sql) — thay .env cho các
 // giá trị nghiệp vụ hay đổi. value NULL = "chưa cấu hình qua UI, dùng .env"
 // (mailService.js/cmeRequirementService.js tự fallback process.env).
-const SECRET_KEYS = new Set(['SMTP_PASS', 'RECAPTCHA_SECRET_KEY', 'RECAPTCHA_API_KEY']);
-// Whitelist — PUT /:key không được tạo key tùy ý. Thêm key mới = thêm ở đây +
-// trang cấu hình frontend (features/settings).
+const SECRET_KEYS = new Set([
+	'SMTP_PASS',
+	'RECAPTCHA_SECRET_KEY',
+	'RECAPTCHA_API_KEY',
+	'TUITION_BANK_API_SECRET',
+]);
+// Whitelist — PUT không được tạo key tùy ý. Thêm key mới:
+//   1. thêm tên khóa ở đây (công tắc → BOOLEAN_KEYS, danh sách chọn → ENUM_KEYS);
+//   2. ràng buộc riêng (khoảng số, định dạng) → validateSetting ở module đọc khóa đó, đăng ký
+//      module trong settingRules.js nếu chưa có;
+//   3. khai báo ô nhập ở frontend features/settings/config/sections.ts.
 const KEYS = [
 	'MAIL_ENABLED',
 	'SMTP_HOST',
@@ -30,6 +38,8 @@ const KEYS = [
 	'MODULE_SEMINAR',
 	'MODULE_SURVEY',
 	'MODULE_ATTENDANCE',
+	// Thu học phí (phân hệ con của Đào tạo) — training/tuition/
+	'MODULE_TUITION',
 	// Mục menu bị ẩn của từng cổng (danh sách key phân cách dấu phẩy) — modules.routes.js /menus
 	'MENU_HIDDEN_ADMIN',
 	'MENU_HIDDEN_USER',
@@ -48,6 +58,14 @@ const KEYS = [
 	'ATTENDANCE_LOCATION',
 	'ATTENDANCE_RADIUS_M',
 	'ATTENDANCE_MAX_ACCURACY_M',
+	// Phương thức điểm danh được phép (công tắc toàn hệ thống + theo loại hội nghị) — utils/attendanceMethods.js
+	'ATTENDANCE_METHOD_QR',
+	'ATTENDANCE_METHOD_APP',
+	'ATTENDANCE_METHOD_DEVICE',
+	'SEMINAR_CHECKIN_QR',
+	'SEMINAR_CHECKIN_TICKET',
+	'SEMINAR_CHECKIN_DEVICE',
+	'SEMINAR_CHECKIN_BY_TYPE',
 	// Máy chấm công vân tay (ADMS) — modules/attendanceDevices/deviceSettings.js
 	'DEVICE_CHECKIN_EARLY_MIN',
 	'DEVICE_LATE_AFTER_MIN',
@@ -70,6 +88,11 @@ const KEYS = [
 	// Lớp ĐTLT / CTCV — training/courses/programClassService.js, utils/classDates.js
 	'TRAINING_CLASS_PREP_DAYS',
 	'TRAINING_HOLIDAYS',
+	// 'false' ⇒ không tự thêm ngày lễ theo luật (utils/vnHolidays.js) — mặc định bật
+	'TRAINING_HOLIDAYS_AUTO',
+	// Đồng bộ ngày nghỉ lễ từ lịch iCal (mặc định lịch Google) — modules/settings/holidaySync.js
+	'TRAINING_HOLIDAYS_SYNC',
+	'TRAINING_HOLIDAYS_ICS_URL',
 	'TRAINING_ALLOW_MULTI_PROGRAM',
 	// Form đăng ký khóa đào tạo liên tục — public/publicPortalService.js, training/registration/
 	// 'false' ⇒ không bắt xác minh email bằng OTP trước khi gửi đăng ký (mặc định bật)
@@ -94,6 +117,11 @@ const KEYS = [
 	'TUITION_ACCOUNT_NO',
 	'TUITION_ACCOUNT_NAME',
 	'TUITION_RECEIPT_UNIT',
+	// Tự đối soát học phí qua API ngân hàng — training/tuition/bank/bankSettings.js
+	'TUITION_BANK_API_PROVIDER',
+	'TUITION_BANK_API_SECRET',
+	'TUITION_BANK_AUTO_CONFIRM',
+	'TUITION_BANK_API_ALLOWED_IPS',
 	// Tự cộng tín chỉ CME từ khóa ĐTLT / CTCV — training/courses/courseCmeService.js
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
@@ -110,20 +138,43 @@ const KEYS = [
 	'MAIL_EVENT_TOPIC_SUBMITTED',
 	'MAIL_EVENT_ACCOUNT_GRANTED',
 	'MAIL_EVENT_BROADCAST',
+	'MAIL_EVENT_SIGN_REQUEST',
+	// JSON: bật/tắt ký số tổng / theo nơi dùng / theo nhà cung cấp — signing/signingConfig.js
+	'SIGNING_CONFIG',
 ];
 const isKey = (key) => KEYS.includes(key);
 
 // Các khóa bật/tắt (công tắc): người đọc chỉ coi đúng chuỗi 'false' là tắt, nên giá trị gõ sai
 // (vd "False", "0", "tat") sẽ bị hiểu là BẬT hoặc lệch giữa hai nơi đọc — chỉ nhận
-// 'true'/'false' (rỗng = bỏ ghi đè, về mặc định bật). Gồm công tắc form đăng ký ĐTLT và
-// công tắc tự cộng tín chỉ CME (training/courses/courseCmeService.js).
+// 'true'/'false' (rỗng = bỏ ghi đè, về mặc định của module đọc khóa). Công tắc mới nhớ thêm vào
+// đây — nhất là khi cấu hình được nhập từ file JSON ở trang cấu hình.
 const BOOLEAN_KEYS = new Set([
+	'MAIL_ENABLED',
+	'REQUIRE_2FA_FOR_ADMINS',
+	'PASSWORD_RESET_ENABLED',
+	'MODULE_RESEARCH',
+	'MODULE_TRAINING',
+	'MODULE_SEMINAR',
+	'MODULE_SURVEY',
+	'MODULE_ATTENDANCE',
+	'MODULE_TUITION',
+	'TUITION_BANK_AUTO_CONFIRM',
+	'TRAINING_ALLOW_MULTI_PROGRAM',
+	'TRAINING_HOLIDAYS_AUTO',
+	'TRAINING_HOLIDAYS_SYNC',
+	...KEYS.filter((k) => k.startsWith('MAIL_EVENT_')),
 	'TRAINING_REGISTRATION_EMAIL_OTP',
 	'TRAINING_REGISTRATION_DOC_CHECK',
 	'TRAINING_DOC_SIGNATURE_CHECK',
 	'CME_AUTO_TRAINEE',
 	'CME_AUTO_LECTURER',
 	'DEVICE_FP_SYNC',
+	'ATTENDANCE_METHOD_QR',
+	'ATTENDANCE_METHOD_APP',
+	'ATTENDANCE_METHOD_DEVICE',
+	'SEMINAR_CHECKIN_QR',
+	'SEMINAR_CHECKIN_TICKET',
+	'SEMINAR_CHECKIN_DEVICE',
 ]);
 // Khóa chỉ nhận một trong các giá trị liệt kê (rỗng = bỏ ghi đè, về mặc định — giá trị đầu).
 // Khớp courseCmeService.APPROVAL_MODES.
@@ -132,7 +183,11 @@ const ENUM_KEYS = {
 	CME_LECTURER_APPROVAL: ['permission', 'approved', 'pending'],
 };
 // Khóa lưu JSON object (module nghiệp vụ tự chuẩn hoá khi đọc — ở đây chỉ chặn chuỗi hỏng / quá dài)
-const JSON_OBJECT_KEYS = new Set(['TRAINING_DOC_SIGNATURE_RULES']);
+const JSON_OBJECT_KEYS = new Set([
+	'TRAINING_DOC_SIGNATURE_RULES',
+	'SIGNING_CONFIG',
+	'SEMINAR_CHECKIN_BY_TYPE',
+]);
 const validateJsonObject = (value) => {
 	if (value.length > 10000) return 'Cấu hình quá dài';
 	try {
@@ -243,30 +298,34 @@ const UPSERT_SETTING_SQL = upsert({
 // kèm mật khẩu của host cũ; ghi mật khẩu xóa lỗi thì host cũng rollback.
 const effectiveHost = (v) =>
 	v !== null && v !== undefined && v !== '' ? v : process.env.SMTP_HOST;
+const writeSetting = (runner, key, value, actorId) =>
+	runner
+		.request()
+		.input('key', sql.VarChar(50), key)
+		.input('value', sql.NVarChar(sql.MAX), value === '' ? null : value)
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(UPSERT_SETTING_SQL);
+// Ghi SMTP_HOST trong tx đang mở; trả true nếu máy chủ đang áp dụng đổi (mật khẩu DB đã bị xóa)
+const writeSmtpHost = async (tx, value, actorId) => {
+	// Tuần tự hóa các lần đổi host đồng thời để hostBefore luôn đúng
+	if (!(await lockResource(tx, 'system_settings:SMTP_HOST')))
+		throw httpError(409, 'Đang có thay đổi máy chủ SMTP khác, vui lòng thử lại');
+	const before = (
+		await tx.request().query(`SELECT value FROM system_settings WHERE setting_key = 'SMTP_HOST'`)
+	).recordset[0]?.value;
+	const next = value === '' ? null : value;
+	await writeSetting(tx, 'SMTP_HOST', next, actorId);
+	if (effectiveHost(before) === effectiveHost(next)) return false;
+	await tx
+		.request()
+		.input('actor_id', sql.VarChar(20), actorId)
+		.query(
+			`UPDATE system_settings SET value = NULL, updated_at = ${nowSql}, updated_by = @actor_id WHERE setting_key = 'SMTP_PASS'`,
+		);
+	return true;
+};
 const updateSmtpHost = (value, actorId) =>
-	withTransaction(async (tx) => {
-		// Tuần tự hóa các lần đổi host đồng thời để hostBefore luôn đúng
-		if (!(await lockResource(tx, 'system_settings:SMTP_HOST')))
-			throw httpError(409, 'Đang có thay đổi máy chủ SMTP khác, vui lòng thử lại');
-		const before = (
-			await tx.request().query(`SELECT value FROM system_settings WHERE setting_key = 'SMTP_HOST'`)
-		).recordset[0]?.value;
-		const next = value === '' ? null : value;
-		await tx
-			.request()
-			.input('key', sql.VarChar(50), 'SMTP_HOST')
-			.input('value', sql.NVarChar(sql.MAX), next)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query(UPSERT_SETTING_SQL);
-		if (effectiveHost(before) !== effectiveHost(next)) {
-			await tx
-				.request()
-				.input('actor_id', sql.VarChar(20), actorId)
-				.query(
-					`UPDATE system_settings SET value = NULL, updated_at = ${nowSql}, updated_by = @actor_id WHERE setting_key = 'SMTP_PASS'`,
-				);
-		}
-	});
+	withTransaction((tx) => writeSmtpHost(tx, value, actorId));
 
 const update = async (key, value, actorId) => {
 	// UI gửi lại MASK khi admin không đổi secret → giữ nguyên giá trị cũ.
@@ -274,18 +333,41 @@ const update = async (key, value, actorId) => {
 	if (key === 'SMTP_HOST') {
 		await updateSmtpHost(value, actorId);
 	} else {
-		const pool = await getPool();
-		await pool
-			.request()
-			.input('key', sql.VarChar(50), key)
-			.input('value', sql.NVarChar(sql.MAX), value === '' ? null : value)
-			.input('actor_id', sql.VarChar(20), actorId)
-			.query(UPSERT_SETTING_SQL);
+		await writeSetting(await getPool(), key, value, actorId);
 	}
 	// Xóa cache SAU khi commit — không bao giờ nạp lại trạng thái dở dang
 	cache = null;
 	broadcast('update', { entity: 'system_setting' });
 	return getById(key);
+};
+
+// Khóa NỘI BỘ do máy chủ tự ghi (vd bản tải lịch nghỉ lễ — holidaySync.js): không nằm trong KEYS
+// nên PUT không sửa được và GET /system-settings không trả ra; đọc bằng getValue như khóa thường.
+const setInternal = async (key, value) => {
+	if (isKey(key)) throw new Error(`setInternal: ${key} là khóa admin sửa được, dùng update()`);
+	await writeSetting(await getPool(), key, value, null);
+	cache = null;
+};
+
+// Lưu nhiều cấu hình một lần (trang Cấu hình hệ thống bấm "Lưu"): tất cả hoặc không gì cả —
+// không còn cảnh lưu được nửa chừng rồi lỗi ở khóa thứ 5. Giá trị đã được kiểm (settingRules)
+// trước khi gọi. Secret gửi lại MASK = không đổi, bỏ qua.
+//   SMTP_HOST ghi TRƯỚC SMTP_PASS: đổi máy chủ kèm nhập mật khẩu mới trong cùng lần lưu thì
+//   mật khẩu cũ bị xóa rồi mật khẩu mới được ghi — không mất mật khẩu vừa nhập.
+// Trả số khóa đã ghi.
+const updateMany = async (values, actorId) => {
+	const entries = Object.entries(values).filter(([key, v]) => !(SECRET_KEYS.has(key) && v === MASK));
+	if (!entries.length) return 0;
+	entries.sort(([a], [b]) => (a === 'SMTP_HOST' ? -1 : b === 'SMTP_HOST' ? 1 : 0));
+	await withTransaction(async (tx) => {
+		for (const [key, value] of entries) {
+			if (key === 'SMTP_HOST') await writeSmtpHost(tx, value, actorId);
+			else await writeSetting(tx, key, value, actorId);
+		}
+	});
+	cache = null;
+	broadcast('update', { entity: 'system_setting' });
+	return entries.length;
 };
 
 module.exports = {
@@ -295,6 +377,8 @@ module.exports = {
 	smtpConfig,
 	smtpPassword,
 	update,
+	updateMany,
+	setInternal,
 	isKey,
 	validateSetting,
 };

@@ -7,6 +7,7 @@ const { success } = require('../../../utils/response');
 const { asyncHandler } = require('../../../utils/asyncHandler');
 const { hasPermission } = require('../../../permissions/authz');
 const { httpError } = require('../../../utils/httpError');
+const signingService = require('../../signing/signingService');
 
 // Đơn và hồ sơ PDF có số CCCD — cùng điều kiện với giấy tờ thực hành (practiceController)
 const assertSensitive = (user) => {
@@ -16,6 +17,12 @@ const assertSensitive = (user) => {
 			'Giấy tờ có số CCCD của học viên — cần quyền xem dữ liệu nhạy cảm của học viên.',
 		);
 };
+
+// ?sign=1: ký file Word bằng chứng thư cá nhân của người tải (signingService)
+const maybeSign = (req, out, docType, docRef) =>
+	signingService.wantsSign(req.query.sign)
+		? signingService.signDocxDownload(req.user, out, { docType, docRef })
+		: out;
 
 const sendDocx = (res, out) => {
 	res.setHeader('Content-Type', out.mime);
@@ -33,9 +40,10 @@ const getRegistration = asyncHandler(async (req, res) =>
 
 const downloadApplication = asyncHandler(async (req, res) => {
 	assertSensitive(req.user);
+	const out = await registrationReviewService.applicationForEnrollment(req.params.enrollmentId);
 	return sendDocx(
 		res,
-		await registrationReviewService.applicationForEnrollment(req.params.enrollmentId),
+		await maybeSign(req, out, 'registration_document', `${req.params.enrollmentId}:don`),
 	);
 });
 
@@ -58,7 +66,11 @@ const downloadProposal = asyncHandler(async (req, res) => {
 		programId: req.query.program_id ? String(req.query.program_id) : null,
 	});
 	if (!group) throw httpError(404, 'Không có nhân viên của khoa này đăng ký lớp đã chọn.');
-	return sendDocx(res, await registrationProposalService.renderGroup(group));
+	const out = await registrationProposalService.renderGroup(group);
+	return sendDocx(
+		res,
+		await maybeSign(req, out, 'registration_document', `${req.params.id}:to-trinh`),
+	);
 });
 
 // Bản ghi xác nhận điện tử (JSON nguyên văn; ?seq=N = lần sửa thứ N) — có IP / thiết bị ⇒ cần

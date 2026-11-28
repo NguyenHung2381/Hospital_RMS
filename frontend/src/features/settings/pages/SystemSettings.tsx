@@ -4,814 +4,35 @@ import AdminLayout from '../../../layouts/AdminLayout';
 import { Button, Card, SearchInput } from '../../../shared/components';
 import { notify } from '../../../shared/utils/feedback';
 import { cx } from '../../../shared/utils/cx';
-import {
-	BadgeSvg,
-	BookOpenSvg,
-	ClockSvg,
-	EyeOffSvg,
-	EyeSvg,
-	InfoSvg,
-	LayersSvg,
-	MailSvg,
-	MenuSvg,
-	RefreshSvg,
-	ShieldSvg,
-	UploadSvg,
-	WarnSvg,
-} from '../../../assets/icons';
-import { ADMIN_MENU } from '../../../layouts/AdminLayout/nav';
-import { TRAINEE_MENU } from '../../../layouts/TraineeLayout/nav';
-import { USER_MENU } from '../../../layouts/UserLayout/nav';
-import { resetMenuConfig, type MenuCatalog } from '../../../shared/hooks/useMenuConfig';
+import { saveBlob } from '../../../shared/utils/saveBlob';
+import { ApiError } from '../../../shared/api/http';
+import { DownloadSvg, EyeOffSvg, EyeSvg, InfoSvg, RefreshSvg, UploadSvg, WarnSvg } from '../../../assets/icons';
+import { resetMenuConfig } from '../../../shared/hooks/useMenuConfig';
 import { resetModules } from '../../../shared/hooks/useModules';
 import { resetUploadPolicy } from '../../../shared/hooks/useUploadPolicy';
-import { getMyAttendance } from '../../portal/api/meApi';
 import { settingsApi } from '../api/settingsApi';
 import styles from './SystemSettings.module.css';
-import RadiusMap from '../components/RadiusMap';
 import DocCheckPanel from '../components/DocCheckPanel';
 import RecaptchaTestPanel from '../components/RecaptchaTestPanel';
-import { TUITION_BANKS } from '../../tuition/utils/banks';
-
-type Field = {
-	key: string;
-	label: string;
-	hint?: string;
-	/** Giải thích dài — ẩn sau "Xem thêm" để trang gọn. */
-	more?: string;
-	type?: 'bool' | 'text' | 'number' | 'password' | 'select' | 'textarea' | 'multi' | 'menu';
-	/** Cho type 'menu': danh sách mục của cổng — giá trị lưu là key các mục bị TẮT. */
-	menu?: MenuCatalog;
-	/** [giá trị, nhãn, nhóm] — nhóm chỉ dùng cho type 'multi'. */
-	options?: [string, string, string?][];
-	placeholder?: string;
-	/** Mặc định của backend khi chưa cấu hình gì (chỉ cho bool). */
-	defaultOn?: boolean;
-	/** Mặc định của backend khi chưa cấu hình (cho multi — danh sách phân cách dấu phẩy). */
-	defaultValue?: string;
-	/** Nhãn bên cạnh công tắc, tùy trạng thái. */
-	onText?: string;
-	offText?: string;
-	/** Đơn vị hiện sau ô số. */
-	unit?: string;
-	min?: number;
-	max?: number;
-};
-
-type Group = {
-	title?: string;
-	desc?: string;
-	/** Giải thích dài của nhóm — ẩn sau "Xem thêm". */
-	more?: string;
-	/** 'tiles' = lưới thẻ công tắc; 'grid' = lưới ô số gọn. Mặc định: mỗi cấu hình một dòng. */
-	layout?: 'tiles' | 'grid';
-	/** Công tắc tổng — khi tắt thì cảnh báo nhóm này chưa có tác dụng. */
-	dependsOn?: { key: string; text: string };
-	/** Công cụ hỗ trợ hiện cuối nhóm. */
-	tool?: 'mail-test' | 'attendance-helper' | 'clamav-test' | 'doc-check' | 'recaptcha-test';
-	fields: Field[];
-};
-
-type Section = {
-	id: string;
-	/** Nhóm trên menu trái. */
-	cat: string;
-	title: string;
-	sub: string;
-	icon: typeof ShieldSvg;
-	/** Ghi chú chung đầu tab. */
-	note?: string;
-	/** Hiện từng nhóm một qua thanh chọn (thay vì xếp chồng cả trang). */
-	subtabs?: boolean;
-	groups: Group[];
-};
-
-// Hiện ở cả tab "Phân hệ chức năng" lẫn tab "Điểm danh" (cùng 1 key)
-const ATTENDANCE_TOGGLE: Field = {
-	key: 'MODULE_ATTENDANCE',
-	label: 'Điểm danh học viên',
-	hint: 'Hiện mục Điểm danh ở cổng học viên (điểm danh vào/ra theo ca trong thời gian khóa học) và mục Ca & điểm danh cho quản trị.',
-	more: 'Cấu hình IP và vị trí ở tab "Điểm danh" trước khi bật.',
-	type: 'bool',
-	defaultOn: false,
-	onText: 'Đang bật',
-	offText: 'Đã tắt',
-};
-
-const SECTIONS: Section[] = [
-	{
-		id: 'security',
-		cat: 'Hệ thống',
-		title: 'Bảo mật & tài khoản',
-		sub: '2FA, quên mật khẩu, chống bot',
-		icon: ShieldSvg,
-		groups: [
-			{
-				title: 'Xác thực 2 lớp (TOTP)',
-				fields: [
-					{
-						key: 'REQUIRE_2FA_FOR_ADMINS',
-						label: 'Bắt buộc 2FA cho quản trị',
-						hint: 'Áp dụng cho superuser và vai trò có quyền nhạy cảm (tạo/sửa người dùng, phân quyền, cấu hình).',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Đang bắt buộc',
-						offText: 'Không bắt buộc',
-					},
-					{
-						key: 'TWOFA_GRACE_DAYS',
-						label: 'Thời gian chuyển tiếp',
-						hint: 'Quá hạn mà chưa bật 2FA thì bị chặn mọi chức năng.',
-						type: 'number',
-						placeholder: '14',
-						unit: 'ngày',
-						min: 0,
-					},
-				],
-			},
-			{
-				title: 'Mật khẩu & cảnh báo',
-				fields: [
-					{
-						key: 'PASSWORD_RESET_ENABLED',
-						label: 'Cho phép quên mật khẩu (OTP)',
-						hint: 'Tắt thì nút "Quên mật khẩu" không dùng được. OTP gửi qua email nên cần bật Email.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Đang cho phép',
-						offText: 'Đã tắt',
-					},
-					{
-						key: 'TEMP_PASSWORD_TTL_DAYS',
-						label: 'Hạn dùng mật khẩu tạm',
-						hint: 'Quá hạn chưa đổi thì không đăng nhập được nữa. 0 = không giới hạn.',
-						more: 'Áp dụng cho mật khẩu tạm do quản trị cấp. Hết hạn thì người dùng phải bấm "Quên mật khẩu" hoặc nhờ quản trị đặt lại.',
-						type: 'number',
-						placeholder: '7',
-						unit: 'ngày',
-						min: 0,
-					},
-					{
-						key: 'ALERT_EMAILS',
-						label: 'Email nhận cảnh báo bảo mật',
-						hint: 'Phân cách bằng dấu phẩy. Để trống = gửi cho mọi superuser có email.',
-						type: 'textarea',
-						placeholder: 'it@benhvien.vn, antoan@benhvien.vn',
-					},
-				],
-			},
-			{
-				title: 'Chống bot form đăng ký công khai',
-				desc: 'Google reCAPTCHA cho form đăng ký khóa học / đề tài. Để trống các khóa = dùng kiểm tra chạy ngầm.',
-				more: 'Khóa Google Cloud (khuyến nghị): Site key + Project ID + API key, máy chủ xác minh qua reCAPTCHA Enterprise API. Khóa cũ: Site key + Secret key. Đã đặt Project ID thì Secret key bị bỏ qua. Để trống tất cả thì dùng kiểm tra chạy ngầm (proof-of-work), chạy được cả trong mạng nội bộ không ra Internet.',
-				tool: 'recaptcha-test',
-				fields: [
-					{
-						key: 'RECAPTCHA_SITE_KEY',
-						label: 'Site key',
-						hint: 'Máy chủ phải gọi ra được www.google.com, không thì mọi lượt đăng ký bị từ chối.',
-						more: 'Google Cloud → Security → reCAPTCHA → tạo khóa loại Website, kiểu thử thách ô tích "Tôi không phải người máy", thêm tên miền hệ thống. Chép ID khóa vào đây.',
-						placeholder: '6Lc…',
-					},
-					{
-						key: 'RECAPTCHA_PROJECT_ID',
-						label: 'Project ID (Google Cloud)',
-						hint: 'ID của dự án chứa khóa, không phải tên dự án. Đặt là dùng khóa Google Cloud.',
-						more: 'Xem ở Google Cloud Console → chọn dự án → Project ID. Dự án phải bật "reCAPTCHA Enterprise API".',
-						placeholder: 'rms-benhvien',
-					},
-					{
-						key: 'RECAPTCHA_API_KEY',
-						label: 'API key (Google Cloud)',
-						hint: 'Được che sau khi lưu. Để nguyên nếu không đổi.',
-						more: 'Google Cloud → APIs & Services → Credentials → Create credentials → API key. Nên giới hạn khóa chỉ dùng "reCAPTCHA Enterprise API".',
-						type: 'password',
-					},
-					{
-						key: 'RECAPTCHA_SECRET_KEY',
-						label: 'Secret key (khóa cũ)',
-						hint: 'Chỉ dùng khi chưa đặt Project ID. Được che sau khi lưu.',
-						type: 'password',
-					},
-					{
-						key: 'RECAPTCHA_HOSTNAMES',
-						label: 'Chỉ nhận từ tên miền',
-						hint: 'Tùy chọn, phân cách bằng dấu phẩy. Để trống = không kiểm tra tên miền.',
-						more: 'Không đặt khi dùng khóa TEST của Google.',
-						placeholder: 'rms.benhvien.vn',
-					},
-				],
-			},
-		],
-	},
-	{
-		id: 'mail',
-		cat: 'Hệ thống',
-		title: 'Email (SMTP)',
-		sub: 'Máy chủ gửi thư, gửi thử',
-		icon: MailSvg,
-		groups: [
-			{
-				fields: [
-					{
-						key: 'MAIL_ENABLED',
-						label: 'Bật gửi email',
-						hint: 'Công tắc tổng. Tắt = chỉ ghi log máy chủ, không gửi thật cho mọi chức năng (kể cả OTP).',
-						type: 'bool',
-						onText: 'Đang bật',
-						offText: 'Đang tắt',
-					},
-				],
-			},
-			{
-				title: 'Máy chủ & tài khoản gửi',
-				fields: [
-					{ key: 'SMTP_HOST', label: 'SMTP host', placeholder: 'smtp.gmail.com' },
-					{ key: 'SMTP_PORT', label: 'SMTP port', type: 'number', placeholder: '587', min: 1, max: 65535 },
-					{
-						key: 'SMTP_SECURE',
-						label: 'Kiểu kết nối',
-						type: 'select',
-						options: [
-							['', 'STARTTLS (thường port 587)'],
-							['ssl', 'SSL/TLS (thường port 465)'],
-						],
-					},
-					{ key: 'SMTP_USER', label: 'Tài khoản', placeholder: 'no-reply@benhvien.vn' },
-					{ key: 'SMTP_PASS', label: 'Mật khẩu / App password', hint: 'Được che sau khi lưu. Để nguyên nếu không đổi. Đổi SMTP host thì mật khẩu bị xóa — nhập lại.', type: 'password' },
-					{ key: 'SMTP_FROM_NAME', label: 'Tên người gửi', placeholder: 'Hệ thống Quản lý NCKH – Đào tạo – CME' },
-					{
-						key: 'PUBLIC_BASE_URL',
-						label: 'URL gốc hệ thống',
-						hint: 'Dùng tạo link tra cứu trong email.',
-						placeholder: 'https://rms.benhvien.vn',
-					},
-				],
-			},
-			{
-				title: 'Gửi email thử',
-				desc: 'Dùng cấu hình đã lưu, bỏ qua công tắc "Bật gửi email". Lưu thay đổi trước khi thử.',
-				tool: 'mail-test',
-				fields: [],
-			},
-			{
-				title: 'Gửi email cho chức năng',
-				desc: 'Chọn chức năng nào được gửi email. Thông báo trong hệ thống vẫn hiện bình thường.',
-				layout: 'tiles',
-				dependsOn: { key: 'MAIL_ENABLED', text: 'Công tắc tổng "Bật gửi email" đang tắt — các lựa chọn dưới đây chưa có tác dụng.' },
-				// Mặc định khớp backend mailService.EVENT_DEFAULTS
-				fields: (
-					[
-						['TOPIC_RESULT', 'Kết quả duyệt đề tài', 'Phê duyệt / từ chối / yêu cầu bổ sung — gửi chủ nhiệm và thành viên.', true],
-						['TOPIC_SUBMITTED', 'Có đề tài mới cần duyệt', 'Gửi người có quyền duyệt khi đề tài được nộp.', false],
-						['ACCOUNT_GRANTED', 'Cấp tài khoản thành viên đề tài', 'Báo thành viên mới, khoa và chủ nhiệm (không kèm mật khẩu).', false],
-						['DEADLINE_REMINDER', 'Nhắc hạn nộp đợt NCKH', 'Trước hạn và khi quá hạn các mốc của đợt.', true],
-						['COURSE_ENROLLMENT', 'Đăng ký khóa học', 'Gửi học viên: xác nhận nhận đơn, báo sửa bản khai, kết quả duyệt. Mã OTP xác minh email luôn gửi.', true],
-						['SEMINAR_BADGE', 'Thẻ đại biểu hội nghị', 'Gửi kèm QR điểm danh sau khi đăng ký hội nghị công khai.', true],
-						['PASSWORD_EXPIRY', 'Nhắc đổi mật khẩu', 'Khi mật khẩu lâu chưa đổi.', true],
-						['SECURITY_ALERT', 'Cảnh báo bảo mật', 'Gửi tới "Email nhận cảnh báo bảo mật" (tab Bảo mật).', true],
-						['BROADCAST', 'Thông báo chung', 'Thông báo quản trị gửi tới toàn viện / khoa / cá nhân.', false],
-					] as const
-				).map(([k, label, hint, defaultOn]) => ({
-					key: `MAIL_EVENT_${k}`,
-					label,
-					hint,
-					type: 'bool' as const,
-					defaultOn,
-					onText: 'Gửi email',
-					offText: 'Không gửi',
-				})),
-			},
-		],
-	},
-	{
-		id: 'modules',
-		cat: 'Phân hệ & giao diện',
-		title: 'Phân hệ chức năng',
-		sub: 'Bật/tắt từng phân hệ',
-		icon: LayersSvg,
-		note: 'Tắt phân hệ sẽ ẩn toàn bộ menu và chặn API của phân hệ đó. Dữ liệu vẫn giữ nguyên, bật lại là dùng tiếp.',
-		groups: [
-			{
-				layout: 'tiles',
-				fields: [
-					{ key: 'MODULE_RESEARCH', label: 'Nghiên cứu khoa học', hint: 'Đề tài, đợt, hội đồng chấm, phê duyệt, danh mục phân loại.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_TRAINING', label: 'Đào tạo', hint: 'Chương trình, khóa học, hồ sơ thực hành GPHN, học viên, giảng viên, ngân hàng câu hỏi.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_SEMINAR', label: 'Hội nghị & tín chỉ CME', hint: 'Hội thảo, tập huấn bệnh viện, quét vé, sổ cấp chứng nhận, ghi nhận độc lập, theo dõi ngưỡng tín chỉ.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					{ key: 'MODULE_SURVEY', label: 'Khảo sát', hint: 'Tạo phiếu khảo sát, thu thập và thống kê câu trả lời.', type: 'bool', defaultOn: true, onText: 'Đang bật', offText: 'Đã tắt' },
-					ATTENDANCE_TOGGLE,
-				],
-			},
-		],
-	},
-	{
-		id: 'menus',
-		cat: 'Phân hệ & giao diện',
-		title: 'Menu hiển thị',
-		sub: 'Bật/tắt từng mục menu',
-		icon: MenuSvg,
-		subtabs: true,
-		note: 'Mục tắt sẽ biến mất khỏi menu và vào thẳng URL thì báo "đã tắt". Đây chỉ là ẩn giao diện — quyền dữ liệu vẫn theo Vai trò & quyền.',
-		groups: (
-			[
-				['MENU_HIDDEN_ADMIN', 'Trang quản trị', 'Sidebar /admin.', ADMIN_MENU],
-				['MENU_HIDDEN_USER', 'Cổng nhân viên', 'Menu dọc của cổng nhân viên (/user). Menu tài khoản (hồ sơ, thông báo) luôn hiện.', USER_MENU],
-				['MENU_HIDDEN_TRAINEE', 'Cổng học viên', 'Menu ngang + tab đáy điện thoại. Menu tài khoản luôn hiện.', TRAINEE_MENU],
-			] as const
-		).map(([key, label, hint, menu]) => ({
-			title: label,
-			desc: hint,
-			fields: [{ key, label, hint, type: 'menu' as const, menu }],
-		})),
-	},
-	{
-		id: 'upload',
-		cat: 'Hệ thống',
-		title: 'Tải lên',
-		sub: 'Định dạng, dung lượng, quét virus',
-		icon: UploadSvg,
-		note: 'Mọi file luôn được kiểm tra nội dung thật khớp với đuôi file (chặn file .exe đổi tên thành .pdf).',
-		groups: [
-			{
-				title: 'Dung lượng',
-				desc: 'Hạn mức theo ngày áp dụng cho MỌI lượt tải lên.',
-				layout: 'grid',
-				fields: [
-					{
-						key: 'UPLOAD_MAX_MB',
-						label: 'Tối đa mỗi file',
-						hint: 'Hồ sơ, minh chứng, tài liệu khóa học.',
-						type: 'number',
-						placeholder: '50',
-						unit: 'MB',
-						min: 1,
-						max: 1024,
-					},
-					{
-						key: 'UPLOAD_DAILY_QUOTA_MB',
-						label: 'Tổng mỗi tài khoản / ngày',
-						hint: 'Làm mới lúc 0h. 0 = không giới hạn.',
-						more: 'Chặn 1 tài khoản (bị chiếm hoặc script lỗi) tải lên liên tục làm đầy ổ đĩa máy chủ.',
-						type: 'number',
-						placeholder: '2048',
-						unit: 'MB',
-						min: 0,
-						max: 1048576,
-					},
-				],
-			},
-			{
-				title: 'Định dạng được nhận',
-				desc: 'Bấm để chọn / bỏ chọn. Chỉ chọn được trong danh sách định dạng an toàn.',
-				more: 'Áp dụng cho hồ sơ đề tài, hồ sơ học viên, minh chứng CME, tài liệu khóa học và cổng đăng ký công khai. Video bài giảng, ảnh chèn nhận xét và file import Excel có quy định riêng.',
-				fields: [
-					{
-						key: 'UPLOAD_ALLOWED_EXTENSIONS',
-						label: 'Định dạng được nhận',
-						type: 'multi',
-						// Khớp backend fileTypeAllowlist.DOCUMENT_EXTENSIONS / uploadPolicy.DEFAULT_EXTENSIONS
-						options: [
-							['.pdf', 'PDF', 'Văn bản'], ['.doc', 'DOC', 'Văn bản'], ['.docx', 'DOCX', 'Văn bản'],
-							['.txt', 'TXT', 'Văn bản'], ['.rtf', 'RTF', 'Văn bản'], ['.odt', 'ODT', 'Văn bản'],
-							['.xls', 'XLS', 'Bảng tính'], ['.xlsx', 'XLSX', 'Bảng tính'], ['.csv', 'CSV', 'Bảng tính'], ['.ods', 'ODS', 'Bảng tính'],
-							['.ppt', 'PPT', 'Trình chiếu'], ['.pptx', 'PPTX', 'Trình chiếu'], ['.odp', 'ODP', 'Trình chiếu'],
-							['.rar', 'RAR', 'File nén'], ['.zip', 'ZIP', 'File nén'], ['.7z', '7Z', 'File nén'],
-							['.png', 'PNG', 'Hình ảnh'], ['.jpg', 'JPG', 'Hình ảnh'], ['.jpeg', 'JPEG', 'Hình ảnh'],
-							['.gif', 'GIF', 'Hình ảnh'], ['.webp', 'WEBP', 'Hình ảnh'], ['.bmp', 'BMP', 'Hình ảnh'],
-						],
-						defaultValue: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rar,.zip',
-					},
-				],
-			},
-			{
-				title: 'Quét virus (ClamAV)',
-				desc: 'Quét mọi file tải lên trước khi lưu; file nhiễm bị xóa ngay và ghi nhật ký bảo mật. Để trống máy chủ = không quét.',
-				tool: 'clamav-test',
-				fields: [
-					{
-						key: 'CLAMAV_HOST',
-						label: 'Máy chủ ClamAV',
-						hint: 'Tên máy hoặc IP của dịch vụ clamd.',
-						more: 'Chạy bằng Docker: dịch vụ "clamav" được cài và bật sẵn, để trống ô này là dùng nó. Sau khi khởi động, ClamAV mất khoảng 1 phút để nạp cơ sở dữ liệu virus, trong lúc đó việc tải lên có thể bị từ chối.',
-						placeholder: 'clamav',
-					},
-					{ key: 'CLAMAV_PORT', label: 'Cổng', type: 'number', placeholder: '3310', min: 1, max: 65535 },
-					{
-						key: 'CLAMAV_MAX_MB',
-						label: 'Chỉ quét file nhỏ hơn',
-						hint: 'File lớn hơn được nhận mà không quét (thường là video bài giảng).',
-						more: 'Không đặt lớn hơn StreamMaxLength của clamd (mặc định 25MB), nếu không file lớn sẽ bị từ chối.',
-						type: 'number',
-						placeholder: '25',
-						unit: 'MB',
-						min: 1,
-						max: 4095,
-					},
-					{
-						key: 'CLAMAV_FAIL_OPEN',
-						label: 'Khi ClamAV không hoạt động',
-						hint: 'Mặc định từ chối tải lên cho tới khi ClamAV chạy lại — bật quét mà lặng lẽ bỏ qua thì không khác gì không quét.',
-						type: 'bool',
-						defaultOn: false,
-						onText: 'Vẫn nhận file',
-						offText: 'Từ chối tải lên',
-					},
-				],
-			},
-		],
-	},
-	{
-		id: 'attendance',
-		cat: 'Nghiệp vụ',
-		title: 'Điểm danh',
-		sub: 'Mạng, vị trí, đơn xin phép',
-		icon: ClockSvg,
-		groups: [
-			{ fields: [ATTENDANCE_TOGGLE] },
-			{
-				title: 'Điều kiện điểm danh hợp lệ',
-				desc: 'Học viên phải đạt CẢ HAI: đang dùng mạng bệnh viện VÀ đang ở trong bán kính quanh bệnh viện.',
-				tool: 'attendance-helper',
-				fields: [
-					{
-						key: 'ATTENDANCE_ALLOWED_IPS',
-						label: '1. IP mạng bệnh viện',
-						hint: 'Nhiều giá trị phân cách bằng dấu phẩy, nhận dạng CIDR (vd 10.0.0.0/8). Để trống = không ai điểm danh được.',
-						more: 'IP công cộng của đường mạng bệnh viện, hoặc dải IP nội bộ nếu máy chủ đặt trong viện.',
-						type: 'textarea',
-						placeholder: '113.161.1.2, 10.0.0.0/8',
-					},
-					{
-						key: 'ATTENDANCE_LOCATION',
-						label: '2. Tọa độ bệnh viện',
-						hint: 'Dạng "vĩ độ, kinh độ".',
-						more: 'Chuột phải vào bệnh viện trên Google Maps để sao chép, hoặc bấm "Dùng vị trí hiện tại" bên dưới khi đang ở viện.',
-						placeholder: '10.7769, 106.7009',
-					},
-					{
-						key: 'ATTENDANCE_RADIUS_M',
-						label: 'Bán kính cho phép',
-						hint: 'Học viên phải ở trong bán kính này quanh tọa độ bệnh viện.',
-						type: 'number',
-						placeholder: '200',
-						unit: 'm',
-						min: 1,
-					},
-					{
-						key: 'ATTENDANCE_MAX_ACCURACY_M',
-						label: 'Sai số GPS tối đa',
-						hint: 'Vị trí có sai số lớn hơn bị từ chối.',
-						more: 'Máy tính không có GPS thường sai vài trăm mét. Trong nhà GPS hay lệch 30–100m.',
-						type: 'number',
-						placeholder: '100',
-						unit: 'm',
-						min: 1,
-					},
-				],
-			},
-			{
-				title: 'Đơn xin phép (xin nghỉ / xin đi muộn)',
-				fields: [
-					{
-						key: 'LEAVE_REQUEST_ENABLED',
-						label: 'Cho học viên gửi đơn xin phép',
-						hint: 'Tắt thì học viên không gửi được đơn mới; đơn đang chờ vẫn duyệt được ở trang Đơn xin phép.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Cho phép',
-						offText: 'Đã tắt',
-					},
-					{
-						key: 'LEAVE_BACKDATE_DAYS',
-						label: 'Nộp bổ sung cho ngày đã qua',
-						hint: '0 = chỉ xin phép từ hôm nay trở đi.',
-						type: 'number',
-						placeholder: '3',
-						unit: 'ngày',
-						min: 0,
-						max: 30,
-					},
-					{
-						key: 'LEAVE_AHEAD_DAYS',
-						label: 'Xin phép trước tối đa',
-						hint: 'Ngày cuối của đơn không được quá hôm nay + số ngày này.',
-						type: 'number',
-						placeholder: '90',
-						unit: 'ngày',
-						min: 1,
-						max: 365,
-					},
-					{
-						key: 'LEAVE_MAX_SPAN_DAYS',
-						label: 'Một đơn xin nghỉ dài tối đa',
-						type: 'number',
-						placeholder: '31',
-						unit: 'ngày',
-						min: 1,
-						max: 180,
-					},
-				],
-			},
-		],
-	},
-	{
-		id: 'cme',
-		cat: 'Nghiệp vụ',
-		title: 'Tín chỉ CME',
-		sub: 'Ngưỡng, tự cộng, duyệt tín chỉ',
-		icon: BadgeSvg,
-		groups: [
-			{
-				title: 'Ngưỡng tín chỉ CME',
-				layout: 'grid',
-				fields: [
-					{ key: 'CME_CYCLE_YEARS', label: 'Chu kỳ tính ngưỡng', hint: 'Số năm của một chu kỳ CME.', type: 'number', placeholder: '5', unit: 'năm', min: 1 },
-					{ key: 'CME_MIN_HOURS', label: 'Giờ tín chỉ tối thiểu / chu kỳ', hint: 'Dùng cho cảnh báo thiếu tín chỉ.', type: 'number', placeholder: '120', unit: 'giờ', min: 0 },
-				],
-			},
-			{
-				title: 'Tự cộng tín chỉ CME (khóa ĐTLT / CTCV)',
-				desc: 'Mặc định 1 tiết = 1 giờ tín chỉ. Chỉ cộng cho người có tài khoản trong hệ thống.',
-				more: 'Theo TT 32/2023 Phụ lục I mục 1.1: học viên và giảng viên khóa ngắn hạn đều ghi danh mục "Khóa đào tạo, bồi dưỡng ngắn hạn" (DT_KHOAHOC). Sửa hệ số ở Tín chỉ CME → Danh mục quy đổi tín chỉ.',
-				layout: 'tiles',
-				// Khớp backend courseCmeService (syncTrainees / lecturerHours)
-				fields: [
-					{
-						key: 'CME_AUTO_TRAINEE',
-						label: 'Cộng CME cho học viên',
-						hint: 'Khi học viên nội viện có tài khoản được cấp giấy chứng nhận — mỗi giấy 1 dòng CME.',
-						more: [
-							'• Tín chỉ = số giờ tín chỉ khai ở chương trình; chưa khai thì (tiết LT + TH) × hệ số DT_KHOAHOC.',
-							'• Ngày ghi nhận = ngày kết thúc lớp của chương trình (hoặc của khóa).',
-							'• Thu hồi giấy ⇒ dòng CME bị từ chối; xóa giấy cấp nhầm ⇒ xóa dòng CME (kể cả khi đang tắt công tắc).',
-						].join('\n'),
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Tự cộng',
-						offText: 'Không cộng',
-					},
-					{
-						key: 'CME_AUTO_LECTURER',
-						label: 'Cộng CME cho giảng viên',
-						hint: 'Khi khóa điểm khóa học (hoặc bấm "Ghi lại CME" ở tab Kết quả): tín chỉ = số tiết giảng × hệ số DT_KHOAHOC.',
-						more: [
-							'Số tiết giảng tính theo từng bài, lần lượt:',
-							'1. Có nhập số tiết ở phân công giảng viên ⇒ lấy số đó.',
-							'2. Chưa nhập ⇒ chia số tiết của bài theo số buổi đã dạy (VD bài 6 tiết, 3 buổi: dạy 2 buổi được 4 tiết).',
-							'3. Bài chưa có buổi nào gán giảng viên ⇒ GV chính nhận đủ số tiết bài, GV phụ 0.',
-							'Phân công cả khóa (không gắn bài) chỉ tính khi có nhập số tiết.',
-						].join('\n'),
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Tự cộng',
-						offText: 'Không cộng',
-					},
-				],
-			},
-			{
-				title: 'Duyệt tín chỉ tự cộng',
-				desc: 'Dòng CME tự cộng được tính ngay (cộng thẳng) hay chờ người quản lý CME duyệt ở Tín chỉ CME → Ghi nhận độc lập.',
-				more: 'TT 32/2023 Điều 9: cơ sở tổ chức xác nhận, tính giờ tín chỉ và quản lý việc xác nhận. Dòng đã bị từ chối luôn giữ nguyên khi ghi lại.',
-				// Khớp backend courseCmeService.APPROVAL_MODES / systemSettingService.ENUM_KEYS
-				fields: [
-					{
-						key: 'CME_TRAINEE_APPROVAL',
-						label: 'Dòng CME của học viên',
-						hint: 'Giấy chứng nhận do thủ trưởng đơn vị ký đã là xác nhận hoàn thành khóa (Điều 4 khoản 1 điểm i), nên mặc định cộng thẳng.',
-						more: 'Chọn "Chờ duyệt" nếu phòng quản lý CME muốn soát lại trước khi tính. Cấp lại giấy sau khi thu hồi thì dòng CME về chờ duyệt (hoặc đã duyệt nếu đang cộng thẳng).',
-						type: 'select',
-						options: [
-							['', 'Cộng thẳng — đã duyệt (mặc định)'],
-							['pending', 'Chờ người quản lý CME duyệt'],
-						],
-					},
-					{
-						key: 'CME_LECTURER_APPROVAL',
-						label: 'Dòng CME của giảng viên',
-						hint: 'Thủ trưởng đơn vị tổ chức giảng dạy tính giờ tín chỉ dựa trên minh chứng đã tham gia giảng dạy (Điều 6 khoản 2 điểm c).',
-						more: [
-							'• Theo quyền người khóa điểm: người khóa điểm / bấm "Ghi lại CME" có quyền quản lý CME ⇒ đã duyệt; không có ⇒ chờ duyệt.',
-							'• Cộng thẳng: đã duyệt ngay, trừ dòng của chính người khóa điểm khi người đó không có quyền quản lý CME (không ai tự duyệt CME cho mình).',
-							'• Chờ duyệt: mọi dòng chờ người quản lý CME đối chiếu buổi dạy / phân công rồi duyệt.',
-						].join('\n'),
-						type: 'select',
-						options: [
-							['', 'Theo quyền người khóa điểm (mặc định)'],
-							['approved', 'Cộng thẳng — đã duyệt'],
-							['pending', 'Luôn chờ người quản lý CME duyệt'],
-						],
-					},
-				],
-			},
-		],
-	},
-	{
-		id: 'training',
-		cat: 'Nghiệp vụ',
-		title: 'Đào tạo',
-		sub: 'Lớp học, đăng ký, điểm đạt',
-		icon: BookOpenSvg,
-		groups: [
-			{
-				title: 'Lớp học ĐTLT / CTCV',
-				fields: [
-					{
-						key: 'PRACTICE_MENTOR_MAX_TRAINEES',
-						label: 'Học viên tối đa / người hướng dẫn',
-						hint: 'Hồ sơ thực hành GPHN cảnh báo (không chặn) khi vượt.',
-						type: 'number',
-						placeholder: '5',
-						unit: 'người',
-						min: 1,
-					},
-					{
-						key: 'TRAINING_ALLOW_MULTI_PROGRAM',
-						label: 'Cho học nhiều chương trình cùng lúc',
-						hint: 'Tắt thì học viên đang học (hoặc chờ) một chương trình chưa kết thúc không ghi danh được chương trình khác.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Cho phép',
-						offText: 'Không cho phép',
-					},
-					{
-						key: 'TRAINING_CLASS_PREP_DAYS',
-						label: 'Chuẩn bị trước khai giảng',
-						hint: 'Gợi ý ngày bắt đầu lớp = thứ Hai đầu tiên sau (hôm nay + số ngày này).',
-						type: 'number',
-						placeholder: '7',
-						unit: 'ngày',
-						min: 0,
-					},
-					{
-						key: 'TRAINING_HOLIDAYS',
-						label: 'Ngày nghỉ lễ',
-						hint: 'Bỏ qua khi gợi ý ngày học (cùng T7, CN).',
-						more: 'Mỗi dòng 1 ngày: DD/MM = lễ cố định hằng năm (01/01, 30/04…), DD/MM/YYYY = 1 ngày cụ thể (Tết âm lịch).',
-						type: 'textarea',
-						placeholder: '01/01, 30/04, 01/05, 02/09, 16/02/2026',
-					},
-				],
-			},
-			{
-				title: 'Học phí — chuyển khoản',
-				desc: 'Cổng học viên tạo mã VietQR có sẵn số tiền và nội dung chuyển khoản riêng từng học viên. Chưa khai thì học viên chỉ xem số phải nộp và nộp tại phòng Đào tạo.',
-				more: 'Học viên báo đã chuyển khoản kèm ảnh chứng từ; phòng Đào tạo đối chiếu sao kê rồi xác nhận ở tab Học phí của khóa — hệ thống cấp phiếu thu (nội bộ, không thay hóa đơn điện tử).',
-				layout: 'grid',
-				fields: [
-					{
-						key: 'TUITION_BANK_BIN',
-						label: 'Ngân hàng nhận',
-						type: 'select',
-						options: [['', '— Chưa chọn —'], ...TUITION_BANKS],
-					},
-					{ key: 'TUITION_ACCOUNT_NO', label: 'Số tài khoản', placeholder: '0011001234567' },
-					{
-						key: 'TUITION_ACCOUNT_NAME',
-						label: 'Chủ tài khoản',
-						hint: 'Viết như tên hiện trong app ngân hàng.',
-						placeholder: 'BENH VIEN HUU NGHI DA KHOA NGHE AN',
-					},
-					{
-						key: 'TUITION_RECEIPT_UNIT',
-						label: 'Đơn vị thu (in trên phiếu thu)',
-						placeholder: 'Trung tâm Đào tạo và Chỉ đạo tuyến',
-					},
-				],
-			},
-			{
-				title: 'Đăng ký khóa ĐTLT từ cổng công khai',
-				desc: 'Form /dang-ky-khoa-hoc. Phòng Đào tạo cũng bật/tắt được 2 công tắc này ở hộp "Link đăng ký" của trang Đào tạo liên tục.',
-				more: 'Người đăng ký ký xác nhận điện tử, tự sửa bản khai khi đơn còn chờ duyệt (trang Tra cứu đơn đăng ký), hồ sơ đính kèm được tự kiểm tra loại file.',
-				layout: 'tiles',
-				tool: 'doc-check',
-				fields: [
-					{
-						key: 'TRAINING_REGISTRATION_EMAIL_OTP',
-						label: 'Xác minh email bằng mã OTP',
-						hint: 'Tắt thì gửi đơn không cần mã xác minh — và cũng không còn email xác nhận.',
-						more: 'Email xác nhận chỉ gửi tới địa chỉ đã xác minh, nên khi tắt OTP người đăng ký sẽ không nhận được email xác nhận đơn.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Bắt buộc',
-						offText: 'Không bắt buộc',
-					},
-					{
-						key: 'TRAINING_REGISTRATION_DOC_CHECK',
-						label: 'Tự kiểm tra file hồ sơ (OCR / mã QR)',
-						hint: 'Cảnh báo người duyệt khi file có vẻ nộp nhầm loại — chỉ cảnh báo, không tự từ chối.',
-						more: 'Phát hiện nộp nhầm loại, thiếu mặt CCCD, trang trắng hoặc trùng file. Tắt thì ẩn mọi cảnh báo; file nộp trong lúc tắt được kiểm khi bật lại.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Bật',
-						offText: 'Tắt',
-					},
-				],
-			},
-			{
-				title: 'Máy chấm công vân tay',
-				desc: 'Lượt chấm tự ghép vào điểm danh buổi học và điểm danh theo ca (khi bật phân hệ Ca & điểm danh); học viên đang học tự được gửi xuống máy. Quản lý máy ở trang Máy chấm công.',
-				more: 'Mã người dùng trên máy = mã học viên bỏ chữ HV. Lượt chấm không ghi đè điểm danh giảng viên đã nhập tay và không sửa điểm đã khóa.',
-				layout: 'grid',
-				fields: [
-					{
-						key: 'DEVICE_CHECKIN_EARLY_MIN',
-						label: 'Chấm sớm nhất',
-						hint: 'Trước giờ bắt đầu buổi học.',
-						type: 'number',
-						placeholder: '30',
-						unit: 'phút',
-						min: 0,
-						max: 240,
-					},
-					{
-						key: 'DEVICE_LATE_AFTER_MIN',
-						label: 'Tính đi muộn sau',
-						hint: 'Quá giờ bắt đầu bao nhiêu phút thì ghi "Muộn".',
-						type: 'number',
-						placeholder: '15',
-						unit: 'phút',
-						min: 0,
-						max: 240,
-					},
-					{
-						key: 'DEVICE_CLEANUP_DAYS',
-						label: 'Dọn học viên khỏi máy sau',
-						hint: 'Tính từ ngày khóa học kết thúc.',
-						type: 'number',
-						placeholder: '30',
-						unit: 'ngày',
-						min: 0,
-						max: 365,
-					},
-					{
-						key: 'DEVICE_FP_SYNC',
-						label: 'Chép vân tay giữa các máy',
-						hint: 'Học viên chỉ đăng ký vân tay ở 1 máy.',
-						more: 'Bật thì server lưu mẫu vân tay (đã mã hóa, không ai xem được) để chép sang máy khác, và xóa khi học viên được dọn khỏi máy. Đây là dữ liệu sinh trắc học (Nghị định 13/2023): cần thông báo và có sự đồng ý của học viên.',
-						type: 'bool',
-						defaultOn: true,
-						onText: 'Bật',
-						offText: 'Tắt',
-					},
-				],
-			},
-			{
-				title: 'Điểm đạt & chuyên cần',
-				desc: 'Theo Phụ lục III TT 32/2023. Lý thuyết đạt khi ≥ ngưỡng; thực hành đạt khi LỚN HƠN ngưỡng (60% ⇒ phải trên 6,0/10).',
-				layout: 'grid',
-				fields: [
-					{ key: 'GRADE_THEORY_PASS_PCT', label: 'Điểm đạt lý thuyết', type: 'number', placeholder: '60', unit: '%', min: 0, max: 100 },
-					{ key: 'GRADE_PRACTICE_PASS_PCT', label: 'Điểm đạt thực hành', type: 'number', placeholder: '60', unit: '%', min: 0, max: 100 },
-					{ key: 'ATTEND_THEORY_MAX_ABSENT_PCT', label: 'Vắng lý thuyết tối đa', hint: 'Vắng quá tỉ lệ số buổi thì không đạt.', type: 'number', placeholder: '10', unit: '%', min: 0, max: 100 },
-					{
-						key: 'ATTEND_PRACTICE_MAX_ABSENT_PCT',
-						label: 'Vắng thực hành tối đa',
-						hint: '0 = không được vắng (bất khả kháng thì học bù).',
-						type: 'number',
-						placeholder: '0',
-						unit: '%',
-						min: 0,
-						max: 100,
-					},
-					{
-						key: 'GRADE_MAX_RETAKES',
-						label: 'Thi lại tối đa / phần',
-						hint: 'Lấy kết quả lần cao nhất.',
-						type: 'number',
-						placeholder: '1',
-						unit: 'lần',
-						min: 0,
-					},
-				],
-			},
-			{
-				title: 'Xếp loại',
-				desc: 'Điểm tổng = trung bình LT, TH theo số tiết, thang 10. Chỉ xếp loại khi Đạt.',
-				layout: 'grid',
-				fields: [
-					{ key: 'GRADE_RANK_EXCELLENT', label: 'Giỏi từ', type: 'number', placeholder: '8', unit: 'điểm', min: 0, max: 10 },
-					{ key: 'GRADE_RANK_GOOD', label: 'Khá từ', type: 'number', placeholder: '6.5', unit: 'điểm', min: 0, max: 10 },
-					{ key: 'GRADE_RANK_AVERAGE', label: 'Trung bình từ', type: 'number', placeholder: '5', unit: 'điểm', min: 0, max: 10 },
-				],
-			},
-		],
-	},
-];
-
-const CATS = [...new Set(SECTIONS.map((s) => s.cat))];
-const FIELDS = [...new Map(SECTIONS.flatMap((s) => s.groups.flatMap((g) => g.fields)).map((f) => [f.key, f])).values()];
-const sectionFields = (s: Section) => [...new Set(s.groups.flatMap((g) => g.fields))];
-type Values = Record<string, string>;
-
-/** Bỏ dấu để tìm "bao mat" ra "Bảo mật". */
-const fold = (s: string) =>
-	s
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.replace(/đ/gi, 'd')
-		.toLowerCase();
-
-const splitList = (v: string | undefined) => (v ?? '').split(',').filter(Boolean);
+import { AttendanceHelper, ClamavTestTool, HolidayPreview, MailTestTool } from '../components/SettingTools';
+import { BankConnectTool } from '../components/BankConnectTool';
+import {
+	CATS,
+	FIELDS,
+	SECTIONS,
+	buildBackup,
+	displayValue,
+	fold,
+	parseBackup,
+	parseMatrix,
+	sectionFields,
+	serializeMatrix,
+	sectionOf,
+	splitList,
+	type Field,
+	type Group,
+	type Values,
+} from '../config/sections';
 
 export default function SystemSettings() {
 	const [saved, setSaved] = useState<Values>({});
@@ -823,11 +44,10 @@ export default function SystemSettings() {
 	const [hasSecret, setHasSecret] = useState<Record<string, boolean>>({}); // secret đã đặt (backend chỉ trả ••••••)
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
-	const [testTo, setTestTo] = useState('');
-	const [testing, setTesting] = useState(false);
-	const [clamTesting, setClamTesting] = useState(false);
-	const [myIp, setMyIp] = useState<string | null>(null);
-	const [locating, setLocating] = useState(false);
+	// Lỗi máy chủ trả về theo từng ô ở lần lưu gần nhất — xóa khi sửa lại ô đó
+	const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+	const [reviewOpen, setReviewOpen] = useState(false); // danh sách thay đổi ở thanh lưu
+	const importRef = useRef<HTMLInputElement>(null);
 
 	// Tab nằm trên URL (?tab=mail) để F5 / gửi link vẫn mở đúng chỗ
 	const tab = SECTIONS.some((s) => s.id === params.get('tab')) ? params.get('tab')! : SECTIONS[0].id;
@@ -872,11 +92,16 @@ export default function SystemSettings() {
 	useEffect(() => {
 		load();
 	}, []);
-	useEffect(() => {
-		if (tab === 'attendance' && myIp === null) getMyAttendance().then((r) => setMyIp(r.client_ip ?? '')).catch(() => setMyIp(''));
-	}, [tab, myIp]);
 
-	const set = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
+	const set = (key: string, value: string) => {
+		setForm((p) => ({ ...p, [key]: value }));
+		setServerErrors((p) => {
+			if (!(key in p)) return p;
+			const rest = { ...p };
+			delete rest[key];
+			return rest;
+		});
+	};
 	const isDirty = (f: Field) => form[f.key] !== saved[f.key];
 	const dirty = FIELDS.filter(isDirty);
 	const on = (key: string) => saved[key] === 'true';
@@ -884,64 +109,86 @@ export default function SystemSettings() {
 	const errorOf = (f: Field): string | null => {
 		const v = (form[f.key] ?? '').trim();
 		if (f.type === 'multi' && !v) return 'Chọn ít nhất 1 định dạng';
-		if (f.type !== 'number' || !v) return null;
-		const n = Number(v);
-		if (!Number.isFinite(n)) return 'Phải là số';
-		if (f.min !== undefined && n < f.min) return `Nhỏ nhất là ${f.min}`;
-		if (f.max !== undefined && n > f.max) return `Lớn nhất là ${f.max}`;
-		return null;
+		if (f.type === 'number' && v) {
+			const n = Number(v);
+			if (!Number.isFinite(n)) return 'Phải là số';
+			if (f.min !== undefined && n < f.min) return `Nhỏ nhất là ${f.min}`;
+			if (f.max !== undefined && n > f.max) return `Lớn nhất là ${f.max}`;
+		}
+		return serverErrors[f.key] ?? null;
 	};
 	const invalid = dirty.filter((f) => errorOf(f));
 
-	const useCurrentLocation = () => {
-		if (!navigator.geolocation) return notify.error('Trình duyệt không hỗ trợ định vị (cần HTTPS)');
-		setLocating(true);
-		navigator.geolocation.getCurrentPosition(
-			({ coords }) => {
-				set('ATTENDANCE_LOCATION', `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`);
-				notify.success(`Đã lấy vị trí (sai số ±${Math.round(coords.accuracy)}m) — nhớ bấm Lưu`);
-				setLocating(false);
-			},
-			(e) => {
-				notify.error(
-					e.code === 1
-						? 'Bạn đã chặn quyền vị trí cho trang này'
-						: e.code === 2
-							? 'Thiết bị không xác định được vị trí — bật Dịch vụ định vị của hệ điều hành (Windows: Cài đặt → Quyền riêng tư → Vị trí)'
-							: 'Lấy vị trí quá lâu — thử lại hoặc nhập tọa độ từ Google Maps',
-				);
-				setLocating(false);
-			},
-			{ enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-		);
-	};
-	const addMyIp = () => {
-		const cur = (form.ATTENDANCE_ALLOWED_IPS ?? '').split(/[\s,;]+/).filter(Boolean);
-		if (myIp && !cur.includes(myIp)) set('ATTENDANCE_ALLOWED_IPS', [...cur, myIp].join(', '));
+	/** Mở đúng tab (và thanh chọn con) chứa ô f, cuộn tới ô đó. */
+	const goTo = (f: Field) => {
+		const s = sectionOf(f);
+		if (!s) return;
+		// setTab cuộn lên đầu trang — chỉ gọi khi thật sự đổi tab, kẻo đè mất lần cuộn tới ô bên dưới
+		if (s.id !== tab || query) setTab(s.id);
+		if (s.subtabs) setSub(Math.max(0, s.groups.findIndex((g) => g.fields.includes(f))));
+		window.setTimeout(() => {
+			const el = document.getElementById(f.key);
+			if (!el) return;
+			// Công tắc là input ẩn — cuộn tới khung của ô để thấy cả nhãn
+			(el.closest('[class*="row"], [class*="cell"], [class*="tile"]') ?? el).scrollIntoView({ block: 'center' });
+			el.focus({ preventScroll: true });
+		}, 80);
 	};
 
 	const save = async () => {
 		if (!dirty.length || saving) return;
 		if (invalid.length) {
-			const s = SECTIONS.find((x) => sectionFields(x).includes(invalid[0]));
-			if (s && !query) {
-				setTab(s.id);
-				if (s.subtabs) setSub(Math.max(0, s.groups.findIndex((g) => g.fields.includes(invalid[0]))));
-			}
+			if (!query) goTo(invalid[0]);
 			return notify.error(`${invalid[0].label}: ${errorOf(invalid[0])}`);
 		}
 		setSaving(true);
 		try {
-			for (const f of dirty) await settingsApi.update(f.key, form[f.key]);
+			// Một request cho mọi thay đổi — máy chủ kiểm cả lô rồi lưu trong một transaction
+			const r = await settingsApi.saveMany(Object.fromEntries(dirty.map((f) => [f.key, form[f.key] ?? ''])));
 			resetUploadPolicy();
 			resetModules();
 			resetMenuConfig();
-			notify.success(`Đã lưu ${dirty.length} thay đổi`);
+			setReviewOpen(false);
+			notify.success(`Đã lưu ${r.saved || dirty.length} thay đổi`);
 			await load();
 		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Lưu thất bại');
+			const errs = e instanceof ApiError && e.errors && typeof e.errors === 'object' ? (e.errors as Record<string, string>) : null;
+			if (errs) {
+				setServerErrors(errs);
+				const first = FIELDS.find((f) => errs[f.key]);
+				if (first && !query) goTo(first);
+				notify.error(first ? `${first.label}: ${errs[first.key]}` : (e as Error).message);
+			} else {
+				notify.error(e instanceof Error ? e.message : 'Lưu thất bại');
+			}
 		} finally {
 			setSaving(false);
+		}
+	};
+
+	// Xuất cấu hình đang lưu ra file JSON (không gồm mật khẩu / khóa bí mật)
+	const exportBackup = () => {
+		const blob = new Blob([JSON.stringify(buildBackup(saved), null, 2)], { type: 'application/json' });
+		saveBlob(blob, `cau-hinh-he-thong-${new Date().toISOString().slice(0, 10)}.json`);
+	};
+	// Nhập file sao lưu: chỉ điền vào form (thành "chưa lưu") để xem lại trước khi bấm Lưu
+	const importBackup = async (file: File | undefined) => {
+		if (!file) return;
+		try {
+			const { values, skipped } = parseBackup(await file.text());
+			const changed = Object.entries(values).filter(([k, v]) => v !== form[k]);
+			if (!changed.length) return notify.success('File không có gì khác cấu hình hiện tại');
+			setForm((p) => ({ ...p, ...Object.fromEntries(changed) }));
+			setServerErrors({});
+			setQuery('');
+			setReviewOpen(true);
+			notify.success(
+				`Đã nạp ${changed.length} thay đổi từ file — xem lại rồi bấm Lưu${skipped.length ? ` (bỏ qua ${skipped.length} mục không dùng được)` : ''}`,
+			);
+		} catch (e) {
+			notify.error(e instanceof Error ? e.message : 'Không đọc được file');
+		} finally {
+			if (importRef.current) importRef.current.value = '';
 		}
 	};
 
@@ -967,30 +214,6 @@ export default function SystemSettings() {
 		window.addEventListener('beforeunload', warn);
 		return () => window.removeEventListener('beforeunload', warn);
 	}, [hasDirty]);
-
-	const sendTest = async () => {
-		setTesting(true);
-		try {
-			await settingsApi.testMail(testTo.trim());
-			notify.success(`Đã gửi email thử tới ${testTo.trim()}`);
-		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Gửi thử thất bại');
-		} finally {
-			setTesting(false);
-		}
-	};
-
-	const testClamav = async () => {
-		setClamTesting(true);
-		try {
-			await settingsApi.testClamav();
-			notify.success('Kết nối ClamAV thành công — đang quét file tải lên');
-		} catch (e) {
-			notify.error(e instanceof Error ? e.message : 'Kiểm tra thất bại');
-		} finally {
-			setClamTesting(false);
-		}
-	};
 
 	const modules = SECTIONS.find((s) => s.id === 'modules')!.groups[0].fields;
 	const smtp = saved.SMTP_HOST || env.SMTP_HOST;
@@ -1097,6 +320,53 @@ export default function SystemSettings() {
 		);
 	};
 
+	/** Bảng tick hàng × cột (vd phương thức điểm danh theo loại hội nghị) — lưu JSON */
+	const renderMatrix = (f: Field) => {
+		const { rows, cols, rowHead } = f.matrix!;
+		const value = parseMatrix(f, form[f.key]);
+		const toggle = (r: string, c: string) => {
+			const cur = value[r];
+			set(f.key, serializeMatrix(f, { ...value, [r]: cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c] }));
+		};
+		// Cột có công tắc tổng đang tắt (theo form — đổi công tắc phía trên thấy ngay)
+		const colOff = (key?: string) => !!key && form[key] === 'false';
+		return (
+			<div className={styles.matrixWrap}>
+				<table className={styles.matrix} aria-label={f.label}>
+					<thead>
+						<tr>
+							<th scope='col'>{rowHead ?? ''}</th>
+							{cols.map(([c, l, key]) => (
+								<th key={c} scope='col' className={cx(colOff(key) && styles.matrixOff)}>
+									{l}
+									{colOff(key) && <span className={styles.matrixNote}>đang tắt</span>}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{rows.map(([r, label]) => (
+							<tr key={r}>
+								<th scope='row'>{label}</th>
+								{cols.map(([c, l, key]) => (
+									<td key={c} className={cx(colOff(key) && styles.matrixOff)}>
+										<input
+											type='checkbox'
+											checked={value[r].includes(c)}
+											disabled={colOff(key)}
+											onChange={() => toggle(r, c)}
+											aria-label={`${label} — ${l}`}
+										/>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		);
+	};
+
 	const renderInput = (f: Field) => {
 		if (f.type === 'select') {
 			return (
@@ -1182,7 +452,7 @@ export default function SystemSettings() {
 					{err}
 				</span>
 			);
-		if (f.type === 'bool' || f.type === 'multi' || f.type === 'password' || form[f.key]) return null;
+		if (f.type === 'bool' || f.type === 'multi' || f.type === 'matrix' || f.type === 'password' || form[f.key]) return null;
 		if (env[f.key]) return <span className={styles.envNote}>Đang dùng giá trị trong file .env</span>;
 		if (f.type === 'number' && f.placeholder)
 			return (
@@ -1232,6 +502,15 @@ export default function SystemSettings() {
 				</div>
 			);
 		}
+		if (f.type === 'matrix') {
+			return (
+				<div key={f.key} className={cx(styles.menuBlock, d && styles.dirtyBlock)}>
+					{d && <div className={styles.blockRevert}>{renderRevert(f)}</div>}
+					{renderMatrix(f)}
+					{renderNote(f)}
+				</div>
+			);
+		}
 		if (f.type === 'multi') {
 			return (
 				<div key={f.key} className={cx(styles.menuBlock, d && styles.dirtyBlock)}>
@@ -1251,14 +530,16 @@ export default function SystemSettings() {
 						</label>
 						{renderSwitch(f)}
 					</div>
-					{f.hint && <p className={styles.hint}>{f.hint}</p>}
-					{f.more && (
-						<details className={styles.more}>
-							<summary>Xem thêm</summary>
-							<p>{f.more}</p>
-						</details>
-					)}
-					{renderRevert(f)}
+					<div className={styles.tileBody}>
+						{f.hint && <p className={styles.hint}>{f.hint}</p>}
+						{f.more && (
+							<details className={styles.more}>
+								<summary>Xem thêm</summary>
+								<p>{f.more}</p>
+							</details>
+						)}
+						{renderRevert(f)}
+					</div>
 				</div>
 			);
 		}
@@ -1291,97 +572,52 @@ export default function SystemSettings() {
 	};
 
 	const renderTool = (tool: Group['tool']): ReactNode => {
-		if (tool === 'mail-test') {
-			return (
-				<div className={styles.toolRow}>
-					<input
-						className={styles.input}
-						type='email'
-						aria-label='Địa chỉ email nhận thư thử'
-						placeholder='email-nhan@benhvien.vn'
-						value={testTo}
-						onChange={(e) => setTestTo(e.target.value)}
-						onKeyDown={(e) => e.key === 'Enter' && testTo.trim() && !dirty.length && sendTest()}
+		const hasDirty = dirty.length > 0;
+		switch (tool) {
+			case 'mail-test':
+				return <MailTestTool dirty={hasDirty} />;
+			case 'clamav-test':
+				return <ClamavTestTool host={clamHost ?? ''} dirty={hasDirty} />;
+			case 'doc-check':
+				return <DocCheckPanel />;
+			case 'recaptcha-test':
+				return (
+					<RecaptchaTestPanel
+						siteKey={(saved.RECAPTCHA_SITE_KEY || env.RECAPTCHA_SITE_KEY || '').trim()}
+						enterprise={!!(saved.RECAPTCHA_PROJECT_ID || env.RECAPTCHA_PROJECT_ID || '').trim()}
+						dirty={hasDirty}
 					/>
-					<Button variant='secondary' loading={testing} disabled={!testTo.trim() || dirty.length > 0} onClick={sendTest}>
-						Gửi thử
-					</Button>
-					{dirty.length > 0 && <span className={styles.toolHint}>Lưu thay đổi trước khi gửi thử</span>}
-				</div>
-			);
+				);
+			case 'attendance-helper':
+				return (
+					<AttendanceHelper
+						location={form.ATTENDANCE_LOCATION ?? ''}
+						radius={form.ATTENDANCE_RADIUS_M ?? ''}
+						ips={form.ATTENDANCE_ALLOWED_IPS ?? ''}
+						onChange={set}
+					/>
+				);
+			case 'holiday-preview':
+				return <HolidayPreview
+						auto={form.TRAINING_HOLIDAYS_AUTO !== 'false'}
+						text={form.TRAINING_HOLIDAYS ?? ''}
+						onTextChange={(v) => set('TRAINING_HOLIDAYS', v)}
+					/>;
+			case 'bank-connect':
+				return (
+					<BankConnectTool
+						provider={(saved.TUITION_BANK_API_PROVIDER ?? '').trim()}
+						baseUrl={saved.PUBLIC_BASE_URL || env.PUBLIC_BASE_URL || ''}
+						dirty={hasDirty}
+					/>
+				);
+			default:
+				return null;
 		}
-		if (tool === 'clamav-test') {
-			return (
-				<div className={styles.toolRow}>
-					<Button variant='secondary' loading={clamTesting} disabled={!clamHost || dirty.length > 0} onClick={testClamav}>
-						Kiểm tra kết nối
-					</Button>
-					<span className={dirty.length > 0 || !clamHost ? styles.toolHint : styles.toolNote}>
-						{dirty.length > 0
-							? 'Lưu thay đổi trước khi kiểm tra'
-							: clamHost
-								? 'Gửi lệnh PING và quét thử một đoạn dữ liệu sạch tới ClamAV đã lưu.'
-								: 'Đang tắt — điền máy chủ ClamAV và lưu để bật quét virus.'}
-					</span>
-				</div>
-			);
-		}
-		if (tool === 'doc-check') return <DocCheckPanel />;
-		if (tool === 'recaptcha-test')
-			return (
-				<RecaptchaTestPanel
-					siteKey={(saved.RECAPTCHA_SITE_KEY || env.RECAPTCHA_SITE_KEY || '').trim()}
-					enterprise={!!(saved.RECAPTCHA_PROJECT_ID || env.RECAPTCHA_PROJECT_ID || '').trim()}
-					dirty={dirty.length > 0}
-				/>
-			);
-		if (tool === 'attendance-helper') {
-			// Bản đồ xem trước tọa độ + bán kính đang nhập (chưa lưu cũng hiện)
-			const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(form.ATTENDANCE_LOCATION ?? '');
-			const [lat, lng] = m ? [Number(m[1]), Number(m[2])] : [NaN, NaN];
-			const hasPoint = Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
-			const radius = Number(form.ATTENDANCE_RADIUS_M) > 0 ? Number(form.ATTENDANCE_RADIUS_M) : 200;
-			return (
-				<div className={styles.helper}>
-					<InfoSvg className={styles.helperIcon} />
-					<div className={styles.helperText}>
-						IP máy chủ đang thấy từ máy bạn: <b>{myIp === null ? 'đang kiểm tra…' : myIp || 'không rõ'}</b>. Nếu bạn đang ở bệnh viện, bấm để điền nhanh:
-					</div>
-					<div className={styles.toolRow}>
-						<Button variant='secondary' size='sm' disabled={!myIp} onClick={addMyIp}>
-							Thêm IP hiện tại
-						</Button>
-						<Button variant='secondary' size='sm' loading={locating} onClick={useCurrentLocation}>
-							Dùng vị trí hiện tại
-						</Button>
-					</div>
-					<div className={styles.mapBox}>
-						<RadiusMap
-							className={styles.mapFrame}
-							lat={hasPoint ? lat : null}
-							lng={hasPoint ? lng : null}
-							radius={radius}
-							onPick={(a, b) => set('ATTENDANCE_LOCATION', `${a.toFixed(6)}, ${b.toFixed(6)}`)}
-						/>
-						<span className={styles.toolNote}>
-							Bấm lên bản đồ để chọn tọa độ bệnh viện (nhớ bấm Lưu).
-							{hasPoint && (
-								<>
-									{' '}Chấm đỏ = tọa độ đang chọn, vòng xanh = vùng điểm danh hợp lệ (bán kính {radius}m) —{' '}
-									<a href={`https://www.google.com/maps?q=${lat},${lng}`} target='_blank' rel='noreferrer'>
-										mở bằng Google Maps
-									</a>
-								</>
-							)}
-						</span>
-					</div>
-				</div>
-			);
-		}
-		return null;
 	};
 
 	const renderGroup = (g: Group, key: string | number, fields = g.fields, anchor?: string) => {
+		if (g.hiddenBy && form[g.hiddenBy] === 'false') return null;
 		const offBy = g.dependsOn && form[g.dependsOn.key] === 'false';
 		const isMenu = fields[0]?.type === 'menu';
 		const menuHidden = isMenu ? splitList(form[fields[0].key]).length : 0;
@@ -1455,7 +691,9 @@ export default function SystemSettings() {
 	const SectionIcon = section.icon;
 	const anchorOf = (i: number) => `grp-${tab}-${i}`;
 	// Mục lục nhảy nhanh — chỉ cho tab dài (≥ 3 nhóm có tiêu đề)
-	const toc = section.subtabs ? [] : section.groups.map((g, i) => ({ title: g.title, i })).filter((x) => x.title);
+	const toc = section.subtabs ? [] : section.groups
+				.map((g, i) => ({ title: g.title, i, off: !!g.hiddenBy && form[g.hiddenBy] === 'false' }))
+				.filter((x) => x.title && !x.off);
 	const showToc = !query && !loading && toc.length >= 3;
 
 	// Tô sáng mục lục theo nhóm đang cuộn tới (nhóm cuối cùng đã lên tới 1/3 trên màn hình)
@@ -1534,6 +772,25 @@ export default function SystemSettings() {
 							</div>
 						))}
 					</nav>
+					<div className={styles.backup}>
+						<div className={styles.tabCat}>Sao lưu cấu hình</div>
+						<div className={styles.backupBtns}>
+							<button type='button' className={styles.backupBtn} onClick={exportBackup} disabled={loading}>
+								<DownloadSvg /> Xuất file
+							</button>
+							<button type='button' className={styles.backupBtn} onClick={() => importRef.current?.click()} disabled={loading}>
+								<UploadSvg /> Nhập file
+							</button>
+						</div>
+						<input
+							ref={importRef}
+							type='file'
+							accept='application/json,.json'
+							hidden
+							onChange={(e) => importBackup(e.target.files?.[0])}
+						/>
+						<p className={styles.backupNote}>Chuyển cấu hình sang máy khác. Không gồm mật khẩu, khóa bí mật; nhập xong được xem lại trước khi lưu.</p>
+					</div>
 				</aside>
 
 				<div className={styles.main}>
@@ -1627,23 +884,62 @@ export default function SystemSettings() {
 
 					{hasDirty && (
 						<div className={styles.saveBar} role='status'>
-							<div className={styles.saveText}>
-								<b>{dirty.length} thay đổi chưa lưu</b>
-								<span className={styles.saveList}>
-									{dirty
-										.slice(0, 3)
-										.map((f) => f.label)
-										.join(', ')}
-									{dirty.length > 3 && ` và ${dirty.length - 3} mục khác`}
-								</span>
+							{reviewOpen && (
+								<ul className={styles.review} aria-label='Các thay đổi chưa lưu'>
+									{dirty.map((f) => {
+										const err = errorOf(f);
+										return (
+											<li key={f.key}>
+												<button type='button' className={styles.reviewItem} onClick={() => goTo(f)} title='Mở ô này'>
+													<span className={styles.reviewWhere}>
+														{sectionOf(f).title} › <b>{f.label}</b>
+													</span>
+													<span className={styles.reviewDiff}>
+														<s>{displayValue(f, saved[f.key])}</s> → <b>{displayValue(f, form[f.key])}</b>
+													</span>
+													{err && <span className={styles.error}>{err}</span>}
+												</button>
+												<button
+													type='button'
+													className={styles.revert}
+													onClick={() => set(f.key, saved[f.key])}
+													aria-label={`Hoàn tác ${f.label}`}
+												>
+													<RefreshSvg /> Hoàn tác
+												</button>
+											</li>
+										);
+									})}
+								</ul>
+							)}
+							<div className={styles.saveRow}>
+								<div className={styles.saveText}>
+									<b>{dirty.length} thay đổi chưa lưu</b>
+									<span className={styles.saveList}>
+										{dirty
+											.slice(0, 3)
+											.map((f) => f.label)
+											.join(', ')}
+										{dirty.length > 3 && ` và ${dirty.length - 3} mục khác`}
+									</span>
+								</div>
+								{invalid.length > 0 && <span className={styles.error}>{invalid.length} giá trị chưa hợp lệ</span>}
+								<Button variant='ghost' onClick={() => setReviewOpen((v) => !v)} aria-expanded={reviewOpen}>
+									{reviewOpen ? 'Ẩn danh sách' : 'Xem lại'}
+								</Button>
+								<Button
+									variant='ghost'
+									onClick={() => {
+										setForm(saved);
+										setServerErrors({});
+									}}
+								>
+									Hoàn tác tất cả
+								</Button>
+								<Button loading={saving} onClick={save} title='Ctrl + S'>
+									Lưu thay đổi
+								</Button>
 							</div>
-							{invalid.length > 0 && <span className={styles.error}>{invalid.length} giá trị chưa hợp lệ</span>}
-							<Button variant='ghost' onClick={() => setForm(saved)}>
-								Hoàn tác tất cả
-							</Button>
-							<Button loading={saving} onClick={save} title='Ctrl + S'>
-								Lưu thay đổi
-							</Button>
 						</div>
 					)}
 				</div>

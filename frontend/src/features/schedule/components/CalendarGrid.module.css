@@ -422,3 +422,29 @@
 		padding: 1px 3px;
 	}
 }
+
+/* ─── Ngày nghỉ lễ (lịch học) ───────────────────────────────────────────── */
+/* Nhãn tên lễ: chỉ để đọc — nền đỏ nhạt, chữ đỏ đậm (đạt tương phản), không đổi khi rê chuột */
+.chipHoliday {
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+	border: 1px solid var(--tone-red-border);
+	font-weight: 600;
+	line-height: 18px;
+	cursor: default;
+}
+
+.holidayCell,
+.holidayCol {
+	background-color: color-mix(in srgb, var(--tone-red-bg) 55%, transparent);
+}
+
+.dayCell.holidayCell.clickable:hover {
+	background-color: var(--tone-red-bg);
+}
+
+.holidayCell .dayNum,
+.holidayHead .weekHeadDow,
+.holidayHead .weekHeadNum {
+	color: var(--tone-red-fg);
+}

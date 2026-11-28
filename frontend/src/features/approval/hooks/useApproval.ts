@@ -20,6 +20,7 @@ import type {
 	TabKey,
 } from '../types/approval.type';
 import { mapTopicToRecord, mergeTopicDetail } from '../utils/approvalHelpers';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 // TabKey (hiển thị) ↔ topic.status (lưu DB) — điều hướng bộ lọc status gửi lên server
 const TAB_TO_TOPIC_STATUS: Record<TabKey, TopicApprovalStatus> = {
@@ -102,6 +103,10 @@ export function useApproval(): ApprovalState {
 		() => searchParams.get('topic'),
 	);
 	const [comment, setComment] = useState('');
+	// Công tắc "Ký số" trong hộp xác nhận (ConfirmModal) — phiếu ký lưu vào tài liệu đề tài
+	const [sign] = useSignPreference('topic-approval');
+	// Tăng sau khi lưu phiếu ký số ⇒ tải lại danh sách tài liệu của đề tài
+	const [filesVersion, setFilesVersion] = useState(0);
 	const [modal, setModal] = useState<ModalType>(null);
 	const [loading, setLoading] = useState(false);
 	const [listLoading, setListLoading] = useState(true);
@@ -238,7 +243,7 @@ export function useApproval(): ApprovalState {
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedId]);
+	}, [selectedId, filesVersion]);
 
 	// records đã được server lọc đúng tab (status) + search — chỉ còn sắp xếp khẩn lên đầu
 	const filtered = useMemo(
@@ -292,10 +297,10 @@ export function useApproval(): ApprovalState {
 		setLoading(true);
 		try {
 			if (modal === 'approve')
-				await approveTopic(selected.id, comment.trim() || undefined);
+				await approveTopic(selected.id, comment.trim() || undefined, sign);
 			else if (modal === 'request')
-				await requestSupplementTopic(selected.id, comment.trim());
-			else await rejectTopic(selected.id, comment.trim());
+				await requestSupplementTopic(selected.id, comment.trim(), sign);
+			else await rejectTopic(selected.id, comment.trim(), sign);
 
 			const [topic, approvals] = await Promise.all([
 				getApprovalTopicDetail(selected.id),
@@ -319,12 +324,13 @@ export function useApproval(): ApprovalState {
 				),
 			);
 			notify.success(
-				modal === 'approve'
+				(modal === 'approve'
 					? 'Đã phê duyệt đề tài thành công'
 					: modal === 'request'
 						? 'Đã gửi yêu cầu bổ sung tới chủ nhiệm đề tài'
-						: 'Đã không phê duyệt đề tài',
+						: 'Đã không phê duyệt đề tài') + (sign ? ' — phiếu có chữ ký số đã lưu vào tài liệu đề tài' : ''),
 			);
+			if (sign) setFilesVersion((v) => v + 1);
 			setModal(null);
 			setComment('');
 			setActiveTab(newStatus);
@@ -337,7 +343,7 @@ export function useApproval(): ApprovalState {
 		} finally {
 			setLoading(false);
 		}
-	}, [selected, modal, comment]);
+	}, [selected, modal, comment, sign]);
 
 	const handleBulkAction = useCallback(async () => {
 		if (!bulkModal) return;

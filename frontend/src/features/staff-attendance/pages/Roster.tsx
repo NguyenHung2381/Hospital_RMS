@@ -44,6 +44,7 @@ export default function Roster() {
 	const [patterns, setPatterns] = useState<ShiftPattern[]>([]);
 	const [dept, setDept] = useState('');
 	const [course, setCourse] = useState('');
+	const [ttype, setTtype] = useState('');
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<Set<string>>(new Set());
 	const [anchor, setAnchor] = useState<{ row: number; col: number } | null>(null);
@@ -54,6 +55,13 @@ export default function Roster() {
 
 	const days = useMemo(() => monthDays(month), [month]);
 	const today = todayVN();
+
+	// Đổi tháng: ô đã chọn thuộc tháng cũ, bỏ hết để không xếp ca vào ô không còn nhìn thấy
+	const changeMonth = (next: string) => {
+		setMonth(next);
+		setSelected(new Set());
+		setAnchor(null);
+	};
 
 	const load = useCallback(() => {
 		Promise.all([rosterApi.get(days[0], days[days.length - 1]), shiftApi.list(), patternApi.list()])
@@ -82,27 +90,53 @@ export default function Roster() {
 	);
 	const courses = useMemo(() => {
 		const map = new Map<string, string>();
-		for (const u of data?.users ?? []) for (const p of u.periods) map.set(p.course_id, p.course_name);
+		for (const u of data?.users ?? [])
+			for (const p of u.periods) if (!ttype || p.training_type_name === ttype) map.set(p.course_id, p.course_name);
 		return [...map].sort((a, b) => a[1].localeCompare(b[1], 'vi'));
+	}, [data, ttype]);
+	// Loại hình đào tạo (chỉ khóa chấm công theo ca mới có ở đây)
+	const trainingTypes = useMemo(() => {
+		const set = new Set<string>();
+		for (const u of data?.users ?? []) for (const p of u.periods) if (p.training_type_name) set.add(p.training_type_name);
+		return [...set].sort((a, b) => a.localeCompare(b, 'vi'));
 	}, [data]);
 	const filtered = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		return (data?.users ?? []).filter(
 			(u) =>
 				(!dept || u.department_name === dept) &&
+				(!ttype || u.periods.some((p) => p.training_type_name === ttype)) &&
 				(!course || u.periods.some((p) => p.course_id === course)) &&
 				(!q || u.full_name.toLowerCase().includes(q) || u.trainee_id.toLowerCase() === q),
 		);
-	}, [data, dept, course, search]);
+	}, [data, dept, ttype, course, search]);
 	// Ô của ngày học viên không học khóa nào thì không chọn được
 	const studying = (u: ShiftUser, date: string) => periodOn(u.periods, date) != null;
+	const cellTitle = (u: ShiftUser, date: string) => {
+		const p = periodOn(u.periods, date);
+		return p ? [p.course_name, p.training_type_name].filter(Boolean).join(' · ') : undefined;
+	};
 	const pg = useClientPaging(filtered, 30);
 	const rows = pg.paged;
+
+	// Học viên đang lọc (mọi trang) — chọn cả cột phủ hết, không chỉ trang đang xem
+	const filteredById = useMemo(() => new Map(filtered.map((u) => [u.id, u])), [filtered]);
+	const daySet = useMemo(() => new Set(days), [days]);
+	// Chỉ ô của học viên đang lọc, trong tháng đang xem mới được tính và xếp ca:
+	// đổi bộ lọc thì ô của học viên bị ẩn tạm không tính (lọc lại thì hiện lại)
+	const visibleSelected = useMemo(
+		() =>
+			[...selected].filter((k) => {
+				const [userId, date] = k.split('|');
+				return filteredById.has(userId) && daySet.has(date);
+			}),
+		[selected, filteredById, daySet],
+	);
 
 	const toggleKeys = (all: string[]) => {
 		const keys = all.filter((k) => {
 			const [userId, date] = k.split('|');
-			const u = rows.find((r) => r.id === userId);
+			const u = filteredById.get(userId);
 			return !!u && studying(u, date);
 		});
 		if (!keys.length) return;
@@ -165,7 +199,7 @@ export default function Roster() {
 		}
 	};
 
-	const cells: RosterCell[] = [...selected].map((k) => {
+	const cells: RosterCell[] = visibleSelected.map((k) => {
 		const [user_id, date] = k.split('|');
 		return { user_id, date };
 	});
@@ -196,21 +230,40 @@ export default function Roster() {
 			<div className={tbl.tableCard}>
 				<div className={tbl.tableHeader}>
 					<div className={styles.controls}>
-						<Button variant='secondary' size='sm' onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label='Tháng trước'>
+						<Button variant='secondary' size='sm' onClick={() => changeMonth(shiftMonth(month, -1))} aria-label='Tháng trước'>
 							‹
 						</Button>
 						<input
 							type='month'
 							className={tbl.filterSelect}
 							value={month}
-							onChange={(e) => e.target.value && setMonth(e.target.value)}
+							onChange={(e) => e.target.value && changeMonth(e.target.value)}
 							aria-label='Tháng'
 						/>
-						<Button variant='secondary' size='sm' onClick={() => setMonth((m) => shiftMonth(m, 1))} aria-label='Tháng sau'>
+						<Button variant='secondary' size='sm' onClick={() => changeMonth(shiftMonth(month, 1))} aria-label='Tháng sau'>
 							›
 						</Button>
 					</div>
 					<div className={tbl.tableControls}>
+						{(trainingTypes.length > 1 || ttype) && (
+							<select
+								className={tbl.filterSelect}
+								value={ttype}
+								onChange={(e) => {
+									setTtype(e.target.value);
+									setCourse('');
+									pg.setPage(1);
+								}}
+								aria-label='Loại hình đào tạo'
+							>
+								<option value=''>Tất cả loại hình</option>
+								{trainingTypes.map((t) => (
+									<option key={t} value={t}>
+										{t}
+									</option>
+								))}
+							</select>
+						)}
 						<select
 							className={tbl.filterSelect}
 							value={course}
@@ -269,10 +322,10 @@ export default function Roster() {
 					<span className={styles.legendItem}>· Bấm ô để chọn, Shift+bấm chọn vùng, bấm ngày/tên để chọn cả cột/hàng</span>
 				</div>
 
-				{selected.size > 0 && (
+				{cells.length > 0 && (
 					<div className={styles.actionBar}>
 						<span>
-							Đã chọn <b>{selected.size}</b> ô
+							Đã chọn <b>{cells.length}</b> ô{pg.pagination.totalPages > 1 ? ' (gồm cả các trang khác)' : ''}
 						</span>
 						<Button variant='secondary' size='sm' onClick={() => setSelected(new Set())}>
 							Bỏ chọn
@@ -306,9 +359,9 @@ export default function Roster() {
 												<button
 													type='button'
 													className={styles.headBtn}
-													onClick={() => toggleKeys(rows.map((u) => key(u.id, d)))}
-													title={`Chọn cả ngày ${d.split('-').reverse().join('/')}`}
-													aria-label={`Chọn cả ngày ${d.split('-').reverse().join('/')}`}
+													onClick={() => toggleKeys(filtered.map((u) => key(u.id, d)))}
+													title={`Chọn cả ngày ${d.split('-').reverse().join('/')} cho mọi học viên đang lọc`}
+													aria-label={`Chọn cả ngày ${d.split('-').reverse().join('/')} cho mọi học viên đang lọc`}
 												>
 													<span className={styles.headLine}>{WEEKDAYS[wd - 1].label}</span>
 													<span className={cx(styles.headLine, styles.dayNum)}>{Number(d.slice(8))}</span>
@@ -348,7 +401,7 @@ export default function Roster() {
 														!isStudying && styles.outside,
 														isSelected && styles.selected,
 													)}
-													title={periodOn(u.periods, d)?.course_name}
+													title={cellTitle(u, d)}
 												>
 													{/* Ô ngoài thời gian khóa học không chọn được nên không có nút */}
 													{isStudying ? (

@@ -34,6 +34,10 @@ module.exports = {
 		'GET /iclock/getrequest': 'Máy chấm công hỏi lệnh đồng bộ (chỉ máy đã duyệt nhận lệnh)',
 		'POST /iclock/devicecmd': 'Máy chấm công báo kết quả lệnh',
 		'GET /iclock/ping': 'Máy chấm công kiểm tra kết nối (trả OK)',
+		// Ngân hàng báo giao dịch học phí (training/tuition/bank/): xác thực bằng chữ ký của bộ
+		// chuyển đổi trên body thô, chỉ nhận khi bộ đó đang bật, tùy chọn giới hạn IP, rate-limit riêng
+		[`POST ${API}/bank-webhooks/:provider`]:
+			'Ngân hàng báo giao dịch tiền vào tài khoản học phí (chữ ký HMAC / chữ ký của ngân hàng, không đăng nhập)',
 		[`POST ${API}/auth/login`]: 'Đăng nhập',
 		[`POST ${API}/auth/refresh`]: 'Làm mới phiên bằng refresh token',
 		[`POST ${API}/auth/logout`]: 'Đăng xuất bằng refresh token',
@@ -130,6 +134,40 @@ module.exports = {
 			'2FA của chính mình — tạo lại mã khôi phục (cần mật khẩu)',
 		[`GET ${API}/auth/2fa/status`]: '2FA của chính mình',
 		[`GET ${API}/users/me`]: 'Hồ sơ + quyền của chính mình',
+		[`GET ${API}/signing/me`]:
+			'Tài khoản ký số cá nhân của chính mình (không trả secret, API key chỉ bản che)',
+		[`PUT ${API}/signing/me`]:
+			'Tự khai báo tài khoản ký số cá nhân — chỉ ghi cho req.user.id, secret mã hóa trước khi lưu',
+		[`DELETE ${API}/signing/me`]: 'Tự xóa tài khoản ký số cá nhân của chính mình',
+		[`POST ${API}/signing/me/check`]:
+			'Kiểm tra kết nối VIN-HSM bằng tài khoản ký số của chính mình',
+		[`POST ${API}/signing/me/test-sign`]:
+			'Ký thử phiếu mẫu bằng chứng thư của chính mình (ghi signing_logs)',
+		[`GET ${API}/signing/me/signature-image`]:
+			'Ảnh chữ ký tay của chính mình (chỉ chủ tài khoản ký số cá nhân đọc được)',
+		[`PUT ${API}/signing/me/signature-image`]:
+			'Tự tải / vẽ / xóa ảnh chữ ký tay — server chuẩn hóa lại ảnh (signatureImage.js), chỉ ghi vào tài khoản của req.user.id',
+		[`POST ${API}/signing/me/sign-pdf`]:
+			'Tự ký 1 PDF mình tải lên bằng chứng thư cá nhân của chính mình (signingService.signUserPdf, ghi signing_logs); file kiểm định dạng + quét virus qua uploadPdf, không lưu',
+		[`GET ${API}/sign-requests/`]:
+			'Hồ sơ trình ký của chính mình theo hộp (cần ký / đã gửi / có tham gia); hộp "tất cả" service đòi signing:manage',
+		[`GET ${API}/sign-requests/todo-count`]: 'Số hồ sơ đang chờ chính mình ký',
+		[`POST ${API}/sign-requests/`]:
+			'Mọi cán bộ tạo hồ sơ trình ký (quyết định 27/11/2026); file qua uploadPdfs (kiểm định dạng + quét virus), người ký phải là tài khoản đang hoạt động',
+		[`POST ${API}/sign-requests/batch-sign`]:
+			'Ký hàng loạt hồ sơ đang chờ chính mình — từng hồ sơ kiểm lượt ký như ký đơn lẻ',
+		[`GET ${API}/sign-requests/:id`]:
+			'Service kiểm: người tạo, người trong danh sách ký hoặc signing:manage (không thì 404)',
+		[`GET ${API}/sign-requests/:id/documents/:docId/file`]:
+			'File văn bản — cùng kiểm quyền xem hồ sơ như GET /:id',
+		[`POST ${API}/sign-requests/:id/sign`]:
+			'Chỉ người ký đang tới lượt (status pending, đúng bước hiện tại), ký bằng chứng thư của chính mình',
+		[`POST ${API}/sign-requests/:id/reject`]: 'Chỉ người ký đang tới lượt',
+		[`POST ${API}/sign-requests/:id/cancel`]: 'Service kiểm: người tạo hồ sơ hoặc signing:manage',
+		[`GET ${API}/signing/providers`]:
+			'Danh mục nhà cung cấp ký số đang hỗ trợ (tên, ô khai báo) — không chứa dữ liệu tài khoản',
+		[`GET ${API}/signing/me/status`]:
+			'Có/không có chứng thư cá nhân và chứng thư ký giấy chứng nhận — để bật/tắt nút ký số',
 		[`PATCH ${API}/users/me`]: 'Tự sửa họ tên (controller chỉ nhận full_name)',
 		[`GET ${API}/users/:id`]:
 			'Controller: chính mình, hoặc cần users:read + cùng khoa (userController.getById)',

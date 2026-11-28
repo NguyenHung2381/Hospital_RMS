@@ -99,6 +99,8 @@ export const PERMISSION_KEYS = [
 	'activity_logs:read',
 	'security_events:read',
 	'system_settings:manage',
+	'signing:manage',
+	'signing:sign',
 	'form_configs:manage',
 ] as const;
 

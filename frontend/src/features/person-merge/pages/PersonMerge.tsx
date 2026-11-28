@@ -1,4 +1,5 @@
-import { InfoSvg, SearchSvg } from '@/assets/icons';
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
+import { EyeSvg, InfoSvg, SearchSvg } from '@/assets/icons';
 import AdminLayout from '../../../layouts/AdminLayout';
 import { Badge } from '../../../shared/components/Badge';
 import { Tabs } from '../../../shared/components/Tabs';
@@ -156,16 +157,15 @@ export default function PersonMerge() {
 											</Badge>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<button
-												type='button'
-												className={styles.reviewBtn}
-												onClick={(e) => {
-													e.stopPropagation();
-													d.setOpenId(c.id);
-												}}
-											>
-												{c.status === 'PENDING' ? 'Đối chiếu' : 'Xem'}
-											</button>
+											<RowActions>
+												<RowAction
+													title={c.status === 'PENDING' ? 'Đối chiếu' : 'Xem'}
+													tone={c.status === 'PENDING' ? 'success' : undefined}
+													onClick={() => d.setOpenId(c.id)}
+												>
+													<EyeSvg />
+												</RowAction>
+											</RowActions>
 										</td>
 									</tr>
 								))

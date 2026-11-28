@@ -87,8 +87,9 @@ const chunks = (arr, n) => {
 /**
  * Ghi thông báo cho danh sách user (chỉ tài khoản đang hoạt động). Trước là
  * sp_push_notification. Mã: 'NTF' + yyyyMMddHHmmss + 5 số từ SEQUENCE
- * seq_notification_suffix; cả lượt gửi chung 1 batch_id 'NTFB...' để phía quản
- * trị gộp thành 1 dòng. Trả số thông báo đã ghi.
+ * seq_notification_suffix; cả lượt gửi chung 1 batch_id 'NTFB...' (1 dòng ở
+ * notification_batches — trang quản trị đọc bảng đó, khoá ngoại bắt buộc có lượt
+ * gửi trước). Lượt gửi + mọi thông báo ghi trong 1 transaction. Trả số thông báo đã ghi.
  */
 const insertNotifications = async (type, title, userIds, { message, refId, refType }) => {
 	const pool = await getPool();
@@ -107,25 +108,32 @@ const insertNotifications = async (type, title, userIds, { message, refId, refTy
 	const pad5 = (n) => String(n).padStart(5, '0');
 	const seq = await db.nextSequenceValues(pool, 'seq_notification_suffix', active.length + 1);
 	const batchId = `NTFB${stamp}${pad5(seq[0])}`;
-	let k = 1;
-	for (const part of chunks(active, CHUNK)) {
-		const req = pool
-			.request()
+	const withContent = (req) =>
+		req
 			.input('type', sql.VarChar(50), type)
 			.input('title', sql.NVarChar(255), title)
 			.input('message', sql.NVarChar(sql.MAX), message)
 			.input('ref_id', sql.VarChar(30), refId)
 			.input('ref_type', sql.VarChar(20), refType)
 			.input('batch_id', sql.VarChar(30), batchId);
-		const rows = part.map((uid, i) => {
-			req.input(`i${i}`, sql.VarChar(30), `NTF${stamp}${pad5(seq[k++])}`);
-			req.input(`u${i}`, sql.VarChar(20), uid);
-			return `(@i${i}, @u${i}, @type, @title, @message, @ref_id, @ref_type, @batch_id)`;
-		});
-		await req.query(
-			`INSERT INTO notifications (id, user_id, type, title, message, ref_id, ref_type, batch_id) VALUES ${rows.join(', ')}`,
+	await db.withTransaction(async (tx) => {
+		await withContent(tx.request()).query(
+			`INSERT INTO notification_batches (id, type, title, message, ref_id, ref_type)
+			 VALUES (@batch_id, @type, @title, @message, @ref_id, @ref_type)`,
 		);
-	}
+		let k = 1;
+		for (const part of chunks(active, CHUNK)) {
+			const req = withContent(tx.request());
+			const rows = part.map((uid, i) => {
+				req.input(`i${i}`, sql.VarChar(30), `NTF${stamp}${pad5(seq[k++])}`);
+				req.input(`u${i}`, sql.VarChar(20), uid);
+				return `(@i${i}, @u${i}, @type, @title, @message, @ref_id, @ref_type, @batch_id)`;
+			});
+			await req.query(
+				`INSERT INTO notifications (id, user_id, type, title, message, ref_id, ref_type, batch_id) VALUES ${rows.join(', ')}`,
+			);
+		}
+	});
 	return active.length;
 };
 
@@ -216,8 +224,11 @@ const sendBroadcast = async ({ type, title, message, refId, refType, targetType,
 };
 
 /**
- * Gộp các dòng cùng 1 lượt gửi (cùng batch_id, hoặc cùng id nếu là dòng cũ
- * trước khi có batch_id) thành 1 hàng, kèm số người nhận và số người đã đọc.
+ * Mỗi lượt gửi 1 hàng (notification_batches), kèm số người nhận và số người đã đọc.
+ * Cắt trang trên bảng lượt gửi TRƯỚC (ix_notif_batches_created), rồi mới đếm cho đúng
+ * các lượt của trang (ix_notif_batch_read) — không gom cả bảng notifications như trước
+ * (migration 2027-01-19_tong_hop_luot_gui_thong_bao). batch_key = id lượt gửi; dòng cũ
+ * trước khi có batch_id đã được gán batch_id = id nên khoá client giữ không đổi.
  */
 const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = undefined } = {}) => {
 	const pool = await getPool();
@@ -225,37 +236,31 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
 	const conditions = [];
 	const req = pool.request().input('offset', sql.Int, offset).input('limit', sql.Int, limit);
 	if (type) {
-		conditions.push('n.type = @type');
+		conditions.push('b.type = @type');
 		req.input('type', sql.VarChar(50), type);
 	}
 	if (search) {
-		conditions.push(`(${db.ilike('n.title', '@search')} OR ${db.ilike('n.message', '@search')})`);
+		conditions.push(`(${db.ilike('b.title', '@search')} OR ${db.ilike('b.message', '@search')})`);
 		req.input('search', sql.NVarChar(255), `%${search}%`);
 	}
 	const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 	const sets = await db.queryAll(req, [
 		`
-    SELECT
-           COALESCE(n.batch_id, n.id) AS batch_key,
-           MIN(n.type)                AS type,
-           MIN(n.title)               AS title,
-           MIN(n.message)             AS message,
-           MIN(n.ref_id)              AS ref_id,
-           MIN(n.ref_type)            AS ref_type,
-           MIN(n.created_at)          AS created_at,
-           COUNT(*)                   AS recipient_count,
-           SUM(CASE WHEN n.is_read = 'true' THEN 1 ELSE 0 END) AS read_count
-    FROM   notifications n
-    ${where}
-    GROUP  BY COALESCE(n.batch_id, n.id)
-    ORDER  BY created_at DESC
-    OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+    SELECT b.id AS batch_key, b.type, b.title, b.message, b.ref_id, b.ref_type, b.created_at,
+           s.recipient_count, s.read_count
+    FROM (
+      SELECT b.* FROM notification_batches b
+      ${where}
+      ORDER BY b.created_at DESC, b.id DESC
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+    ) b
+    CROSS JOIN LATERAL (
+      SELECT COUNT(*) AS recipient_count, COUNT(*) FILTER (WHERE n.is_read) AS read_count
+      FROM notifications n WHERE n.batch_id = b.id
+    ) s
+    ORDER BY b.created_at DESC, b.id DESC
 		`,
-		`
-    SELECT COUNT(DISTINCT COALESCE(n.batch_id, n.id)) AS total
-    FROM   notifications n
-    ${where}
-		`,
+		`SELECT COUNT(*) AS total FROM notification_batches b ${where}`,
 	]);
 	return {
 		data: sets[0],
@@ -263,46 +268,45 @@ const adminGetAll = async ({ page = 1, limit = 20, type = undefined, search = un
 	};
 };
 
-// Chỉ COALESCE(batch_id, id) = @batch_key thì PG quét toàn bảng notifications
-// (bảng lớn nhất hệ thống) vì cột bị bọc trong hàm. Vế OR đứng trước cho PG tra
-// ix_notifications_batch_id + khoá chính (BitmapOr, đã EXPLAIN); vế COALESCE
-// giữ đúng nghĩa cũ (dòng có batch_id khác mà id trùng khoá thì không lấy).
-// Không viết `batch_id IS NULL AND id = @k`: PG tra index theo `batch_id IS NULL`
-// ⇒ đọc mọi thông báo cũ chưa có batch_id.
-/** @param {string} alias */
-const batchKeyWhere = (alias) =>
-	`(${alias}.batch_id = @batch_key OR ${alias}.id = @batch_key)
-       AND COALESCE(${alias}.batch_id, ${alias}.id) = @batch_key`;
-
 const getBatchRecipients = async (batchKey) => {
 	const pool = await getPool();
 	const result = await pool.request().input('batch_key', sql.VarChar(30), batchKey).query(`
       SELECT u.id AS user_id, u.full_name, u.username, n.is_read
       FROM   notifications n
       JOIN   users u ON u.id = n.user_id
-      WHERE  ${batchKeyWhere('n')}
+      WHERE  n.batch_id = @batch_key
       ORDER  BY u.full_name
     `);
 	return result.recordset;
 };
 
+// Khoá ngoại ON DELETE CASCADE: xoá lượt gửi kéo theo mọi thông báo của lượt
 const deleteBatch = async (batchKey) => {
 	const pool = await getPool();
 	const result = await pool
 		.request()
 		.input('batch_key', sql.VarChar(30), batchKey)
-		.query(`DELETE FROM notifications n WHERE ${batchKeyWhere('n')}`);
+		.query('DELETE FROM notification_batches WHERE id = @batch_key');
 	return result.rowsAffected[0] > 0;
 };
 
-const deleteNotif = async (id) => {
-	const pool = await getPool();
-	const result = await pool
-		.request()
-		.input('id', sql.VarChar(30), id)
-		.query('DELETE FROM notifications WHERE id = @id');
-	return result.rowsAffected[0] > 0;
-};
+// Xoá 1 thông báo; lượt gửi không còn người nhận nào thì xoá luôn lượt (không để
+// dòng "0 người nhận" trên trang quản trị).
+const deleteNotif = async (id) =>
+	db.withTransaction(async (tx) => {
+		const result = await tx
+			.request()
+			.input('id', sql.VarChar(30), id)
+			.query('DELETE FROM notifications WHERE id = @id RETURNING batch_id');
+		const batchId = result.recordset?.[0]?.batch_id;
+		if (batchId) {
+			await tx.request().input('batch_id', sql.VarChar(30), batchId).query(`
+          DELETE FROM notification_batches b
+          WHERE b.id = @batch_id
+            AND NOT EXISTS (SELECT 1 FROM notifications n WHERE n.batch_id = b.id)`);
+		}
+		return result.rowsAffected[0] > 0;
+	});
 
 module.exports = {
 	getForUser,

@@ -251,4 +251,13 @@ const generate = async (enrollmentId, type, rotationId = null) => {
 	};
 };
 
-module.exports = { TEMPLATES, buildFields, describe, generate, render, templateTags, BLANK };
+module.exports = {
+	TEMPLATES,
+	DOCX_MIME,
+	buildFields,
+	describe,
+	generate,
+	render,
+	templateTags,
+	BLANK,
+};

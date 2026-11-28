@@ -1,12 +1,16 @@
 /** suspended: hệ thống tạm khoá vì 1 số serial gửi từ 2 nơi (nghi máy giả) — quản trị mở lại */
 export type DeviceStatus = 'pending' | 'active' | 'disabled' | 'suspended';
 
+/** training = chấm công học viên, seminar = hội nghị (không nhận học viên, ghép người tham dự hội nghị — không ghép buổi học / ca), both = cả hai */
+export type DevicePurpose = 'training' | 'seminar' | 'both';
+
 export interface AttendanceDevice {
 	id: number;
 	serial_no: string;
 	name: string | null;
 	location: string | null;
 	status: DeviceStatus;
+	purpose: DevicePurpose;
 	name_ascii: boolean;
 	push_version: string | null;
 	firmware: string | null;
@@ -31,6 +35,7 @@ export interface AttendanceDevice {
 export interface DeviceFormData {
 	name: string;
 	location: string;
+	purpose: DevicePurpose;
 	name_ascii: boolean;
 }
 
@@ -40,7 +45,8 @@ export type PunchMatchStatus =
 	| 'no_trainee'
 	| 'no_session'
 	| 'kept_manual'
-	| 'locked';
+	| 'locked'
+	| 'not_training';
 export type PunchFilter = 'unmatched' | 'matched' | 'skipped' | 'all';
 
 export interface DevicePunch {
@@ -61,6 +67,10 @@ export interface DevicePunch {
 	course_name: string | null;
 	device_id: number;
 	device_name: string;
+	/** Hội nghị được ghép (máy dành cho hội nghị) — độc lập với match_status (buổi học) */
+	seminar_id: string | null;
+	seminar_title: string | null;
+	participant_name: string | null;
 }
 
 export type CommandStatus = 'pending' | 'sent' | 'done' | 'failed' | 'cancelled';

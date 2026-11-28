@@ -4,7 +4,8 @@ const { asyncHandler } = require('../utils/asyncHandler');
 // Bật/tắt module nghiệp vụ ở Cấu hình hệ thống: MODULE_<KEY> = 'false' là tắt, còn lại là bật.
 // Module trong DEFAULT_OFF thì ngược lại: chỉ bật khi = 'true' (điểm danh cần cấu hình
 // IP + vị trí trước mới dùng được, không nên tự hiện cho mọi bệnh viện).
-const MODULES = ['RESEARCH', 'TRAINING', 'SEMINAR', 'SURVEY', 'ATTENDANCE'];
+// TUITION (thu học phí) là phân hệ con của TRAINING: route học phí chặn cả hai.
+const MODULES = ['RESEARCH', 'TRAINING', 'SEMINAR', 'SURVEY', 'ATTENDANCE', 'TUITION'];
 const DEFAULT_OFF = new Set(['ATTENDANCE']);
 
 const isModuleEnabled = async (key) => {

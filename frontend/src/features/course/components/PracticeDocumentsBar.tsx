@@ -7,6 +7,8 @@ import {
 } from '../api/courseApi';
 import { savePracticeDocument } from '../utils/practiceDocuments';
 import styles from '../pages/Courses.module.css';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { useSignPreference } from '../../signing/hooks/useSignPreference';
 
 // Khối "In giấy tờ" của hồ sơ thực hành GPHN: Đơn đề nghị, Hợp đồng, Phiếu nhận xét
 // (tất cả vòng, .zip). Giấy tờ lấy theo dữ liệu ĐÃ LƯU; ô còn thiếu in thành dòng chấm.
@@ -23,6 +25,8 @@ export function PracticeDocumentsBar({
 }) {
 	const [info, setInfo] = useState<PracticeDocumentInfo | null>(null);
 	const [busy, setBusy] = useState<string | null>(null);
+	// Ký số bằng chứng thư của người tải — dùng chung với nút "Phiếu nhận xét" từng vòng
+	const [sign, setSign] = useSignPreference('practice-documents');
 
 	useEffect(() => {
 		getPracticeDocuments(enrollmentId)
@@ -33,7 +37,7 @@ export function PracticeDocumentsBar({
 	if (!info) return null;
 	const run = async (key: string, type: PracticeDocumentType) => {
 		setBusy(key);
-		await savePracticeDocument(enrollmentId, type, who);
+		await savePracticeDocument(enrollmentId, type, who, undefined, sign);
 		setBusy(null);
 	};
 	const missingRotations = info.rotations.filter((r) => r.missing.length);
@@ -77,6 +81,21 @@ export function PracticeDocumentsBar({
 				</div>
 			)}
 			<div className={styles.hint}>Giấy tờ lấy theo dữ liệu đã lưu — lưu hồ sơ trước khi in.</div>
+			<div style={{ marginTop: 'var(--space-2)', maxWidth: 520 }}>
+				<SignToggle
+					feature='training_documents'
+					source='personal'
+					checked={sign}
+					onChange={setSign}
+					disabled={!!busy}
+				/>
+				{sign && (
+					<div className={styles.hint}>
+						File Word tải về sẽ có chữ ký số của bạn. Phiếu nhận xét "tất cả vòng" (.zip) không ký được — tải từng
+						phiếu ở dòng vòng.
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

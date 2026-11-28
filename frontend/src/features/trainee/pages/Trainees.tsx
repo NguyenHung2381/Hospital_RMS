@@ -430,14 +430,16 @@ export default function Trainees({ typeId: lockedTypeId = '' }: { typeId?: strin
 													<FileTextSvg />
 												</RowAction>
 												<RowAction
-													title='Chương trình đào tạo đã đăng ký'
+													title='Khóa đã đăng ký'
+													aria-label='Chương trình đào tạo đã đăng ký'
 													onClick={() => openDetail(t, 'courses')}
 												>
 													<BookOpenSvg />
 												</RowAction>
 												{devices.canPush && (
 													<RowAction
-														title='Đẩy xuống máy chấm công (để học viên đăng ký vân tay)'
+														title='Đẩy xuống máy chấm công'
+														aria-label='Đẩy xuống máy chấm công (để học viên đăng ký vân tay)'
 														onClick={() => devices.push([t.id])}
 													>
 														<FingerprintSvg />

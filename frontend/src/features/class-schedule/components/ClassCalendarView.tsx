@@ -14,6 +14,7 @@ import a11y from './ClassSchedule.module.css';
 import { useFocusTrap } from '@/shared/hooks/useFocusTrap';
 import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
 import type { CalendarSession } from '../types/classSchedule.type';
+import { isoDay, useHolidays } from '../hooks/useHolidays';
 import {
 	computeClassMonths,
 	courseColor,
@@ -70,6 +71,14 @@ export function ClassCalendarView({
 		el.addEventListener('wheel', handleWheel, { passive: false });
 		return () => el.removeEventListener('wheel', handleWheel);
 	}, [isSingle, onPrev, onNext]);
+
+	// Ngày nghỉ lễ của mọi năm đang hiện trên lưới (tuần vắt qua năm mới, ô tháng 1 / 12 lấn sang năm bên cạnh)
+	const holidayYears = isWeek
+		? [weekStart.getFullYear(), addDays(weekStart, 6).getFullYear()]
+		: isSingle
+			? [year, ...(startMonth === 0 ? [year - 1] : []), ...(startMonth === 11 ? [year + 1] : [])]
+			: [year];
+	const holidays = useHolidays(holidayYears);
 
 	const monthsData = useMemo(
 		() => (isSingle ? [] : computeClassMonths(sessions, year)),
@@ -131,13 +140,15 @@ export function ClassCalendarView({
 						<div className={styles.weekDaysGrid}>
 							{weekDays.map((day) => {
 								const evs = sessionsByDay.get(dayKey(day.date)) ?? [];
+								const holiday = day.isCurrentMonth ? holidays.get(isoDay(day.date)) : undefined;
 								const cellClasses = [
 									styles.dayCell,
 									!day.isCurrentMonth && styles.dayCellOtherMonth,
 									day.isToday && styles.dayCellToday,
+									holiday && a11y.holidayDay,
 								].filter(Boolean).join(' ');
 								return (
-									<div key={day.key} className={cellClasses}>
+									<div key={day.key} className={cellClasses} title={holiday ? `Nghỉ lễ: ${holiday}` : undefined}>
 										<span className={`${styles.dayNum}${day.isToday ? ` ${styles.dayNumBadge}` : ''}`}>
 											{day.dayNum}
 										</span>
@@ -195,9 +206,9 @@ export function ClassCalendarView({
 			)}
 
 			{isWeek ? (
-				<WeekGrid days={buildWeekDays(weekStart)} items={items} />
+				<WeekGrid days={buildWeekDays(weekStart)} items={items} holidays={holidays} />
 			) : isSingle ? (
-				<MonthGrid weeks={buildMonthWeeks(year, startMonth)} items={items} />
+				<MonthGrid weeks={buildMonthWeeks(year, startMonth)} items={items} holidays={holidays} />
 			) : (
 				<div className={styles.grid} data-grid-view={12} style={{ gridTemplateColumns: GRID_COLS[12] }}>
 					{monthsData.map(renderYearCard)}

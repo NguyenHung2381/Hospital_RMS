@@ -1,6 +1,7 @@
 import { apiClient } from '@/shared/api/axios';
 import { seg } from '@/shared/api/path';
 import type { MyTuition, PaymentMethod, PendingTuitionPayment, TuitionItem } from '../types/tuition.type';
+import type { BankPreview, BankStatus, BankTxn, BankTxnList, BankTxnStatus } from '../types/bankReconcile.type';
 
 /** Học viên — học phí của chính mình (/me/tuition) */
 export const myTuitionApi = {
@@ -49,4 +50,21 @@ export const courseTuitionApi = {
 	receipt: (courseId: string, paymentId: string) =>
 		apiClient.postBlob(`/courses/${seg(courseId)}/tuition/payments/${seg(paymentId)}/receipt`, {}),
 	pending: () => apiClient.get<PendingTuitionPayment[]>('/courses/tuition-pending'),
+};
+
+/** Phòng Đào tạo — đối soát giao dịch ngân hàng báo về (/tuition-bank) */
+export const bankReconcileApi = {
+	list: (params: { status?: BankTxnStatus | ''; q?: string }) => {
+		const qs = new URLSearchParams({ limit: '200' });
+		if (params.status) qs.set('status', params.status);
+		if (params.q?.trim()) qs.set('q', params.q.trim());
+		return apiClient.get<BankTxnList>(`/tuition-bank/transactions?${qs}`);
+	},
+	status: () => apiClient.get<BankStatus>('/tuition-bank/status'),
+	preview: (content: string, amount: number) =>
+		apiClient.post<BankPreview>('/tuition-bank/preview', { content, amount }),
+	assign: (id: string, enrollmentId: string) =>
+		apiClient.post<BankTxn>(`/tuition-bank/transactions/${seg(id)}/assign`, { enrollment_id: enrollmentId }),
+	ignore: (id: string, note: string) =>
+		apiClient.post<BankTxn>(`/tuition-bank/transactions/${seg(id)}/ignore`, { note }),
 };

@@ -1,15 +1,11 @@
 import {
 	ActivitySvg,
-	ApproveSvg,
 	BadgeSvg,
 	BellSvg,
 	BookOpenSvg,
-	BuildingSvg,
-	CalendarSvg,
 	CheckCircleSvg,
 	ClipboardCheckSvg,
 	ClipboardSvg,
-	FileTextSvg,
 	ClockSvg,
 	CopySvg,
 	DashboardSvg,
@@ -22,21 +18,19 @@ import {
 	HistorySvg,
 	KeySvg,
 	LinkSvg,
-	ListSvg,
 	MessageSvg,
 	MonitorSvg,
 	QrSvg,
 	RoleSvg,
 	RoundSvg,
+	SendSvg,
 	ShieldSvg,
 	TagSvg,
 	TopicSvg,
 	TrendUpSvg,
 	UserCheckSvg,
-	UserPlusSvg,
-	UserSvg,
 	UsersSvg,
-	WarnSvg,
+	WalletSvg,
 } from '@/assets/icons';
 import type { PermissionKey } from '@/shared/types/permissions.generated';
 import type React from 'react';
@@ -64,6 +58,9 @@ export const KEY_TO_PATH: Record<string, string> = {
 	venues: '/admin/venues',
 	settings: '/admin/settings',
 	formConfigs: '/admin/form-configs',
+	signing: '/admin/ky-so',
+	signDocument: '/admin/ky-tai-lieu',
+	signRequests: '/admin/trinh-ky',
 	externalReviewers: '/admin/external-reviewers',
 	categories: '/admin/categories',
 	trainees: '/admin/trainees',
@@ -91,6 +88,7 @@ export const KEY_TO_PATH: Record<string, string> = {
 	personMerge: '/admin/person-merge',
 	surveys: '/admin/surveys',
 	workflows: '/admin/workflows',
+	tuitionBank: '/admin/doi-soat-ngan-hang',
 };
 
 // Map ngược từ URL pathname → nav key (để highlight sidebar)
@@ -125,6 +123,10 @@ export interface SectionTab {
 	to: string;
 	label: string;
 	perm?: PermissionKey;
+	/** Key menu riêng của tab (trang trước đây là 1 mục menu): tắt được ở tab
+	 *  "Menu hiển thị" và theo cấu hình Ký số. Quy ước: tab của 1 mục hoặc đều có
+	 *  key, hoặc đều không — có key thì công tắc là từng tab, không phải cả mục. */
+	key?: string;
 }
 export const SECTION_TABS: Record<string, SectionTab[]> = {
 	// Mỗi loại đào tạo 1 mục: khóa của loại đó, lịch học, học viên đã ghi danh.
@@ -157,6 +159,70 @@ export const SECTION_TABS: Record<string, SectionTab[]> = {
 		{ to: '/admin/training-programs', label: 'Chương trình' },
 		{ to: '/admin/lessons', label: 'Bài học' },
 	],
+	// ── Mục gộp từ nhiều mục menu cũ: mỗi tab giữ key cũ để cấu hình ẩn/hiện đã lưu vẫn đúng.
+	sign: [
+		{ to: '/admin/trinh-ky', label: 'Trình ký văn bản', key: 'signRequests' },
+		{ to: '/admin/ky-tai-lieu', label: 'Ký tài liệu', key: 'signDocument' },
+	],
+	rounds: [
+		{ to: '/admin/rounds', label: 'Đợt nghiên cứu', perm: 'rounds:read', key: 'rounds' },
+		{ to: '/admin/schedule', label: 'Lịch trình đợt', perm: 'rounds:read', key: 'schedule' },
+	],
+	topics: [
+		{ to: '/admin/topics', label: 'Đề tài', perm: 'topics:read', key: 'topics' },
+		{ to: '/admin/approvals', label: 'Phê duyệt', perm: 'topics:approve', key: 'approvals' },
+	],
+	councils: [
+		{ to: '/admin/councils', label: 'Hội đồng chấm đề cương', perm: 'councils:read', key: 'councils' },
+		{
+			to: '/admin/external-reviewers',
+			label: 'Chuyên gia ngoài viện',
+			perm: 'councils:read',
+			key: 'externalReviewers',
+		},
+	],
+	attendanceTimesheet: [
+		{
+			to: '/admin/attendance-timesheet',
+			label: 'Bảng công',
+			perm: 'attendance_devices:read',
+			key: 'attendanceTimesheet',
+		},
+		{
+			to: '/admin/attendance-devices',
+			label: 'Máy chấm công',
+			perm: 'attendance_devices:read',
+			key: 'attendanceDevices',
+		},
+	],
+	cme: [
+		{ to: '/admin/cme-register', label: 'Sổ cấp chứng nhận', perm: 'seminars:read', key: 'cmeRegister' },
+		{ to: '/admin/cme-records', label: 'Ghi nhận độc lập', perm: 'cme_records:manage', key: 'cmeRecords' },
+		{
+			to: '/admin/cme-compliance',
+			label: 'Theo dõi ngưỡng',
+			perm: 'seminars:cme_manage',
+			key: 'cmeCompliance',
+		},
+		{
+			to: '/admin/cme-credit-categories',
+			label: 'Quy đổi tín chỉ',
+			perm: 'training_catalog:read',
+			key: 'cmeCreditCatalog',
+		},
+	],
+	accounts: [
+		{ to: '/admin/users', label: 'Người dùng', perm: 'users:read', key: 'users' },
+		{ to: '/admin/roles', label: 'Vai trò & quyền', perm: 'roles:read', key: 'roles' },
+	],
+	organization: [
+		{ to: '/admin/departments', label: 'Khoa / Phòng ban', perm: 'departments:read', key: 'departments' },
+		{ to: '/admin/venues', label: 'Địa điểm / Phòng họp', perm: 'venues:read', key: 'venues' },
+	],
+	workflows: [
+		{ to: '/admin/workflows', label: 'Quy trình duyệt', perm: 'workflows:manage', key: 'workflows' },
+		{ to: '/admin/form-configs', label: 'Cấu hình form', perm: 'form_configs:manage', key: 'formConfigs' },
+	],
 };
 Object.entries(SECTION_TABS).forEach(([key, tabs]) =>
 	tabs.forEach((t) => {
@@ -170,6 +236,13 @@ export const sectionTabsOf = (pathname: string) => {
 	const key = PATH_TO_KEY[pathname];
 	return key ? (SECTION_TABS[key] ?? null) : null;
 };
+/** Tab của mục có key riêng → công tắc ẩn/hiện là từng tab, key của mục chỉ là định danh. */
+export const tabsAreSwitches = (key: string) => !!SECTION_TABS[key]?.[0]?.key;
+/** Tab (có key) đang chứa trang này, kể cả trang con /:id. */
+export const switchTabOf = (key: string, pathname: string) =>
+	SECTION_TABS[key]?.find(
+		(t) => t.key && (pathname === t.to || pathname.startsWith(`${t.to}/`)),
+	);
 
 // ─── NAV CONFIG ───────────────────────────
 interface NavItem {
@@ -194,42 +267,34 @@ const navItem = (
 
 // Nguyên tắc sắp xếp:
 // - Mỗi mảng nghiệp vụ là 1 nhóm, các mục đi theo luồng công việc, danh
-//   mục/cấu hình của mảng xếp cuối nhóm.
+//   mục/cấu hình của mảng xếp cuối nhóm. Giữ ít nhóm, mỗi nhóm không quá 7 mục.
+// - Trang cùng 1 việc gộp thành tab của 1 mục (SECTION_TABS) thay vì mỗi trang
+//   1 mục menu: Đợt + Lịch trình, Đề tài + Phê duyệt, Hội đồng + Chuyên gia,
+//   Bảng công + Máy chấm công, 4 trang tín chỉ CME, Người dùng + Vai trò…
 // - 4 dashboard (chung / NCKH / Đào tạo / Hội nghị & CME) là 1 trang có tab
 //   (DashboardTabs) nên chỉ có 1 mục menu; tab của module bị tắt tự ẩn.
-// - Hội nghị (tổ chức sự kiện) và Tín chỉ CME (tín chỉ từ hội nghị,
-//   khóa học, ghi nhận ngoài) là 2 nhóm riêng, dùng chung module 'seminar'.
-// - Mục dùng chung nhiều mảng (Báo cáo, Thông báo, Khảo sát) không nhét vào
-//   "Quản trị hệ thống"; Nhân sự (CCHN) tách nhóm riêng.
 // - Đào tạo chia theo loại: Đào tạo liên tục / Giấy phép hành nghề / Cầm tay chỉ
-//   việc, mỗi loại 1 mục; ca & điểm danh và thiết lập là 2 nhóm riêng. Trang cùng
-//   loại gộp thành tab của 1 mục (SECTION_TABS) thay vì mỗi trang 1 mục menu.
-// - Trang có tab (Danh mục NCKH, Danh mục đào tạo) chỉ có 1 mục menu.
+//   việc, mỗi loại 1 mục; ca, điểm danh và chấm công nằm chung nhóm Đào tạo.
+// - Trang có tab riêng (Danh mục NCKH, Danh mục đào tạo) chỉ có 1 mục menu.
 export const NAV_GROUPS: NavGroup[] = [
 	{
 		section: 'Tổng quan',
 		items: [
 			navItem('dashboard', 'Bảng điều khiển', DashboardSvg),
 			navItem('myTasks', 'Việc của tôi', CheckCircleSvg),
+			// Tab: Trình ký văn bản / Ký tài liệu (mỗi tab tắt riêng theo cấu hình Ký số).
+			navItem('sign', 'Trình ký & ký tài liệu', SendSvg),
 			navItem('reports', 'Báo cáo & xuất dữ liệu', DownloadSvg, 'reports:read'),
 		],
 	},
 	{
-		// Luồng: mở đợt → lịch trình → đề tài nộp vào → phê duyệt → hội đồng chấm.
+		// Luồng: mở đợt (+ lịch trình) → đề tài nộp vào (+ phê duyệt) → hội đồng chấm.
 		section: 'Nghiên cứu khoa học',
 		items: [
-			navItem('rounds', 'Đợt nghiên cứu', RoundSvg, 'rounds:read'),
-			navItem('schedule', 'Lịch trình đợt', CalendarSvg, 'rounds:read'),
-			navItem('topics', 'Đề tài nghiên cứu', TopicSvg, 'topics:read'),
-			navItem('approvals', 'Phê duyệt đề tài', ApproveSvg, 'topics:approve'),
-			navItem('councils', 'Hội đồng chấm đề cương', ClipboardCheckSvg, 'councils:read'),
-			navItem(
-				'externalReviewers',
-				'Chuyên gia ngoài viện',
-				UserPlusSvg,
-				'councils:read',
-			),
-			// 1 trang 3 tab: Phân loại / Cấp độ / Loại đợt (trước đây là 3 mục menu).
+			navItem('rounds', 'Đợt nghiên cứu', RoundSvg),
+			navItem('topics', 'Đề tài & phê duyệt', TopicSvg),
+			navItem('councils', 'Hội đồng & chuyên gia', ClipboardCheckSvg),
+			// 1 trang 3 tab: Phân loại / Cấp độ / Loại đợt.
 			navItem('categories', 'Danh mục NCKH', TagSvg, 'catalog:read'),
 		],
 	},
@@ -242,15 +307,11 @@ export const NAV_GROUPS: NavGroup[] = [
 			navItem('gphn', 'Giấy phép hành nghề', DocSvg),
 			navItem('ctcv', 'Cầm tay chỉ việc', ActivitySvg),
 			navItem('trainees', 'Tất cả học viên', UsersSvg, 'trainees:read'),
-		],
-	},
-	{
-		// Ca, phân ca, điểm danh và đơn xin phép của học viên — 1 mục, mỗi việc 1 tab (theo quyền).
-		section: 'Ca & điểm danh học viên',
-		items: [
+			// Ca, phân ca, điểm danh, đơn xin phép — mỗi việc 1 tab (theo quyền).
 			navItem('staffAttendance', 'Ca & điểm danh', ClockSvg),
-			navItem('attendanceTimesheet', 'Bảng công', FileTextSvg, 'attendance_devices:read'),
-			navItem('attendanceDevices', 'Máy chấm công', FingerprintSvg, 'attendance_devices:read'),
+			navItem('attendanceTimesheet', 'Chấm công', FingerprintSvg),
+			// Tiền học phí ngân hàng báo về — khoản chưa tự khớp chờ phòng Đào tạo xử lý
+			navItem('tuitionBank', 'Đối soát ngân hàng', WalletSvg, 'courses:approve'),
 		],
 	},
 	{
@@ -274,37 +335,20 @@ export const NAV_GROUPS: NavGroup[] = [
 		],
 	},
 	{
-		// Tổ chức sự kiện: lập hội nghị / buổi tập huấn → quét vé điểm danh tại cửa hội trường.
-		section: 'Hội nghị & tập huấn',
+		// Tổ chức sự kiện → quét vé tại cửa hội trường → tín chỉ CME cấp từ đó
+		// (tab: sổ cấp, ghi nhận ngoài, theo dõi ngưỡng, danh mục quy đổi).
+		section: 'Hội nghị & tín chỉ CME',
 		items: [
 			navItem('seminars', 'Hội thảo & hội nghị', MonitorSvg, 'seminars:read'),
 			navItem('hospitalTrainings', 'Tập huấn bệnh viện', UsersSvg, 'seminars:read'),
+			// Trang riêng cho điện thoại (không có AdminLayout) nên không gộp tab được.
 			navItem('ticketScan', 'Quét vé điểm danh', QrSvg, 'seminars:update'),
+			navItem('cme', 'Tín chỉ CME', BadgeSvg),
 		],
 	},
 	{
-		// Tín chỉ CME: cấp từ hội nghị → ghi nhận ngoài → theo dõi ngưỡng → danh mục.
-		section: 'Tín chỉ CME',
-		items: [
-			navItem('cmeRegister', 'Sổ cấp chứng nhận', BadgeSvg, 'seminars:read'),
-			navItem('cmeRecords', 'Ghi nhận độc lập', EditSvg, 'cme_records:manage'),
-			navItem(
-				'cmeCompliance',
-				'Theo dõi ngưỡng tín chỉ',
-				WarnSvg,
-				'seminars:cme_manage',
-			),
-			navItem(
-				'cmeCreditCatalog',
-				'Danh mục quy đổi tín chỉ',
-				ListSvg,
-				'training_catalog:read',
-			),
-		],
-	},
-	{
-		// CCHN là hồ sơ nhân sự.
-		section: 'Nhân sự',
+		// Việc dùng chung nhiều mảng: hồ sơ hành nghề của cán bộ, thông báo, khảo sát.
+		section: 'Hành chính',
 		items: [
 			navItem(
 				'staffLicenses',
@@ -312,11 +356,6 @@ export const NAV_GROUPS: NavGroup[] = [
 				ShieldSvg,
 				'staff_licenses:read',
 			),
-		],
-	},
-	{
-		section: 'Thông báo & khảo sát',
-		items: [
 			navItem('notifications', 'Thông báo', BellSvg, 'notifications:read'),
 			navItem('surveys', 'Khảo sát', MessageSvg, 'surveys:manage'),
 		],
@@ -325,19 +364,17 @@ export const NAV_GROUPS: NavGroup[] = [
 		// Tài khoản → tổ chức → dữ liệu dùng chung → quy trình → cấu hình → giám sát.
 		section: 'Quản trị hệ thống',
 		items: [
-			navItem('users', 'Người dùng', UserSvg, 'users:read'),
-			navItem('roles', 'Vai trò & quyền', RoleSvg, 'roles:read'),
-			navItem('departments', 'Khoa / Phòng ban', DeptSvg, 'departments:read'),
-			navItem('venues', 'Địa điểm / Phòng họp', BuildingSvg, 'venues:read'),
+			navItem('accounts', 'Tài khoản & phân quyền', RoleSvg),
+			navItem('organization', 'Khoa phòng & địa điểm', DeptSvg),
 			navItem('personMerge', 'Duyệt trùng danh tính', CopySvg, 'persons:read'),
-			navItem('workflows', 'Quy trình duyệt', LinkSvg, 'workflows:manage'),
+			navItem('workflows', 'Quy trình & biểu mẫu', LinkSvg),
+			navItem('signing', 'Ký số', EditSvg, 'signing:manage'),
 			navItem(
 				'settings',
 				'Cấu hình hệ thống',
 				KeySvg,
 				'system_settings:manage',
 			),
-			navItem('formConfigs', 'Cấu hình form', EditSvg, 'form_configs:manage'),
 			navItem(
 				'activityLogs',
 				'Nhật ký hoạt động',
@@ -352,17 +389,15 @@ export const NAV_GROUPS: NavGroup[] = [
 const MODULE_BY_SECTION: Record<string, ModuleKey> = {
 	'Nghiên cứu khoa học': 'research',
 	'Đào tạo': 'training',
-	'Ca & điểm danh học viên': 'attendance',
 	'Thiết lập đào tạo': 'training',
-	'Hội nghị & tập huấn': 'seminar',
-	'Tín chỉ CME': 'seminar',
+	'Hội nghị & tín chỉ CME': 'seminar',
 };
 const MODULE_BY_KEY: Record<string, ModuleKey> = {
 	surveys: 'survey',
+	// Ca & điểm danh là phân hệ riêng; Chấm công (máy chấm công, bảng công) theo
+	// phân hệ Đào tạo (điểm danh buổi học) của nhóm nên không cần ghi đè.
 	staffAttendance: 'attendance',
-	// Máy chấm công thuộc phân hệ Đào tạo (điểm danh buổi học), không phụ thuộc phân hệ ca
-	attendanceDevices: 'training',
-	attendanceTimesheet: 'training',
+	tuitionBank: 'tuition',
 };
 export const moduleOf = (section: string, key: string) =>
 	MODULE_BY_KEY[key] ?? MODULE_BY_SECTION[section];
@@ -371,13 +406,24 @@ export const moduleOf = (section: string, key: string) =>
 // là nơi bật lại menu — tắt là tự khóa mình.
 const LOCKED = new Set(['dashboard', 'settings']);
 
-/** Danh sách mục menu quản trị cho tab "Menu hiển thị" ở Cấu hình hệ thống. */
+/** Danh sách mục menu quản trị cho tab "Menu hiển thị" ở Cấu hình hệ thống.
+ *  Mục gộp có tab mang key → mỗi tab 1 công tắc (giữ key của mục menu cũ). */
 export const ADMIN_MENU: MenuCatalog = NAV_GROUPS.map((g) => ({
 	section: g.section,
-	items: g.items.map((it) => ({
-		key: it.key,
-		label: it.label,
-		module: moduleOf(g.section, it.key),
-		locked: LOCKED.has(it.key),
-	})),
+	items: g.items.flatMap((it) =>
+		tabsAreSwitches(it.key)
+			? SECTION_TABS[it.key].map((t) => ({
+					key: t.key as string,
+					label: `${it.label} › ${t.label}`,
+					module: moduleOf(g.section, it.key),
+				}))
+			: [
+					{
+						key: it.key,
+						label: it.label,
+						module: moduleOf(g.section, it.key),
+						locked: LOCKED.has(it.key),
+					},
+				],
+	),
 }));

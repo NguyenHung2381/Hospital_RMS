@@ -2,6 +2,7 @@ import type { BadgeTone } from '@/shared/components/Badge/badgeTone';
 import type {
 	AttendanceDevice,
 	CommandStatus,
+	DevicePurpose,
 	DeviceStatus,
 	PunchMatchStatus,
 } from '../types/attendanceDevice.type';
@@ -36,7 +37,31 @@ export const PUNCH_STATUS: Record<PunchMatchStatus, Label & { hint?: string }> =
 		hint: 'Giảng viên đã điểm danh tay buổi này — không ghi đè',
 	},
 	locked: { label: 'Điểm đã khóa', tone: 'gray', hint: 'Điểm khóa học đã khóa — không sửa điểm danh' },
+	not_training: {
+		label: 'Không tính cho đào tạo',
+		tone: 'gray',
+		hint: 'Máy chỉ dành cho hội nghị (hoặc phương thức máy chấm công đang tắt) — lượt chấm không tính vào buổi học / ca, và không có hội nghị nào của người này đang diễn ra',
+	},
 };
+
+export const DEVICE_PURPOSE: Record<DevicePurpose, Label & { hint: string }> = {
+	training: {
+		label: 'Học viên',
+		tone: 'blue',
+		hint: 'Nhận danh sách học viên và vân tay; lượt chấm tính vào buổi học và điểm danh theo ca',
+	},
+	seminar: {
+		label: 'Hội nghị',
+		tone: 'gray',
+		hint: 'Không nhận học viên; học viên đã gửi xuống máy sẽ được gỡ. Lượt chấm ghép vào người tham dự hội nghị đang diễn ra (PIN = mã nhân viên / mã học viên), không tính vào buổi học / ca',
+	},
+	both: {
+		label: 'Học viên + hội nghị',
+		tone: 'blue',
+		hint: 'Như máy chấm công học viên, đồng thời ghép lượt chấm vào người tham dự hội nghị đang diễn ra',
+	},
+};
+export const PURPOSE_ORDER: DevicePurpose[] = ['training', 'both', 'seminar'];
 
 export const COMMAND_STATUS: Record<CommandStatus, Label> = {
 	pending: { label: 'Chờ gửi', tone: 'blue' },

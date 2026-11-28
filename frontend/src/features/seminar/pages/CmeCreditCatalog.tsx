@@ -1,4 +1,5 @@
 import { Modal } from '@/shared/components';
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { showToast } from '@/shared/utils/feedback';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { EditSvg, LayersSvg, PlusSvg, SearchSvg, TrashSvg, XSvg } from '@/assets/icons';
@@ -172,7 +173,7 @@ export default function CmeCreditCatalog() {
 		<AdminLayout
 			pageTitle='Danh mục quy đổi tín chỉ'
 			pageSubtitle='Nhóm hoạt động, loại hình và công thức quy đổi ra giờ tín chỉ CME'
-			breadcrumbs={[{ label: 'Tín chỉ CME' }]}
+			breadcrumbs={[{ label: 'Hội nghị & tín chỉ CME' }]}
 			headerActions={
 				canCreate && (
 					<div className={styles.headerActions}>
@@ -368,30 +369,27 @@ export default function CmeCreditCatalog() {
 													</td>
 													{showActions && (
 														<td className={`${base.td} ${base.tdActions}`}>
-															<div className={base.actionBtns}>
+															<RowActions>
 																{canUpdate && (
-																	<button
-																		type='button'
-																		className={base.actionBtn}
+																	<RowAction
 																		title='Chỉnh sửa'
 																		aria-label={`Chỉnh sửa loại hình ${c.name}`}
 																		onClick={() => setEditingCategory(c)}
 																	>
 																		<EditSvg />
-																	</button>
+																	</RowAction>
 																)}
 																{canDelete && (
-																	<button
-																		type='button'
-																		className={`${base.actionBtn} ${base.danger}`}
+																	<RowAction
 																		title='Xóa'
 																		aria-label={`Xóa loại hình ${c.name}`}
+																		danger
 																		onClick={() => setDeleting({ kind: 'category', item: c })}
 																	>
 																		<TrashSvg />
-																	</button>
+																	</RowAction>
 																)}
-															</div>
+															</RowActions>
 														</td>
 													)}
 												</tr>

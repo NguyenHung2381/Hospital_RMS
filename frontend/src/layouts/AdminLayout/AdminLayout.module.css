@@ -203,14 +203,79 @@
 	width: 0;
 }
 
+/* Tiêu đề nhóm là nút thu gọn / mở rộng nhóm */
 .navSection {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+	width: 100%;
 	padding: var(--space-3) var(--space-5) var(--space-1);
+	border: none;
+	background: transparent;
+	font: inherit;
 	font-size: var(--font-size-xs);
 	font-weight: var(--font-weight-semibold);
 	color: rgba(255, 255, 255, 0.92);
+	text-align: left;
 	white-space: nowrap;
 	overflow: hidden;
-	transition: opacity 200ms ease;
+	cursor: pointer;
+	transition: color var(--transition-fast);
+}
+
+.navSection:hover {
+	color: var(--color-white);
+}
+
+.navSection:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, 0.9);
+	outline-offset: -2px;
+}
+
+.navSectionLabel {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.navSectionChev {
+	width: 12px;
+	height: 12px;
+	flex-shrink: 0;
+	opacity: 0.7;
+	transition: transform var(--transition-fast);
+}
+
+.navSection:hover .navSectionChev {
+	opacity: 1;
+}
+
+.navSection[aria-expanded='false'] .navSectionChev {
+	transform: rotate(-90deg);
+}
+
+/* Nhóm đang đóng nhưng có việc chờ chính người này xử lý */
+.navSectionDot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--color-accent);
+	flex-shrink: 0;
+}
+
+/* Bọc mục của nhóm để ẩn/hiện; không tạo hộp riêng nên style mục giữ nguyên */
+.navGroupItems {
+	display: contents;
+}
+
+.navGroupItems[hidden] {
+	display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.navSectionChev {
+		transition: none;
+	}
 }
 
 .sidebar.collapsed .navSection {
@@ -1017,33 +1082,12 @@
 }
 
 /* Điện thoại: thanh trên cùng chỉ còn menu + tên hệ thống + chuông (bỏ ô ngày để
-   tên không bị cắt "Hospi…"). Nút hành động của trang: nút chính (nút cuối —
-   quy ước mọi trang đặt nút chính ở cuối) lên đầu, rộng hết hàng; các nút phụ
-   chia đều hàng dưới. */
+   tên không bị cắt "Hospi…"). Nút hành động của trang: xem global.css
+   [data-page-actions] (dùng chung cho cả 3 layout). */
 @media (max-width: 640px) {
 	.roundIndicator,
 	.topbarDivider {
 		display: none;
-	}
-
-	.pageHeaderRight,
-	.pageHeaderRight > div:only-child {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-		width: 100%;
-	}
-
-	.pageHeaderRight > *,
-	.pageHeaderRight > div:only-child > * {
-		flex: 1 1 auto;
-		justify-content: center;
-	}
-
-	.pageHeaderRight > :last-child:not(:only-child),
-	.pageHeaderRight > div:only-child > :last-child:not(:only-child) {
-		order: -1;
-		flex-basis: 100%;
 	}
 }
 

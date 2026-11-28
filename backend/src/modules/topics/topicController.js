@@ -4,6 +4,8 @@ const topicService = require('./topicService');
 const topicMemberService = require('./topicMemberService');
 const topicAuthorService = require('./topicAuthorService');
 const workflowEngineService = require('./workflowEngineService');
+const topicApprovalSignService = require('./topicApprovalSignService');
+const signingService = require('../signing/signingService');
 const { success, created, notFound, sendWorkbook } = require('../../utils/response');
 const { createCrudController } = require('../../shared/crudController');
 const { httpError } = require('../../utils/httpError');
@@ -157,37 +159,68 @@ const submit = asyncHandler(async (req, res) => {
 // luôn rơi vào nhánh cũ (topicApprovalService.approve) — không đổi hành vi hiện tại.
 const approve = asyncHandler(async (req, res) => {
 	const useWorkflow = await workflowEngineService.hasActiveDefinition('topics');
+	// sign = true: ký phiếu phê duyệt bằng chứng thư cá nhân TRƯỚC khi ghi quyết định
+	// (topicApprovalSignService) — ký lỗi thì chưa ghi gì. Có workflow thì kiểm đúng người
+	// được phân công trước, khỏi ký phiếu cho quyết định sẽ bị từ chối.
+	let signed = null;
+	if (signingService.wantsSign(req.body.sign)) {
+		if (useWorkflow) {
+			await workflowEngineService.assertActorMayDecide('topics', req.params.id, req.user);
+		} else {
+			// Đề tài không còn chờ duyệt thì báo ngay, không ký phiếu rồi mới bị chặn
+			await topicApprovalService.assertDecidable(req.params.id);
+		}
+		signed = await topicApprovalSignService.signDecision(
+			req.params.id,
+			req.body.status,
+			req.body.comment,
+			req.user,
+		);
+	}
+	const result = await decide(req, useWorkflow);
+	const signedFile = signed
+		? await topicApprovalSignService.attach(req.params.id, signed, req.user.id)
+		: null;
+	return success(
+		res,
+		{ ...result.data, signed_file: signedFile },
+		signedFile ? `${result.message} — đã lưu phiếu có chữ ký số` : result.message,
+	);
+});
+
+// Ghi quyết định duyệt (chưa trả response) — trả { data, message }.
+const decide = async (req, useWorkflow) => {
 	if (useWorkflow) {
 		// Engine mới chỉ xử lý approved/rejected — 'supplement' (yêu cầu bổ
 		// sung) vẫn đi đường cũ vì workflow_tasks không có trạng thái tương ứng.
 		if (req.body.status === 'supplement') {
 			// Không đi qua advance() nên phải kiểm đúng người được phân công bước hiện tại
 			await workflowEngineService.assertActorMayDecide('topics', req.params.id, req.user);
-			const result = await topicApprovalService.approve(
+			const data = await topicApprovalService.approve(
 				req.params.id,
 				req.body.status,
 				req.body.comment,
 				req.user.id,
 			);
-			return success(res, result, 'Xử lý phê duyệt thành công');
+			return { data, message: 'Xử lý phê duyệt thành công' };
 		}
-		const outcome = await workflowEngineService.advance(
+		const data = await workflowEngineService.advance(
 			'topics',
 			req.params.id,
 			req.body.status,
 			req.user,
 			req.body.comment,
 		);
-		return success(res, outcome, 'Đã cập nhật bước duyệt');
+		return { data, message: 'Đã cập nhật bước duyệt' };
 	}
-	const result = await topicApprovalService.approve(
+	const data = await topicApprovalService.approve(
 		req.params.id,
 		req.body.status,
 		req.body.comment,
 		req.user.id,
 	);
-	return success(res, result, 'Xử lý phê duyệt thành công');
-});
+	return { data, message: 'Xử lý phê duyệt thành công' };
+};
 
 const getApprovals = asyncHandler(async (req, res) => {
 	const approvals = await topicApprovalService.getApprovals(req.params.id);

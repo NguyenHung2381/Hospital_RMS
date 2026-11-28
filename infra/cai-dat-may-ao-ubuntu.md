@@ -27,7 +27,7 @@ PostgreSQL 18 có bản chính thức cho cả Ubuntu 24.04 và 26.04 (kho PGDG)
 
 `scripts/setup-server.sh` làm tự động các bước **4 → 15** dưới đây (trước đó kiểm tra DNS của máy). Bạn chỉ cần làm tay bước 1–3 (tạo máy ảo, cài Ubuntu, SSH bằng khoá).
 
-**Trên máy của bạn**, chép script lên máy ảo (repo private nên chưa clone được trên máy ảo):
+**Trên máy của bạn**, chép script lên máy ảo (máy ảo chưa có khoá GitHub; script tự tạo deploy key ở bước 10):
 
 ```bash
 scp scripts/setup-server.sh rms:~
@@ -792,7 +792,7 @@ npm -v
 
 ## 10. Lấy source code về ổ 2
 
-Repo là private. Cách gọn nhất là tạo **deploy key** (khoá SSH chỉ đọc, chỉ dùng cho repo này) trên máy ảo:
+Repo hiện public nên `git clone https://…` cũng được, nhưng vẫn nên dùng **deploy key**: nếu repo chuyển private thì máy chủ không phải sửa gì. Tạo khoá (khoá SSH chỉ đọc, chỉ dùng cho repo này) trên máy ảo:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/rms_deploy -N "" -C "rms-vm-deploy"
@@ -1359,6 +1359,20 @@ sudo ./svc.sh start
 sudo ./svc.sh status
 ```
 
+**Khoá runner chỉ cho deploy từ `main` (bắt buộc).** Không có bước này, ai có quyền ghi repo cũng có thể đẩy một nhánh chứa workflow `runs-on: [self-hosted, rms-production]` và chạy lệnh bất kỳ trên máy này. Hook dưới đây chạy trước mỗi job, từ chối mọi job không phải `ci.yml` / `deploy.yml` trên nhánh `main`. File cài do root sở hữu nên job không sửa được:
+
+```bash
+cd /data/code/Hospital_RMS
+sudo install -D -o root -g root -m 0755 infra/runner/job-started.sh /opt/rms-runner/job-started.sh
+sudo -u github-runner tee -a /home/github-runner/actions-runner/.env <<'EOF'
+ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/rms-runner/job-started.sh
+RMS_RUNNER_REPO=<owner>/Hospital_RMS
+EOF
+cd /home/github-runner/actions-runner && sudo ./svc.sh stop && sudo ./svc.sh start
+```
+
+Kiểm tra: lần deploy sau, log job có dòng `Runner hook: cho phép …` trong bước *Set up runner*. Job bị chặn hiện lỗi `Runner … từ chối job` và được ghi vào nhật ký hệ thống (`journalctl -t rms-runner-hook`). Sửa `infra/runner/job-started.sh` trong repo thì chạy lại lệnh `install` ở trên (bản trên máy không tự cập nhật).
+
 ### 15.2. Cấu hình môi trường trên GitHub
 
 Repo → *Settings* → *Environments* → `production`:
@@ -1371,13 +1385,13 @@ Repo → *Settings* → *Environments* → `production`:
 | Secret | `MIGRATION_DB_USER` | `rms_migrate` |
 | Secret | `MIGRATION_DB_PASSWORD` | mật khẩu `rms_migrate` |
 
-Bật *Required reviewers* cho `production` để mỗi lần triển khai phải có người duyệt.
+*Deployment branches*: chỉ `main`. *Required reviewers* (environment `production`): bật, thêm tài khoản của bạn, **không** tick *Prevent self-review* nếu chỉ có 1 người — repo public có sẵn tính năng này (repo private thì cần gói Enterprise; không có thì production deploy bằng tay qua Actions → *Deploy*, đó là bước duyệt). Xem `.github/CICD.md`.
 
 `MIGRATION_BACKUP_DIR` phải ghi được bởi `github-runner`: `sudo chown github-runner /data/backup/db`. `pg_dump` đã có sẵn trên máy (cài cùng PostgreSQL).
 
 ### 15.3. Kiểm tra
 
-Actions → *Deploy* → *Run workflow*, chọn `production`, nhập SHA đầy đủ của commit đang chạy (`git rev-parse HEAD`). Xem log job; lịch sử triển khai trên máy ở `/data/code/Hospital_RMS/logs/deploy-history.log`.
+Actions → *Deploy* → *Run workflow*, chọn `production`, nhập SHA đầy đủ của commit đang chạy (`git rev-parse HEAD`) và lý do (vd "Kiểm tra runner sau khi cài"). Xem log job (bước *Set up runner* phải có dòng `Runner hook: cho phép`); lịch sử triển khai trên máy ở `/data/code/Hospital_RMS/logs/deploy-history.log`.
 
 ### 15.4. JWT secret
 

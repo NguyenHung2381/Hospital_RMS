@@ -1,0 +1,37 @@
+/* Nhập người tham dự từ máy chấm công */
+.filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--space-3);
+	margin-top: var(--space-3);
+}
+.when {
+	display: flex;
+	gap: 6px;
+}
+.devices {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--space-3);
+	margin-top: var(--space-2);
+}
+.empty {
+	margin-top: var(--space-3);
+	padding: var(--space-4);
+	border: 1px dashed var(--color-gray-300);
+	border-radius: var(--radius-lg);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-500);
+	text-align: center;
+}
+.thCheck {
+	width: 36px;
+}
+.nowrap {
+	white-space: nowrap;
+}
+/* Người mới bị bỏ chọn: mờ đi để thấy rõ sẽ không được thêm */
+.skipped td:not(:first-child) {
+	opacity: 0.45;
+}

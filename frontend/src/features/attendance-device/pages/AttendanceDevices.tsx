@@ -114,7 +114,7 @@ export default function AttendanceDevices() {
 		<AdminLayout
 			pageTitle='Máy chấm công'
 			pageSubtitle='Máy vân tay tự gửi lượt chấm lên — điểm danh buổi học được ghi tự động'
-			breadcrumbs={[{ label: 'Ca & điểm danh học viên' }]}
+			breadcrumbs={[{ label: 'Đào tạo' }]}
 			headerActions={
 				canManage && devices.some((d) => d.status === 'active') ? (
 					<Button

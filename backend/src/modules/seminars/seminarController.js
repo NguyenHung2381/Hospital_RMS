@@ -8,6 +8,7 @@ const seminarCmeService = require('./seminarCmeService');
 const seminarParticipantService = require('./seminarParticipantService');
 const seminarPublicService = require('./seminarPublicService');
 const importService = require('./seminarImportService');
+const deviceImportService = require('./seminarDeviceImportService');
 const listExcelService = require('./seminarListExcelService');
 const detailExcelService = require('./seminarDetailExcelService');
 const { createCrudController } = require('../../shared/crudController');
@@ -107,9 +108,11 @@ const bulkCmeStatus = asyncHandler(async (req, res) => {
 });
 
 // ─── Điểm danh QR ─────────────────────────────────────────────────────────────
-const getCheckInQrToken = (req, res) => {
-	return success(res, { token: seminarParticipantService.generateCheckInQrToken(req.params.id) });
-};
+const getCheckInQrToken = asyncHandler(async (req, res) => {
+	return success(res, {
+		token: await seminarParticipantService.generateCheckInQrToken(req.params.id),
+	});
+});
 
 const checkInSelf = asyncHandler(async (req, res) => {
 	const result = await seminarParticipantService.checkInSelf(
@@ -118,6 +121,27 @@ const checkInSelf = asyncHandler(async (req, res) => {
 		req.user,
 	);
 	return success(res, result, 'Điểm danh thành công');
+});
+
+const importFromDevice = asyncHandler(async (req, res) => {
+	const out = await deviceImportService.importFromDevice(
+		{
+			seminar_id: req.params.id,
+			dry_run: !!req.body.dry_run,
+			from: req.body.from,
+			to: req.body.to,
+			device_ids: req.body.device_ids,
+			pins: req.body.pins,
+		},
+		req.user.id,
+	);
+	return success(
+		res,
+		out,
+		out.dry_run
+			? 'Đã đọc lượt chấm — kiểm tra trước khi nhập'
+			: `Đã thêm ${out.inserted} người, ghi điểm danh ${out.checked_in} người`,
+	);
 });
 
 const checkInTicket = asyncHandler(async (req, res) => {
@@ -226,4 +250,5 @@ module.exports = {
 	getCheckInQrToken,
 	checkInSelf,
 	checkInTicket,
+	importFromDevice,
 };

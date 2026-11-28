@@ -1,0 +1,120 @@
+# Báo lỗi pipeline CI/CD (main / lịch tuần). Chạy SAU KHI lần chạy CI kết thúc hẳn
+# (workflow_run) thay vì là 1 job trong ci.yml, vì:
+#   - kết luận lúc đó đã là cuối cùng, gồm cả deploy → issue chỉ đóng khi CẢ lần chạy
+#     xanh (trước đây job trong ci.yml đóng issue lúc image xong, rồi deploy hỏng sau đó);
+#   - log của mọi job đã tải được để trích lỗi (trong cùng lần chạy thì chưa);
+#   - chạy lại job hỏng (Re-run) mà xanh → lần chạy kết thúc lại → issue tự đóng.
+#
+# Hỏng → 1 issue nhãn "ci-hong" ghi rõ job/bước nào hỏng kèm thông báo lỗi trích từ
+# annotation hoặc log, giao người kích hoạt (GitHub cũng gửi email). Đang có issue mở thì
+# bình luận vào đó thay vì mở thêm. PR hỏng thì tác giả đã thấy ngay trên PR → bỏ qua.
+#
+# An toàn: workflow_run chạy bằng workflow + token của nhánh mặc định. File này KHÔNG
+# checkout, không tải artifact, không chạy mã nào của lần chạy CI — chỉ đọc API và chỉ xét
+# lần chạy do push / lịch trên chính repo này (không phải PR, không phải fork).
+name: CI · báo lỗi
+
+on:
+  workflow_run: # zizmor: ignore[dangerous-triggers] — chỉ đọc API, xem chú thích đầu file
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+# Các lần chạy CI kết thúc sát nhau: xử lý lần lượt để không mở 2 issue cùng lúc
+concurrency:
+  group: ci-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Báo lỗi pipeline
+    if: >-
+      (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'timed_out') &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'schedule') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read # danh sách job + log
+      checks: read # thông báo lỗi (annotation) của từng job
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUN_ACTOR: ${{ github.event.workflow_run.actor.login }}
+        run: |
+          repo="$GITHUB_REPOSITORY"
+          # Mỗi job hỏng (của đúng lần thử này): tên, bước hỏng, link log và chính thông báo
+          # lỗi — lấy annotation ::error:: trước; không có thì trích đoạn log quanh ##[error].
+          jobs=$(gh api --paginate "repos/$repo/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+              | [.id, .name, .conclusion, .html_url, ([.steps[]? | select(.conclusion == "failure" or .conclusion == "timed_out") | .name] | join(", "))]
+              | @tsv')
+          failed=""
+          while IFS=$'\t' read -r id name concl url steps; do
+            [ -n "$id" ] || continue
+            failed+="### ❌ $name ($concl)"$'\n'"Bước hỏng: ${steps:-(không rõ)} · [Xem log]($url)"$'\n'
+            errs=$(gh api "repos/$repo/check-runs/$id/annotations" \
+              --jq '.[] | select(.annotation_level == "failure")
+                | select(.message | test("^Process completed with exit code") | not)
+                | (if .path and .path != ".github" then "\(.path):\(.start_line) " else "" end) + .message' \
+              | head -n 30) || true
+            if [ -z "$errs" ]; then
+              # Lỗi tải log thì in ra log của job này (không nuốt) để biết vì sao
+              if log=$(gh api "repos/$repo/actions/jobs/$id/logs" 2>&1); then
+                errs=$(printf '%s\n' "$log" \
+                  | sed -E 's/^[0-9]{4}-[0-9-]+T[0-9:.]+Z ?//' \
+                  | grep -B 25 -m 1 -E '^##\[error\]' \
+                  | grep -vE '^##\[(group|endgroup)\]' | tail -n 30) || true
+              else
+                echo "::warning::Không tải được log job $name ($id): ${log:0:300}"
+              fi
+            fi
+            failed+=$'```text\n'"${errs:-(không trích được lỗi — mở log)}"$'\n```\n\n'
+          done <<< "$jobs"
+          body="Lần chạy: $RUN_URL (lần thử $RUN_ATTEMPT)
+          Commit: $HEAD_SHA ($RUN_EVENT, $HEAD_BRANCH)
+          Người kích hoạt: @$RUN_ACTOR
+
+          Job hỏng:
+          ${failed:-"(không lấy được danh sách — xem lần chạy)"}
+
+          Người nhận xử lý hoặc chuyển đúng người (.github/CICD.md → Trách nhiệm). Issue tự đóng khi pipeline main xanh lại (kể cả chạy lại job hỏng mà xanh)."
+          gh label create ci-hong --color B60205 --description "Pipeline CI/CD trên main hỏng" --repo "$repo" 2>/dev/null || true
+          open=$(gh issue list --repo "$repo" --label ci-hong --state open --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --repo "$repo" --body "Vẫn hỏng — $body"
+            gh issue edit "$open" --repo "$repo" --add-assignee "$RUN_ACTOR" || true
+          else
+            gh issue create --repo "$repo" --label ci-hong --assignee "$RUN_ACTOR" \
+              --title "CI/CD hỏng: ${HEAD_SHA::7} ($RUN_EVENT)" --body "$body"
+          fi
+
+  # main / lịch tuần xanh lại (cả lần chạy, gồm deploy) → đóng issue "ci-hong" đang mở
+  recovered:
+    name: Đóng issue lỗi cũ
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'schedule') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-hong --state open --json number --jq '.[].number' 2>/dev/null); do
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Pipeline xanh lại ở ${HEAD_SHA::7}: $RUN_URL"
+          done

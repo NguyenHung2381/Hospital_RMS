@@ -26,6 +26,7 @@ const { renderSeminarBadgePng } = require('../../utils/seminarBadgeImage');
 const { testState, testWindow } = require('../../utils/seminarSchedule');
 const { buildSeminarIcs } = require('../../utils/seminarCalendar');
 const { httpError } = require('../../utils/httpError');
+const attendanceMethods = require('../../utils/attendanceMethods');
 const {
 	SUBMIT_GRACE_MS,
 	attemptDeadline,
@@ -598,6 +599,8 @@ const submitTest = async (code, testId, answers) => {
 // checked_in_at lưu giờ UTC (utcNowSql): driver (cả mssql và pg) đọc cột giờ không múi giờ
 // như UTC — lưu giờ VN (nowSql) thì FE hiển thị lệch +7 giờ.
 const checkInTicket = async (seminarId, code, actorId) => {
+	// Loại hội nghị không điểm danh bằng quét vé (utils/attendanceMethods)
+	await attendanceMethods.assertSeminar(seminarId, 'ticket');
 	const row = await withActorTransaction(actorId, async (tx) => {
 		const read = async () =>
 			(
@@ -614,7 +617,7 @@ const checkInTicket = async (seminarId, code, actorId) => {
 			.input('id', sql.VarChar(24), before.id)
 			.query(
 				updateReturning(
-					`UPDATE seminar_participants SET checked_in_at = ${utcNowSql}`,
+					`UPDATE seminar_participants SET checked_in_at = ${utcNowSql}, checkin_method = 'ticket'`,
 					'id = @id AND checked_in_at IS NULL',
 					[['new.id', 'id', 'VARCHAR(24)']],
 				),

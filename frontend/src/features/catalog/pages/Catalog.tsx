@@ -1,4 +1,6 @@
 import { PlusSvg } from '@/assets/icons';
+import { attendanceModeLabel } from '@/shared/utils/attendanceMode';
+import { methodListLabel } from '@/shared/utils/attendanceMethods';
 import { RowActions, SearchInput, SelectionCount } from '@/shared/components/Table/TableToolbar';
 import styles from '@/shared/components/Table/CrudPage.module.css';
 import { avatarColor, getInitials } from '@/shared/utils';
@@ -157,7 +159,15 @@ export default function Catalog({ group }: { group: CatalogGroup }) {
 													>
 														{getInitials(item.name)}
 													</div>
-													<span className={styles.itemName}>{item.name}</span>
+													<div>
+														<span className={styles.itemName}>{item.name}</span>
+														{d.tab === 'training-types' && (
+															<div className={tbl.cellSub}>
+																Chấm công: {attendanceModeLabel(item.attendance_mode)}
+																{item.attendance_mode !== 'none' && ` · ${methodListLabel(item.attendance_methods)}`}
+															</div>
+														)}
+													</div>
 												</div>
 											</td>
 											<td className={styles.td}>

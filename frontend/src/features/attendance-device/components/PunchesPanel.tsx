@@ -145,8 +145,8 @@ export function PunchesPanel({
 						<tr>
 							<th className={base.th}>Giờ chấm</th>
 							<th className={base.th}>Mã trên máy</th>
-							<th className={base.th}>Học viên</th>
-							<th className={base.th}>Buổi học</th>
+							<th className={base.th}>Người chấm</th>
+							<th className={base.th}>Buổi học / hội nghị</th>
 							<th className={base.th}>Kết quả</th>
 							<th className={base.th}>Máy</th>
 						</tr>
@@ -169,7 +169,11 @@ export function PunchesPanel({
 							/>
 						) : (
 							rows.map((p) => {
-								const st = PUNCH_STATUS[p.match_status];
+								// Ghép được hội nghị mà không ghép buổi học ⇒ hiện là đã ghép (hội nghị)
+								const st =
+									p.seminar_id && p.match_status !== 'matched'
+										? { label: 'Đã ghép hội nghị', tone: 'green' as const, hint: undefined }
+										: PUNCH_STATUS[p.match_status];
 								return (
 									<tr
 										key={p.id}
@@ -178,8 +182,9 @@ export function PunchesPanel({
 										<td className={`${base.td} ${styles.nowrap}`}>{formatDateTimeVN(p.punched_at)}</td>
 										<td className={`${base.td} ${styles.mono}`}>{p.pin}</td>
 										<td className={base.td}>
-											{p.trainee_name ?? <span className={base.descText}>—</span>}
+											{p.trainee_name ?? p.participant_name ?? <span className={base.descText}>—</span>}
 											{p.trainee_id && <div className={tbl.cellSub}>{p.trainee_id}</div>}
+											{!p.trainee_name && p.participant_name && <div className={tbl.cellSub}>Người tham dự hội nghị</div>}
 										</td>
 										<td className={base.td}>
 											{p.session_id && p.course_id ? (
@@ -195,9 +200,19 @@ export function PunchesPanel({
 														{p.end_time ? `–${p.end_time}` : ''}
 													</div>
 												</>
-											) : (
-												<span className={base.descText}>—</span>
+											) : null}
+											{p.seminar_id && (
+												<div>
+													<Link
+														to={`/admin/seminars/${encodeURIComponent(p.seminar_id)}?tab=checkin`}
+														className={styles.link}
+													>
+														{p.seminar_title ?? p.seminar_id}
+													</Link>
+													<div className={tbl.cellSub}>Hội nghị</div>
+												</div>
 											)}
+											{!(p.session_id && p.course_id) && !p.seminar_id && <span className={base.descText}>—</span>}
 										</td>
 										<td className={base.td}>
 											<Badge

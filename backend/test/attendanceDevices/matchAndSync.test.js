@@ -121,3 +121,33 @@ test('planDeviceSync: lệnh đang chờ thì không xếp trùng; tên không d
 		{ kind: 'user_upsert', traineeId: 'HV20270002', pin: '20270002', name: 'Do Thi B' },
 	]);
 });
+
+const {
+	PURPOSES,
+	isTrainingPurpose,
+	trainingDeviceSql,
+} = require('../../src/modules/attendanceDevices/devicePurpose');
+
+test('Mục đích máy: chỉ training / both dùng cho đào tạo', () => {
+	assert.deepEqual(PURPOSES, ['training', 'seminar', 'both']);
+	assert.equal(isTrainingPurpose('training'), true);
+	assert.equal(isTrainingPurpose('both'), true);
+	assert.equal(isTrainingPurpose('seminar'), false);
+	assert.equal(isTrainingPurpose(undefined), false);
+	assert.equal(trainingDeviceSql('x'), "x.purpose IN ('training', 'both')");
+});
+
+test('planDeviceSync: máy chỉ dành cho hội nghị (cần có = rỗng) ⇒ gỡ học viên server đã gửi, không thêm ai', () => {
+	const plan = planDeviceSync({
+		...base,
+		desired: [],
+		current: [
+			{ trainee_id: 'HV20270001', pin: '20270001', name_sent: 'Nguyễn Văn A', fp_hashes: null },
+			{ trainee_id: 'HV20270002', pin: '20270002', name_sent: 'Trần Thị B', fp_hashes: null },
+		],
+	});
+	assert.deepEqual(
+		plan.map((p) => `${p.kind}:${p.traineeId}`),
+		['user_delete:HV20270001', 'user_delete:HV20270002'],
+	);
+});

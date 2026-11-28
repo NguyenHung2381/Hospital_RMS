@@ -54,8 +54,8 @@ const log = install(async (text, inputs) => {
 		taken += 1;
 		return [{ id: 5, command: 'DATA UPDATE FINGERTMP PIN=20270001\tFID=0\tTMP=AAAA' }];
 	}
-	if (/SELECT id, status FROM attendance_devices WHERE id = @id/.test(text))
-		return [{ id: device.id, status: device.status }];
+	if (/SELECT id, status, purpose FROM attendance_devices WHERE id = @id/.test(text))
+		return [{ id: device.id, status: device.status, purpose: 'training' }];
 	return [];
 });
 

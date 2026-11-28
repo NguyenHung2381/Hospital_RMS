@@ -132,17 +132,20 @@ export const getEnrollmentRegistration = (enrollmentId: string) =>
 	apiClient.get<RegistrationReview | null>(reg(enrollmentId));
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
 export const registrationApplicationUrl = (enrollmentId: string) => `/api/v1${reg(enrollmentId)}/application`;
-export const downloadRegistrationApplication = (enrollmentId: string) => getBlob(`${reg(enrollmentId)}/application`);
+/** sign: ký file Word bằng chứng thư cá nhân của người tải */
+export const downloadRegistrationApplication = (enrollmentId: string, sign = false) =>
+	getBlob(`${reg(enrollmentId)}/application${sign ? '?sign=1' : ''}`);
 /** Bản ghi xác nhận điện tử nguyên văn (JSON) */
 export const downloadRegistrationConsent = (enrollmentId: string, seq?: number) =>
 	getBlob(`${reg(enrollmentId)}/consent${seq ? `?seq=${seq}` : ''}`);
 
 export const getCourseProposals = (courseId: string) => apiClient.get<ProposalGroup[]>(`/courses/${seg(courseId)}/proposals`);
-export const downloadCourseProposal = (courseId: string, departmentId: string, programId: string | null) =>
+export const downloadCourseProposal = (courseId: string, departmentId: string, programId: string | null, sign = false) =>
 	getBlob(
 		`/courses/${seg(courseId)}/proposals/document?${new URLSearchParams({
 			department_id: departmentId,
 			...(programId ? { program_id: programId } : {}),
+			...(sign ? { sign: '1' } : {}),
 		})}`,
 	);
 

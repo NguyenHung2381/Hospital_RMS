@@ -593,4 +593,10 @@ module.exports = {
 	confirmPayment,
 	rejectPayment,
 	listPending,
+	// Dùng chung với tự đối soát ngân hàng (bank/bankPayment.js) — cùng chốt khóa / cấp phiếu thu
+	summaryOf,
+	ensureFeeRow,
+	lockedSummary,
+	confirmInTx,
+	notifyTrainee,
 };

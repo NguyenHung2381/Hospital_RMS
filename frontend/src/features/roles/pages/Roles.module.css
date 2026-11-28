@@ -391,27 +391,11 @@
 
 /* Thanh chọn tất cả theo resource */
 
-/* Action btn "Phân quyền" */
-.actionPerm {
-	color: var(--tone-purple-fg);
-}
-.actionPerm:hover {
-	background: var(--tone-purple-bg);
-	border-color: var(--tone-blue-border);
-	color: var(--tone-purple-fg);
-}
-
 /* ── RESPONSIVE ──────────────────────────── */
 @media (max-width: 1024px) {
 	.table {
 		display: block;
 		overflow-x: auto;
-	}
-	.statsRow {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-	.searchBox {
-		width: 100%;
 	}
 }
 

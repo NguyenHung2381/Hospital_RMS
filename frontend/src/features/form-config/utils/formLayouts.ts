@@ -200,7 +200,7 @@ export const FORM_LAYOUTS: Record<string, Record<string, FormLayout>> = {
 	},
 	leave_request: {
 		portal: {
-			page: { path: '/user/cham-cong', how: 'Bấm "Xin phép"' },
+			page: { path: '/hoc-vien/diem-danh-ca', how: 'Bấm "Tạo đơn xin phép"' },
 			sections: [{ rows: [['type'], ['from_date', 'to_date'], ['~Ca làm việc'], ['reason'], [CUSTOM_SLOT]] }],
 		},
 	},

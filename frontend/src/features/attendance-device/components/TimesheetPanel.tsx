@@ -342,7 +342,7 @@ export function TimesheetPanel({ devices }: { devices: AttendanceDevice[] }) {
 					onChange={(e) => setFilter({ device: e.target.value ? Number(e.target.value) : '' })}
 					aria-label='Lọc theo máy'
 				>
-					<option value=''>Tất cả máy</option>
+					<option value=''>Tất cả máy chấm công học viên</option>
 					{devices.map((d) => (
 						<option
 							key={d.id}

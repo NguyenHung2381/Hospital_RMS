@@ -8,6 +8,7 @@ import styles from '../pages/TrainingPrograms.module.css';
 import m from './TrainingProgramDetailModal.module.css';
 import tbl from '@/shared/components/Table/Table.module.css';
 import { useClientPaging } from '@/shared/hooks/useClientPaging';
+import { useModules } from '@/shared/hooks/useModules';
 import { Pagination } from '@/shared/components/Table/Pagination';
 
 export type DetailTab = 'info' | 'lessons' | 'results';
@@ -50,6 +51,8 @@ function InfoPanel({ program }: { program: TrainingProgram }) {
 	const hasHours = program.theory_hours != null || program.practice_hours != null;
 	const durationText = program.duration ?? formatDuration(program.duration_value, program.duration_unit);
 	const hasCapacity = program.min_capacity != null || program.max_capacity != null;
+	// Thu học phí tắt (Cấu hình hệ thống) ⇒ không hiện học phí của chương trình
+	const tuitionOn = useModules().tuition;
 
 	return (
 		<div className={m.info}>
@@ -68,10 +71,12 @@ function InfoPanel({ program }: { program: TrainingProgram }) {
 					value={capacityText(program.min_capacity, program.max_capacity)}
 					hint={hasCapacity ? 'học viên / khóa' : undefined}
 				/>
-				<Fact
-					label='Học phí'
-					value={program.tuition_fee != null ? `${Number(program.tuition_fee).toLocaleString('vi-VN')} đ` : null}
-				/>
+				{tuitionOn && (
+					<Fact
+						label='Học phí'
+						value={program.tuition_fee != null ? `${Number(program.tuition_fee).toLocaleString('vi-VN')} đ` : null}
+					/>
+				)}
 			</div>
 
 			<section className={m.section}>

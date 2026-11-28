@@ -4,7 +4,7 @@ import { formatDateVN, formatTimeVN } from '../../../shared/utils/formatDate';
 import { notify } from '../../../shared/utils/feedback';
 import { useEffect, useState } from 'react';
 import { ClipboardCheckSvg } from '@/assets/icons';
-import { getAttendance, saveAttendance } from '../api/courseApi';
+import { getAttendance, getAttendanceMethods, saveAttendance } from '../api/courseApi';
 import type { AttendanceRow, AttendanceStatus, ClassSession } from '../types/course.type';
 import { AttendanceQrDisplay } from './AttendanceQrDisplay';
 import styles from '../pages/Courses.module.css';
@@ -36,6 +36,18 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState('');
 	const [showQr, setShowQr] = useState(false);
+	// null = đang tải / lỗi ⇒ vẫn hiện nút (server tự chặn khi không nhận QR)
+	const [qrAllowed, setQrAllowed] = useState<boolean | null>(null);
+
+	useEffect(() => {
+		let alive = true;
+		getAttendanceMethods(session.id)
+			.then((m) => alive && setQrAllowed(m.qr))
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, [session.id]);
 
 	useEffect(() => {
 		let alive = true;
@@ -106,24 +118,31 @@ export function AttendanceModal({ session, onClose }: { session: ClassSession; o
 				/>
 			}
 		>
-			<button
-				type='button'
-				onClick={() => setShowQr((v) => !v)}
-				style={{
-					alignSelf: 'flex-start',
-					background: 'transparent',
-					border: '1.5px solid var(--color-gray-200)',
-					borderRadius: 8,
-					padding: '6px 12px',
-					fontSize: 13,
-					fontWeight: 600,
-					cursor: 'pointer',
-					marginBottom: 8,
-				}}
-			>
-				{showQr ? 'Ẩn mã QR điểm danh' : 'Hiện mã QR điểm danh'}
-			</button>
-			{showQr && <AttendanceQrDisplay sessionId={session.id} />}
+			{qrAllowed === false ? (
+				<div className={styles.subEmpty} style={{ textAlign: 'left', marginBottom: 8 }}>
+					Khóa học này không điểm danh bằng mã QR (theo kiểu chấm công / phương thức của loại hình đào tạo hoặc
+					Cấu hình hệ thống). Điểm danh tay bên dưới.
+				</div>
+			) : (
+				<button
+					type='button'
+					onClick={() => setShowQr((v) => !v)}
+					style={{
+						alignSelf: 'flex-start',
+						background: 'transparent',
+						border: '1.5px solid var(--color-gray-200)',
+						borderRadius: 8,
+						padding: '6px 12px',
+						fontSize: 13,
+						fontWeight: 600,
+						cursor: 'pointer',
+						marginBottom: 8,
+					}}
+				>
+					{showQr ? 'Ẩn mã QR điểm danh' : 'Hiện mã QR điểm danh'}
+				</button>
+			)}
+			{showQr && qrAllowed !== false && <AttendanceQrDisplay sessionId={session.id} />}
 
 			{error && <div className={styles.errorBanner}>{error}</div>}
 			{loading ? (

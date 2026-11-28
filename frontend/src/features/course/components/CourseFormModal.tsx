@@ -1,4 +1,5 @@
 import { FormField } from '@/shared/components/Input/FormField';
+import { ATTENDANCE_MODE, ATTENDANCE_MODE_ORDER, type AttendanceMode } from '@/shared/utils/attendanceMode';
 import React, { useId, useEffect, useState } from 'react';
 import { LayersSvg, PlusSvg, TrashSvg } from '@/assets/icons';
 import { DatePicker, Modal, ModalActions } from '@/shared/components';
@@ -11,6 +12,10 @@ import { courseToForm } from '../utils/courseForm';
 interface SimpleItem {
 	id: string;
 	name: string;
+}
+
+interface TypeItem extends SimpleItem {
+	attendance_mode?: AttendanceMode;
 }
 
 interface ProgramOption extends SimpleItem {
@@ -122,12 +127,14 @@ export function CourseFormModal({
 	const [form, setForm] = useState<CourseFormData>(course ? courseToForm(course) : { ...EMPTY_FORM, ...initial });
 	const [forms, setForms] = useState<SimpleItem[]>([]);
 	const [programs, setPrograms] = useState<ProgramOption[]>([]);
-	const [types, setTypes] = useState<SimpleItem[]>([]);
+	const [types, setTypes] = useState<TypeItem[]>([]);
+	// Kiểu chấm công của loại hình đang chọn — khóa để "Theo loại hình" thì dùng kiểu này
+	const typeMode = types.find((t) => t.id === form.training_type_id)?.attendance_mode;
 
 	useEffect(() => {
 		apiClient.get<{ data: SimpleItem[] }>('/training-forms?limit=0').then((r) => setForms(r.data)).catch(() => {});
 		apiClient.get<{ data: ProgramOption[] }>('/training-programs?limit=0').then((r) => setPrograms(r.data)).catch(() => {});
-		apiClient.get<{ data: SimpleItem[] }>('/training-types?limit=0').then((r) => setTypes(r.data)).catch(() => {});
+		apiClient.get<{ data: TypeItem[] }>('/training-types?limit=0').then((r) => setTypes(r.data)).catch(() => {});
 	}, []);
 	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
 	const cfg = useFormConfig('course', 'admin');
@@ -256,6 +263,28 @@ export function CourseFormModal({
 						))}
 					</select>
 				</CfgField>
+				<FormField label='Kiểu chấm công' htmlFor={fid('attendance_mode')}>
+					<select
+						id={fid('attendance_mode')}
+						className={styles.formInput}
+						value={form.attendance_mode}
+						onChange={(e) => setForm((f) => ({ ...f, attendance_mode: e.target.value as AttendanceMode | '' }))}
+					>
+						<option value=''>
+							Theo loại hình
+							{typeMode ? ` (${ATTENDANCE_MODE[typeMode].label.toLowerCase()})` : ''}
+						</option>
+						{ATTENDANCE_MODE_ORDER.map((k) => (
+							<option
+								key={k}
+								value={k}
+							>
+								{ATTENDANCE_MODE[k].label}
+							</option>
+						))}
+					</select>
+					<span className={styles.fieldHint}>{ATTENDANCE_MODE[form.attendance_mode || typeMode || 'both'].hint}</span>
+				</FormField>
 				{form.training_type_id === TRAINING_TYPE.DTLT ? (
 					<CfgField
 						cfg={cfg}

@@ -37,7 +37,7 @@ export function MultiSelect({
 		if (!open) return;
 		if (ref.current) {
 			const rect = ref.current.getBoundingClientRect();
-			setAlignRight(rect.left + 220 > window.innerWidth);
+			setAlignRight(rect.left + 300 > window.innerWidth); // 300 = max-width của .menu
 		}
 		const handler = (e: MouseEvent) => {
 			if (ref.current && !ref.current.contains(e.target as Node))

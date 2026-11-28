@@ -9,10 +9,12 @@ const enrollmentExportCtrl = require('./enrollmentExportController');
 const { listPending: tuitionPending } = require('../tuition/tuitionController');
 const uploadExcel = require('../../../middlewares/uploadExcel');
 const { authenticate, authorizePermission } = require('../../../middlewares/auth');
+const { requireModule } = require('../../../middlewares/moduleGuard');
 const { validate } = require('../../../middlewares/errorHandler');
 const { formConfigGuard, bodyVariant } = require('../../forms/formConfigGuard');
 const { createTrainingUpload } = require('../../../middlewares/uploadTraining');
 const coursePolicy = require('./coursePolicy');
+const { MODES: ATTENDANCE_MODES } = require('../../../utils/attendanceMode');
 
 // Mục tiêu / yêu cầu đầu vào: mảng CHUỖI ngắn (L-07) — không nhận object lồng.
 const stringList = (field) =>
@@ -72,7 +74,12 @@ router.get(
 	ctrl.listPendingEnrollments,
 );
 // Học phí chờ xác nhận ở mọi khóa — trước '/:id' (route theo khóa: courseTuitionRoutes.js)
-router.get('/tuition-pending', authorizePermission(['courses', 'approve']), tuitionPending);
+router.get(
+	'/tuition-pending',
+	requireModule('TUITION'),
+	authorizePermission(['courses', 'approve']),
+	tuitionPending,
+);
 router.get('/', authorizePermission(['courses', 'read']), ctrl.getAll);
 // Nhân viên nội viện chưa có hồ sơ học viên — để ghi danh thẳng vào khóa (phải
 // khai báo trước '/:id').
@@ -152,6 +159,8 @@ router.post(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
+		// Kiểu chấm công riêng của khóa; rỗng / null = theo loại hình đào tạo
+		body('attendance_mode').optional({ values: 'null' }).isIn([...ATTENDANCE_MODES, '']),
 		stringList('prerequisites'),
 		stringList('objectives'),
 		body('program_ids').optional().isArray(),
@@ -171,6 +180,8 @@ router.put(
 			.isInt({ min: 1 })
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
+		// Kiểu chấm công riêng của khóa; rỗng / null = theo loại hình đào tạo
+		body('attendance_mode').optional({ values: 'null' }).isIn([...ATTENDANCE_MODES, '']),
 		stringList('prerequisites'),
 		stringList('objectives'),
 		body('program_ids').optional().isArray(),
@@ -498,6 +509,12 @@ router.get(
 	'/sessions/:sessionId/attendance-qr',
 	authorizePermission(['courses', 'update']),
 	ctrl.getAttendanceQrToken,
+);
+// Phương thức điểm danh khóa đang dùng (QR / ứng dụng / máy chấm công) — utils/attendanceMethods
+router.get(
+	'/sessions/:sessionId/attendance-methods',
+	authorizePermission(['courses', 'read']),
+	ctrl.getAttendanceMethods,
 );
 router.post(
 	'/attendance/check-in',

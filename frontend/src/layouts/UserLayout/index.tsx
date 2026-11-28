@@ -544,7 +544,7 @@ function PortalLayout({
 									)}
 								</div>
 								{headerActions && (
-									<div className={styles.pageHeaderRight}>{headerActions}</div>
+									<div className={styles.pageHeaderRight} data-page-actions=''>{headerActions}</div>
 								)}
 							</div>
 						)}

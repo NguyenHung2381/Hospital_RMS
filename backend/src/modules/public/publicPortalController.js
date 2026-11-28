@@ -9,13 +9,23 @@ const { generateCaptcha, verifyCaptcha } = require('../../utils/captcha');
 const { success, created, error } = require('../../utils/response');
 const attempts = require('../../utils/attemptLimiter');
 const { asyncHandler } = require('../../utils/asyncHandler');
+const { isModuleEnabled } = require('../../middlewares/moduleGuard');
 
 const getCaptcha = asyncHandler(async (req, res) => {
 	success(res, await generateCaptcha());
 });
 
+// Thu học phí tắt (Cấu hình hệ thống) ⇒ không hiện học phí của chương trình trên cổng công khai
 const getOpenCourses = asyncHandler(async (req, res) => {
-	success(res, await service.getOpenCourses());
+	const courses = await service.getOpenCourses();
+	if (await isModuleEnabled('TUITION')) return success(res, courses);
+	success(
+		res,
+		courses.map((c) => ({
+			...c,
+			programs: (c.programs ?? []).map((/** @type {any} */ p) => ({ ...p, tuition_fee: null })),
+		})),
+	);
 });
 
 const getTraineeTypes = asyncHandler(async (req, res) => {

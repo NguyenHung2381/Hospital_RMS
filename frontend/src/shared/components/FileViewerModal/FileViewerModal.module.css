@@ -68,6 +68,14 @@
 	border-color: var(--color-gray-300);
 }
 
+/* Thân trình xem — lấp đầy khung cha (modal hoặc khung đọc nhúng trong trang) */
+.viewerBody {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
 .viewerStatus {
 	display: flex;
 	align-items: center;

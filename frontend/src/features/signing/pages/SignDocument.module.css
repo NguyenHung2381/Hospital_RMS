@@ -1,0 +1,332 @@
+/* Ký tài liệu — chọn file, đặt khung chữ ký trên PDF, ký */
+
+/* ── Chưa chọn file ── */
+.start {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-4);
+	max-width: 640px;
+}
+.steps {
+	margin: 0;
+	padding-left: 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+	font-size: var(--font-size-sm);
+	line-height: 1.55;
+	color: var(--color-gray-600);
+}
+
+/* ── Đã mở file: PDF bên trái, bảng điều khiển bên phải ── */
+.workspace {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 320px;
+	align-items: start;
+	gap: var(--space-6);
+}
+.viewer {
+	min-width: 0;
+	padding: var(--space-6) var(--space-4) var(--space-8);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background: var(--color-gray-100);
+}
+.panel {
+	position: sticky;
+	top: var(--space-4);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-5);
+	padding: var(--space-5);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-xl);
+	background: var(--color-white);
+}
+
+.fileRow {
+	display: flex;
+	align-items: center;
+	gap: var(--space-3);
+	padding-bottom: var(--space-4);
+	border-bottom: 1px solid var(--color-gray-100);
+}
+.fileIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-md);
+	background: var(--tone-red-bg);
+	color: var(--tone-red-fg);
+}
+.fileIcon svg {
+	width: 18px;
+	height: 18px;
+}
+.fileMeta {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1;
+}
+.fileName {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.sub {
+	font-size: var(--font-size-compact);
+	line-height: 1.45;
+	color: var(--color-gray-500);
+}
+.sub:is(p) {
+	margin: 0;
+}
+
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-2);
+}
+.groupLabel {
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-800);
+}
+
+.anchorList {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 240px;
+	overflow-y: auto;
+}
+.anchor {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	padding: 8px var(--space-3);
+	border: 1px solid var(--color-gray-200);
+	border-radius: var(--radius-md);
+	background: var(--color-white);
+	font-family: var(--font-body);
+	text-align: left;
+	cursor: pointer;
+	transition:
+		border-color var(--transition-fast),
+		background var(--transition-fast);
+}
+.anchor:hover {
+	border-color: var(--color-gray-400);
+}
+.anchorOn {
+	border-color: var(--color-primary-dark);
+	background: var(--tone-green-bg);
+}
+.anchorLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--color-gray-900);
+}
+.anchorPage {
+	flex: none;
+	font-size: var(--font-size-compact);
+	color: var(--color-gray-500);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Chọn cỡ — cùng kiểu chọn đoạn với các màn khác */
+.segmented {
+	display: inline-flex;
+	align-self: flex-start;
+	padding: 3px;
+	gap: 2px;
+	border-radius: var(--radius-md);
+	background: var(--color-gray-100);
+}
+.segmented button {
+	border: 0;
+	background: transparent;
+	padding: 6px 16px;
+	border-radius: calc(var(--radius-md) - 2px);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	color: var(--color-gray-600);
+	cursor: pointer;
+}
+.segmented button:hover {
+	color: var(--color-gray-900);
+}
+.segmented .segOn {
+	background: var(--color-white);
+	color: var(--color-primary-dark);
+	font-weight: var(--font-weight-semibold);
+	box-shadow: var(--shadow-sm);
+}
+
+.actions {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-3);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--color-gray-100);
+}
+.btnPrimary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	height: 44px;
+	border: 0;
+	border-radius: var(--radius-md);
+	background: var(--color-primary-dark);
+	color: var(--color-white);
+	font-family: var(--font-body);
+	font-size: var(--font-size-base);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+	transition: background var(--transition-fast);
+}
+.btnPrimary svg {
+	width: 17px;
+	height: 17px;
+}
+.btnPrimary:hover:not(:disabled) {
+	background: var(--color-primary-darker);
+}
+.btnPrimary:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+.textBtn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+	height: 30px;
+	padding: 0 var(--space-2);
+	border: 0;
+	border-radius: var(--radius-md);
+	background: none;
+	color: var(--color-primary-dark);
+	font-family: var(--font-body);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	cursor: pointer;
+}
+.textBtn svg {
+	width: 14px;
+	height: 14px;
+}
+.textBtn:hover:not(:disabled) {
+	background: var(--color-gray-100);
+}
+.done {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	padding: 8px var(--space-3);
+	border-radius: var(--radius-md);
+	background: var(--tone-green-bg);
+}
+.doneText {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+	color: var(--tone-green-fg);
+}
+.doneText svg {
+	width: 15px;
+	height: 15px;
+}
+.warn {
+	margin: 0;
+	padding: var(--space-3);
+	border: 1px solid var(--tone-amber-border);
+	border-radius: var(--radius-md);
+	background: var(--tone-amber-bg);
+	color: var(--tone-amber-fg);
+	font-size: var(--font-size-sm);
+	line-height: 1.5;
+}
+.warn a {
+	color: inherit;
+	font-weight: var(--font-weight-semibold);
+}
+
+.btnPrimary:focus-visible,
+.textBtn:focus-visible,
+.anchor:focus-visible,
+.segmented button:focus-visible {
+	outline: var(--focus-ring-width) solid var(--focus-ring-color);
+	outline-offset: var(--focus-ring-offset);
+}
+
+/* ── Nội dung trong khung chữ ký (cỡ chữ theo chiều cao khung, như bản in) ── */
+.stamp {
+	container-type: size;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	width: 100%;
+	height: 100%;
+	padding: 2% 3%;
+}
+.stampImg {
+	flex: 1 1 auto;
+	min-height: 0;
+	max-width: 100%;
+	object-fit: contain;
+	object-position: center bottom;
+}
+.stampCaption {
+	flex: none;
+	max-width: 100%;
+	font-size: 13cqh;
+	font-weight: var(--font-weight-bold);
+	line-height: 1.25;
+	color: #1a2a35;
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.stampText {
+	container-type: size;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	height: 100%;
+	padding: 3%;
+	font-size: 15cqh;
+	line-height: 1.2;
+	color: #1a2a35;
+}
+
+@media (max-width: 1024px) {
+	.workspace {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.panel {
+		position: static;
+		order: -1;
+	}
+	.viewer {
+		padding: var(--space-4) var(--space-2) var(--space-6);
+	}
+}

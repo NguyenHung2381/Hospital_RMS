@@ -238,6 +238,25 @@ const ADMIN_MODULE = {
 			],
 		},
 		{
+			key: 'signing',
+			label: 'Ký số (VIN-HSM)',
+			permissions: [
+				p(
+					'PERM-SIGN-MANAGE',
+					'manage',
+					'Quản lý ký số',
+					'Thêm/sửa tài khoản ký số VIN-HSM (chứng thư bệnh viện và cá nhân), chọn chứng thư ký giấy chứng nhận, xem nhật ký ký số',
+					{ critical: true },
+				),
+				p(
+					'PERM-SIGN-ORG',
+					'sign',
+					'Ký bằng chứng thư bệnh viện',
+					'Xuất giấy chứng nhận CME có chữ ký số bằng chứng thư của bệnh viện',
+				),
+			],
+		},
+		{
 			key: 'form_configs',
 			label: 'Cấu hình form',
 			permissions: [

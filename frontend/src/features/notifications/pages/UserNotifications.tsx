@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import {
 	ApproveSvg,
@@ -243,10 +244,21 @@ export default function UserNotifications() {
 											)}
 											<div className={styles.itemMeta}>
 												<span className={styles.itemTime}>{notif.time}</span>
-												{n.ref_type && n.ref_id && (
-													<span className={styles.itemRef}>
-														{n.ref_type}: {n.ref_id}
-													</span>
+												{n.ref_type === 'sign_request' && n.ref_id ? (
+													<Link
+														className={styles.itemRef}
+														to={`/user/trinh-ky/${n.ref_id}`}
+														onClick={(e) => e.stopPropagation()}
+													>
+														Mở hồ sơ trình ký
+													</Link>
+												) : (
+													n.ref_type &&
+													n.ref_id && (
+														<span className={styles.itemRef}>
+															{n.ref_type}: {n.ref_id}
+														</span>
+													)
 												)}
 											</div>
 										</div>

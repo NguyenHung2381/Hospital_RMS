@@ -97,6 +97,23 @@ export async function readJson(res: Response): Promise<any> {
 	return null;
 }
 
+/**
+ * Lỗi API kèm `errors` của server (vd lỗi theo từng ô: { SMTP_PORT: "Lớn nhất là 65535" }).
+ * Nơi không cần thì vẫn dùng như Error thường.
+ */
+export class ApiError extends Error {
+	errors?: unknown;
+	constructor(message: string, errors?: unknown) {
+		super(message);
+		this.name = 'ApiError';
+		if (errors != null) this.errors = errors;
+	}
+}
+
+/** Dựng ApiError từ body lỗi `{ message, errors }` của backend. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const apiErrorFrom = (json: any) => new ApiError(json?.message ?? 'Có lỗi xảy ra, vui lòng thử lại', json?.errors);
+
 /** Thông điệp an toàn để hiển thị cho người dùng từ một lỗi bất kỳ. */
 export function userMessage(err: unknown, fallback = 'Có lỗi xảy ra, vui lòng thử lại'): string {
 	if (err instanceof ServiceUnavailableError) return err.message;

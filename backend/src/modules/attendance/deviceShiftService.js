@@ -1,6 +1,8 @@
 // Lượt chấm vân tay (attendanceDevices) → điểm danh theo ca của học viên (staff_attendance).
 //   Chỉ học viên có tài khoản và đang học 1 khóa vào ngày đó (như nút điểm danh trên web);
-//   phân hệ "Ca & điểm danh" (ATTENDANCE) tắt thì không ghi.
+//   phân hệ "Ca & điểm danh" (ATTENDANCE) tắt, phương thức máy chấm công tắt (toàn hệ thống hoặc ở
+//   loại hình của khóa — utils/attendanceMethods) thì không ghi. Lượt ở máy chỉ dành cho hội
+//   nghị (match_status 'not_training' — attendanceDevices/punchMatcher) không tính.
 //   Gán lần ca + giờ vào/ra: utils/attendanceShift.assignPunches / mergeCheckTimes.
 // Tính lại từ MỌI lượt chấm của học viên quanh những ngày vừa có lượt mới: lượt kéo lại từ máy
 // về muộn, sai thứ tự vẫn ra đúng giờ vào (sớm nhất) / giờ ra (muộn nhất). Chỉ thêm / nới giờ,
@@ -11,6 +13,7 @@ const { broadcast } = require('../events/eventService');
 const systemSettingService = require('../settings/systemSettingService');
 const shiftLogic = require('../../utils/attendanceShift');
 const shiftService = require('./shiftService');
+const attendanceMethods = require('../../utils/attendanceMethods');
 
 const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
 
@@ -31,7 +34,7 @@ const loadUser = async (pool, userId, from, to) => {
         SELECT p.punched_at, p.device_id
         FROM attendance_punches p
         JOIN trainees t ON t.id = p.trainee_id
-        WHERE t.user_id = @user_id
+        WHERE t.user_id = @user_id AND p.match_status <> 'not_training'
           AND p.punched_at >= (CAST(@from AS timestamp) - interval '7 hours')
           AND p.punched_at < (CAST(@to AS timestamp) + interval '17 hours')`),
 		pool
@@ -43,7 +46,8 @@ const loadUser = async (pool, userId, from, to) => {
 				'SELECT * FROM staff_attendance WHERE user_id = @user_id AND work_date BETWEEN @from AND @to',
 			),
 		shiftService.assignmentsForUser(userId, lo, hi),
-		shiftService.traineePeriods({ from: lo, to: hi, userId }),
+		// Chỉ khóa có loại hình cho chấm bằng máy (utils/attendanceMethods)
+		shiftService.traineePeriods({ from: lo, to: hi, userId, method: 'device' }),
 	]);
 	return {
 		punches: punches.recordset.map((p) => ({ at: new Date(p.punched_at), device_id: p.device_id })),
@@ -161,6 +165,8 @@ const attendanceModuleOn = async () =>
 // [{ user_id, from, to }] → ghi lại; lỗi 1 người không chặn người khác
 const syncUsers = async (pool, users) => {
 	if (!users.length || !(await attendanceModuleOn())) return 0;
+	// Phương thức máy chấm công tắt trên toàn hệ thống ⇒ không ghi ca từ lượt chấm
+	if (!(await attendanceMethods.systemTraining()).device) return 0;
 	const [patterns, shiftsById] = await Promise.all([
 		shiftService.listPatterns(),
 		shiftService.shiftsMap(),
@@ -189,7 +195,7 @@ const USERS_SQL = (where) => `
          MAX(CAST(p.punched_at + interval '7 hours' AS date)) AS "to"
   FROM attendance_punches p
   JOIN trainees t ON t.id = p.trainee_id
-  WHERE t.user_id IS NOT NULL AND ${where}
+  WHERE t.user_id IS NOT NULL AND p.match_status <> 'not_training' AND ${where}
   GROUP BY t.user_id`;
 
 /** Sau khi ghép lượt chấm mới (punchMatcher đã điền trainee_id). */

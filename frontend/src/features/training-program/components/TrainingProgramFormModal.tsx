@@ -26,6 +26,7 @@ import styles from '../pages/TrainingPrograms.module.css';
 import m from '@/shared/components/Modal/Modal.module.css';
 import { CfgField, CustomFields, useFormConfig, type CustomValues } from '@/shared/formConfig';
 import { allowedOptions } from '@/shared/formConfig/allowedOptions';
+import { useModules } from '@/shared/hooks/useModules';
 
 const str = (v: number | null | undefined) => (v != null ? String(v) : '');
 
@@ -91,6 +92,7 @@ export function TrainingProgramFormModal({
 	const [form, setForm] = useState<TrainingProgramFormData>(program ? fromProgram(program) : EMPTY_FORM);
 	// Nhãn / bắt buộc / giới hạn / trường tùy chỉnh theo Cấu hình form
 	const cfg = useFormConfig('training_program', 'admin');
+	const tuitionOn = useModules().tuition;
 	const [custom, setCustom] = useState<CustomValues>(program?.custom ?? {});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [rotationErrors, setRotationErrors] = useState<Record<number, string>>({});
@@ -154,6 +156,8 @@ export function TrainingProgramFormModal({
 			err.min_capacity = 'Không được lớn hơn số lượng tối đa';
 		for (const k of ['duration_value', 'theory_hours', 'practice_hours', 'credit_hours', 'tuition_fee'] as const)
 			if (!isNonNegative(form[k])) err[k] = 'Phải là số không âm';
+		// Ô học phí đang ẩn (thu học phí tắt) thì không bắt lỗi ô đó
+		if (!tuitionOn) delete err.tuition_fee;
 		const rErr: Record<number, string> = {};
 		form.rotations.forEach((r, i) => {
 			if (!r.title.trim()) rErr[i] = 'Nhập tên vòng';
@@ -444,14 +448,17 @@ export function TrainingProgramFormModal({
 						placeholder='VD: Nhiều khoa tùy từng vòng học'
 					/>
 				</CfgField>
-				<CfgField
-					cfg={cfg}
-					name='tuition_fee' htmlFor={fid('tuition_fee')}
-					label='Học phí (VNĐ)'
-					error={errors.tuition_fee}
-				>
-					{numberInput('tuition_fee', 'VD: 5000000', '1000')}
-				</CfgField>
+				{/* Thu học phí tắt ⇒ ẩn ô, giá trị cũ vẫn giữ nguyên khi lưu */}
+				{tuitionOn && (
+					<CfgField
+						cfg={cfg}
+						name='tuition_fee' htmlFor={fid('tuition_fee')}
+						label='Học phí (VNĐ)'
+						error={errors.tuition_fee}
+					>
+						{numberInput('tuition_fee', 'VD: 5000000', '1000')}
+					</CfgField>
+				)}
 				<CfgField
 					cfg={cfg}
 					name='min_capacity' htmlFor={fid('min_capacity')}

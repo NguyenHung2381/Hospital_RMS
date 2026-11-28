@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/api/axios';
+import type { AttendanceMode } from '@/shared/utils/attendanceMode';
 
 /** 1 = Thứ 2 … 7 = Chủ nhật. */
 export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -29,6 +30,8 @@ export interface ShiftPattern {
 	is_default: boolean;
 	/** Số khóa học (chưa hủy) gán mẫu này. */
 	course_count: number;
+	/** Loại hình đào tạo dùng mẫu này làm mặc định (cách nhau dấu phẩy). */
+	training_type_names: string | null;
 }
 export type PatternInput = Pick<ShiftPattern, 'name' | 'days' | 'is_default'>;
 
@@ -40,6 +43,11 @@ export interface PatternCourse {
 	end_date: string | null;
 	is_rolling: boolean;
 	shift_pattern_id: number | null;
+	training_type_name: string | null;
+	/** Mẫu của loại hình — khóa chưa gán mẫu riêng thì dùng mẫu này. */
+	type_shift_pattern_id: number | null;
+	/** Kiểu chấm công thực tế của khóa (khóa → loại hình → mặc định). */
+	attendance_mode: AttendanceMode;
 	/** Đã qua ngày kết thúc. */
 	ended: boolean;
 	trainee_count: number;
@@ -49,6 +57,10 @@ export interface PatternCourse {
 export interface StudyPeriod {
 	course_id: string;
 	course_name: string;
+	training_type_id: string | null;
+	training_type_name: string | null;
+	attendance_mode: AttendanceMode;
+	/** Mẫu ca của khóa, chưa có thì của loại hình đào tạo. */
 	shift_pattern_id: number | null;
 	start_date: string | null;
 	end_date: string | null;

@@ -1,6 +1,7 @@
+import { RowAction, RowActions } from '@/shared/components/Table/TableToolbar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BarChartSvg, CalendarSvg, DownloadSvg, EditSvg, FileTextSvg, PaperclipSvg, PlusSvg, QrSvg, TrashSvg, UploadSvg, XSvg } from '@/assets/icons';
+import { BarChartSvg, CalendarSvg, DownloadSvg, FileTextSvg, PaperclipSvg, PlusSvg, QrSvg, UploadSvg, XSvg } from '@/assets/icons';
 import { Badge, Button, Card, EmptyState, InlineLoading, confirmDialog } from '@/shared/components';
 import { formatDateVN } from '@/shared/utils/formatDate';
 import UserLayout from '../../../layouts/UserLayout';
@@ -380,21 +381,22 @@ export default function MyCme() {
 														</td>
 														<td>
 															{r.approval_status === 'approved' ? (
-																<Button
-																	size='sm'
-																	variant='secondary'
-																	icon={<UploadSvg />}
-																	loading={uploadingId === r.id}
-																	onClick={() => pickResultFile(r.id)}
-																	title='Tải lên file bổ sung chứng minh kết quả'
-																>
-																	Bổ sung file
-																</Button>
+																<RowActions>
+																	<RowAction
+																		title={uploadingId === r.id ? 'Đang tải lên…' : 'Bổ sung file'}
+																		aria-label='Tải lên file bổ sung chứng minh kết quả'
+																		disabled={uploadingId === r.id}
+																		onClick={() => pickResultFile(r.id)}
+																	>
+																		<UploadSvg />
+																	</RowAction>
+																</RowActions>
 															) : r.source_type ? null : (
-																<div style={{ display: 'flex', gap: 6 }}>
-																	<Button size='sm' variant='secondary' icon={<EditSvg />} onClick={() => setEditing(r)} title='Sửa' />
-																	<Button size='sm' variant='secondary' icon={<TrashSvg />} onClick={() => handleDelete(r.id)} title='Xóa' />
-																</div>
+																<RowActions
+																	itemName={r.title}
+																	onEdit={() => setEditing(r)}
+																	onDelete={() => handleDelete(r.id)}
+																/>
 															)}
 														</td>
 													</tr>

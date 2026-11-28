@@ -53,7 +53,6 @@ export function useCouncilProgress() {
 		minutesInputs.current[id]?.click();
 	}, []);
 	const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-	const [activeTab, setActiveTab] = useState<'my-review' | 'council-conclusion'>('my-review');
 
 	const selectedTopic = useMemo(() => {
 		if (!selectedTopicId) return null;
@@ -260,8 +259,6 @@ export function useCouncilProgress() {
 		selectedTopicId,
 		setSelectedTopicId,
 		selectedTopic,
-		activeTab,
-		setActiveTab,
 		drafts,
 		setDraft,
 		savingId,

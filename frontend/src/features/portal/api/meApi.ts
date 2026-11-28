@@ -13,6 +13,7 @@ import type { CmeCycleBasis, CmeCycleStatus } from '../../seminar/api/cmeRequire
 import type { CustomValues } from '../../../shared/formConfig/types';
 import { getBlob } from '../../course/api/registrationApi';
 import { seg } from '../../../shared/api/path';
+import type { TrainingMethods } from '../../../shared/utils/attendanceMethods';
 
 interface MyCourseBase {
 	id: string;
@@ -360,7 +361,9 @@ export interface MyDepartmentProposal {
 export const getMyCourseRegistrations = () => apiClient.get<MyCourseRegistration[]>('/me/course-registrations');
 /** Đường dẫn cho FileViewerModal (xem trước .docx) */
 export const myApplicationUrl = (enrollmentId: string) => `/api/v1/me/course-registrations/${seg(enrollmentId)}/application`;
-export const downloadMyApplication = (enrollmentId: string) => getBlob(`/me/course-registrations/${seg(enrollmentId)}/application`);
+/** sign: ký file Word bằng chứng thư cá nhân của chính mình */
+export const downloadMyApplication = (enrollmentId: string, sign = false) =>
+	getBlob(`/me/course-registrations/${seg(enrollmentId)}/application${sign ? '?sign=1' : ''}`);
 /** Nộp / thay 1 loại hồ sơ của đơn mình (chỉ khi đơn còn chờ duyệt) */
 export const uploadMyRegistrationFile = (enrollmentId: string, kind: RegistrationFileKind, file: File) => {
 	const form = new FormData();
@@ -371,12 +374,16 @@ export const uploadMyRegistrationFile = (enrollmentId: string, kind: Registratio
 	);
 };
 export const getMyDepartmentProposals = () => apiClient.get<MyDepartmentProposal[]>('/me/department-proposals');
-export const downloadDepartmentProposal = (g: Pick<MyDepartmentProposal, 'course_id' | 'program_id' | 'department_id'>) =>
+export const downloadDepartmentProposal = (
+	g: Pick<MyDepartmentProposal, 'course_id' | 'program_id' | 'department_id'>,
+	sign = false,
+) =>
 	getBlob(
 		`/me/department-proposals/document?${new URLSearchParams({
 			course_id: g.course_id,
 			department_id: g.department_id,
 			...(g.program_id ? { program_id: g.program_id } : {}),
+			...(sign ? { sign: '1' } : {}),
 		})}`,
 	);
 /** Phiếu CME cá nhân (Excel): 1 năm, hoặc 'all' = tất cả các năm (mỗi năm thêm 1 sheet). */
@@ -487,7 +494,15 @@ export interface MyAttendance {
 		shifts: ShiftSlot[] | null;
 	}[];
 	/** Khóa đang học hôm nay + mẫu ca tuần của khóa. */
-	current_course: { course_id: string; course_name: string; pattern_name: string | null } | null;
+	current_course: {
+		course_id: string;
+		course_name: string;
+		pattern_name: string | null;
+		/** Phương thức điểm danh của khóa (hệ thống × loại hình) — app = bấm ở trang này */
+		methods?: TrainingMethods;
+	} | null;
+	/** Điểm danh trên ứng dụng có đang bật trên toàn hệ thống không (thiếu = bật). */
+	app_enabled?: boolean;
 	client_ip: string | null;
 	/** IP hiện tại có thuộc mạng bệnh viện không. */
 	ip_ok: boolean;

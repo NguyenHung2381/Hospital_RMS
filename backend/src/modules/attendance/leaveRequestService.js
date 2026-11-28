@@ -14,6 +14,7 @@ const shiftLogic = require('../../utils/attendanceShift');
 const leavePolicy = require('../../utils/leavePolicy');
 const shiftService = require('./shiftService');
 const { todayKeyVN, fmtDateVN } = require('../../utils/vnDate');
+const { ATTENDING_MODES } = require('../../utils/attendanceMode');
 const { badRequest, conflict, notFound } = require('../../utils/httpError');
 const formCustomValueService = require('../forms/formCustomValueService');
 
@@ -119,7 +120,8 @@ const createMine = async (userId, body) => {
 			.query(
 				'SELECT id, full_name, department_id FROM trainees WHERE user_id = @user_id ORDER BY created_at DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
 			),
-		shiftService.traineePeriods({ from, to, userId }),
+		// Đơn nghỉ / đi muộn tính cho cả buổi học lẫn ca ⇒ mọi khóa có chấm công
+		shiftService.traineePeriods({ from, to, userId, modes: ATTENDING_MODES }),
 		shiftService.listPatterns(),
 		shiftService.shiftsMap(),
 		shiftService.assignmentsForUser(userId, from, from),

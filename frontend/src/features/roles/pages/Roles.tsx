@@ -1,4 +1,4 @@
-import { SelectionCount } from '@/shared/components/Table/TableToolbar';
+import { RowAction, RowActions, SelectionCount } from '@/shared/components/Table/TableToolbar';
 import { Badge } from '@/shared/components';
 import AdminLayout from '../../../layouts/AdminLayout';
 import {
@@ -294,10 +294,8 @@ export default function Roles() {
 											<span className={styles.dateText}>{formatDateVN(role.created_at)}</span>
 										</td>
 										<td className={`${styles.td} ${styles.tdActions}`}>
-											<div className={styles.actionBtns}>
-												<button
-													type='button'
-													className={`${styles.actionBtn} ${styles.actionPerm}`}
+											<RowActions>
+												<RowAction
 													title='Phân quyền'
 													aria-label={`Phân quyền của vai trò ${role.name}`}
 													onClick={() => {
@@ -306,24 +304,8 @@ export default function Roles() {
 													}}
 												>
 													<KeySvg />
-												</button>
-												{canClone && (
-													<button
-														type='button'
-														className={styles.actionBtn}
-														title='Nhân bản (vai trò mới cùng quyền)'
-														aria-label={`Nhân bản vai trò ${role.name}`}
-														onClick={() => {
-															r.setActionRole(role);
-															r.setModal('clone');
-														}}
-													>
-														<CopySvg />
-													</button>
-												)}
-												<button
-													type='button'
-													className={styles.actionBtn}
+												</RowAction>
+												<RowAction
 													title='Chỉnh sửa'
 													aria-label={`Chỉnh sửa vai trò ${role.name}`}
 													onClick={() => {
@@ -332,22 +314,33 @@ export default function Roles() {
 													}}
 												>
 													<EditSvg />
-												</button>
+												</RowAction>
+												{canClone && (
+													<RowAction
+														title='Nhân bản'
+														aria-label={`Nhân bản vai trò ${role.name}`}
+														onClick={() => {
+															r.setActionRole(role);
+															r.setModal('clone');
+														}}
+													>
+														<CopySvg />
+													</RowAction>
+												)}
 												{!role.is_system && (
-													<button
-														type='button'
-														className={`${styles.actionBtn} ${styles.danger}`}
+													<RowAction
 														title='Xóa'
 														aria-label={`Xóa vai trò ${role.name}`}
+														danger
 														onClick={() => {
 															r.setDeletingRole(role);
 															r.setModal('delete');
 														}}
 													>
 														<TrashSvg />
-													</button>
+													</RowAction>
 												)}
-											</div>
+											</RowActions>
 										</td>
 									</tr>
 								);

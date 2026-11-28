@@ -284,11 +284,16 @@ const setAttendance = asyncHandler(async (req, res) => {
 	return success(res, null, 'Đã lưu điểm danh');
 });
 
-const getAttendanceQrToken = (req, res) => {
+const getAttendanceQrToken = asyncHandler(async (req, res) => {
 	return success(res, {
-		token: courseAttendanceService.generateAttendanceQrToken(req.params.sessionId),
+		token: await courseAttendanceService.generateAttendanceQrToken(req.params.sessionId),
 	});
-};
+});
+
+// Phương thức điểm danh dùng được ở buổi học (utils/attendanceMethods)
+const getAttendanceMethods = asyncHandler(async (req, res) =>
+	success(res, await courseAttendanceService.sessionMethods(req.params.sessionId)),
+);
 
 const checkInSelf = asyncHandler(async (req, res) => {
 	const result = await courseAttendanceService.checkInSelf(
@@ -471,6 +476,7 @@ module.exports = {
 	listAttendance,
 	setAttendance,
 	getAttendanceQrToken,
+	getAttendanceMethods,
 	checkInSelf,
 	listDocuments,
 	addDocument,

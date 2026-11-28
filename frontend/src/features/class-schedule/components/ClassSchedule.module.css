@@ -33,3 +33,14 @@
 .plainBtn:focus-visible > span {
 	opacity: 1;
 }
+
+/* Ngày nghỉ lễ trong thẻ tháng (chế độ năm): nền đỏ nhạt + số ngày đỏ; tên lễ ở title */
+/* Lặp lớp để thắng .dayCell của CalendarView.module.css (thứ tự nạp CSS module không cố định) */
+.holidayDay.holidayDay,
+.holidayDay.holidayDay:hover {
+	background-color: var(--tone-red-bg);
+}
+
+.holidayDay > span:first-child {
+	color: var(--tone-red-fg);
+}

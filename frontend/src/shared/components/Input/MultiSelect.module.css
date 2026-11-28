@@ -88,8 +88,11 @@
 	top: calc(100% + 6px);
 	left: 0;
 	z-index: 200;
+	/* max-content: menu tuyệt đối trong khung hẹp bằng nút sẽ co theo nút → nhãn vỡ
+	   từng chữ. Rộng theo nội dung, tối đa 300px và không vượt màn hình. */
+	width: max-content;
 	min-width: 100%;
-	max-width: 300px;
+	max-width: min(300px, calc(100vw - 2 * var(--space-4)));
 	background: var(--color-white);
 	border: 1px solid var(--color-gray-200);
 	border-radius: var(--radius-lg);

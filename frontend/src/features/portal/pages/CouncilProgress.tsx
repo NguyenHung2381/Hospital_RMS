@@ -1,13 +1,24 @@
+import { useMemo, useState } from 'react';
 import UserLayout from '../../../layouts/UserLayout';
-import { formatDateVN, parseDate } from '../../../shared/utils/formatDate';
+import { ChevLSvg, ChevRSvg } from '@/assets/icons';
+import { formatDateVN } from '../../../shared/utils/formatDate';
 import { SEAT_ROLE_LABELS } from '../../council/types/council.type';
-import { ProgressConclusionTab } from '../components/ProgressConclusionTab';
+import { ProgressConclusion } from '../components/ProgressConclusion';
+import { ProgressDocReader, type ReaderFile } from '../components/ProgressDocReader';
+import { ProgressCouncilReviews } from '../components/ProgressCouncilReviews';
 import { ProgressFilesSection } from '../components/ProgressFilesSection';
-import { ProgressMyReviewTab } from '../components/ProgressMyReviewTab';
+import { ProgressMyReview } from '../components/ProgressMyReview';
 import { ProgressSidebar } from '../components/ProgressSidebar';
 import { useCouncilProgress } from '../hooks/useCouncilProgress';
-import { SESSION_LABELS } from '../utils/councilProgressHelpers';
+import {
+	findMyReview,
+	flattenInOrder,
+	isDraftDirty,
+	reviewWindow,
+	SESSION_LABELS,
+} from '../utils/councilProgressHelpers';
 import { InlineLoading } from '@/shared/components';
+import { useRevealOnSelect } from '@/shared/hooks/useRevealOnSelect';
 import styles from './CouncilProgress.module.css';
 
 export default function CouncilProgress() {
@@ -20,8 +31,6 @@ export default function CouncilProgress() {
 		selectedTopicId,
 		setSelectedTopicId,
 		selectedTopic,
-		activeTab,
-		setActiveTab,
 		drafts,
 		setDraft,
 		savingId,
@@ -44,10 +53,184 @@ export default function CouncilProgress() {
 		handleDeleteMinutes,
 	} = useCouncilProgress();
 
+	const ordered = useMemo(() => flattenInOrder(councils), [councils]);
+	const dirtyIds = useMemo(() => {
+		const s = new Set<string>();
+		for (const t of ordered) {
+			if (isDraftDirty(drafts[t.id], findMyReview(t, user?.id))) s.add(t.id);
+		}
+		return s;
+	}, [ordered, drafts, user?.id]);
+	const detailRef = useRevealOnSelect<HTMLElement>(selectedTopicId);
+
+	// Khung "Đọc hồ sơ": mở/thu gọn giữ nguyên khi đổi đề tài; file đang đọc nhớ theo đề tài
+	const [readerOpen, setReaderOpen] = useState(true);
+	const [readerPick, setReaderPick] = useState<Record<string, string>>({});
+	const openInReader = (topicId: string, fileId: string) => {
+		setReaderPick((p) => ({ ...p, [topicId]: fileId }));
+		setReaderOpen(true);
+		requestAnimationFrame(() => {
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			document
+				.getElementById('progress-reader')
+				?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+		});
+	};
+
+	const idx = selectedTopic ? ordered.findIndex((x) => x.id === selectedTopic.id) : -1;
+	const prev = idx > 0 ? ordered[idx - 1] : null;
+	const next = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null;
+
+	const renderDetail = () => {
+		if (!selectedTopic) {
+			return (
+				<div className={styles.detailEmpty}>
+					<div className={styles.detailEmptyTitle}>Chọn một đề tài để chấm</div>
+					<div className={styles.detailEmptyDesc}>
+						Danh sách bên trái gồm các đề tài bạn có ghế trong hội đồng.
+					</div>
+				</div>
+			);
+		}
+		const t = selectedTopic;
+		const d = drafts[t.id] ?? { percent: '', rating: '' as const, comment: '' };
+		const rd = resultDrafts[t.id] ?? { conclusion: '' as const, general_comment: '' };
+		const mine = findMyReview(t, user?.id);
+		const readerFiles: ReaderFile[] = [
+			...t.topic_files.map((file) => ({ file, group: 'Hồ sơ đề tài' })),
+			...t.evaluation_files.map((file) => ({ file, group: 'File đánh giá' })),
+			...t.minutes_files.map((file) => ({ file, group: 'Biên bản hội đồng' })),
+		];
+		const activeFileId =
+			readerFiles.find((x) => x.file.id === readerPick[t.id])?.file.id ?? readerFiles[0]?.file.id ?? null;
+
+		const meta: { label: string; value: string }[] = [
+			{ label: 'Hội đồng', value: t.council_name },
+			...(t.defense_date ? [{ label: 'Ngày họp', value: formatDateVN(t.defense_date) }] : []),
+			...(t.session ? [{ label: 'Phiên', value: SESSION_LABELS[t.session] || t.session }] : []),
+			...(t.location ? [{ label: 'Địa điểm', value: t.location }] : []),
+			...(t.round_name ? [{ label: 'Đợt', value: t.round_name }] : []),
+		];
+
+		return (
+			<>
+				<header className={styles.detailHead}>
+					<div className={styles.detailTopRow}>
+						<div className={styles.detailTags}>
+							<span className={styles.seatChip}>{SEAT_ROLE_LABELS[t.my_role]}</span>
+							{t.department_name && <span className={styles.metaChip}>{t.department_name}</span>}
+							{t.category_name && <span className={styles.metaChip}>{t.category_name}</span>}
+						</div>
+						<nav
+							className={styles.stepper}
+							aria-label='Chuyển đề tài'
+						>
+							<button
+								type='button'
+								className={styles.stepBtn}
+								disabled={!prev}
+								onClick={() => prev && setSelectedTopicId(prev.id)}
+								aria-label='Đề tài trước'
+								title={prev ? prev.title : undefined}
+							>
+								<ChevLSvg aria-hidden />
+							</button>
+							<span className={`${styles.stepCount} ${styles.num}`}>
+								{idx + 1}/{ordered.length}
+							</span>
+							<button
+								type='button'
+								className={styles.stepBtn}
+								disabled={!next}
+								onClick={() => next && setSelectedTopicId(next.id)}
+								aria-label='Đề tài sau'
+								title={next ? next.title : undefined}
+							>
+								<ChevRSvg aria-hidden />
+							</button>
+						</nav>
+					</div>
+					<h2 className={styles.detailTitle}>{t.title}</h2>
+					<dl className={styles.metaList}>
+						{meta.map((m) => (
+							<div
+								key={m.label}
+								className={styles.metaItem}
+							>
+								<dt>{m.label}</dt>
+								<dd>{m.value}</dd>
+							</div>
+						))}
+					</dl>
+				</header>
+
+				<div className={styles.detailBody}>
+					{readerFiles.length > 0 && (
+						<div className={styles.detailWide}>
+							<ProgressDocReader
+								files={readerFiles}
+								activeId={activeFileId}
+								onSelect={(id) => setReaderPick((p) => ({ ...p, [t.id]: id }))}
+								open={readerOpen}
+								onToggle={() => setReaderOpen((o) => !o)}
+							/>
+						</div>
+					)}
+					<div className={styles.detailMain}>
+						<ProgressMyReview
+							key={t.id}
+							topic={t}
+							draft={d}
+							setDraft={setDraft}
+							savingId={savingId}
+							savedId={savedId}
+							onSave={handleSave}
+							window={reviewWindow(t.defense_date)}
+							mine={mine}
+							dirty={dirtyIds.has(t.id)}
+						/>
+						<ProgressCouncilReviews
+							topic={t}
+							userId={user?.id}
+						/>
+						<ProgressConclusion
+							key={`c-${t.id}`}
+							topic={t}
+							isChairman={t.my_role === 'chairman'}
+							resultDraft={rd}
+							setResultDraft={setResultDraft}
+							savingResultId={savingResultId}
+							savedResultId={savedResultId}
+							onSaveResult={handleSaveResult}
+						/>
+					</div>
+					<div className={styles.detailAside}>
+						<ProgressFilesSection
+							topic={t}
+							isSecretary={t.my_role === 'secretary'}
+							setFileInputRef={setFileInputRef}
+							clickFileInput={clickFileInput}
+							uploadingId={uploadingId}
+							onUpload={handleUpload}
+							onDeleteFile={handleDeleteFile}
+							setMinutesInputRef={setMinutesInputRef}
+							clickMinutesInput={clickMinutesInput}
+							uploadingMinutesId={uploadingMinutesId}
+							onUploadMinutes={handleUploadMinutes}
+							onDeleteMinutes={handleDeleteMinutes}
+							onOpen={(id) => openInReader(t.id, id)}
+							activeFileId={readerOpen ? activeFileId : null}
+						/>
+					</div>
+				</div>
+			</>
+		);
+	};
+
 	return (
 		<UserLayout
 			pageTitle='Đánh giá tiến độ đề tài'
-			pageSubtitle='Hội đồng đánh giá tiến độ các đề tài được phân công; thư ký tải lên biên bản và tài liệu đánh giá'
+			pageSubtitle='Chấm tiến độ các đề tài bạn được phân công; thư ký tải biên bản và file đánh giá'
 			userName={user?.full_name ?? user?.username ?? 'Người dùng'}
 			userRole={user?.role ?? user?.role_name ?? 'Thành viên'}
 			hideSidebar
@@ -58,179 +241,28 @@ export default function CouncilProgress() {
 				<div className={`${styles.stateBox} ${styles.stateError}`}>{error}</div>
 			) : councils.length === 0 ? (
 				<div className={styles.stateBox}>
-					<div className={styles.emptyTitle}>
-						Bạn chưa được phân công vào hội đồng nào
-					</div>
+					<div className={styles.emptyTitle}>Bạn chưa được phân công vào hội đồng nào</div>
 					<div className={styles.emptyDesc}>
-						Khi được phân công vào thành viên hội đồng, danh sách đề tài cần đánh giá tiến độ sẽ hiển thị tại đây.
+						Khi bạn có ghế trong một hội đồng, các đề tài cần chấm tiến độ sẽ hiện ở đây.
 					</div>
 				</div>
 			) : (
-				<>
-					<div className={styles.pageWatermark} />
-					<div className={styles.splitWrapper}>
-						<ProgressSidebar
-							councils={councils}
-							stats={stats}
-							selectedTopicId={selectedTopicId}
-							setSelectedTopicId={setSelectedTopicId}
-							userId={user?.id}
-						/>
-
-						{/* Right pane: selected topic details */}
-						<main className={styles.detailsPane}>
-							{selectedTopic ? (
-								(() => {
-									const t = selectedTopic;
-									const d = drafts[t.id] ?? {
-										percent: '',
-										rating: '' as const,
-										comment: '',
-									};
-									const isSecretary = t.my_role === 'secretary';
-									const isChairman = t.my_role === 'chairman';
-									const rd = resultDrafts[t.id] ?? {
-										conclusion: '' as const,
-										general_comment: '',
-									};
-									const others = t.reviews.filter((r) => r.user_id !== user?.id);
-									const reviewed = t.reviews.filter((r) => r.rating != null || r.progress_percent != null);
-									const defenseDate = parseDate(t.defense_date);
-									const now = new Date();
-									const isReportDay =
-										!!defenseDate &&
-										defenseDate.getFullYear() === now.getFullYear() &&
-										defenseDate.getMonth() === now.getMonth() &&
-										defenseDate.getDate() === now.getDate();
-									const effectiveTab = isReportDay ? activeTab : 'council-conclusion';
-
-									return (
-										<div className={styles.detailsContent}>
-											{/* Details Header */}
-											<div className={styles.detailsHeader}>
-												<div className={styles.detailsHeaderMain}>
-													<div className={styles.detailsTitleRow}>
-														<span className={styles.detailsHeaderRoleBadge}>
-															{SEAT_ROLE_LABELS[t.my_role]}
-														</span>
-														{t.department_name && (
-															<span className={styles.detailsMetaTag}>{t.department_name}</span>
-														)}
-														{t.category_name && (
-															<span className={styles.detailsMetaTag}>{t.category_name}</span>
-														)}
-													</div>
-													<h2 className={styles.detailsTopicTitle}>{t.title}</h2>
-												</div>
-
-												<div className={styles.detailsHeaderMetaGrid}>
-													<div className={styles.detailsMetaCell}>
-														<span className={styles.detailsMetaLabel}>Hội đồng</span>
-														<span className={styles.detailsMetaVal}>{t.council_name}</span>
-													</div>
-													{t.round_name && (
-														<div className={styles.detailsMetaCell}>
-															<span className={styles.detailsMetaLabel}>Đợt nghiên cứu</span>
-															<span className={styles.detailsMetaVal}>{t.round_name}</span>
-														</div>
-													)}
-													{t.defense_date && (
-														<div className={styles.detailsMetaCell}>
-															<span className={styles.detailsMetaLabel}>Ngày họp</span>
-															<span className={styles.detailsMetaVal}>{formatDateVN(t.defense_date)}</span>
-														</div>
-													)}
-													{t.location && (
-														<div className={styles.detailsMetaCell}>
-															<span className={styles.detailsMetaLabel}>Địa điểm</span>
-															<span className={styles.detailsMetaVal}>{t.location}</span>
-														</div>
-													)}
-													{t.session && (
-														<div className={styles.detailsMetaCell}>
-															<span className={styles.detailsMetaLabel}>Phiên họp</span>
-															<span className={styles.detailsMetaVal}>
-																{SESSION_LABELS[t.session] || t.session}
-															</span>
-														</div>
-													)}
-												</div>
-											</div>
-
-											{/* Tab Navigation */}
-											<div className={styles.tabsContainer}>
-												{isReportDay && (
-													<button
-														className={`${styles.tabBtn} ${effectiveTab === 'my-review' ? styles.activeTab : ''}`}
-														onClick={() => setActiveTab('my-review')}
-													>
-														<span className={styles.tabIcon}>📝</span>
-														<span className={styles.tabLabel}>Đánh giá cá nhân</span>
-													</button>
-												)}
-												<button
-													className={`${styles.tabBtn} ${effectiveTab === 'council-conclusion' ? styles.activeTab : ''}`}
-													onClick={() => setActiveTab('council-conclusion')}
-												>
-													<span className={styles.tabIcon}>👥</span>
-													<span className={styles.tabLabel}>Hội đồng &amp; kết luận</span>
-												</button>
-											</div>
-
-											{/* Tab Contents */}
-											<div className={styles.tabPanel}>
-												{isReportDay && effectiveTab === 'my-review' && (
-													<ProgressMyReviewTab
-														topic={t}
-														draft={d}
-														setDraft={setDraft}
-														savingId={savingId}
-														savedId={savedId}
-														onSave={handleSave}
-													/>
-												)}
-
-												{effectiveTab === 'council-conclusion' && (
-													<ProgressConclusionTab
-														topic={t}
-														others={others}
-														reviewedCount={reviewed.length}
-														isChairman={isChairman}
-														resultDraft={rd}
-														setResultDraft={setResultDraft}
-														savingResultId={savingResultId}
-														savedResultId={savedResultId}
-														onSaveResult={handleSaveResult}
-													/>
-												)}
-											</div>
-
-											<ProgressFilesSection
-												topic={t}
-												isSecretary={isSecretary}
-												setFileInputRef={setFileInputRef}
-												clickFileInput={clickFileInput}
-												uploadingId={uploadingId}
-												onUpload={handleUpload}
-												onDeleteFile={handleDeleteFile}
-												setMinutesInputRef={setMinutesInputRef}
-												clickMinutesInput={clickMinutesInput}
-												uploadingMinutesId={uploadingMinutesId}
-												onUploadMinutes={handleUploadMinutes}
-												onDeleteMinutes={handleDeleteMinutes}
-											/>
-										</div>
-									);
-								})()
-							) : (
-								<div className={styles.emptyDetailsState}>
-									<div className={styles.emptyDetailsTitle}>Vui lòng chọn đề tài để đánh giá</div>
-									<div className={styles.emptyDetailsDesc}>Chọn một đề tài trong danh sách để xem thông tin chi tiết và tiến hành đánh giá.</div>
-								</div>
-							)}
-						</main>
-					</div>
-				</>
+				<div className={styles.split}>
+					<ProgressSidebar
+						councils={councils}
+						stats={stats}
+						selectedTopicId={selectedTopicId}
+						setSelectedTopicId={setSelectedTopicId}
+						userId={user?.id}
+						dirtyIds={dirtyIds}
+					/>
+					<section
+						ref={detailRef}
+						className={styles.detail}
+					>
+						{renderDetail()}
+					</section>
+				</div>
 			)}
 		</UserLayout>
 	);

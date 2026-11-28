@@ -2,11 +2,19 @@
 // Việc GHI nằm ở middlewares/activityLogger.js (auditLogger -> pino-roll ->
 // server/logs/audit-*.log). File này chỉ lo phần ĐỌC cho trang admin
 // /activity-logs: danh sách (lọc + phân trang), thống kê và gom phiên truy cập.
+//
+// Chỉ mục trong RAM (activityLogIndex.js): mỗi file log 1 mảng "dòng gọn" — thời điểm,
+// vị trí byte trong file và các trường dùng để lọc / thống kê (chuỗi lặp lại dùng chung
+// 1 bản). Lọc, đếm tổng, thống kê chạy trên chỉ mục; chỉ các dòng của trang trả về mới
+// đọc lại từ file để lấy đủ chi tiết (body, params…). File log chỉ được NỐI THÊM: lần
+// sau chỉ đọc phần mới ghi của file đang ghi, file đã xoay không đọc lại. Trước đây mỗi
+// lần mở trang / bấm sang trang khác đều đọc + JSON.parse lại toàn bộ log (đo
+// 2026-11-27: ~250 ms với 10 MB log, tăng tuyến tính theo dung lượng log).
 
-const fsp = require('fs/promises');
 const path = require('path');
-const { describe, normalizeIp, ipKind, MODULE_LABELS } = require('../../utils/activityDescribe');
+const { MODULE_LABELS, describe, normalizeIp, ipKind } = require('../../utils/activityDescribe');
 const { formFlag } = require('../../utils/formFlag');
+const logIndex = require('./activityLogIndex');
 
 // Phải khớp CHÍNH XÁC với auditLogger.js: mặc định <server>/logs, neo theo mã
 // nguồn để không lệ thuộc thư mục chạy server.
@@ -14,43 +22,14 @@ const LOG_DIR = process.env.LOG_DIR
 	? path.resolve(process.env.LOG_DIR)
 	: path.join(__dirname, '..', '..', '..', 'logs');
 
-// Chặn quét lan man: không đọc quá ngần này file / dòng cho một lần truy vấn.
-const MAX_FILES_SCANNED = 100;
+// Chặn quét lan man: không xét quá ngần này dòng cho một lần truy vấn (số file:
+// activityLogIndex.MAX_FILES_SCANNED).
 const MAX_LINES_SCANNED = 300_000;
 
 // Khoảng nghỉ tối đa giữa 2 request liên tiếp của cùng 1 người mà vẫn tính là
 // cùng 1 phiên truy cập (mặc định 30 phút — giống cách GA/Matomo tính session).
 const SESSION_GAP_MS =
 	Math.max(1, parseInt(process.env.ACTIVITY_SESSION_GAP_MIN, 10) || 30) * 60_000;
-
-// Chỉ nhận các file do auditLogger sinh ra: audit.log, audit.2026-08-27.log, ...
-const isAuditName = (name) => /^audit([.-].*)?\.log$/i.test(name);
-
-// Liệt kê file log, mới nhất trước (theo mtime — file đang ghi có mtime mới nhất).
-const listLogFiles = async () => {
-	let names;
-	try {
-		names = await fsp.readdir(LOG_DIR);
-	} catch (err) {
-		if (err.code === 'ENOENT') return []; // chưa có log nào
-		throw err;
-	}
-	const stats = await Promise.all(
-		names.filter(isAuditName).map(async (name) => {
-			const full = path.join(LOG_DIR, name);
-			try {
-				const st = await fsp.stat(full);
-				return st.isFile() ? { full, mtime: st.mtimeMs } : null;
-			} catch {
-				return null;
-			}
-		}),
-	);
-	return stats
-		.filter(Boolean)
-		.sort((a, b) => b.mtime - a.mtime)
-		.slice(0, MAX_FILES_SCANNED);
-};
 
 const toMs = (v) => {
 	if (v == null || v === '') return undefined;
@@ -159,60 +138,74 @@ const rowMatches = (r, f) => {
 		return false;
 	if (f.ip && !String(r.ip_address ?? '').includes(f.ip)) return false;
 	if (f.min_duration != null && !((r.duration_ms ?? -1) >= f.min_duration)) return false;
-	if (f.search) {
-		const hay = `${r.path} ${r.summary} ${r.body ?? ''} ${r.error ?? ''}`.toLowerCase();
-		if (!hay.includes(f.search)) return false;
-	}
 	return true;
 };
 
-// Duyệt log từ MỚI → CŨ, gọi onRow(row) cho mỗi dòng khớp bộ lọc có ts < before.
-// onRow trả về true để dừng sớm. Trả về { truncated } nếu chạm giới hạn quét.
+// Ô tìm kiếm xét cả body / error — chỉ bản đầy đủ (toRow) mới có. activityLogger ghi
+// body dạng chuỗi JSON; giá trị không phải chuỗi (định dạng khác) thì đổi sang JSON,
+// không để thành "[object Object]".
+const asText = (v) => (v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v));
+const searchMatches = (row, search) =>
+	`${row.path} ${row.summary} ${asText(row.body)} ${asText(row.error)}`
+		.toLowerCase()
+		.includes(search);
+
+// Duyệt log từ MỚI → CŨ trên chỉ mục, gọi onRow(dòng gọn) cho mỗi dòng khớp bộ lọc có
+// ts < before. onRow trả về true để dừng sớm. Trả về { truncated } nếu chạm giới hạn quét
+// (đếm dòng audit hợp lệ).
 const scan = async (filters, { before = Infinity, onRow, stopAfterFile = undefined }) => {
-	const files = await listLogFiles();
+	logIndex.touchIndex();
+	const files = await logIndex.listLogFiles(LOG_DIR);
 	let linesScanned = 0;
+	try {
+		for (const file of files) {
+			// File sắp theo mtime giảm dần, nội dung file luôn cũ hơn mtime của nó →
+			// gặp file cũ hơn mốc "từ ngày" là mọi file sau cũng vậy.
+			if (filters.from != null && file.mtime < filters.from) break;
 
-	for (const { full, mtime } of files) {
-		// File sắp theo mtime giảm dần, nội dung file luôn cũ hơn mtime của nó →
-		// gặp file cũ hơn mốc "từ ngày" là mọi file sau cũng vậy.
-		if (filters.from != null && mtime < filters.from) break;
-
-		let content;
-		try {
-			content = await fsp.readFile(full, 'utf8');
-		} catch {
-			continue;
-		}
-		const lines = content.split('\n');
-		// Duyệt từ cuối file lên (dòng mới nằm cuối).
-		for (let i = lines.length - 1; i >= 0; i--) {
-			const line = lines[i].trim();
-			if (!line) continue;
-			if (++linesScanned > MAX_LINES_SCANNED) return { truncated: true };
-
-			let o;
-			try {
-				o = JSON.parse(line);
-			} catch {
-				continue; // dòng hỏng / đang ghi dở
+			const e = await logIndex.loadEntry(file);
+			if (!e) continue;
+			const { rows } = e;
+			// Có tìm kiếm: đọc file 1 lần để dựng bản đầy đủ cho dòng đã qua các bộ lọc khác
+			let content = null;
+			// Duyệt từ cuối file lên (dòng mới nằm cuối).
+			for (let i = rows.length - 1; i >= 0; i--) {
+				if (++linesScanned > MAX_LINES_SCANNED) return { truncated: true };
+				const r = rows[i];
+				const ts = r._ts;
+				if (ts >= before) continue;
+				if (filters.from != null && ts < filters.from) continue;
+				if (filters.to != null && ts > filters.to) continue;
+				if (!rowMatches(r, filters)) continue;
+				if (filters.search) {
+					try {
+						content ??= await logIndex.readRange(file.full, 0, e.bytes);
+						const o = JSON.parse(content.toString('utf8', r._off, r._off + r._len));
+						if (!searchMatches(toRow(o, ts), filters.search)) continue;
+					} catch {
+						continue;
+					}
+				}
+				if (onRow(r)) return { truncated: false };
 			}
-			if (o.stream !== 'audit') continue;
-
-			const ts = typeof o.ts === 'number' ? o.ts : Date.parse(o.time);
-			if (Number.isNaN(ts) || ts >= before) continue;
-			if (filters.from != null && ts < filters.from) continue;
-			if (filters.to != null && ts > filters.to) continue;
-
-			const row = toRow(o, ts);
-			if (!rowMatches(row, filters)) continue;
-			if (onRow(row)) return { truncated: false };
+			if (stopAfterFile?.()) break;
 		}
-		if (stopAfterFile?.()) break;
+		return { truncated: false };
+	} finally {
+		logIndex.evict();
 	}
-	return { truncated: false };
 };
 
 const stripInternal = ({ _ts, ...row }) => row;
+
+// Dòng gọn → bản đầy đủ trả client, mới → cũ
+const toClientRows = async (rows) =>
+	(
+		await logIndex.hydrate(
+			[...rows].sort((a, b) => b._ts - a._ts),
+			toRow,
+		)
+	).map(stripInternal);
 
 // 2 kiểu phân trang:
 //   - ?page=N  → phân trang theo số trang, trả kèm total (trang admin dùng).
@@ -246,9 +239,8 @@ const getAll = async (query = {}) => {
 		const totalPages = Math.max(1, Math.ceil(total / limit));
 		const safePage = Math.min(page, totalPages);
 		const rows = safePage === page ? wanted : tail;
-		rows.sort((a, b) => b._ts - a._ts);
 		return {
-			data: rows.map(stripInternal),
+			data: await toClientRows(rows),
 			total,
 			page: safePage,
 			limit,
@@ -274,8 +266,11 @@ const getAll = async (query = {}) => {
 	const sliced = collected.slice(0, limit);
 	const nextCursor = sliced.length === limit ? String(sliced[limit - 1]._ts) : null;
 
-	return { data: sliced.map(stripInternal), next_cursor: nextCursor };
+	return { data: await toClientRows(sliced), next_cursor: nextCursor };
 };
+
+// created_at của dòng log (= trường time, cùng mili-giây với ts)
+const isoOf = (ts) => new Date(ts).toISOString();
 
 const percentile = (sorted, p) => {
 	if (!sorted.length) return null;
@@ -302,8 +297,8 @@ const buildSessions = (rows) => {
 				actor_id: r.actor_id,
 				actor_username: r.actor_username,
 				actor_name: r.actor_name,
-				started_at: r.created_at,
-				ended_at: r.created_at,
+				started_at: null,
+				ended_at: null,
 				_start: r._ts,
 				_end: r._ts,
 				request_count: 0,
@@ -319,7 +314,6 @@ const buildSessions = (rows) => {
 			list.push(s);
 		}
 		s._end = r._ts;
-		s.ended_at = r.created_at;
 		s.request_count++;
 		if (!['view', 'login', 'login_failed'].includes(r.action) && r.method !== 'GET')
 			s.write_count++;
@@ -340,6 +334,8 @@ const buildSessions = (rows) => {
 		.sort((a, b) => b._end - a._end)
 		.map(({ _start, _end, ips, user_agents, modules, ...s }) => ({
 			...s,
+			started_at: isoOf(_start),
+			ended_at: isoOf(_end),
 			duration_ms: _end - _start,
 			total_duration_ms: round1(s.total_duration_ms),
 			ips: [...ips],
@@ -358,43 +354,15 @@ const getStats = async (query = {}) => {
 	// quét toàn bộ 100 file log mỗi lần mở trang.
 	if (filters.from == null && filters.to == null) filters.from = Date.now() - 7 * 86_400_000;
 
-	// Chỉ giữ các trường thống kê/gom phiên cần tới (bỏ body, params, referer…)
-	// và dùng chung 1 bản cho chuỗi lặp lại (User-Agent, tên, IP, mô tả…):
-	// hàng trăm nghìn dòng mà mỗi dòng tự giữ 1 bản UA ~150 byte là tốn hàng
-	// chục MB RAM vô ích.
-	const pool = new Map();
-	const intern = (s) => {
-		if (s == null) return s;
-		const hit = pool.get(s);
-		if (hit !== undefined) return hit;
-		pool.set(s, s);
-		return s;
-	};
+	// Dòng gọn của chỉ mục đã đủ trường thống kê / gom phiên (chuỗi dùng chung) — giữ
+	// tham chiếu, không chép.
 	const rows = [];
 	const { truncated } = await scan(filters, {
 		onRow: (r) => {
-			rows.push({
-				_ts: r._ts,
-				created_at: r.created_at,
-				actor_id: intern(r.actor_id),
-				actor_username: intern(r.actor_username),
-				actor_name: intern(r.actor_name),
-				method: intern(r.method),
-				path: intern(r.path.split('?')[0]),
-				route: intern(r.route),
-				status_code: r.status_code,
-				duration_ms: r.duration_ms,
-				ip_address: intern(r.ip_address),
-				user_agent: intern(r.user_agent),
-				module: intern(r.module),
-				module_label: intern(r.module_label),
-				action: r.action,
-				summary: intern(r.summary),
-			});
+			rows.push(r);
 			return false;
 		},
 	});
-	pool.clear();
 
 	const durations = [];
 	const users = new Map();
@@ -441,7 +409,7 @@ const getStats = async (query = {}) => {
 			count: 0,
 			writes: 0,
 			errors: 0,
-			last_at: r.created_at,
+			last_at: isoOf(r._ts),
 		};
 		u.count++;
 		if (r.action !== 'view') u.writes++;
@@ -449,7 +417,7 @@ const getStats = async (query = {}) => {
 		if (!u.actor_name && r.actor_name) u.actor_name = r.actor_name;
 		users.set(uKey, u);
 
-		const epKey = `${r.method} ${r.route || r.path.split('?')[0]}`;
+		const epKey = `${r.method} ${r.route || (r.path ?? '').split('?')[0]}`;
 		const ep = endpoints.get(epKey) || {
 			endpoint: epKey,
 			summary: r.summary,
@@ -512,4 +480,5 @@ const getStats = async (query = {}) => {
 	};
 };
 
-module.exports = { getAll, getStats, LOG_DIR };
+// _clearIndex: cho test (bỏ chỉ mục giữa các ca)
+module.exports = { getAll, getStats, LOG_DIR, _clearIndex: logIndex.clearIndex };

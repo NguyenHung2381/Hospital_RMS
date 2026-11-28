@@ -22,6 +22,7 @@ import { CertificateModal } from '../components/CertificateModal';
 import { IssueCmeModal } from '../components/IssueCmeModal';
 import { ParticipantFormModal } from '../components/ParticipantFormModal';
 import { ParticipantImportModal } from '../components/ParticipantImportModal';
+import { DeviceImportModal } from '../components/DeviceImportModal';
 import { SeminarQrPresentation } from '../components/SeminarQrPresentation';
 import { SeminarRegistrationQrModal } from '../components/SeminarRegistrationQrModal';
 import { SeminarTicketQrModal } from '../components/SeminarTicketQrModal';
@@ -97,6 +98,7 @@ export default function SeminarDetail() {
 	} | null>(null);
 	const [cert, setCert] = useState<{ targets: SeminarParticipant[]; selectedCount: number } | null>(null);
 	const [importOpen, setImportOpen] = useState(false);
+	const [deviceImportOpen, setDeviceImportOpen] = useState(false);
 	// ?qr=1: vừa tạo hội nghị → mở luôn QR đăng ký để tải về
 	const [regQrOpen, setRegQrOpen] = useState(searchParams.get('qr') === '1');
 	const [presentOpen, setPresentOpen] = useState(false);
@@ -201,6 +203,7 @@ export default function SeminarDetail() {
 			}),
 		openAgenda: () => setAgendaOpen(true),
 		openImport: () => setImportOpen(true),
+		openDeviceImport: () => setDeviceImportOpen(true),
 		openStaff: () => setStaffOpen(true),
 		scanTickets: () => sem && navigate(`/admin/quet-ve/${sem.id}`),
 	};
@@ -434,6 +437,14 @@ export default function SeminarDetail() {
 					seminar={sem}
 					onClose={() => setAgendaOpen(false)}
 					onSaved={d.refresh}
+				/>
+			)}
+
+			{deviceImportOpen && sem && (
+				<DeviceImportModal
+					seminarId={sem.id}
+					onClose={() => setDeviceImportOpen(false)}
+					onDone={() => d.refresh()}
 				/>
 			)}
 

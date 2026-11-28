@@ -1,4 +1,6 @@
 import {
+	KeySvg,
+	SendSvg,
 	BadgeSvg,
 	BellSvg,
 	BookOpenSvg,
@@ -37,6 +39,8 @@ export const KEY_TO_PATH: Record<string, string> = {
 	myMentoring: '/user/huong-dan',
 	myHospitalTrainings: '/user/tap-huan',
 	profile: '/user/profile',
+	signDocument: '/user/ky-tai-lieu',
+	signRequests: '/user/trinh-ky',
 	deptAccounts: '/user/department-accounts',
 	notifications: '/user/notifications',
 };
@@ -147,6 +151,8 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const ACCOUNT_NAV: NavItem[] = [
 	{ key: 'profile', label: 'Hồ sơ cá nhân', icon: <UserSvg className={styles.navIcon} /> },
+	{ key: 'signRequests', label: 'Trình ký văn bản', icon: <SendSvg className={styles.navIcon} /> },
+	{ key: 'signDocument', label: 'Ký tài liệu', icon: <KeySvg className={styles.navIcon} /> },
 	{ key: 'notifications', label: 'Thông báo', icon: <BellSvg className={styles.navIcon} /> },
 ];
 

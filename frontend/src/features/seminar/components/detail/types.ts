@@ -29,6 +29,8 @@ export interface DetailActions {
 	deleteTest: (test: SeminarTest) => void;
 	openAgenda: () => void;
 	openImport: () => void;
+	/** Nhập người tham dự nội viện từ lượt chấm máy chấm công */
+	openDeviceImport: () => void;
 	openStaff: () => void;
 	scanTickets: () => void;
 }

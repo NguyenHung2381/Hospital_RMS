@@ -32,6 +32,8 @@ import styles from '../pages/Seminar.module.css';
 import css from './CertificateModal.module.css';
 import { CertificateLayoutEditor } from './CertificateLayoutEditor';
 import { CertificateInfoForm } from './CertificateInfoForm';
+import { SignToggle } from '../../signing/components/SignToggle';
+import { usePermission } from '@/shared/hooks/usePermission';
 
 const errMsg = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
 const fmtMB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
@@ -71,6 +73,9 @@ export function CertificateModal({
 	const [excelFile, setExcelFile] = useState<File | null>(null);
 	const [busy, setBusy] = useState<Busy>(null);
 	const [editorOpen, setEditorOpen] = useState(false);
+	// Ký số giấy bằng chứng thư bệnh viện — cần quyền signing:sign
+	const canSign = usePermission().has('signing:sign');
+	const [sign, setSign] = useState(false);
 	// Đổi mẫu / chỉnh mẫu xong → tải lại form thông tin trên giấy
 	const [infoVersion, setInfoVersion] = useState(0);
 
@@ -153,15 +158,19 @@ export function CertificateModal({
 		}
 	};
 
+	const signNow = canSign && sign;
 	const exportZip = async () => {
 		setBusy('export');
 		try {
 			const blob =
 				source === 'excel'
-					? await exportCertificatesFromExcel(seminarId, excelFile as File)
-					: await exportCertificates(seminarId, selectedCount ? numbered.map((p) => p.id) : undefined);
-			saveBlob(blob, `giay-chung-nhan-cme-${fileSlug(seminarTitle).slice(0, 60)}.zip`);
-			showToast('success', 'Đã xuất giấy chứng nhận');
+					? await exportCertificatesFromExcel(seminarId, excelFile as File, signNow)
+					: await exportCertificates(seminarId, selectedCount ? numbered.map((p) => p.id) : undefined, signNow);
+			saveBlob(
+				blob,
+				`giay-chung-nhan-cme-${fileSlug(seminarTitle).slice(0, 60)}${signNow ? '-ky-so' : ''}.zip`,
+			);
+			showToast('success', signNow ? 'Đã xuất giấy chứng nhận có chữ ký số' : 'Đã xuất giấy chứng nhận');
 		} catch (e) {
 			showToast('error', errMsg(e, 'Xuất giấy chứng nhận thất bại'));
 		} finally {
@@ -208,7 +217,7 @@ export function CertificateModal({
 						disabled={!canExport || !!busy}
 					>
 						{busy === 'export' ? <span className={styles.spinner} /> : <DownloadSvg />}
-						{busy === 'export' ? 'Đang tạo giấy…' : exportLabel}
+						{busy === 'export' ? (signNow ? 'Đang tạo và ký giấy…' : 'Đang tạo giấy…') : exportLabel}
 					</button>
 				</>
 			}
@@ -450,6 +459,24 @@ export function CertificateModal({
 									disabled={busy === 'export'}
 								/>
 								<p className={css.hint}>Cột "Sửa đổi" ghi "Tên: …" sẽ in theo tên đã sửa.</p>
+							</div>
+						)}
+
+						{canSign && (
+							<div className={css.upload}>
+								<SignToggle
+									feature='seminar_certificate'
+									source='certificate'
+									checked={sign}
+									onChange={setSign}
+									disabled={busy === 'export'}
+								/>
+								{sign && (
+									<p className={css.hint}>
+										Mỗi giấy được ký riêng qua VIN-HSM (chữ ký ẩn, xem ở bảng chữ ký của trình đọc PDF) —
+										danh sách dài sẽ mất vài phút.
+									</p>
+								)}
 							</div>
 						)}
 					</>
