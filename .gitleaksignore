@@ -7,3 +7,14 @@
 cb8e8ff062c56d17bda8449b1fa80188827e39c9:backend/test/security/practiceBookOwner.test.js:generic-api-key:5
 # Khóa API giả trong test reCAPTCHA Google Cloud ('AIzaSy-test-api-key-…'), không phải khóa thật; đã đổi sang 'k'.repeat(24)
 65f2f9461629578c8ce64fd5bc4118147686ec1c:backend/test/auth/recaptcha.test.js:generic-api-key:237
+# Khoá giả trong test webhook ngân hàng học phí ('khoa-bi-mat-thu-nghiem-…', 'khoa-khac-…'), không phải secret thật
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/security/tuitionBankWebhook.test.js:generic-api-key:27
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/security/tuitionBankWebhook.test.js:generic-api-key:74
+# Khoá / secret giả trong test ký số VIN-HSM ('APIKEY123456', 'KEY-1234567890', base64 của 'secret-test'), không phải secret thật
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:34
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:71
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:195
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:200
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:209
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/signingService.test.js:generic-api-key:235
+dc961a62b12ea9054e39884e40ecd9765cf6d0b5:backend/test/signing/vinHsmClient.test.js:generic-api-key:10

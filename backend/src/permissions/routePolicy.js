@@ -178,6 +178,8 @@ module.exports = {
 		[`PUT ${API}/notifications/read-all`]: 'Thông báo của chính mình',
 		[`PUT ${API}/notifications/:id/read`]: 'Thông báo của chính mình',
 		[`GET ${API}/my-tasks/`]: 'Việc cần làm của chính mình',
+		[`GET ${API}/me/holidays`]:
+			'Ngày nghỉ lễ đang áp dụng để tô lịch — chỉ ngày + tên lễ, không trả cấu hình gốc',
 		[`GET ${API}/me/training`]:
 			'Khóa học mình học/dạy + lịch học của chính mình (lọc theo user_id / staff_user_id)',
 		[`GET ${API}/me/training/schedule`]:

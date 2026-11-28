@@ -54,7 +54,11 @@ router.post(
 		return success(res, {
 			days: holidayCalendar(current)
 				.list(req.body.year)
-				.map((d) => (d.source === 'manual' && syncedName.has(d.date) ? { ...d, name: syncedName.get(d.date) } : d)),
+				.map((d) =>
+					d.source === 'manual' && syncedName.has(d.date)
+						? { ...d, name: syncedName.get(d.date) }
+						: d,
+				),
 			// Bản đồng bộ lịch ngoài gần nhất + khác biệt so với giá trị đang nhập (của năm đang xem)
 			sync: synced && {
 				source: synced.source,

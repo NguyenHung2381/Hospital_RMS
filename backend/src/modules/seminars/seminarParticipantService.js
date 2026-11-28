@@ -474,7 +474,11 @@ const remove = async (seminarId, pid, actorId, { canCme = false } = {}) => {
 // Loại hội nghị không nhận QR (utils/attendanceMethods) ⇒ không phát mã
 const generateCheckInQrToken = async (seminarId) => {
 	await attendanceMethods.assertSeminar(seminarId, 'qr');
-	return signToken('seminar-qr', { seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE }, CHECKIN_QR_TTL);
+	return signToken(
+		'seminar-qr',
+		{ seminar_id: seminarId, purpose: CHECKIN_QR_PURPOSE },
+		CHECKIN_QR_TTL,
+	);
 };
 
 const checkInSelf = async (token, deviceId, actor) => {

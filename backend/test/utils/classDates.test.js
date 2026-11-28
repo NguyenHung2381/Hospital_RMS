@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { suggestClassDates, parseHolidays, holidayCalendar, validateSetting } = require('../../src/utils/classDates');
+const {
+	suggestClassDates,
+	parseHolidays,
+	holidayCalendar,
+	validateSetting,
+} = require('../../src/utils/classDates');
 
 // 2026-10-22 là thứ Năm
 test('bắt đầu = thứ Hai đầu tiên sau 7 ngày chuẩn bị', () => {
@@ -79,6 +84,9 @@ test('ngày nhập tay có "-" bỏ được ngày tự tính', () => {
 
 test('validateSetting báo mục không hiểu, khóa khác bỏ qua', () => {
 	assert.equal(validateSetting('TRAINING_HOLIDAYS', '01/01, -03/09/2026'), null);
-	assert.match(validateSetting('TRAINING_HOLIDAYS', '01/01, 32/13') ?? '', /Không hiểu ngày: 32\/13/);
+	assert.match(
+		validateSetting('TRAINING_HOLIDAYS', '01/01, 32/13') ?? '',
+		/Không hiểu ngày: 32\/13/,
+	);
 	assert.equal(validateSetting('CME_MIN_HOURS', 'x'), null);
 });

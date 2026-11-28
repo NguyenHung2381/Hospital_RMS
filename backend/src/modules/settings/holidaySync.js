@@ -44,7 +44,8 @@ const parseIcs = (text) => {
 	const byDate = new Map();
 	for (const block of unfolded.split('BEGIN:VEVENT').slice(1)) {
 		const body = block.split('END:VEVENT')[0];
-		const prop = (name) => body.match(new RegExp(`^${name}(?:;[^:\\r\\n]*)?:(.*)$`, 'm'))?.[1]?.trim();
+		const prop = (name) =>
+			body.match(new RegExp(`^${name}(?:;[^:\\r\\n]*)?:(.*)$`, 'm'))?.[1]?.trim();
 		const start = prop('DTSTART');
 		if (!start || !/^\d{8}$/.test(start)) continue; // chỉ nhận sự kiện cả ngày (VALUE=DATE)
 		const desc = unescapeText(prop('DESCRIPTION') ?? '').split('\n')[0];
@@ -53,7 +54,10 @@ const parseIcs = (text) => {
 		const end = prop('DTEND');
 		const from = new Date(`${ymd(start)}T00:00:00Z`);
 		// DTEND của sự kiện cả ngày là ngày SAU ngày cuối; thiếu thì coi như 1 ngày. Chặn tối đa 14 ngày.
-		const to = end && /^\d{8}$/.test(end) ? new Date(`${ymd(end)}T00:00:00Z`) : new Date(from.getTime() + 86400000);
+		const to =
+			end && /^\d{8}$/.test(end)
+				? new Date(`${ymd(end)}T00:00:00Z`)
+				: new Date(from.getTime() + 86400000);
 		for (let d = from, n = 0; d < to && n < 14; d = new Date(d.getTime() + 86400000), n++) {
 			const s = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 			byDate.set(s, byDate.has(s) ? `${byDate.get(s)}; ${name}` : name);
@@ -102,7 +106,10 @@ const sync = async () => {
 		if (!days.length) throw new Error('Lịch không có ngày nghỉ nào');
 		data = { source, fetched_at: new Date().toISOString(), days };
 	} catch (err) {
-		const msg = err?.name === 'TimeoutError' ? 'Quá thời gian chờ máy chủ lịch (máy chủ có ra được Internet?)' : err?.message || 'Lỗi không rõ';
+		const msg =
+			err?.name === 'TimeoutError'
+				? 'Quá thời gian chờ máy chủ lịch (máy chủ có ra được Internet?)'
+				: err?.message || 'Lỗi không rõ';
 		data = {
 			source,
 			fetched_at: prev?.source === source ? prev.fetched_at : null,
@@ -133,7 +140,11 @@ const suggestionsFor = (synced, current, years, today = todayKeyVN()) => {
 	for (const year of years) {
 		if (!covered.has(year)) continue;
 		const names = new Map(cal.list(year).map((x) => [x.date, x.name]));
-		for (let d = new Date(Date.UTC(year, 0, 1)); d.getUTCFullYear() === year; d = new Date(d.getTime() + 86400000)) {
+		for (
+			let d = new Date(Date.UTC(year, 0, 1));
+			d.getUTCFullYear() === year;
+			d = new Date(d.getTime() + 86400000)
+		) {
 			const dow = d.getUTCDay();
 			const s = d.toISOString().slice(0, 10);
 			if (dow === 0 || dow === 6 || s < today) continue;
@@ -199,9 +210,14 @@ const runJob = async () => {
 	const year = +todayKeyVN().slice(0, 4);
 	const sug = suggestionsFor(data, await currentSettings(), [year, year + 1]);
 	if (!sug.length) return;
-	const sig = crypto.createHash('sha1').update(sug.map((s) => `${s.action}${s.date}`).join(',')).digest('hex');
+	const sig = crypto
+		.createHash('sha1')
+		.update(sug.map((s) => `${s.action}${s.date}`).join(','))
+		.digest('hex');
 	if (!(await dedupe.markOnce('holiday_sync', sig))) return;
-	const lines = sug.slice(0, 8).map((s) => `${s.action === 'add' ? 'Thêm' : 'Bỏ'} ${fmt(s.date)} — ${s.name}`);
+	const lines = sug
+		.slice(0, 8)
+		.map((s) => `${s.action === 'add' ? 'Thêm' : 'Bỏ'} ${fmt(s.date)} — ${s.name}`);
 	await notificationService.push(
 		'holiday_sync',
 		`Lịch nghỉ lễ có ${sug.length} điểm khác cần xem lại`,
@@ -218,7 +234,9 @@ const validateSetting = (key, value) => {
 	if (key !== 'TRAINING_HOLIDAYS_ICS_URL' || value === null || value === '') return null;
 	if (value.length > 500) return 'Địa chỉ quá dài';
 	try {
-		return new URL(value.trim()).protocol === 'https:' ? null : 'Địa chỉ lịch phải bắt đầu bằng https://';
+		return new URL(value.trim()).protocol === 'https:'
+			? null
+			: 'Địa chỉ lịch phải bắt đầu bằng https://';
 	} catch {
 		return 'Địa chỉ không hợp lệ';
 	}

@@ -24,7 +24,11 @@ const log = install(async (text, inputs) => {
 		return S.deviceNames.filter((x) => want.includes(x.pin));
 	}
 	if (/INSERT INTO seminar_participants/.test(text)) {
-		S.participants.push({ id: inputs.id, user_id: inputs.user_id, staff_number: inputs.staff_number });
+		S.participants.push({
+			id: inputs.id,
+			user_id: inputs.user_id,
+			staff_number: inputs.staff_number,
+		});
 		return [{ id: inputs.id }]; // rowsAffected = 1
 	}
 	if (/UPDATE seminar_participants/.test(text)) return [{ id: inputs.pid }];
@@ -56,17 +60,47 @@ const reset = (over = {}) => {
 		},
 		devices: [{ id: 1, name: 'Máy hội trường', serial_no: 'SN1', purpose: 'seminar' }],
 		groups: [
-			{ pin: '123', first_at: at('2027-03-10T07:50'), last_at: at('2027-03-10T11:20'), punches: 2, ids: [1, 5], first_serial: 'SN1' },
+			{
+				pin: '123',
+				first_at: at('2027-03-10T07:50'),
+				last_at: at('2027-03-10T11:20'),
+				punches: 2,
+				ids: [1, 5],
+				first_serial: 'SN1',
+			},
 			// Driver có thể trả jsonb_agg dạng chuỗi JSON
-			{ pin: '456', first_at: at('2027-03-10T08:10'), last_at: at('2027-03-10T08:10'), punches: 1, ids: '[2]', first_serial: 'SN1' },
-			{ pin: '00000042', first_at: at('2027-03-10T08:12'), last_at: at('2027-03-10T08:12'), punches: 1, ids: [3], first_serial: 'SN1' },
-			{ pin: '789', first_at: at('2027-03-10T08:15'), last_at: at('2027-03-10T08:15'), punches: 1, ids: [4], first_serial: 'SN1' },
+			{
+				pin: '456',
+				first_at: at('2027-03-10T08:10'),
+				last_at: at('2027-03-10T08:10'),
+				punches: 1,
+				ids: '[2]',
+				first_serial: 'SN1',
+			},
+			{
+				pin: '00000042',
+				first_at: at('2027-03-10T08:12'),
+				last_at: at('2027-03-10T08:12'),
+				punches: 1,
+				ids: [3],
+				first_serial: 'SN1',
+			},
+			{
+				pin: '789',
+				first_at: at('2027-03-10T08:15'),
+				last_at: at('2027-03-10T08:15'),
+				punches: 1,
+				ids: [4],
+				first_serial: 'SN1',
+			},
 		],
 		staff: [
 			{ id: 'NV1', full_name: 'Nguyễn A', staff_number: 123, department_name: 'Khoa Nội' },
 			{ id: 'NV2', full_name: 'Trần B', staff_number: 456, department_name: 'Khoa Ngoại' },
 		],
-		participants: [{ id: 'P2', user_id: 'NV2', staff_number: 456, full_name: 'Trần B', checked_in_at: null }],
+		participants: [
+			{ id: 'P2', user_id: 'NV2', staff_number: 456, full_name: 'Trần B', checked_in_at: null },
+		],
 		settings: {},
 		deviceNames: [{ pin: '789', name: 'Nguyen Van Khach' }],
 		...over,
@@ -121,7 +155,12 @@ test('xác nhận: thêm người mới (nội viện, tín chỉ mặc định)
 	const ins = log.filter((l) => /INSERT INTO seminar_participants/.test(l.text));
 	assert.equal(ins.length, 1);
 	assert.deepEqual(
-		[ins[0].inputs.user_id, ins[0].inputs.staff_number, ins[0].inputs.source, ins[0].inputs.participation_type],
+		[
+			ins[0].inputs.user_id,
+			ins[0].inputs.staff_number,
+			ins[0].inputs.source,
+			ins[0].inputs.participation_type,
+		],
 		['NV1', 123, 'internal', 'attendee'],
 	);
 	assert.equal(Number(ins[0].inputs.cme_credits), 4);
@@ -161,9 +200,14 @@ test('khoảng giờ: hội nghị chưa có ngày phải chọn; sai thứ tự
 		['2027-01-01T00:00', '2027-03-10T00:00'],
 		['hôm nay', '2027-03-10T09:00'],
 	])
-		await assert.rejects(svc.importFromDevice({ seminar_id: 'HT1', dry_run: true, from, to }, 'U1'), {
-			statusCode: 400,
-		});
+		await assert.rejects(
+			svc.importFromDevice({ seminar_id: 'HT1', dry_run: true, from, to }, 'U1'),
+			{
+				statusCode: 400,
+			},
+		);
 	reset({ seminar: null });
-	await assert.rejects(svc.importFromDevice({ seminar_id: 'X', dry_run: true }, 'U1'), { statusCode: 404 });
+	await assert.rejects(svc.importFromDevice({ seminar_id: 'X', dry_run: true }, 'U1'), {
+		statusCode: 404,
+	});
 });

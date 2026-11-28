@@ -67,7 +67,12 @@ test('checkMany báo lỗi đủ mọi ô sai, không dừng ở ô đầu tiên
 		SMTP_FROM_NAME: 'Bệnh viện', // hợp lệ
 		TRAINING_HOLIDAYS: null, // bỏ ghi đè — hợp lệ
 	});
-	assert.deepEqual(Object.keys(errors).sort(), ['KHONG_CO_KHOA_NAY', 'MAIL_ENABLED', 'SMTP_PORT', 'UPLOAD_MAX_MB']);
+	assert.deepEqual(Object.keys(errors).sort(), [
+		'KHONG_CO_KHOA_NAY',
+		'MAIL_ENABLED',
+		'SMTP_PORT',
+		'UPLOAD_MAX_MB',
+	]);
 	assert.match(errors.MAIL_ENABLED, /true\/false/);
 	assert.deepEqual(values, { SMTP_FROM_NAME: 'Bệnh viện', TRAINING_HOLIDAYS: null });
 });
@@ -79,7 +84,12 @@ test('checkMany chuẩn hoá trước khi kiểm (cắt khoảng trắng khóa r
 });
 
 test('công tắc phân hệ / email theo chức năng chỉ nhận true/false', () => {
-	for (const key of ['MODULE_RESEARCH', 'MODULE_ATTENDANCE', 'MAIL_EVENT_SIGN_REQUEST', 'REQUIRE_2FA_FOR_ADMINS']) {
+	for (const key of [
+		'MODULE_RESEARCH',
+		'MODULE_ATTENDANCE',
+		'MAIL_EVENT_SIGN_REQUEST',
+		'REQUIRE_2FA_FOR_ADMINS',
+	]) {
 		assert.equal(rules.validate(key, 'false'), null);
 		assert.equal(rules.validate(key, ''), null);
 		assert.match(rules.validate(key, '0') ?? '', /true\/false/);
@@ -88,7 +98,10 @@ test('công tắc phân hệ / email theo chức năng chỉ nhận true/false',
 
 test('updateMany ghi mọi khóa trong một transaction', async () => {
 	seed({ SMTP_FROM_NAME: 'Cũ' });
-	const n = await svc.updateMany({ SMTP_FROM_NAME: 'Mới', CME_MIN_HOURS: '100', TRAINING_HOLIDAYS: '' }, 'admin');
+	const n = await svc.updateMany(
+		{ SMTP_FROM_NAME: 'Mới', CME_MIN_HOURS: '100', TRAINING_HOLIDAYS: '' },
+		'admin',
+	);
 	assert.equal(n, 3);
 	assert.equal(calls.tx, 1);
 	assert.equal(calls.autocommitWrites, 0);
@@ -101,7 +114,9 @@ test('updateMany ghi mọi khóa trong một transaction', async () => {
 test('lỗi ở khóa giữa lô ⇒ không khóa nào được lưu', async () => {
 	seed({ SMTP_FROM_NAME: 'Cũ', CME_MIN_HOURS: '120' });
 	failOnKey = 'CME_MIN_HOURS';
-	await assert.rejects(svc.updateMany({ SMTP_FROM_NAME: 'Mới', CME_MIN_HOURS: '100', CME_CYCLE_YEARS: '3' }, 'admin'));
+	await assert.rejects(
+		svc.updateMany({ SMTP_FROM_NAME: 'Mới', CME_MIN_HOURS: '100', CME_CYCLE_YEARS: '3' }, 'admin'),
+	);
 	assert.equal(committed.get('SMTP_FROM_NAME'), 'Cũ');
 	assert.equal(committed.get('CME_MIN_HOURS'), '120');
 	assert.equal(committed.has('CME_CYCLE_YEARS'), false);

@@ -274,7 +274,8 @@ const suggestDates = async (courseId, programId) => {
 		totalHours: p.total_hours,
 		holidays: await systemSettingService.getValue('TRAINING_HOLIDAYS', ''),
 		// Mặc định BẬT tự tính ngày lễ theo luật (Tết, Giỗ Tổ theo âm lịch…) — utils/vnHolidays.js
-		autoHolidays: (await systemSettingService.getValue('TRAINING_HOLIDAYS_AUTO', 'true')) !== 'false',
+		autoHolidays:
+			(await systemSettingService.getValue('TRAINING_HOLIDAYS_AUTO', 'true')) !== 'false',
 	});
 };
 

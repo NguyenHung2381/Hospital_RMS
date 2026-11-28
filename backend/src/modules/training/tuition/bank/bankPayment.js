@@ -55,7 +55,9 @@ const applyBankPayment = async (tx, { enrollmentId, amount, paidDate, ref, note,
 			.request()
 			.input('id', sql.VarChar(20), paymentId)
 			.input('ref', sql.NVarChar(100), clip(ref, 100))
-			.query('UPDATE tuition_payments SET transfer_ref = COALESCE(transfer_ref, @ref) WHERE id = @id');
+			.query(
+				'UPDATE tuition_payments SET transfer_ref = COALESCE(transfer_ref, @ref) WHERE id = @id',
+			);
 	} else {
 		paymentId = await genTuitionPaymentId(tx);
 		await tx

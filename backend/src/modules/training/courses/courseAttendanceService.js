@@ -208,7 +208,8 @@ const checkInSelf = async (token, deviceId, actor) => {
 	}
 	// Phương thức QR bị tắt (toàn hệ thống / loại hình) — mã đã phát trước khi tắt cũng không nhận
 	const methods = await attendanceMethods.forSession(decoded.session_id);
-	if (methods) attendanceMethods.assertTraining(methods, 'qr', await attendanceMethods.systemTraining());
+	if (methods)
+		attendanceMethods.assertTraining(methods, 'qr', await attendanceMethods.systemTraining());
 	// Học viên học nhiều lớp trong khóa: buổi chung (không gắn bài) khớp nhiều lượt
 	// ghi danh ⇒ quét 1 lần ghi đủ các lượt đó.
 	const enrollRes = await pool

@@ -37,8 +37,10 @@ const fromLocal = (s) => {
 const toLocal = (d) => new Date(d.getTime() + 7 * 3600 * 1000).toISOString().slice(0, 16);
 // Date → chuỗi giờ UTC cho cột timestamp (không múi giờ) lưu giờ UTC
 const utcText = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
-const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d).slice(0, 10) : null);
-const hhmm = (s) => (/^\d{1,2}:\d{2}/.test(String(s || '')) ? String(s).slice(0, 5).padStart(5, '0') : null);
+const dateKey = (d) =>
+	d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d).slice(0, 10) : null;
+const hhmm = (s) =>
+	/^\d{1,2}:\d{2}/.test(String(s || '')) ? String(s).slice(0, 5).padStart(5, '0') : null;
 
 /**
  * Khoảng giờ mặc định của hội nghị (hàm thuần): từ giờ bắt đầu − sớm (không ghi giờ: 00:00) ngày
@@ -133,7 +135,7 @@ const parseIds = (v) => {
 /**
  * Ghép nhóm lượt chấm với cán bộ / người đã có (hàm thuần — test riêng).
  * @returns {{ pin, first_at, last_at, punches, ids, first_serial, status: 'new'|'existing'|'unmatched',
- *   reason?: string, user: object|null, participant: object|null }[]}
+ *   reason?: string, user: any, participant: any, device_name?: string|null }[]}
  */
 const classify = (groups, staffBySn, participants) => {
 	const byUser = new Map(participants.filter((p) => p.user_id).map((p) => [p.user_id, p]));
@@ -192,9 +194,12 @@ const resolveWindow = (seminar, earlyMin, input) => {
 	if (input.from && !from) throw httpError(400, 'Thời gian bắt đầu không hợp lệ.');
 	if (input.to && !to) throw httpError(400, 'Thời gian kết thúc không hợp lệ.');
 	if (!from || !to)
-		throw httpError(400, 'Hội nghị chưa có ngày diễn ra — hãy chọn khoảng thời gian lấy lượt chấm.');
+		throw httpError(
+			400,
+			'Hội nghị chưa có ngày diễn ra — hãy chọn khoảng thời gian lấy lượt chấm.',
+		);
 	if (to <= from) throw httpError(400, 'Thời gian kết thúc phải sau thời gian bắt đầu.');
-	if (to - from > MAX_WINDOW_DAYS * 86400000)
+	if (Number(to) - Number(from) > MAX_WINDOW_DAYS * 86400000)
 		throw httpError(400, `Khoảng thời gian tối đa ${MAX_WINDOW_DAYS} ngày.`);
 	return { from, to };
 };
@@ -212,19 +217,33 @@ const importFromDevice = async (input, actorId) => {
 	const methods = await attendanceMethods.forSeminarType(seminar.event_type);
 
 	const devices = await loadDevices(pool);
-	const wanted = Array.isArray(input.device_ids) && input.device_ids.length ? new Set(input.device_ids.map(Number)) : null;
+	const wanted =
+		Array.isArray(input.device_ids) && input.device_ids.length
+			? new Set(input.device_ids.map(Number))
+			: null;
 	const deviceIds = devices.map((d) => d.id).filter((id) => !wanted || wanted.has(id));
 
-	const groups = deviceIds.length ? await loadPunchGroups(pool, deviceIds, window.from, window.to) : [];
+	const groups = deviceIds.length
+		? await loadPunchGroups(pool, deviceIds, window.from, window.to)
+		: [];
 	const sns = [...new Set(groups.map((g) => staffNumberFromPin(g.pin)).filter((n) => n != null))];
-	const rows = classify(groups, await loadStaff(pool, sns), await loadParticipants(pool, seminar.id));
+	const rows = classify(
+		groups,
+		await loadStaff(pool, sns),
+		await loadParticipants(pool, seminar.id),
+	);
 	// Tên khai trên máy — giúp nhận ra mã không khớp (devicePeopleService)
-	const deviceNames = await devicePeople.namesFor(deviceIds, rows.map((r) => r.pin));
+	const deviceNames = await devicePeople.namesFor(
+		deviceIds,
+		rows.map((r) => r.pin),
+	);
 	for (const r of rows) r.device_name = deviceNames.get(r.pin) ?? null;
 
 	const warnings = [];
 	if (!devices.length)
-		warnings.push('Chưa có máy chấm công nào dùng cho hội nghị (trang Máy chấm công → mục đích "Hội nghị").');
+		warnings.push(
+			'Chưa có máy chấm công nào dùng cho hội nghị (trang Máy chấm công → mục đích "Hội nghị").',
+		);
 	if (!methods.device)
 		warnings.push(
 			'Phương thức "Máy chấm công vân tay" đang tắt cho loại hội nghị này (Cấu hình hệ thống → Điểm danh) — chỉ xem được, không nhập được.',

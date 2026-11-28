@@ -332,8 +332,7 @@ const pushTrainees = async (traineeIds, actorId) => {
 				`SELECT COUNT(*) AS n FROM attendance_devices d WHERE d.status = 'active' AND ${trainingDeviceSql('d')}`,
 			)
 	).recordset[0].n;
-	if (!Number(active))
-		throw httpError(409, 'Chưa có máy chấm công học viên nào đang hoạt động');
+	if (!Number(active)) throw httpError(409, 'Chưa có máy chấm công học viên nào đang hoạt động');
 	const ids = [...new Set(traineeIds)];
 	const rows = (
 		await pool

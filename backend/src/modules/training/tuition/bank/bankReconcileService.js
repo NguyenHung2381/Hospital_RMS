@@ -31,7 +31,8 @@ const changed = () => broadcast('update', { entity: 'tuition_bank' });
 const money = (n) => `${Number(n).toLocaleString('vi-VN')} đ`;
 
 // Giờ VN dạng "YYYY-MM-DD HH:mm:ss.SSS" — cột timestamp lưu giờ VN (như LOCALTIMESTAMP)
-const vnWall = (d) => new Date(d.getTime() + VN_OFFSET_MS).toISOString().slice(0, 23).replace('T', ' ');
+const vnWall = (d) =>
+	new Date(d.getTime() + VN_OFFSET_MS).toISOString().slice(0, 23).replace('T', ' ');
 
 const TXN_SELECT = `
   SELECT b.id, b.provider, b.external_id, b.account_no, b.amount, b.content, b.txn_time,
@@ -48,14 +49,17 @@ const TXN_SELECT = `
 
 const loadTxn = async (id) =>
 	(
-		await (await getPool())
+		await (
+			await getPool()
+		)
 			.request()
 			.input('id', sql.BigInt, id)
 			.query(`${TXN_SELECT} WHERE b.id = @id`)
 	).recordset[0] ?? null;
 
 // Người xử lý hàng chờ: courses:approve phạm vi toàn viện (giao dịch chưa khớp chưa thuộc khóa nào)
-const canSeeAll = (u) => hasPermission(u, 'courses', 'approve') && courseScope(u, 'approve') !== 'assigned';
+const canSeeAll = (u) =>
+	hasPermission(u, 'courses', 'approve') && courseScope(u, 'approve') !== 'assigned';
 
 /** Đánh dấu chưa khớp (kèm lượt ghi danh gợi ý nếu dò được và còn tồn tại). */
 const markUnmatched = async (id, reason, enrollmentId) =>
@@ -108,14 +112,21 @@ const applyTo = async (txn, found, actorId) => {
 		throw err;
 	}
 	changed();
-	await bankPayment.afterBankPayment(found.row, Number(txn.amount), saved.receiptNo, saved.paymentId);
+	await bankPayment.afterBankPayment(
+		found.row,
+		Number(txn.amount),
+		saved.receiptNo,
+		saved.paymentId,
+	);
 	return { ok: true };
 };
 
 /** Dò + quyết định cho giao dịch vừa ghi (đường tự động). */
 const autoProcess = async (txn, cfg) => {
 	if (cfg.accountNo && txn.account_no && txn.account_no !== cfg.accountNo) {
-		await (await getPool())
+		await (
+			await getPool()
+		)
 			.request()
 			.input('id', sql.BigInt, txn.id)
 			.query(
@@ -136,7 +147,7 @@ const autoProcess = async (txn, cfg) => {
 		try {
 			const r = await applyTo(txn, found, null);
 			if (r.ok) return 'matched';
-			await markUnmatched(txn.id, r.reason, found.row.enrollment_id);
+			await markUnmatched(txn.id, 'reason' in r ? r.reason : 'error', found.row.enrollment_id);
 		} catch (err) {
 			logger.error(`[tuition-bank] ghi nhận giao dịch ${txn.id} lỗi: ${err.message}`);
 			await markUnmatched(txn.id, 'error', found.row.enrollment_id);
@@ -155,7 +166,15 @@ const autoProcess = async (txn, cfg) => {
 const ingest = async (provider, raws) => {
 	const cfg = await getConfig();
 	const pool = await getPool();
-	const result = { received: 0, duplicate: 0, skipped: 0, matched: 0, unmatched: 0, ignored: 0, invalid: 0 };
+	const result = {
+		received: 0,
+		duplicate: 0,
+		skipped: 0,
+		matched: 0,
+		unmatched: 0,
+		ignored: 0,
+		invalid: 0,
+	};
 	for (const raw of raws) {
 		const { txn, error } = normalizeTxn(raw);
 		if (error) {
@@ -175,8 +194,7 @@ const ingest = async (provider, raws) => {
 			.input('amount', sql.Decimal(18, 0), txn.amount)
 			.input('content', sql.NVarChar(500), txn.content)
 			.input('time', sql.VarChar(30), txn.time ? vnWall(txn.time) : null)
-			.input('raw', sql.NVarChar(sql.MAX), JSON.stringify(raw.raw ?? raw).slice(0, 20000))
-			.query(`
+			.input('raw', sql.NVarChar(sql.MAX), JSON.stringify(raw.raw ?? raw).slice(0, 20000)).query(`
         INSERT INTO tuition_bank_transactions (provider, external_id, account_no, amount, content, txn_time, raw)
         VALUES (@provider, @ext, @acc, @amount, @content, CAST(@time AS timestamp), CAST(@raw AS jsonb))
         ON CONFLICT (provider, external_id) DO NOTHING
@@ -218,24 +236,31 @@ const list = async ({ status, q, limit, offset } = {}) => {
 		where.push('b.status = @status');
 		req.input('status', sql.VarChar(10), status);
 	}
-	const text = String(q ?? '').trim().slice(0, 100);
+	const text = String(q ?? '')
+		.trim()
+		.slice(0, 100);
 	if (text) {
 		where.push(
-			"(b.content ILIKE @q OR b.external_id ILIKE @q OR b.enrollment_id ILIKE @q OR t.full_name ILIKE @q)",
+			'(b.content ILIKE @q OR b.external_id ILIKE @q OR b.enrollment_id ILIKE @q OR t.full_name ILIKE @q)',
 		);
 		req.input('q', sql.NVarChar(120), `%${text.replace(/[\\%_]/g, '\\$&')}%`);
 	}
 	const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
-	const rows = (await req.query(`${TXN_SELECT} ${w} ORDER BY b.received_at DESC, b.id DESC LIMIT @lim OFFSET @off`))
-		.recordset;
-	const counts = (
-		await pool.request().query(
-			'SELECT status, COUNT(*) AS n FROM tuition_bank_transactions GROUP BY status',
+	const rows = (
+		await req.query(
+			`${TXN_SELECT} ${w} ORDER BY b.received_at DESC, b.id DESC LIMIT @lim OFFSET @off`,
 		)
+	).recordset;
+	const counts = (
+		await pool
+			.request()
+			.query('SELECT status, COUNT(*) AS n FROM tuition_bank_transactions GROUP BY status')
 	).recordset;
 	return {
 		items: rows,
-		counts: Object.fromEntries(STATUSES.map((s) => [s, Number(counts.find((c) => c.status === s)?.n ?? 0)])),
+		counts: Object.fromEntries(
+			STATUSES.map((s) => [s, Number(counts.find((c) => c.status === s)?.n ?? 0)]),
+		),
 		limit: lim,
 		offset: off,
 	};
@@ -251,7 +276,9 @@ const pendingTxn = async (id) => {
 /** Cán bộ gán giao dịch đang chờ cho 1 lượt ghi danh ⇒ ghi nhận + cấp phiếu thu. */
 const assign = async (id, enrollmentId, actorId) => {
 	const txn = await pendingTxn(id);
-	const code = String(enrollmentId ?? '').trim().toUpperCase();
+	const code = String(enrollmentId ?? '')
+		.trim()
+		.toUpperCase();
 	if (!/^DK\d{12}$/.test(code)) throw badRequest('Mã ghi danh không hợp lệ (dạng DK + 12 số).');
 	const found = await bankPayment.findSummary(code);
 	const d = decide({
@@ -269,13 +296,18 @@ const assign = async (id, enrollmentId, actorId) => {
 				: `${REASONS[d.reason]}.`,
 		);
 	const r = await applyTo(txn, found, actorId);
-	if (!r.ok) throw conflict('Số tiền vượt số còn phải nộp (vừa có khoản khác được ghi nhận). Vui lòng tải lại.');
+	if (!r.ok)
+		throw conflict(
+			'Số tiền vượt số còn phải nộp (vừa có khoản khác được ghi nhận). Vui lòng tải lại.',
+		);
 	return loadTxn(id);
 };
 
 /** Đánh dấu không phải tiền học phí / đã xử lý ngoài hệ thống. */
 const ignore = async (id, note, actorId) => {
-	const text = String(note ?? '').trim().slice(0, 500);
+	const text = String(note ?? '')
+		.trim()
+		.slice(0, 500);
 	if (!text) throw badRequest('Ghi lý do bỏ qua (vd: không phải tiền học phí, đã hoàn tiền).');
 	await pendingTxn(id);
 	const r = await withActorTransaction(actorId, (tx) =>

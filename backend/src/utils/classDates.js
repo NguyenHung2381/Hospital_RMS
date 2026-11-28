@@ -41,7 +41,8 @@ const parseHolidays = (text) => {
 		let d;
 		if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) [y, mo, d] = [+m[1], +m[2], +m[3]];
 		else if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) [y, mo, d] = [+m[3], +m[2], +m[1]];
-		else if ((m = s.match(/^(\d{1,2})\/(\d{1,2})$/))) [y, mo, d] = [2024, +m[2], +m[1]]; // 2024 nhuận: nhận 29/02
+		else if ((m = s.match(/^(\d{1,2})\/(\d{1,2})$/)))
+			[y, mo, d] = [2024, +m[2], +m[1]]; // 2024 nhuận: nhận 29/02
 		else {
 			invalid.push(token);
 			continue;
@@ -92,7 +93,8 @@ const holidayCalendar = ({ text = '', auto = false } = {}) => {
 					out.set(s, { date: s, name: 'Thêm tay (hằng năm)', source: 'manual' });
 			}
 			for (const s of h.dates)
-				if (s.startsWith(`${year}-`) && !out.has(s)) out.set(s, { date: s, name: 'Thêm tay', source: 'manual' });
+				if (s.startsWith(`${year}-`) && !out.has(s))
+					out.set(s, { date: s, name: 'Thêm tay', source: 'manual' });
 			return [...out.values()]
 				.map((x) => ({ ...x, removed: removed(x.date) }))
 				.sort((a, b) => a.date.localeCompare(b.date));

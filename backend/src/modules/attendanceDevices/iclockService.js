@@ -197,7 +197,9 @@ const receive = async (sn, query, body, ip) => {
 		// Tên người dùng trên máy — chỉ để hiển thị mã không khớp; lỗi không chặn phần còn lại
 		await people()
 			.saveFromDevice(device.id, parsed.users)
-			.catch((e) => logger.warn(`[iclock] ${device.serial_no}: lưu tên người dùng lỗi: ${e.message}`));
+			.catch((e) =>
+				logger.warn(`[iclock] ${device.serial_no}: lưu tên người dùng lỗi: ${e.message}`),
+			);
 		if (parsed.fingers.length) sync().requestSync();
 		if (table === 'OPERLOG')
 			await setStamp(device.id, 'operlog_stamp', query.OpStamp ?? query.Stamp);

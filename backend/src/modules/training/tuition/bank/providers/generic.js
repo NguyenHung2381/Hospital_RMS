@@ -58,4 +58,10 @@ const parse = (body) => {
 	}));
 };
 
-module.exports = { id: 'generic', label: 'Webhook chung (chữ ký HMAC-SHA256)', verify, parse, sign };
+module.exports = {
+	id: 'generic',
+	label: 'Webhook chung (chữ ký HMAC-SHA256)',
+	verify,
+	parse,
+	sign,
+};

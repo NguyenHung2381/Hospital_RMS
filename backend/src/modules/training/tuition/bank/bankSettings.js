@@ -23,9 +23,7 @@ const validateSetting = (key, value) => {
 	if (key === 'TUITION_BANK_API_PROVIDER')
 		return !v || getProvider(v) ? null : 'Bộ kết nối ngân hàng không hợp lệ';
 	if (key === 'TUITION_BANK_API_SECRET')
-		return !v || v.length >= MIN_SECRET
-			? null
-			: `Khóa bí mật phải dài ít nhất ${MIN_SECRET} ký tự`;
+		return !v || v.length >= MIN_SECRET ? null : `Khóa bí mật phải dài ít nhất ${MIN_SECRET} ký tự`;
 	if (key === 'TUITION_BANK_API_ALLOWED_IPS') {
 		const bad = splitList(v).filter((e) => !parseCidr(e));
 		return bad.length ? `IP / dải IP không hợp lệ: ${bad.join(', ')}` : null;
@@ -49,7 +47,9 @@ const getConfig = async () => {
 		provider: String(provider ?? '').trim(),
 		secret: String(secret ?? ''),
 		autoConfirm: auto !== 'false',
-		ipRanges: splitList(String(ips ?? '')).map(parseCidr).filter(Boolean),
+		ipRanges: splitList(String(ips ?? ''))
+			.map(parseCidr)
+			.filter(Boolean),
 		accountNo: String(accountNo ?? '').replace(/\s+/g, ''),
 	};
 };

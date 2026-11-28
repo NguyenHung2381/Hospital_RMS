@@ -72,7 +72,11 @@ const toColumn = (raw) => {
 /** null = hợp lệ; ngược lại thông báo lỗi (express-validator custom ở trainingCatalog.routes) */
 const invalidList = (raw) => {
 	if (raw === null || raw === undefined) return null;
-	const items = Array.isArray(raw) ? raw : String(raw).split(',').filter((s) => s.trim());
+	const items = Array.isArray(raw)
+		? raw
+		: String(raw)
+				.split(',')
+				.filter((s) => s.trim());
 	const bad = items.map((s) => String(s).trim()).filter((s) => !TRAINING_METHODS.includes(s));
 	return bad.length ? `Phương thức điểm danh không hợp lệ: ${bad.join(', ')}` : null;
 };
@@ -81,7 +85,10 @@ const isOn = (v) => v !== 'false'; // mặc định bật — chỉ đúng chu�
 
 const readSwitches = async (keys) => {
 	const entries = await Promise.all(
-		Object.entries(keys).map(async ([m, key]) => [m, isOn(await systemSettingService.getValue(key))]),
+		Object.entries(keys).map(async ([m, key]) => [
+			m,
+			isOn(await systemSettingService.getValue(key)),
+		]),
 	);
 	return Object.fromEntries(entries);
 };
@@ -101,14 +108,18 @@ const parseByType = (raw) => {
 
 /** Kết hợp 2 tầng → { [method]: boolean } */
 const combine = (system, typeList, methods) =>
-	Object.fromEntries(methods.map((m) => [m, !!system[m] && (typeList === null || typeList.includes(m))]));
+	Object.fromEntries(
+		methods.map((m) => [m, !!system[m] && (typeList === null || typeList.includes(m))]),
+	);
 
 /**
  * Phương thức của 1 khóa học từ giá trị cột loại hình (đã đọc sẵn) — hàm thuần khi có `system`.
  * @returns {{ qr: boolean, app: boolean, device: boolean, manual: true }}
  */
 const forTypeValue = (system, typeValue) => ({
-	...combine(system, parseList(typeValue), TRAINING_METHODS),
+	.../** @type {{ qr: boolean, app: boolean, device: boolean }} */ (
+		combine(system, parseList(typeValue), TRAINING_METHODS)
+	),
 	manual: true,
 });
 
@@ -148,23 +159,39 @@ const assertTraining = (methods, method, system) => {
 	const label = TRAINING_LABEL[method];
 	if (system && !system[method])
 		throw httpError(409, `Điểm danh bằng ${label} đang tắt trên toàn hệ thống.`);
-	throw httpError(409, `Khóa học này không điểm danh bằng ${label} (cấu hình ở loại hình đào tạo).`);
+	throw httpError(
+		409,
+		`Khóa học này không điểm danh bằng ${label} (cấu hình ở loại hình đào tạo).`,
+	);
 };
 
-/** Phương thức điểm danh của hội nghị theo loại (event_type) → { qr, ticket, device, manual: true } */
+/**
+ * Phương thức điểm danh của hội nghị theo loại (event_type) → { qr, ticket, device, manual: true }
+ * @returns {Promise<{ qr: boolean, ticket: boolean, device: boolean, manual: true, system: any }>}
+ */
 const forSeminarType = async (eventType) => {
 	const [system, byTypeRaw] = await Promise.all([
 		readSwitches(SEMINAR_KEYS),
 		systemSettingService.getValue(SEMINAR_BY_TYPE_KEY),
 	]);
 	const byType = parseByType(byTypeRaw);
-	const list = Object.hasOwn(byType, eventType) ? parseList(byType[eventType], SEMINAR_METHODS) : null;
-	return { ...combine(system, list ?? null, SEMINAR_METHODS), manual: true, system };
+	const list = Object.hasOwn(byType, eventType)
+		? parseList(byType[eventType], SEMINAR_METHODS)
+		: null;
+	return {
+		.../** @type {{ qr: boolean, ticket: boolean, device: boolean }} */ (
+			combine(system, list ?? null, SEMINAR_METHODS)
+		),
+		manual: true,
+		system,
+	};
 };
 
 const forSeminar = async (seminarId) => {
 	const row = (
-		await (await getPool())
+		await (
+			await getPool()
+		)
 			.request()
 			.input('id', sql.VarChar(20), seminarId)
 			.query('SELECT event_type FROM seminars WHERE id = @id')

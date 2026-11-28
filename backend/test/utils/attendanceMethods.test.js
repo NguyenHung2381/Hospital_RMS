@@ -86,7 +86,11 @@ test('validateSetting SEMINAR_CHECKIN_BY_TYPE: JSON object { loại: [qr|ticket|
 	assert.equal(v('{"conference":["device"]}'), null);
 	assert.match(v('{"conference":["fingerprint"]}'), /qr\/ticket\/device/);
 	assert.match(v('{"Hội nghị":["qr"]}'), /Loại hội nghị/);
-	assert.equal(m.validateSetting('ATTENDANCE_METHOD_QR', 'xyz'), null, 'khóa khác không thuộc module');
+	assert.equal(
+		m.validateSetting('ATTENDANCE_METHOD_QR', 'xyz'),
+		null,
+		'khóa khác không thuộc module',
+	);
 });
 
 test('courseAllowsSql: NULL ⇒ cho phép, chặn phương thức lạ', () => {

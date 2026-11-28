@@ -76,7 +76,7 @@ const REASONS = {
  *           autoConfirm: boolean, manual?: boolean }} input
  *   row / item: lượt ghi danh + tổng hợp học phí (tuitionService) của mã duy nhất, null nếu
  *   không có. manual = cán bộ tự gán (bỏ qua kiểm mã trong nội dung và công tắc tự xác nhận).
- * @returns {{ action: 'apply' } | { action: 'unmatched', reason: keyof REASONS }}
+ * @returns {{ action: 'apply' } | { action: 'unmatched', reason: keyof typeof REASONS }}
  */
 const decide = ({ codes, row, item, amount, autoConfirm, manual = false }) => {
 	if (!manual) {

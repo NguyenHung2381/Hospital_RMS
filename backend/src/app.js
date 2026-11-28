@@ -52,10 +52,7 @@ app.use(cors({ origin: corsOrigins }));
 app.use('/iclock', require('./modules/attendanceDevices/iclock.routes'));
 // Ngân hàng báo giao dịch học phí: xác thực bằng chữ ký trên body THÔ ⇒ cũng mount TRƯỚC
 // parser json dùng chung (router tự giới hạn tốc độ, kiểm công tắc phân hệ).
-app.use(
-	'/api/v1/bank-webhooks',
-	require('./modules/training/tuition/bank/bankWebhook.routes'),
-);
+app.use('/api/v1/bank-webhooks', require('./modules/training/tuition/bank/bankWebhook.routes'));
 // Parser nhỏ cho /excel đặt TRƯỚC parser toàn cục: body-parser bỏ qua body đã parse nên
 // giới hạn 2 MB này thắng 10 MB (chặn dựng workbook cỡ lớn làm hết heap worker).
 app.use('/api/v1/excel', express.json({ limit: '2mb' }));

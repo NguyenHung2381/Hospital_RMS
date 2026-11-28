@@ -5,7 +5,9 @@ const assert = require('node:assert/strict');
 const { install } = require('../auth/fakeDb');
 
 const S = { names: [] };
-const log = install(async (text) => (text.includes('FROM attendance_device_people') ? S.names : []));
+const log = install(async (text) =>
+	text.includes('FROM attendance_device_people') ? S.names : [],
+);
 const svc = require('../../src/modules/attendanceDevices/devicePeopleService');
 
 test('cleanName: bỏ ký tự điều khiển, gộp khoảng trắng, rỗng ⇒ null, cắt 100 ký tự', () => {

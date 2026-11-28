@@ -7,8 +7,11 @@ const PIN_RE = /^[0-9A-Za-z]{1,24}$/;
 
 /** Tên gõ trên máy → chuỗi sạch (bỏ ký tự điều khiển, gộp khoảng trắng, ≤ 100 ký tự) | null */
 const cleanName = (v) => {
-	// eslint-disable-next-line no-control-regex
-	const s = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+	const s = String(v ?? '')
+		// eslint-disable-next-line no-control-regex
+		.replace(/[\u0000-\u001f\u007f]/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
 	return s ? s.slice(0, 100) : null;
 };
 

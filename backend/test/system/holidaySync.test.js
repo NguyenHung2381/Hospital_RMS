@@ -13,7 +13,8 @@ db.getPool = async () => ({
 	request: () => ({ query: async () => ({ recordset: [{ id: 'NV1' }, { id: 'NV2' }] }) }),
 });
 const pushed = [];
-require('../../src/modules/notifications/notificationService').push = async (...a) => pushed.push(a);
+require('../../src/modules/notifications/notificationService').push = async (...a) =>
+	pushed.push(a);
 const seen = new Set();
 require('../../src/jobs/dedupe').markOnce = async (job, key) =>
 	seen.has(key) ? false : (seen.add(key), true);
@@ -44,7 +45,10 @@ const ICS =
 	ev('20261124', '20261125', 'Ngày Văn hoá Việt Nam') +
 	'END:VCALENDAR\r\n';
 
-const okFetch = (body = ICS) => async () => new Response(body, { status: 200 });
+const okFetch =
+	(body = ICS) =>
+	async () =>
+		new Response(body, { status: 200 });
 
 test('đọc lịch: bỏ ngày kỷ niệm, trải sự kiện nhiều ngày, sắp theo ngày', () => {
 	const days = hs.parseIcs(ICS);
@@ -117,7 +121,10 @@ test('validateSetting: chỉ nhận địa chỉ https', () => {
 	assert.equal(hs.validateSetting('TRAINING_HOLIDAYS_ICS_URL', ''), null);
 	assert.equal(hs.validateSetting('TRAINING_HOLIDAYS_ICS_URL', 'https://lich.bv.vn/vn.ics'), null);
 	assert.match(hs.validateSetting('TRAINING_HOLIDAYS_ICS_URL', 'ftp://x') ?? '', /https/);
-	assert.match(hs.validateSetting('TRAINING_HOLIDAYS_ICS_URL', 'không phải url') ?? '', /không hợp lệ/);
+	assert.match(
+		hs.validateSetting('TRAINING_HOLIDAYS_ICS_URL', 'không phải url') ?? '',
+		/không hợp lệ/,
+	);
 	assert.equal(hs.validateSetting('SMTP_HOST', 'bất kỳ'), null);
 });
 

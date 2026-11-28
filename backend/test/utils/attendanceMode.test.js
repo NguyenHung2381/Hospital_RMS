@@ -47,13 +47,19 @@ const period = (extra) => ({
 test('courseResolver: mẫu của khóa / loại hình (đã gộp sẵn) ⇒ mẫu đó, không có ⇒ mẫu mặc định', () => {
 	const on = courseResolver([period({ attendance_mode: 'shift', shift_pattern_id: 2 })], patterns);
 	assert.equal(on('2027-01-10').pattern.id, 2);
-	const dflt = courseResolver([period({ attendance_mode: 'both', shift_pattern_id: null })], patterns);
+	const dflt = courseResolver(
+		[period({ attendance_mode: 'both', shift_pattern_id: null })],
+		patterns,
+	);
 	assert.equal(dflt('2027-01-10').pattern.id, 1);
 	assert.equal(dflt('2027-02-10'), null, 'ngoài thời gian khóa học');
 });
 
 test('courseResolver: khóa chỉ chấm theo buổi học ⇒ không có ca (vẫn biết khóa để xin phép)', () => {
-	const on = courseResolver([period({ attendance_mode: 'session', shift_pattern_id: 2 })], patterns);
+	const on = courseResolver(
+		[period({ attendance_mode: 'session', shift_pattern_id: 2 })],
+		patterns,
+	);
 	const c = on('2027-01-10');
 	assert.equal(c.course_id, 'KH1');
 	assert.equal(c.attendance_mode, 'session');

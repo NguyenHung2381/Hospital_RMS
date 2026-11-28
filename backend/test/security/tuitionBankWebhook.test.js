@@ -47,7 +47,10 @@ const BODY = JSON.stringify({
 	transactions: [{ id: 'FT1', amount: 1500000, content: 'HP DK202611050001', type: 'credit' }],
 });
 
-const post = async (path, { body = BODY, ts = Math.floor(Date.now() / 1000), secret = SECRET, sig } = {}) => {
+const post = async (
+	path,
+	{ body = BODY, ts = Math.floor(Date.now() / 1000), secret = SECRET, sig } = {},
+) => {
 	const res = await fetch(base + path, {
 		method: 'POST',
 		headers: {

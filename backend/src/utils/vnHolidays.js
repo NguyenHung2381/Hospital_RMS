@@ -42,7 +42,11 @@ const jdToDate = (jd) => {
 	const d = INT((4 * c + 3) / 1461);
 	const e = c - INT((1461 * d) / 4);
 	const m = INT((5 * e + 2) / 153);
-	return [e - INT((153 * m + 2) / 5) + 1, m + 3 - 12 * INT(m / 10), b * 100 + d - 4800 + INT(m / 10)];
+	return [
+		e - INT((153 * m + 2) / 5) + 1,
+		m + 3 - 12 * INT(m / 10),
+		b * 100 + d - 4800 + INT(m / 10),
+	];
 };
 
 const newMoon = (k) => {

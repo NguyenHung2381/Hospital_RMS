@@ -160,7 +160,9 @@ router.post(
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
 		// Kiểu chấm công riêng của khóa; rỗng / null = theo loại hình đào tạo
-		body('attendance_mode').optional({ values: 'null' }).isIn([...ATTENDANCE_MODES, '']),
+		body('attendance_mode')
+			.optional({ values: 'null' })
+			.isIn([...ATTENDANCE_MODES, '']),
 		stringList('prerequisites'),
 		stringList('objectives'),
 		body('program_ids').optional().isArray(),
@@ -181,7 +183,9 @@ router.put(
 			.withMessage('Số đợt phải là số nguyên dương'),
 		body('is_rolling').optional().isBoolean(),
 		// Kiểu chấm công riêng của khóa; rỗng / null = theo loại hình đào tạo
-		body('attendance_mode').optional({ values: 'null' }).isIn([...ATTENDANCE_MODES, '']),
+		body('attendance_mode')
+			.optional({ values: 'null' })
+			.isIn([...ATTENDANCE_MODES, '']),
 		stringList('prerequisites'),
 		stringList('objectives'),
 		body('program_ids').optional().isArray(),

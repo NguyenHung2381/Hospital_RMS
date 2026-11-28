@@ -356,7 +356,9 @@ const setInternal = async (key, value) => {
 //   mật khẩu cũ bị xóa rồi mật khẩu mới được ghi — không mất mật khẩu vừa nhập.
 // Trả số khóa đã ghi.
 const updateMany = async (values, actorId) => {
-	const entries = Object.entries(values).filter(([key, v]) => !(SECRET_KEYS.has(key) && v === MASK));
+	const entries = Object.entries(values).filter(
+		([key, v]) => !(SECRET_KEYS.has(key) && v === MASK),
+	);
 	if (!entries.length) return 0;
 	entries.sort(([a], [b]) => (a === 'SMTP_HOST' ? -1 : b === 'SMTP_HOST' ? 1 : 0));
 	await withTransaction(async (tx) => {

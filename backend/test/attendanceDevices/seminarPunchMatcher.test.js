@@ -61,9 +61,15 @@ test('pickSeminar: trong ngày, không sớm hơn giờ bắt đầu − sớm, 
 	// Nhiều ngày: ngày giữa không xét giờ
 	const multi = [seminar({ end_date: new Date('2027-03-12T00:00:00Z') })];
 	assert.ok(m.pickSeminar(multi, '2027-03-11', 5 * 60, opt));
-	assert.equal(m.pickSeminar(multi, '2027-03-12', 12 * 60, opt), null, 'ngày cuối quá giờ kết thúc');
+	assert.equal(
+		m.pickSeminar(multi, '2027-03-12', 12 * 60, opt),
+		null,
+		'ngày cuối quá giờ kết thúc',
+	);
 	// Không ghi giờ ⇒ cả ngày
-	assert.ok(m.pickSeminar([seminar({ start_time: null, end_time: null })], '2027-03-10', 23 * 60, opt));
+	assert.ok(
+		m.pickSeminar([seminar({ start_time: null, end_time: null })], '2027-03-10', 23 * 60, opt),
+	);
 });
 
 test('pickSeminar: ưu tiên người chưa điểm danh, rồi hội nghị bắt đầu gần giờ chấm nhất', () => {
@@ -91,7 +97,10 @@ test('matchSeminarPunches: ghép người tham dự, ghi giờ chấm + method d
 	assert.equal(q.inputs.tid, undefined, 'PIN 3 số không phải mã học viên');
 	const [p, ap] = writes();
 	assert.match(p.text, /checkin_method = 'device'/);
-	assert.match(p.text, /checked_in_at IS NULL OR \(checkin_method = 'device' AND checked_in_at > @at\)/);
+	assert.match(
+		p.text,
+		/checked_in_at IS NULL OR \(checkin_method = 'device' AND checked_in_at > @at\)/,
+	);
 	assert.equal(p.inputs.at, AT);
 	assert.equal(p.inputs.tag, 'zk:SN1');
 	assert.match(ap.text, /UPDATE attendance_punches SET seminar_id/);
@@ -119,7 +128,9 @@ test('matchSeminarPunches: phương thức máy chấm công tắt (hệ thống
 	reset({ settings: { SEMINAR_CHECKIN_DEVICE: 'false' } });
 	assert.equal(await m.matchSeminarPunches([punch()]), 0);
 	assert.equal(writes().length, 0);
-	reset({ settings: { SEMINAR_CHECKIN_BY_TYPE: JSON.stringify({ conference: ['qr', 'ticket'] }) } });
+	reset({
+		settings: { SEMINAR_CHECKIN_BY_TYPE: JSON.stringify({ conference: ['qr', 'ticket'] }) },
+	});
 	assert.equal(await m.matchSeminarPunches([punch()]), 0);
 	reset({ settings: { SEMINAR_CHECKIN_BY_TYPE: JSON.stringify({ training: ['qr'] }) } });
 	assert.equal(await m.matchSeminarPunches([punch()]), 1, 'loại khác bị giới hạn không ảnh hưởng');
@@ -129,6 +140,9 @@ test('matchSeminarPunches: không khớp người / giờ ⇒ không ghi gì', a
 	reset({ cands: [] });
 	assert.equal(await m.matchSeminarPunches([punch()]), 0);
 	reset();
-	assert.equal(await m.matchSeminarPunches([punch({ punched_at: new Date('2027-03-10T06:00:00Z') })]), 0);
+	assert.equal(
+		await m.matchSeminarPunches([punch({ punched_at: new Date('2027-03-10T06:00:00Z') })]),
+		0,
+	);
 	assert.equal(writes().length, 0);
 });

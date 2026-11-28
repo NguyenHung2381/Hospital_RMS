@@ -1,7 +1,11 @@
 // Tự đối soát học phí — phần tính toán thuần (training/tuition/bank/bankMatch.js)
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { extractCodes, normalizeTxn, decide } = require('../../src/modules/training/tuition/bank/bankMatch');
+const {
+	extractCodes,
+	normalizeTxn,
+	decide,
+} = require('../../src/modules/training/tuition/bank/bankMatch');
 
 const CODE = 'DK202611050001';
 
@@ -44,7 +48,10 @@ test('normalizeTxn: chuẩn hoá và từ chối giao dịch hỏng', () => {
 	assert.ok(normalizeTxn({ external_id: 'a', amount: 10.5 }).error);
 	assert.ok(normalizeTxn({ external_id: 'a', amount: -5 }).error);
 	assert.ok(normalizeTxn({ external_id: 'a', amount: 5, time: 'hôm qua' }).error);
-	assert.equal(normalizeTxn({ external_id: 'a', amount: 5, direction: 'debit' }).txn.direction, 'debit');
+	assert.equal(
+		normalizeTxn({ external_id: 'a', amount: 5, direction: 'debit' }).txn.direction,
+		'debit',
+	);
 });
 
 const row = { enrollment_id: CODE, enrollment_status: 'approved' };
@@ -71,5 +78,8 @@ test('decide: cán bộ tự gán bỏ qua kiểm mã trong nội dung và công
 	const manual = { ...base, codes: [], autoConfirm: false, manual: true };
 	assert.deepEqual(decide(manual), { action: 'apply' });
 	assert.equal(decide({ ...manual, amount: 9_000_000 }).reason, 'overpay');
-	assert.equal(decide({ ...manual, row: { ...row, enrollment_status: 'rejected' } }).reason, 'not_approved');
+	assert.equal(
+		decide({ ...manual, row: { ...row, enrollment_status: 'rejected' } }).reason,
+		'not_approved',
+	);
 });

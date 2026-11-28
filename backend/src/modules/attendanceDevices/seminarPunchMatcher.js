@@ -26,7 +26,8 @@ const hhmmToMin = (s) => {
 	const m = /^(\d{1,2}):(\d{2})/.exec(String(s || ''));
 	return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
-const dateKey = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d).slice(0, 10) : null);
+const dateKey = (d) =>
+	d instanceof Date ? d.toISOString().slice(0, 10) : d ? String(d).slice(0, 10) : null;
 
 /** PIN trên máy → mã nhân viên (số nguyên dương) | null */
 const staffNumberFromPin = (pin) => {
@@ -36,13 +37,17 @@ const staffNumberFromPin = (pin) => {
 };
 
 /**
+ * @typedef {{ seminar_id: string, participant_id: string, start_date: any, end_date: any,
+ *   start_time: string|null, end_time: string|null, checked_in_at: any }} SeminarCand
+ */
+
+/**
  * Chọn hội nghị cho 1 lượt chấm (hàm thuần — test riêng).
- * @param {{ seminar_id: string, participant_id: string, start_date: any, end_date: any,
- *   start_time: string|null, end_time: string|null, checked_in_at: any }[]} cands người tham dự
+ * @param {SeminarCand[]} cands người tham dự
  *   khớp PIN ở các hội nghị có ngày chứa `date`
  * @param {string} date 'YYYY-MM-DD' giờ VN của lượt chấm
  * @param {number} minute phút trong ngày (giờ VN)
- * @returns {object|null} ứng viên được chọn
+ * @returns {SeminarCand|null} ứng viên được chọn
  */
 const pickSeminar = (cands, date, minute, { earlyMin }) => {
 	let best = null;
@@ -82,7 +87,9 @@ const candidatesFor = async (pool, pin, date) => {
 			'p.user_id IN (SELECT u.id FROM users u WHERE u.staff_number = @sn)',
 		);
 	if (tid)
-		who.push('p.user_id IN (SELECT t.user_id FROM trainees t WHERE t.id = @tid AND t.user_id IS NOT NULL)');
+		who.push(
+			'p.user_id IN (SELECT t.user_id FROM trainees t WHERE t.id = @tid AND t.user_id IS NOT NULL)',
+		);
 	const req = pool.request().input('d', sql.Date, date);
 	if (sn) req.input('sn', sql.Int, sn);
 	if (tid) req.input('tid', sql.VarChar(20), tid);
@@ -118,7 +125,7 @@ const matchSeminarPunches = async (punches) => {
 	};
 	const touched = new Set();
 	let matched = 0;
-	for (const punch of [...todo].sort((a, b) => a.punched_at - b.punched_at)) {
+	for (const punch of [...todo].sort((a, b) => Number(a.punched_at) - Number(b.punched_at))) {
 		try {
 			const { date, minute } = vnParts(punch.punched_at);
 			const cands = [];
@@ -172,8 +179,10 @@ const loadPunches = async (pool, where, input) => {
 const matchPunchIds = async (punchIds) => {
 	if (!punchIds.length) return 0;
 	const pool = await getPool();
-	const punches = await loadPunches(pool, `p.id IN ${jsonValues('@ids', { type: 'BIGINT' })}`, (r) =>
-		r.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(punchIds)),
+	const punches = await loadPunches(
+		pool,
+		`p.id IN ${jsonValues('@ids', { type: 'BIGINT' })}`,
+		(r) => r.input('ids', sql.NVarChar(sql.MAX), JSON.stringify(punchIds)),
 	);
 	return matchSeminarPunches(punches);
 };
