@@ -7,6 +7,10 @@
 //   Lớp 2  cùng số serial gọi xen kẽ từ 2 IP (IP cũ quay lại ngay sau khi đổi) ⇒ có máy giả
 //          ⇒ tạm khoá máy + security_events. Máy chuyển chỗ (đổi IP 1 lần) không bị khoá.
 //   Lớp 3  vừa đổi IP ⇒ tạm giữ lệnh (mẫu vân tay) vài phút; giới hạn lượt gọi theo serial.
+// Trỏ Redis vào cổng không có ai nghe → bộ đếm giới hạn chạy bằng bộ nhớ (như `npm test`).
+// Chạy `node --test` trực tiếp trên máy có Redis dev thì lượt đầu đếm bộ nhớ, lượt sau đếm
+// Redis (và cộng dồn qua các lần chạy) — test giới hạn chập chờn.
+process.env.REDIS_PORT = '1';
 process.env.LOG_LEVEL = 'silent';
 process.env.JWT_SECRET = 'test-secret';
 process.env.ICLOCK_PROXY_IPS = '192.168.34.20';

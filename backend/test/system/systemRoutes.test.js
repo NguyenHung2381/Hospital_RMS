@@ -2,6 +2,10 @@
 // CSP (che URL bí mật, cắt độ dài, tối đa 10 báo cáo, giới hạn kích thước/tần suất),
 // /modules và /modules/menus, /excel/build và /excel/parse. Mỗi router chạy trên
 // express riêng, bỏ qua xác thực thật.
+// Trỏ Redis vào cổng không có ai nghe → bộ đếm giới hạn chạy bằng bộ nhớ (như `npm test`).
+// Chạy `node --test` trực tiếp trên máy có Redis dev thì lượt đầu đếm bộ nhớ, lượt sau đếm
+// Redis (và cộng dồn qua các lần chạy) — test giới hạn chập chờn.
+process.env.REDIS_PORT = '1';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');

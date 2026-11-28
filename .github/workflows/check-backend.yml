@@ -147,6 +147,10 @@ jobs:
         # Ngưỡng ≈ mức hiện tại (~49% dòng) — chỉ được nâng lên khi thêm test.
         # --test-reporter=tap BẮT BUỘC: từ Node 23 output pipe mặc định là spec
         # ("ℹ tests ...") → grep '^# ' không khớp → pipefail làm hỏng bước.
+        # REDIS_*: như `npm test` — không có Redis, bộ đếm / cache chạy bằng bộ nhớ.
+        env:
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: '1'
         run: |
           set -o pipefail
           node --test --test-force-exit --test-reporter=tap --experimental-test-coverage \

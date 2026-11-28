@@ -8,6 +8,10 @@
 //   - hồ sơ bắt buộc: mỗi loại 1 file PDF / JPG / PNG; thiếu ⇒ 400 trước captcha / giới hạn / ghi CSDL
 //   - đơn + tờ trình nháp của nội viện: khớp lại mã NV + họ tên, giới hạn theo mã NV
 //   - nộp / thay từng file theo mã đăng ký (/files/:kind)
+// Trỏ Redis vào cổng không có ai nghe → bộ đếm lượt thử (attemptLimiter) chạy bằng bộ nhớ.
+// Chạy `node --test` trực tiếp trên máy có Redis dev (6379) thì vài lượt đầu rơi vào bộ nhớ
+// lúc Redis đang kết nối, lượt sau vào Redis — 2 bộ đếm lệch nhau làm L-01 chập chờn.
+process.env.REDIS_PORT = '1';
 process.env.JWT_SECRET = 'test-secret';
 process.env.TOTP_ENC_KEY = 'a'.repeat(64);
 const test = require('node:test');
