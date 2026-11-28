@@ -12,6 +12,7 @@
  * tài khoản khác khi ngân hàng báo kèm số tài khoản.
  */
 const systemSettingService = require('../../../settings/systemSettingService');
+const settingRules = require('../../../settings/settingRules');
 const { parseCidr, splitList } = require('../../../../utils/attendancePolicy');
 const { getProvider } = require('./providers');
 
@@ -53,5 +54,8 @@ const getConfig = async () => {
 		accountNo: String(accountNo ?? '').replace(/\s+/g, ''),
 	};
 };
+
+// Kiểm khóa TUITION_BANK_API_* khi admin lưu cấu hình (app nạp file này qua route ngân hàng lúc khởi động)
+settingRules.registerValidator({ validateSetting });
 
 module.exports = { validateSetting, getConfig };

@@ -20,6 +20,7 @@ require('../../src/jobs/dedupe').markOnce = async (job, key) =>
 	seen.has(key) ? false : (seen.add(key), true);
 
 const hs = require('../../src/modules/settings/holidaySync');
+const { runJob } = require('../../src/jobs/holidaySyncJob');
 
 // Mẫu theo đúng định dạng lịch "Ngày lễ ở Việt Nam" của Google (dòng gập, mô tả phân loại)
 const ev = (start, end, summary, desc = 'Ngày lễ') =>
@@ -136,13 +137,13 @@ test('job: công tắc tắt ⇒ không tải; bật ⇒ báo quản trị đún
 	const next = new Date().getUTCFullYear() + 1;
 	const body = `BEGIN:VCALENDAR\r\n${ev(`${next}0615`, `${next}0616`, 'Ngày nghỉ thử')}${ev(`${next}0616`, `${next}0617`, 'Ngày nghỉ thử')}END:VCALENDAR\r\n`;
 	global.fetch = async () => (calls++, new Response(body));
-	await hs.runJob();
+	await runJob();
 	assert.equal(calls, 0);
 
 	store.set('TRAINING_HOLIDAYS_SYNC', 'true');
 	store.set('TRAINING_HOLIDAYS_AUTO', 'false'); // chỉ so ngày nhập tay — gợi ý gọn, dễ kiểm
-	await hs.runJob();
-	await hs.runJob(); // cùng bộ gợi ý ⇒ không báo lại
+	await runJob();
+	await runJob(); // cùng bộ gợi ý ⇒ không báo lại
 	assert.equal(calls, 2);
 	assert.equal(pushed.length, 1);
 	const [type, title, users, opts] = pushed[0];

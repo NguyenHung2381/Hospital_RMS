@@ -14,8 +14,8 @@ const captcha = require('../../utils/captcha');
 const tempPasswordPolicy = require('../../permissions/tempPasswordPolicy');
 const classDates = require('../../utils/classDates');
 const holidaySync = require('./holidaySync');
-const tuitionBankSettings = require('../training/tuition/bank/bankSettings');
 
+/** @type {{ validateSetting: (key: string, value: string|null) => string|null }[]} */
 const VALIDATORS = [
 	systemSettingService, // công tắc true/false, danh sách chọn, JSON
 	uploadPolicy,
@@ -27,8 +27,16 @@ const VALIDATORS = [
 	tempPasswordPolicy,
 	classDates, // TRAINING_HOLIDAYS
 	holidaySync, // TRAINING_HOLIDAYS_ICS_URL
-	tuitionBankSettings, // TUITION_BANK_API_*
 ];
+
+/**
+ * Module nghiệp vụ tự đăng ký kiểm tra khóa của mình (vd training/tuition/bank/bankSettings.js —
+ * TUITION_BANK_API_*) — settings là module lõi, không require ngược module nghiệp vụ.
+ * @param {{ validateSetting: (key: string, value: string|null) => string|null }} v
+ */
+const registerValidator = (v) => {
+	if (!VALIDATORS.includes(v)) VALIDATORS.push(v);
+};
 
 /** Chuẩn hoá giá trị gửi lên (vd cắt khoảng trắng khóa reCAPTCHA) — chạy TRƯỚC validate. */
 const normalize = (key, value) => captcha.normalizeSetting(key, value ?? null);
@@ -66,4 +74,4 @@ const checkMany = (input) => {
 	return { values, errors };
 };
 
-module.exports = { normalize, validate, checkMany, VALIDATORS };
+module.exports = { normalize, validate, checkMany, registerValidator, VALIDATORS };
